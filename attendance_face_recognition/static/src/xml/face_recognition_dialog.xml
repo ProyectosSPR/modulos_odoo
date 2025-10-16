@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template id="template" xml:space="preserve">
+
+    <div t-name="FaceRecognitionDialog">
+        <div class="container-fluid">
+            <div class="col-12 video-controls d-none">
+                <fieldset class="reader-config-group">
+                    <div class="row">
+                        <div class="col-3">
+                            <label>
+                                <span>Select Camera</span>
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <select name="video_source" class="videoSource" id="videoSource">
+                            </select>
+                        </div>
+                        <div class="col-3">
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="row">
+                <div class="col-12" id="videoContainer">
+                    <video muted="true" autoplay="true" playsinline="true"  id="video" style="width: 100%; max-height: 100%; box-sizing: border-box;"/>
+                    <canvas id="canvas" style="position: absolute; top: 0; left: 0; bottom: 0; right: 0; display: block; padding: inherit;"/>
+                    <canvas id="image" style="display: none;"/>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</template>

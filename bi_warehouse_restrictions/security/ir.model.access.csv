@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_wizard_sale_order_refuse_reason,access.wizard.sale.order.refuse.reason,bi_sale_tripple_approval.model_wizard_sale_order_refuse_reason,,1,1,1,1

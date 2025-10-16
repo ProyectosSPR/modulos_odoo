@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+        <record id="paperformat_a4_landscape" model="report.paperformat">
+            <field name="name">CDFI Letter</field>
+            <field name="default" eval="True" />
+            <field name="format">Letter</field>
+            <field name="page_height">0</field>
+            <field name="page_width">0</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">40</field>
+            <field name="margin_bottom">20</field>
+            <field name="margin_left">5</field>
+            <field name="margin_right">5</field>
+            <field name="header_line" eval="False" />
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
+        <template id="cfdi_external_layout01">
+            <!-- Multicompany -->
+            <t t-if="not o and doc">
+                <t t-set="o" t-value="doc" />
+            </t>
+            <t t-if="o and 'company_id' in o">
+                <t t-set="company" t-value="o.company_id"></t>
+            </t>
+            <t t-if="not o or not 'company_id' in o">
+                <t t-set="company" t-value="res_company"></t>
+            </t>
+
+            <t t-raw="0" />
+
+        <div class="footer">
+            <div class="text-center" style="border-top: 1px solid black;">
+                <ul class="list-inline mb4">
+                    <li t-if="company.phone" class="list-inline-item">Teléfono: <span t-field="company.phone"/></li>
+                    <li t-if="company.email" class="list-inline-item">&amp;bull;</li>
+                    <li t-if="company.email" class="list-inline-item" >Correo Electrónico: <span t-field="company.email"/></li>
+
+                    <li t-if="company.website" class="list-inline-item">&amp;bull;</li>
+                    <li t-if="company.website" class="list-inline-item">Página web: <span t-field="company.website"/></li>
+                </ul>
+
+                <div name="financial_infos">
+                    <span t-field="company.report_footer"/>
+                </div>
+
+                <div class="text-muted">
+                    Page: <span class="page"/> / <span class="topage"/>
+                </div>
+            </div>
+        </div>
+
+            <div class="header">
+                <div class="row">
+                    <div class="col-3">
+                        <img t-if="o.company_id.logo" t-att-src="o.company_id.logo" style="height: 190px;width: 190px;" />
+                    </div>
+
+                    <div class="col-6" style="height:23px;margin_bottom:0px;">
+                            <div class="text-left" style="background-color: #8F8F8F !important;height:20px; color: #FFFFFF !important;">
+                            <span class="fa fa-building-o"></span>
+                            <strong t-field="o.company_id.partner_id.name" />
+                            <p style="font-size:13px;color: black;">
+                            <span class="fa fa-map-marker"></span> <span t-field="o.company_id.street"/> <span t-field="o.company_id.street2"/><br/> 
+                            <span t-field="o.company_id.zip"/> <span t-field="o.company_id.city"/> <span t-field="o.company_id.state_id.name"/><br/>
+                            <span t-field="o.company_id.country_id.name"/><br/>
+                            <span class="fa fa-phone"></span> <span t-field="o.company_id.phone"/><br/>
+                            <span class="fa fa-globe"/> <span t-field="o.company_id.website"/><br/>
+                            <span class="fa fa-envelope"/> <span t-field="o.company_id.email"/><br/><strong>RFC:</strong> <span t-field="o.company_id.vat"/><br/>
+                            <strong>Regimen:</strong> <span t-field="o.company_id.regimen_fiscal_id.description" /></p>
+                            </div>
+                    </div>
+
+                    <div class="col-3" style="background-color: #8F8F8F !important;height:23px;margin_bottom:0px; color: #FFFFFF !important;">
+                            <span class="fa fa-building-o"></span>
+                                <strong>Factura</strong><br/>
+                                <p style="font-size:13px;color: black;">
+                                    <!--<strong style="background-color: #8F8F8F !important;height:23px;width:150px;margin_bottom:0px; color: #FFFFFF !important;">Serie</strong><br/>
+                                    <span style="color:black;" t-field="o.serie_emisor"/><br/>-->
+                                    <strong style="background-color: #8F8F8F !important;height:23px;margin_bottom:0px; color: #FFFFFF !important;">Folio</strong><br/>
+                                    <span style="color:black;" t-field="o.number_folio"/><br/>
+                                    <strong style="background-color: #8F8F8F !important;height:23px;margin_bottom:0px; color: #FFFFFF !important;">Fecha y hora de factura</strong><br/>
+                                <span style="color:black;" t-field="o.fecha_factura"/><br/>
+                                <strong style="background-color: #8F8F8F !important;height:23px;width:150px;margin_bottom:0px; color: #FFFFFF !important;">Lugar de expedición</strong><br/>
+                                <span style="color:black;" t-field="o.company_id.partner_id.zip"/></p>
+                    </div>
+                </div>
+        </div>
+        </template>
+
+
+
+        <template id="report_invoice_document">
+            <t t-call="invoice_reports_02.cfdi_external_layout01">
+                <t t-set="o" t-value="o.with_context({'lang':o.partner_id.lang})" />
+                <div class="article o_report_layout_standard" t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
+                    <br/>
+                    <!--TABLA INFORMACIÓN DEL CLIENTE-->
+                    <table class="table" style="table-layout: fixed;width:100%;font-size:13px;">
+                        <!--<tr>
+                            <td style="width:33%;background-color: #8F8F8F !important; color: #FFFFFF !important;text-align:text-left;" height="10">Información del cliente</td>
+                            <td style="width:33%;text-align:text-left;">Uso de CFDI</td>
+                            <td style="width:33%;text-align:text-left;">Información adicional</td>
+                        </tr>-->
+                        <div style="width:100%;height:20px;font-size:13px;background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                            <span style="width:33%">Información del cliente </span>
+                            <span style="width:34%;padding-left:180px;">Uso de CFDI</span>
+                            <span style="width:33%;float:right;padding-left:10px;">Información adicional</span>
+                        </div>
+                        <tr>
+                            <td style="width:33%;text-align:text-left;">
+                                <span t-field="o.partner_id"/><br/>
+                                <span class="fa fa-map-marker"/> <span t-field="o.partner_id.street"/> <span t-field="o.partner_id.street2"/><br/> 
+                                <span t-field="o.partner_id.zip"/> <span t-field="o.partner_id.city"/> <span t-field="o.partner_id.state_id.name"/><br/>
+                                <span t-field="o.partner_id.country_id.name"/><br/>
+                                <span class="fa fa-phone"/> <span t-field="o.partner_id.phone"/><br/>
+                                <span class="fa fa-globe"/> <span t-field="o.partner_id.website"/><br/>
+                                <span class="fa fa-envelope"/> <span t-field="o.partner_id.email"/><br/><strong>RFC:</strong> <span t-field="o.partner_id.vat"/><br/>
+                                <strong>Régimen fiscal:</strong> <span t-field="o.partner_id.regimen_fiscal_id.description" />
+                            </td>
+                            <td style="width:33%;text-align:text-left;">
+                                <span t-field="o.uso_cfdi_id.description" /> <br/>
+                                <div style="width:100%;background-color: #8F8F8F !important; color: #FFFFFF !important;">Moneda </div>
+                                <span t-field="o.currency_id.name" /><br/>
+                                <div style="width:100%;background-color: #8F8F8F !important; color: #FFFFFF !important;">Tipo de cambio</div>
+                                <span t-field="o.tipocambio"/>
+
+                            </td>
+                            <td style="width:33%;text-align:text-left;">
+                               <strong>No. Certificado: </strong><span t-field="o.numero_cetificado" /> <br />
+                                <strong>Método de Pago: </strong><span t-field="o.methodo_pago" />  <br />
+                                <strong>Forma de Pago: </strong><span t-field="o.forma_pago_id.description" /> <br />
+                                <strong>Condiciones de Pago: </strong><span t-field="o.invoice_payment_term_id.name" /><br />
+                            </td>
+
+                        </tr>
+                        </table>
+
+                    <!-- Is there a discount on at least one line? -->
+                    <t t-set="display_discount" t-value="any([l.discount for l in o.invoice_line_ids])" />
+                    <t t-set="amount_total" t-value="0.0"/>
+                    <t t-set="amount_untaxed" t-value="0.0"/>
+
+                <!--TABLA DE PRODUCTOS AQUI-->
+                <table style="font-size:13px;width:100%;">
+                    <tr style="height:25px;background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                        <th style="height:25px;" colspan="6">CONCEPTOS DEL COMPROBANTE</th>
+                    </tr>
+                    <tr style="background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                        <td style="width:50%;">Descripción</td>
+                        <td style="width:12.5%;">Cantidad</td>
+                        <td style="width:12.5%;">Unidad</td>
+                        <td style="width:12.5%;">P.Unitario</td>
+                        <td t-if="display_discount">Descuento</td>
+                        <td style="width:10%;">Importe</td>
+                        <td></td>
+                    </tr>
+                    <t t-foreach="o.invoice_line_ids" t-as="l">
+                          <t t-if="l.quantity > 0">
+                                <t t-set="price" t-value="l.price_unit * (1 - (l.discount or 0.0) / 100.0)"/>
+                                <t t-set="amounts" t-value="l.tax_ids.compute_all(price, l.currency_id, l.quantity, 
+                                                        product=l.product_id, partner=l.partner_id)"/>
+                                <t t-set="price_exclude_tax" t-value="amounts['total_excluded']"/>
+                                <t t-set="price_include_tax" t-value="amounts['total_included']"/>
+                                <t t-set="price_exclude_tax" t-value="l.move_id.currency_id.round(price_exclude_tax)"/>
+                                <t t-set="price_include_tax" t-value="l.move_id.currency_id.round(price_include_tax)"/>
+                                <t t-set="amount_untaxed" t-value="amount_untaxed + price_exclude_tax"/>
+                                <t t-set="amount_total" t-value="amount_total + price_include_tax"/>
+                                <t t-set="taxes" t-value="amounts['taxes']"/>
+                                <tr>
+                                    <td style="width: 50%; "><span t-esc="l.name" /></td>
+                                    <td><span t-field="l.quantity"/> </td>
+                                    <td><span t-field="l.product_uom_id.name"/> </td>
+                                    <td><span t-field="l.price_unit"/> </td>
+
+                                    <td t-if="display_discount" >
+                                       <span t-esc="l.price_unit * ((l.discount or 0.0) / 100.0) *l.quantity" 
+                                             t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+
+                                    <td><span t-field="l.price_subtotal"/> </td>
+                                </tr>
+                                
+                    <tr>
+                        <td style="width:15%;">
+                            <strong>Clave producto SAT: </strong> <span t-field="l.product_id.clave_producto" /> <br/>
+                        </td>
+                    </tr>
+
+                    <t t-foreach="l.tax_ids" t-as="tax">
+                                                                <t t-foreach="taxes" t-as="m">
+                                                                    <t t-if="m['id'] == tax.id">
+                    
+                    <tr>
+                        <td style="width:20%;">
+
+                        </td>
+                        <td style="width:10%;">
+                            <strong>Nombre</strong><br/> <span t-field="tax.name" />
+                        </td>
+                        <td style="width:10%;text-align:center;">
+                            <strong>Impuesto</strong><br/> <span t-field="tax.impuesto" style="text-align:center;" />
+                        </td>
+                        <td style="width:10%;">
+                            <strong>Tipo factor</strong><br/> <span t-field="tax.tipo_factor" /> 
+                        </td>
+                        <td style="width:10%;">
+                            <strong>Tasa o cuota</strong><br/> <span t-esc="abs(tax.amount / 100)" />
+                        </td>
+                        <td style="width:16%;">
+                            <strong>Importe</strong><br/> <span t-esc="abs(m['amount'])" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+
+                    </t>
+                </t>
+            </t>
+                </t></t>
+                </table>
+                <!--TERMINA TABLA DE PRODUCTOS-->
+
+                <br/>
+
+                <t t-if="o.tipo_relacion">  
+                <div class="row" style="border:solid 1px black;font-size:12px;border-radius:5;margin-top:10px;">
+                            <div class="row" style="background-color: #f2f2f2;width:100%;text-align: center;height:10px;color:#045FB4;margin:0px;">
+                                <strong>CFDI Relacionados</strong>
+                            </div>
+                               <div class="row" style="width:100%;min-height:20px;margin:0px;">
+                                   Tipo de Relación: <span t-field="o.tipo_relacion" />
+                               </div>
+                                <div class="row" style="width:100%;min-height:20px;margin:0px;">
+                                   CFDI Relacionado: <span t-field="o.uuid_relacionado" />
+                               </div>
+                </div>
+                </t>
+                
+                <!--<t t-if="o.narration">    
+                <div class="row" style="border:solid 1px black;font-size:12px;border-radius:5;margin-top:10px;">
+                            <div class="row" style="background-color: #f2f2f2;width:100%;text-align: center;height:10px;color:#045FB4;margin:0px;">
+                            <strong>Observaciones</strong>
+                            </div>
+                               <div class="row" style="width:100%;min-height:20px;margin:0px;">
+                                  <span t-field="o.narration" />
+                               </div>
+                </div>
+                </t>-->
+
+                <!--TABLA CORREGIDA-->
+                    <table class="table" style="width:100%;">
+                         <tr style="font-size:12px;background-color: #8F8F8F !important;color: #FFFFFF !important;padding:3px;">
+                            <td style="width:auto;padding:3px;text-align:left;">Subtotal </td>
+                            <td style="width:auto;padding:3px;text-align:left;">Impuestos </td>
+                                    <!--<t t-foreach="o.amount_by_group" t-as="amount_by_group">
+                                            <t t-if="len(o.line_ids.filtered(lambda line: line.tax_line_id)) == 1 and o.amount_untaxed == amount_by_group[2]">
+                                               <td style="width:auto;padding:3px;text-align:left;"><span t-esc="amount_by_group[0]"/></td>
+                                            </t>
+                                            <t t-else="">
+                                              <td style="width:auto;padding:3px;text-align:left;">  <span t-esc="amount_by_group[0]"/></td>
+                                            </t>
+                                    </t>-->
+                            <td style="width:auto%;text-align:center;padding:3px;">Total</td>
+                        </tr>
+
+                        <t t-set="positive_tax_amount" t-value="0"/>
+                        <t t-set="negative_tax_amount" t-value="0"/>
+
+                        <tr style="font-size:12px;">
+
+                            <td style="width:auto;text-align:left;"><span t-esc="amount_untaxed"
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' /></td>
+
+                            <td style="width:auto;text-align:left;"><span t-esc="o.amount_tax"
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' /></td>
+
+                                    <!--<t t-foreach="o.amount_by_group" t-as="amount_by_group">
+                                            <t t-if="len(o.line_ids.filtered(lambda line: line.tax_line_id)) == 1 and o.amount_untaxed == amount_by_group[2]">
+                                               <td style="width:auto;text-align:left;"><span t-esc="amount_by_group[3]"/></td>
+                                            </t>
+                                            <t t-else="">
+                                               <td style="width:auto;text-align:left;"><span t-esc="amount_by_group[3]"/></td>
+                                            </t>
+                                    </t>-->
+
+                            <td style="width:auto;text-align:center;"><span t-esc="amount_total"
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' /></td>
+                        </tr>
+                        
+                    </table>
+
+                <!--FIN DE TABLA CORREGIDA-->
+
+                <!--
+                <table class="table" style="table-layout: fixed;width:100%;font-size:12px;">
+
+
+                         <div style="width:100%;height:20px;font-size:12px;background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                            <div style="width:25%;display:inline-block;">Subtotal </div>
+                                    <t t-foreach="o.amount_by_group" t-as="amount_by_group">
+                                            <t t-if="len(o.line_ids.filtered(lambda line: line.tax_line_id)) == 1 and o.amount_untaxed == amount_by_group[2]">
+                                               <div style="width:25%;display:inline-block;"><span t-esc="amount_by_group[0]"/></div>
+                                                <div style="width:25%;display:inline-block;"> </div>
+                                            </t>
+                                            <t t-else="">
+                                              <div style="width:25%;display:inline-block;">  <span t-esc="amount_by_group[0]"/></div>
+                                            </t>
+                                    </t>
+                            <div style="width:20%;display:inline-block;">Total</div>
+                        </div>
+
+                        <t t-set="positive_tax_amount" t-value="0"/>
+                        <t t-set="negative_tax_amount" t-value="0"/>
+
+
+
+                        <div style="width:100%;height:20px;font-size:12px;">
+
+                            <div style="width:25%;display:inline-block;text-right"><span t-esc="amount_untaxed"
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' /></div>
+
+                                    <t t-foreach="o.amount_by_group" t-as="amount_by_group">
+                                            <t t-if="len(o.line_ids.filtered(lambda line: line.tax_line_id)) == 1 and o.amount_untaxed == amount_by_group[2]">
+                                               <div style="width:25%;display:inline-block;"><span t-esc="amount_by_group[3]"/></div>
+                                                <div style="width:25%;display:inline-block;"> </div>
+                                            </t>
+                                            <t t-else="">
+                                               <div style="width:25%;display:inline-block;"><span t-esc="amount_by_group[3]"/></div>
+                                            </t>
+                                    </t>
+
+                            <div style="width:20%;display:inline-block;text-right"><span t-esc="amount_total"
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' /></div>
+                        </div>
+                        
+                    </table>-->
+
+
+                <!--TERMINA SUBTOTALES-->
+
+                <table class="table" style="table-layout: fixed;width:100%;font-size:12px;">
+                        <div style="width:100%;height:20px;font-size:13px;background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                            <span style="width:33%">TIMBRE FISCAL </span>
+                        </div>
+                        <!--<tr>
+                            <td style="width:45%;height:10px;background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                               Folios fiscal 
+                            </td>
+                            <td style="width:20%;height:10px;background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                                No.certificado SAT
+                            </td>
+                            <td style="width:20%;height:10px;;background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                                Fecha y hora de certificación
+                            </td>
+                            <td style="width:15%;max-height:10%;">
+                                
+                            </td>
+                        </tr>-->
+                         <div style="width:100%;height:20px;font-size:12px;background-color: #8F8F8F !important;color: #FFFFFF !important;">
+                            <span style="width:40%;padding-left:5px;">Folios fiscal </span>
+                            <span style="width:20%;padding-left:250px;">No.certificado SAT</span>
+                            <span style="width:20%;padding-left:50px;">Fecha y hora de certificación</span>
+                            <span style="width:20%;background-color: white;"></span>
+                        </div>
+                        <tr style="width:100%;max-height:10px;">
+                            <td  style="width:30%;">
+                                <span t-field="o.folio_fiscal" />
+                            </td>
+                            <td style="width:20%;padding-left:10px;">
+                                <span t-field="o.cetificaso_sat" />
+                            </td>
+                            <td style="width:20%;padding-left:10px;">
+                                <span t-field="o.fecha_certificacion"  />
+                            </td>
+                            <td style="width:20%;">
+
+                            </td>
+                        </tr>
+                    </table>
+
+                <t t-if="o.factura_cfdi">
+
+                <div class="row" style="font-size:13px;height:20px;">
+                        <div class="col-xs-3 text-left">
+                            <img t-if="o.qrcode_image" t-att-src="image_data_uri(o.qrcode_image)" style="height: 180px;width: 180px;" /> 
+                        </div>
+                        <div class="col-3 text-left" style="background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                            <div class="row" style="font-size:13px;">
+                                <div class="col-12 text-left">
+                                    <span>Sello Digital del Emisor</span>
+                                </div>
+                                <!--<div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-wrap:break-word;" t-field="o.selo_digital_cdfi" />
+                                </div>-->
+                            </div>
+                        </div>
+                        <div class="col-3 text-left" style="background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                            <div class="row" style="font-size:13px;">
+                                <div class="col-12 text-left">
+                                    <span>Sello Digital del SAT</span>
+                                </div>
+                                <!--<div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-wrap:break-word;" t-field="o.selo_sat" />
+                                </div>-->
+                            </div>
+                        </div>
+                        <div class="col-3 text-left"  style="background-color: #8F8F8F !important; color: #FFFFFF !important;">
+                            <div class="row" style="font-size:13px;">
+                                <div class="col-xs-12 text-left">
+                                    <span>Cadena Original</span>
+                                </div>
+                                <!--<div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-break:break-all;" t-field="o.cadena_origenal" />
+                                </div>-->
+                            </div>
+                        </div>
+                </div> 
+                <div class="row" style="font-size:13px;height:100px;">
+                    <div class="col-xs-3 text-left">
+                        <div style="height: 180px;width: 190px;padding-left:10px;" ></div>
+                        </div>
+                        <div class="col-3 text-left">
+                            <div class="row" style="font-size:13px;">
+                                <div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-wrap:break-word;" t-field="o.selo_digital_cdfi" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-left">
+                            <div class="row" style="font-size:13px;">  
+                                <div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-wrap:break-word;" t-field="o.selo_sat" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-left" >
+                            <div class="row" style="font-size:13px;">
+                                <div class="col-xs-12 text-left">
+                                    <span style="font-size:8px; display:block; width:150px; word-break:break-all;" t-field="o.cadena_origenal" />
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                
+                                    <br/>
+
+
+
+                    <!--<p>
+                        <center>
+                            <strong>ESTE DOCUMENTO ES UNA REPRESENTACIÓN IMPRESA DE UN CFDI
+                            </strong>
+                        </center>
+                    </p>-->
+                    </t>
+                </div>
+            </t>
+        </template>
+
+        <template id="account.report_invoice">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="invoice_reports_02.report_invoice_document" t-lang="o.partner_id.lang" />
+                </t>
+            </t>
+        </template>
+
+
+        <report id="account.account_invoices" model="account.move" string="Custom Invoices"
+            report_type="qweb-pdf" name="account.report_invoice" file="invoice_reports_02.report_invoice" paperformat="invoice_reports_02.paperformat_a4_landscape" />
+
+</odoo>
