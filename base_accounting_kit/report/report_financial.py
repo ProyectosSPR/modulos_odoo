@@ -92,6 +92,9 @@ class AccountFinancialReport(models.Model):
     account_report_id = fields.Many2one(
         'account.financial.report',
         'Report Value')
+    # account_type_ids = fields.Many2many(
+    #     'account.account.type',
+    #     'Account Types')
     account_type_ids = fields.Selection(
         selection=[
             ("asset_receivable", "Receivable"),
@@ -113,10 +116,16 @@ class AccountFinancialReport(models.Model):
             ("expense_direct_cost", "Cost of Revenue"),
             ("off_balance", "Off-Balance Sheet"),
         ],
-        string="Account Type",
+        string="Type",
         help="These types are defined according to your country. The type contains more information " \
              "about the account and its specificities."
     )
+    # account_type_ids = fields.Many2many(
+    #     'account.account.template',
+    #     'account_account_financial_report_type',
+    #     'report_id', 'account_type_id',
+    #     'Account Types')
+
     sign = fields.Selection(
         [("-1", 'Reverse balance sign'), ("1", 'Preserve balance sign')],
         'Sign on Reports', required=True, default="1",

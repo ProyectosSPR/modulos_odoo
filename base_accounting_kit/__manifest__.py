@@ -21,14 +21,11 @@
 #############################################################################
 
 {
-    'name': 'Odoo 16 Full Accounting Kit',
-    'version': '16.0.2.0.9',
+    'name': 'Odoo 16 Full Accounting Kit for Community',
+    'version': '16.0.2.0.14',
     'category': 'Accounting',
     'live_test_url': 'https://www.youtube.com/watch?v=peAp2Tx_XIs',
-    'summary': """ Asset and Budget Management,
-                 Accounting Reports, PDC, Lock dates,
-                 Credit Limit, Follow Ups,
-                 Day-Bank-Cash book reports.""",
+    'summary': """Odoo 17 Accounting, Odoo 17 Accounting Reports, Odoo17 Accounting, Odoo Accounting, Odoo17 Financial Reports, Odoo17 Asset, Odoo17 Profit and Loss, PDC, Followups, Odoo17, Accounting, Odoo Apps, Reports""",
     'description': """
                     odoo16, Odoo16, 16,AccountingKit, Fullaccounting, Odoo accounting, Odooaccounting, all in one accounting,
                     allinoneaccounting, accounting,
@@ -106,7 +103,8 @@
         'views/recurring_payments_view.xml',
         'wizard/account_lock_date.xml',
         'views/account_payment_view.xml',
-        'data/account_pdc_data.xml'
+        'data/account_pdc_data.xml',
+        'views/report_payment_receipt_document_inherit.xml',
     ],
     'assets': {
         'web.assets_backend': [

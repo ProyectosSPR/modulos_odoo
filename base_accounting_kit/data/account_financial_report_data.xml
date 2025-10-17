@@ -2,257 +2,133 @@
 <odoo>
     <data>
         <!-- Financial Reports -->
-        <record id="account_financial_report_profitandloss0" model="account.financial.report">
+        <record id="account_financial_report_profitandloss0"
+                model="account.financial.report">
             <field name="name">Profit and Loss</field>
             <field name="sign" eval="'-1'"/>
             <field name="type">sum</field>
         </record>
 
-        <record id="account_financial_report_income0" model="account.financial.report">
-            <field name="name">Ingreso</field>
+        <record id="account_financial_report_income0"
+                model="account.financial.report">
+            <field name="name">Income</field>
             <field name="sign" eval="'-1'"/>
             <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_profitandloss0"/>
+
+            <field name="parent_id"
+                   ref="account_financial_report_profitandloss0"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">sum</field>
         </record>
+        <record id="account_financial_report_other_income0"
+                model="account.financial.report">
+            <field name="name">Other Income</field>
+            <field name="sequence">10</field>
 
-        <record id="account_financial_report_other_income1" model="account.financial.report">
-            <field name="name">Otros ingresos / gastos</field>
-            <field name="sign" eval="'-1'"/>
-            <field name="sequence">3</field>
-            <field name="parent_id" ref="account_financial_report_profitandloss0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_other_income0" model="account.financial.report">
-            <field name="name">Otros ingresos</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_other_income1"/>
+            <field name="parent_id"
+                   ref="account_financial_report_income0"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">account_type</field>
             <field name="account_type_ids">income_other</field>
         </record>
 
-        <record id="financial_report_gross_profit" model="account.financial.report">
-            <field name="name">Utilidad bruta</field>
-            <field name="parent_id" ref="account_financial_report_income0"/>
+        <record id="financial_report_gross_profit"
+                model="account.financial.report">
+            <field name="name">Gross Profit</field>
+            <field name="parent_id"
+                   ref="account_financial_report_income0"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">sum</field>
-            <field name="sequence">1</field>
+            <field name="sequence">3</field>
+
         </record>
 
-        <record id="financial_report_cost_of_revenue" model="account.financial.report">
-            <field name="name">Costo de ventas</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="financial_report_gross_profit"/>
+        <record id="financial_report_cost_of_revenue"
+                model="account.financial.report">
+            <field name="name">Cost of Revenue</field>
+            <field name="sequence">10</field>
+            <field name="parent_id"
+                   ref="financial_report_gross_profit"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">account_type</field>
             <field name="account_type_ids">expense_direct_cost</field>
+
         </record>
 
-        <record id="account_financial_report_operating_income0" model="account.financial.report">
-            <field name="name">Ingresos de operación</field>
+        <record id="account_financial_report_operating_income0"
+                model="account.financial.report">
+            <field name="name">Operating Income</field>
             <field name="sequence">1</field>
-            <field name="parent_id" ref="financial_report_gross_profit"/>
+            <field name="parent_id"
+                   ref="financial_report_gross_profit"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">account_type</field>
             <field name="account_type_ids">income</field>
+
         </record>
 
-        <record id="account_financial_report_expense0" model="account.financial.report">
-            <field name="name">Gastos</field>
+        <record id="account_financial_report_expense0"
+                model="account.financial.report">
+            <field name="name">Expense</field>
             <field name="sign" eval="'-1'"/>
             <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_profitandloss0"/>
+            <field name="parent_id"
+                   ref="account_financial_report_profitandloss0"/>
             <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
+            <field name="type">account_type</field>
+            <field name="account_type_ids">expense</field>
+
         </record>
 
-        <record id="account_financial_report_balancesheet0" model="account.financial.report">
+        <record id="account_financial_report_balancesheet0"
+                model="account.financial.report">
             <field name="name">Balance Sheet</field>
             <field name="type">sum</field>
         </record>
 
-        <record id="account_financial_report_assets0" model="account.financial.report">
-            <field name="name">Activos</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_balancesheet0"/>
+        <record id="account_financial_report_assets0"
+                model="account.financial.report">
+            <field name="name">Assets</field>
+            <field name="parent_id"
+                   ref="account_financial_report_balancesheet0"/>
             <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
+
+
+            <field name="type">account_type</field>
+            <field name="account_type_ids">income_other</field>
+
         </record>
 
-        <record id="account_financial_report_liabilitysum0" model="account.financial.report">
-            <field name="name">Pasivo</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_balancesheet0"/>
+        <record id="account_financial_report_liabilitysum0"
+                model="account.financial.report">
+            <field name="name">Liability</field>
+            <field name="sequence">1</field>
+            <field name="parent_id"
+                   ref="account_financial_report_balancesheet0"/>
             <field name="display_detail">no_detail</field>
             <field name="type">sum</field>
         </record>
 
-        <record id="account_financial_report_liability0" model="account.financial.report">
-            <field name="name">Pasivo circulante</field>
-            <field name="parent_id" ref="account_financial_report_liabilitysum0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_equiti0" model="account.financial.report">
-            <field name="name">Capital</field>
-            <field name="sequence">3</field>
-            <field name="parent_id" ref="account_financial_report_balancesheet0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_equiti1" model="account.financial.report">
-            <field name="name">Capital social</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_equiti0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_unasignedprofit0" model="account.financial.report">
-            <field name="name">Utilidad</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_equiti0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_unasignedprofit1" model="account.financial.report">
-            <field name="name">Utilidades años anteriores</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_unasignedprofit0"/>
+        <record id="account_financial_report_liability0"
+                model="account.financial.report">
+            <field name="name">Liability</field>
+            <field name="parent_id"
+                   ref="account_financial_report_liabilitysum0"/>
             <field name="display_detail">detail_with_hierarchy</field>
             <field name="type">account_type</field>
+            <field name="account_type_ids">income_other</field>
+
         </record>
 
-        <record id="account_financial_report_equiti3" model="account.financial.report">
-            <field name="name">Utilidad asignada actual</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_unasignedprofit0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">equity_unaffected</field>
-        </record>
-
-        <record id="account_financial_report_profitloss_toreport0" model="account.financial.report">
-            <field name="name">Utilidad asignada (año actual)</field>
-            <field name="sequence">3</field>
-            <field name="parent_id" ref="account_financial_report_unasignedprofit0"/>
+        <record id="account_financial_report_profitloss_toreport0"
+                model="account.financial.report">
+            <field name="name">Profit (Loss) to report</field>
+            <field name="parent_id"
+                   ref="account_financial_report_liabilitysum0"/>
             <field name="display_detail">no_detail</field>
             <field name="type">account_report</field>
-            <field name="account_report_id" ref="account_financial_report_profitandloss0"/>
-        </record>
-
-        <record id="account_financial_report_earnings0" model="account.financial.report">
-            <field name="name">Utilidades retenidas</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_equiti0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">equity</field>
-        </record>
-
-        <record id="account_financial_report_extra01" model="account.financial.report">
-            <field name="name">Gastos</field>
-            <field name="sequence">0</field>
-            <field name="parent_id" ref="account_financial_report_expense0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">expense</field>
-        </record>
-
-        <record id="account_financial_report_extra02" model="account.financial.report">
-            <field name="name">Depreciación</field>
-            <field name="sequence">10</field>
-            <field name="parent_id" ref="account_financial_report_expense0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">expense_depreciation</field>
-        </record>
-
-        <record id="account_financial_report_extra03" model="account.financial.report">
-            <field name="name">Activos circulantes</field>
-            <field name="sequence">0</field>
-            <field name="parent_id" ref="account_financial_report_assets0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">sum</field>
-        </record>
-
-        <record id="account_financial_report_extra04" model="account.financial.report">
-            <field name="name">Activo fijo</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_assets0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">asset_fixed</field>
-        </record>
-
-        <record id="account_financial_report_extra05" model="account.financial.report">
-            <field name="name">Activo no circulante</field>
-            <field name="sequence">4</field>
-            <field name="parent_id" ref="account_financial_report_assets0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">asset_non_current</field>
-        </record>
-
-        <record id="account_financial_report_extra06" model="account.financial.report">
-            <field name="name">Cuentas de banco y efectivo</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_extra03"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">asset_cash</field>
-        </record>
-
-        <record id="account_financial_report_extra07" model="account.financial.report">
-            <field name="name">Cuentas por cobrar</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_extra03"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">asset_receivable</field>
-        </record>
-
-        <record id="account_financial_report_extra08" model="account.financial.report">
-            <field name="name">Activos circulantes</field>
-            <field name="sequence">3</field>
-            <field name="parent_id" ref="account_financial_report_extra03"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">asset_current</field>
-        </record>
-
-        <record id="account_financial_report_extra09" model="account.financial.report">
-            <field name="name">Pasivo circulante</field>
-            <field name="sequence">0</field>
-            <field name="parent_id" ref="account_financial_report_liability0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">liability_current</field>
-        </record>
-
-        <record id="account_financial_report_extra10" model="account.financial.report">
-            <field name="name">Cuentas por pagar</field>
-            <field name="sequence">1</field>
-            <field name="parent_id" ref="account_financial_report_liability0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">liability_payable</field>
-        </record>
-
-        <record id="account_financial_report_extra11" model="account.financial.report">
-            <field name="name">Pasivo no circulante</field>
-            <field name="sequence">2</field>
-            <field name="parent_id" ref="account_financial_report_liabilitysum0"/>
-            <field name="display_detail">detail_with_hierarchy</field>
-            <field name="type">account_type</field>
-            <field name="account_type_ids">liability_non_current</field>
+            <field name="account_report_id"
+                   ref="account_financial_report_profitandloss0"/>
         </record>
 
         <record id="account_common_report_view" model="ir.ui.view">

@@ -95,7 +95,7 @@ class ResPartner(models.Model):
 
     def get_delay(self):
         delay = """select id,delay from followup_line where followup_id =
-        (select id from account_followup where company_id = %s limit 1)
+        (select id from account_followup where company_id = %s)
          order by delay limit 1"""
         self._cr.execute(delay, [self.env.company.id])
         record = self._cr.dictfetchall()

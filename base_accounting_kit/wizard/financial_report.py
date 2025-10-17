@@ -209,21 +209,22 @@ class FinancialReport(models.TransientModel):
                 accounts = self.env['account.account'].search([
                     ('account_type', '=', report.account_type_ids)
                 ])
-#                if report.name == "Expenses":
-#                    accounts = self.env['account.account'].search([
-#                        ('account_type', 'in', ["expense","expense_depreciation","expense_direct_cost"])
-#                    ])
-#                if report.name == "Liability":
-#                    accounts = self.env['account.account'].search([
-#                        ('account_type', 'in', ["liability_payable","equity","liability_current","liability_non_current"])
-#                    ])
-#                if report.name == "Assets":
-#                    accounts = self.env['account.account'].search([
-#                        ('account_type', 'in', ["asset_receivable","asset_cash","asset_current","asset_non_current","asset_prepayments","asset_fixed"])
-#                    ])
+                if report.name == "Expenses":
+                    accounts = self.env['account.account'].search([
+                        ('account_type', 'in', ["expense","expense_depreciation","expense_direct_cost"])
+                    ])
+                if report.name == "Liability":
+                    accounts = self.env['account.account'].search([
+                        ('account_type', 'in', ["liability_payable","equity","liability_current","liability_non_current"])
+                    ])
+                if report.name == "Assets":
+                    accounts = self.env['account.account'].search([
+                        ('account_type', 'in', ["asset_receivable","asset_cash","asset_current","asset_non_current","asset_prepayments","asset_fixed"])
+                    ])
 
                 res[report.id]['account'] = self._compute_account_balance(
                     accounts)
+
                 for value in res[report.id]['account'].values():
                     for field in fields:
                         res[report.id][field] += value.get(field)
