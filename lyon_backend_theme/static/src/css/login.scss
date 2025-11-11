@@ -1,0 +1,11 @@
+/* login page */
+body.bg-100{
+    background: url(/lyon_backend_theme/static/src/img/sidebar-img.svg), linear-gradient(to right bottom, #77717e, #c9a8a9) !important;
+}
+body.bg-100 .card{
+    border-radius: 0;
+}
+.o_main_navbar{
+    background-color: #875A7B;
+    border-bottom: 1px solid #68465f;
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="web.ImageField" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('o_select_file_button')]" position="after">       
+            <button
+                t-if="props.record.resModel === 'hr.employee.faces'"
+                class="o_webcam_widget_button btn btn-light border-0 rounded-circle m-1 p-1"
+                data-tooltip="Webcam"
+                aria-label="Webcam"
+                t-on-click="onWebcam">
+                <i class="fa fa-camera fa-fw"/>
+                </button>
+        </xpath>
+    </t>
+    
+    <t t-name="WebCamDialog" id="WebCamModal">
+        <div class="container-fluid">
+            <div class="row">                                
+                <div class="col-12" id="videoContainer">
+                    <video muted="true" autoplay="true" playsinline="true"  id="video" style="width: 100%; max-height: 100%; box-sizing: border-box;"/>
+                    <canvas id="image" style="display: none;"/>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

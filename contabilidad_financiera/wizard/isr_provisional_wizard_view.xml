@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_report_isr_provisional" model="ir.ui.view">
+        <field name="name">isr.provisional.wizard.form</field>
+        <field name="model">isr.provisional.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Print ISR provisional">
+                    <group>
+                        <field name="ano"/>
+                        <field name="coeficiente"/>
+                    </group>
+                <footer>
+                    <button name="action_print_isr_provisional_report" string="Generar" class="btn-primary" type="object"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="action_isr_provisional_wizard" model="ir.actions.act_window">
+        <field name="name">ISR provisional</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">isr.provisional.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_report_isr_provisional"/>
+        <field name="target">new</field>
+    </record>
+
+	<menuitem id="menu_reportes_mx" 
+              name="Reportes MX" 
+              parent="account.menu_finance_reports"
+    />
+
+    <menuitem id="menu_isr_provisional"
+              name="ISR provisional"
+              parent="menu_reportes_mx"
+              action="contabilidad_financiera.action_isr_provisional_wizard"
+              sequence="70"
+    />
+
+</odoo>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_report_isr_causado" model="ir.ui.view">
+        <field name="name">isr.causado.wizard.form</field>
+        <field name="model">isr.causado.wizard</field>
+        <field name="arch" type="xml">
+            <form string="ISR nomina">
+                    <group>
+                        <field name="ano"/>
+                        <field name="mes"/>
+                    </group>
+                <footer>
+                    <button name="action_print_isr_causado_report" string="Generar" class="btn-primary" type="object"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="action_isr_causado_wizard" model="ir.actions.act_window">
+        <field name="name">ISR nomina</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">isr.causado.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_report_isr_causado"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_isr_causado"
+              name="ISR nomina"
+              parent="menu_reportes_mx"
+              action="contabilidad_financiera.action_isr_causado_wizard"
+              sequence="60"
+    />
+
+</odoo>

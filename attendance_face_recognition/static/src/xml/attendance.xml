@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-extend="HrAttendanceMyMainMenu">
+        <t t-jquery="t[t-set='checked_in']" t-operation="before">
+            <span class="mt8 mb0 face_recognition_status d-none">Face Recognition ON</span>
+        </t>
+    </t>
+
+    <t t-extend="HrAttendanceKioskMode">
+        <t t-jquery="t[t-set='bodyContent'] div.o_hr_attendance_kiosk_welcome_row" t-operation="after">
+            <t t-if="widget.is_face_recognition_enabled">
+                <div class="row o_hr_attendance_kiosk_welcome_row mt16">
+                    <div class="col-sm-3">
+                        <span class="mt8 mb0 face_recognition_status d-none">Face Recognition ON</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <h3 class="mt0 mb8"><i>or</i></h3>
+                        <div class="col-sm-12 mt16">
+                            <button class="btn btn-default o_hr_kiosk_face_recognition">
+                                <img class="img img-fluid d-block mx-auto h-100" src="/attendance_face_recognition/static/src/img/kiosk_face_icon.png"/>
+                            </button>
+                            <h5 class="mt8 mb0 text-muted">Scan Your Face</h5>
+                        </div>                        
+                    </div>
+                    <div class="col-sm-3"></div>
+                </div>
+            </t>
+        </t>
+    </t>
+
+</templates>

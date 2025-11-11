@@ -1,0 +1,53 @@
+.face_recognition_on{
+    background: green;
+    font-size: 12px;
+    padding: 5px;
+    color: white !important;
+    -webkit-border-radius: 12px;
+    -moz-border-radius: 12px;
+    border-radius: 12px;
+}
+.face_recognition_main_on{
+    background: green;
+    font-size: 12px;
+    padding: 5px;
+    color: white !important;
+    -webkit-border-radius: 12px;
+    -moz-border-radius: 12px;
+    border-radius: 12px;
+    margin-top: 16px !important;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    margin: 10px;
+    position: absolute;
+    display: table;
+}
+.face_recognition_main_off{
+    background: red;
+    font-size: 12px;
+    padding: 5px;
+    color: white !important;
+    -webkit-border-radius: 12px;
+    -moz-border-radius: 12px;
+    border-radius: 12px;
+    margin-top: 16px !important;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    margin: 10px;
+    position: absolute;
+    display: table;
+}
+.face_recognition_off{
+    background: red;
+    font-size: 12px;
+    padding: 5px;
+    color: white !important;
+    -webkit-border-radius: 12px;
+    -moz-border-radius: 12px;
+    border-radius: 12px;
+}
+.footer_center{
+    justify-content: center !important;
+}

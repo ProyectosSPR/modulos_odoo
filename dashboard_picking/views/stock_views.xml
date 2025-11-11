@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+
+    <record id="dashboard_picking_client_action" model="ir.actions.client">
+        <field name="name">Estado de pedidos</field>
+        <field name="tag">stock_picking_dashboard</field>
+        <field name="target">main</field>
+    </record>
+
+    <menuitem id="escanear_menuitem"
+              name="Estado de pedidos"
+              sequence="11"
+              action="dashboard_picking_client_action"
+              parent="stock.menu_stock_warehouse_mgmt"/>
+
+</odoo>
