@@ -1,5 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_flujo_efectivo,access.flujo.efectivo,model_tipo_flujo,account.group_account_invoice,1,1,1,1
-access_isr_provisional_wizard,access.isr.provisional.wizard,model_isr_provisional_wizard,,1,1,1,1
-access_isr_causado_wizard,access.isr.causado.wizard,model_isr_causado_wizard,,1,1,1,1
-
