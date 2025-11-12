@@ -4,6 +4,7 @@
         t-name="account_reconcile_oca.ReconcileRenderer"
         t-inherit="web.KanbanRenderer"
         t-inherit-mode="primary"
+        owl="1"
     >
         <xpath expr="//t[@t-as='groupOrRecord']" position="before">
             <div class="m-2 d-flex w-100" t-if="env.parentController.journalId">
@@ -59,6 +60,7 @@
         t-name="account_reconcile_oca.ReconcileController"
         t-inherit="web.KanbanView"
         t-inherit-mode="primary"
+        owl="1"
     >
         <!-- we pass to the component the selected record -->
         <xpath expr="//Layout/t[2]" position="attributes">
@@ -71,23 +73,23 @@
         </xpath>
         <xpath expr="//Layout" position="inside">
             <div class="o_account_reconcile_oca_info">
-                <t t-if="state.selectedRecordId">
-                    <View t-props="viewReconcileInfo" t-key="state.selectedRecordId" />
+            <t t-if="state.selectedRecordId">
+                <View t-props="viewReconcileInfo" t-key="state.selectedRecordId" />
                 </t>
             </div>
         </xpath>
     </t>
-    <t t-name="account_reconcile.ReconcileView.Buttons">
+    <t t-name="account_reconcile.ReconcileView.Buttons" owl="1">
         <button
             t-on-click="onClickNewButton"
             class="btn btn-primary"
-            t-if="props.archInfo.activeActions.create"
+            t-if="activeActions.create"
         >Create</button>
     </t>
-    <t t-name="account_reconcile_oca.ReconcileMatchWidget">
-        <View t-props="this.listViewProperties" />
+    <t t-name="account_reconcile_oca.ReconcileMatchWidget" owl="1">
+        <View t-props="listViewProperties" />
     </t>
-    <t t-name="account_reconcile_oca.ReconcileDataWidget">
+    <t t-name="account_reconcile_oca.ReconcileDataWidget" owl="1">
         <table
             class="table table-sm position-relative mb-0 table-striped o_reconcile_widget_table"
             style="table-layout: auto"
@@ -191,23 +193,31 @@
             </tbody>
         </table>
     </t>
-    <t t-name="account_reconcile_oca.AccountReconcileChatterWidget">
-        <Chatter
+    <t t-name="account_reconcile_oca.AccountReconcileChatterWidget" owl="1">
+        <ChatterContainer
             threadModel="this.props.record.fields[this.props.name].relation"
-            threadId="this.props.record.data[this.props.name][0]"
+            threadId="this.props.value[0]"
         />
     </t>
     <t
         t-name="account_reconcile_oca.ReconcileMoveLineController"
         t-inherit="web.ListView"
         t-inherit-mode="primary"
+        owl="1"
     >
         <xpath expr="//t[@list='model.root']" position="attributes">
             <attribute name="parentRecord">props.parentRecord</attribute>
             <attribute name="parentField">props.parentField</attribute>
         </xpath>
     </t>
-    <t t-name="reconcile_move_line.ListView.Buttons">
-        <button class="btn btn-primary" t-on-click="clickAddAll">Add all</button>
+    <t
+        t-name="reconcile_move_line.ListView.Buttons"
+        t-inherit="web.ListView.Buttons"
+        t-inherit-mode="primary"
+        owl="1"
+    >
+        <xpath expr="//div[hasclass('o_list_buttons')]" position="inside">
+            <button class="btn btn-primary" t-on-click="clickAddAll">Add all</button>
+        </xpath>
     </t>
 </templates>

@@ -2,6 +2,7 @@
 <!-- Copyright 2023 Dixmit
      License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <odoo>
+
     <record id="account_bank_statement_form_edit" model="ir.ui.view">
         <field name="name">Edit Bank statement</field>
         <field name="model">account.bank.statement</field>
@@ -11,7 +12,7 @@
                 <div
                     class="alert alert-warning text-center"
                     role="alert"
-                    invisible="is_valid and is_complete"
+                    attrs="{'invisible': [('is_valid', '=',True), ('is_complete','=',True)]}"
                 >
                     <field name="problem_description" />
                     <field name="is_valid" invisible="1" />
@@ -26,6 +27,7 @@
                         <field name="line_ids" invisible="1" />
                     </group>
                 </sheet>
+
             </form>
         </field>
     </record>

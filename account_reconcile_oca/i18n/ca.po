@@ -32,6 +32,7 @@ msgstr ""
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile__account_id
 #: model_terms:ir.ui.view,arch_db:account_reconcile_oca.bank_statement_line_form_reconcile_view
+#, python-format
 msgid "Account"
 msgstr "Compte"
 
@@ -65,6 +66,7 @@ msgstr "Afegir una línea d'extracte bancari"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Add all"
 msgstr ""
 
@@ -96,6 +98,7 @@ msgstr ""
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Amount in currency"
 msgstr "Import en divisa"
 
@@ -181,6 +184,11 @@ msgid "Company Currency"
 msgstr ""
 
 #. module: account_reconcile_oca
+#: model:ir.model.fields,help:account_reconcile_oca.field_account_bank_statement_line__company_id
+msgid "Company related to this journal"
+msgstr "Companyia relacionada amb el diari"
+
+#. module: account_reconcile_oca
 #: model:ir.model,name:account_reconcile_oca.model_res_config_settings
 msgid "Config Settings"
 msgstr ""
@@ -188,6 +196,7 @@ msgstr ""
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Create"
 msgstr "Crea"
 
@@ -204,6 +213,7 @@ msgstr "Creat el"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Credit"
 msgstr "Crèdit"
 
@@ -221,6 +231,7 @@ msgstr "Dades"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Date"
 msgstr "Data"
 
@@ -232,6 +243,7 @@ msgstr ""
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Debit"
 msgstr "Dèbit"
 
@@ -250,6 +262,11 @@ msgstr ""
 #: model:ir.model.fields.selection,name:account_reconcile_oca.selection__account_journal__reconcile_mode__edit
 msgid "Edit Move"
 msgstr "Edita moviment"
+
+#. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__statement_balance_end_real
+msgid "Ending Balance"
+msgstr ""
 
 #. module: account_reconcile_oca
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile__foreign_currency_id
@@ -271,6 +288,7 @@ msgstr "De comptes a cobrar"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Global Balance"
 msgstr ""
 
@@ -286,9 +304,24 @@ msgid "Invoice"
 msgstr "Factura"
 
 #. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__statement_complete
+msgid "Is Complete"
+msgstr ""
+
+#. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__manual_in_currency
+msgid "Is Manual in Currency?"
+msgstr ""
+
+#. module: account_reconcile_oca
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile__is_reconciled
 msgid "Is Reconciled"
 msgstr "Conciliat"
+
+#. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__statement_valid
+msgid "Is Valid"
+msgstr ""
 
 #. module: account_reconcile_oca
 #: model_terms:ir.ui.view,arch_db:account_reconcile_oca.account_journal_dashboard_kanban_view
@@ -324,8 +357,15 @@ msgstr "Mantenir comptes transitoris"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Label"
 msgstr "Etiqueta"
+
+#. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile____last_update
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile_data____last_update
+msgid "Last Modified on"
+msgstr "Última modificació el"
 
 #. module: account_reconcile_oca
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile_data__write_uid
@@ -372,11 +412,6 @@ msgstr ""
 #. module: account_reconcile_oca
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__manual_in_currency_id
 msgid "Manual In Currency"
-msgstr ""
-
-#. module: account_reconcile_oca
-#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__manual_in_currency
-msgid "Manual In Currency?"
 msgstr ""
 
 #. module: account_reconcile_oca
@@ -448,8 +483,14 @@ msgid "Name"
 msgstr "Nom"
 
 #. module: account_reconcile_oca
+#: model_terms:ir.ui.view,arch_db:account_reconcile_oca.bank_statement_line_form_reconcile_view
+msgid "Narration"
+msgstr "Narració"
+
+#. module: account_reconcile_oca
 #. odoo-python
 #: code:addons/account_reconcile_oca/models/account_bank_statement_line.py:0
+#, python-format
 msgid "No supense lines are allowed when reconciling"
 msgstr "No està permés usar líneas transitòries"
 
@@ -468,12 +509,8 @@ msgstr "Res a conciliar"
 #. module: account_reconcile_oca
 #. odoo-javascript
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
+#, python-format
 msgid "Open Balance"
-msgstr ""
-
-#. module: account_reconcile_oca
-#: model_terms:ir.ui.view,arch_db:account_reconcile_oca.bank_statement_line_form_reconcile_view
-msgid "Other Info"
 msgstr ""
 
 #. module: account_reconcile_oca
@@ -481,6 +518,7 @@ msgstr ""
 #: code:addons/account_reconcile_oca/static/src/xml/reconcile.xml:0
 #: model:ir.model.fields,field_description:account_reconcile_oca.field_account_account_reconcile__partner_id
 #: model_terms:ir.ui.view,arch_db:account_reconcile_oca.bank_statement_line_form_reconcile_view
+#, python-format
 msgid "Partner"
 msgstr "Empresa"
 
@@ -575,6 +613,7 @@ msgstr "Restablir concilicació"
 #. module: account_reconcile_oca
 #. odoo-python
 #: code:addons/account_reconcile_oca/models/account_bank_statement_line.py:0
+#, python-format
 msgid "Reversal of: %s"
 msgstr ""
 
@@ -610,6 +649,11 @@ msgid "Statement"
 msgstr ""
 
 #. module: account_reconcile_oca
+#: model:ir.model.fields,field_description:account_reconcile_oca.field_account_bank_statement_line__statement_name
+msgid "Statement Name"
+msgstr ""
+
+#. module: account_reconcile_oca
 #: model:ir.actions.act_window,name:account_reconcile_oca.action_bank_statement_line_reconcile
 msgid "Statement lines"
 msgstr ""
@@ -637,6 +681,7 @@ msgstr "Transaccions"
 #. module: account_reconcile_oca
 #. odoo-python
 #: code:addons/account_reconcile_oca/models/account_bank_statement_line.py:0
+#, python-format
 msgid "Undefined"
 msgstr "Indefinit"
 
@@ -673,12 +718,14 @@ msgstr ""
 #. module: account_reconcile_oca
 #. odoo-python
 #: code:addons/account_reconcile_oca/models/account_journal.py:0
+#, python-format
 msgid "Well done! Everything has been reconciled"
 msgstr "Ben fet! Tot s'ha conciliat"
 
 #. module: account_reconcile_oca
 #. odoo-python
 #: code:addons/account_reconcile_oca/models/account_move_line.py:0
+#, python-format
 msgid "You can only reconcile journal items belonging to the same account."
 msgstr ""
 
@@ -702,16 +749,7 @@ msgstr "será reduit en"
 msgid "with an open amount"
 msgstr "amb un import pendent"
 
-#~ msgid "Company related to this journal"
-#~ msgstr "Companyia relacionada amb el diari"
-
-#~ msgid "Narration"
-#~ msgstr "Narració"
-
 #, python-format
 #~ msgid "Keep suspense move lines mode cannot be unreconciled"
 #~ msgstr ""
 #~ "La modalitat mantenir els comptes transitoris no permet desconciliar"
-
-#~ msgid "Last Modified on"
-#~ msgstr "Última modificació el"

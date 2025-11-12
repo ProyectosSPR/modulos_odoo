@@ -1,6 +1,7 @@
+/** @odoo-module **/
 import {
     BadgeSelectionField,
-    badgeSelectionField,
+    preloadSelection,
 } from "@web/views/fields/badge_selection/badge_selection_field";
 import {registry} from "@web/core/registry";
 
@@ -18,11 +19,11 @@ export class FieldSelectionBadgeUncheck extends BadgeSelectionField {
     }
 }
 
-export const FieldSelectionBadgeUncheckField = {
-    ...badgeSelectionField,
-    component: FieldSelectionBadgeUncheck,
-    supportedTypes: ["many2one"],
-};
-registry
-    .category("fields")
-    .add("selection_badge_uncheck", FieldSelectionBadgeUncheckField);
+FieldSelectionBadgeUncheck.supportedTypes = ["many2one", "selection"];
+FieldSelectionBadgeUncheck.additionalClasses = ["o_field_selection_badge"];
+registry.category("fields").add("selection_badge_uncheck", FieldSelectionBadgeUncheck);
+
+registry.category("preloadedData").add("selection_badge_uncheck", {
+    loadOnTypes: ["many2one"],
+    preload: preloadSelection,
+});

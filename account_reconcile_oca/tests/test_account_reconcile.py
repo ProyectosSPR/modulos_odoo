@@ -1,35 +1,28 @@
-from odoo import Command
 from odoo.tests import Form, tagged
 
-from odoo.addons.account_reconcile_model_oca.tests.common import (
-    TestAccountReconciliationCommon,
-)
+from odoo.addons.account.tests.common import TestAccountReconciliationCommon
 
 
 @tagged("post_install", "-at_install")
 class TestReconciliationWidget(TestAccountReconciliationCommon):
     @classmethod
-    def _setup_context(cls):
-        return {**cls.env.context, "_test_account_reconcile_oca": True}
+    def setUpClass(cls, chart_template_ref=None):
+        super().setUpClass(chart_template_ref=chart_template_ref)
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
         cls.acc_bank_stmt_model = cls.env["account.bank.statement"]
         cls.acc_bank_stmt_line_model = cls.env["account.bank.statement.line"]
         cls.bank_journal_usd.suspense_account_id = (
-            cls.env.company.account_journal_suspense_account_id
+            cls.company.account_journal_suspense_account_id
         )
         cls.bank_journal_euro.suspense_account_id = (
-            cls.env.company.account_journal_suspense_account_id
+            cls.company.account_journal_suspense_account_id
         )
         cls.current_assets_account = (
             cls.env["account.account"]
             .search(
                 [
                     ("account_type", "=", "asset_current"),
-                    ("company_ids", "in", cls.env.company.id),
+                    ("company_id", "=", cls.company.id),
                 ],
                 limit=1,
             )
@@ -41,7 +34,7 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
             .search(
                 [
                     ("account_type", "=", "asset_receivable"),
-                    ("company_ids", "in", cls.env.company.id),
+                    ("company_id", "=", cls.company.id),
                 ],
                 limit=1,
             )
@@ -53,7 +46,7 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
             .search(
                 [
                     ("account_type", "=", "equity"),
-                    ("company_ids", "in", cls.env.company.id),
+                    ("company_id", "=", cls.company.id),
                 ],
                 limit=1,
             )
@@ -64,7 +57,7 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
             .search(
                 [
                     ("account_type", "=", "asset_non_current"),
-                    ("company_ids", "in", cls.env.company.id),
+                    ("company_id", "=", cls.company.id),
                 ],
                 limit=1,
             )
@@ -74,19 +67,23 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         cls.move_1 = cls.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.current_assets_account.id,
                             "name": "DEMO",
                             "credit": 100,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.non_current_assets_account.id,
                             "name": "DEMO",
                             "debit": 100,
-                        }
+                        },
                     ),
                 ]
             }
@@ -95,19 +92,23 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         cls.move_2 = cls.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.non_current_assets_account.id,
                             "name": "DEMO",
                             "credit": 50,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.equity_account.id,
                             "name": "DEMO",
                             "debit": 50,
-                        }
+                        },
                     ),
                 ]
             }
@@ -116,19 +117,23 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         cls.move_3 = cls.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.non_current_assets_account.id,
                             "name": "DEMO",
                             "credit": 50,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": cls.equity_account.id,
                             "name": "DEMO",
                             "debit": 50,
-                        }
+                        },
                     ),
                 ]
             }
@@ -205,20 +210,24 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         move_1 = self.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.current_assets_account.id,
                             "name": "DEMO",
                             "credit": 100,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.asset_receivable_account.id,
                             "partner_id": self.env.user.partner_id.id,
                             "name": "DEMO",
                             "debit": 100,
-                        }
+                        },
                     ),
                 ]
             }
@@ -228,20 +237,24 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         move_2 = self.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.current_assets_account.id,
                             "name": "DEMO",
                             "debit": 100,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.asset_receivable_account.id,
-                            "partner_id": self.env.company.partner_id.id,
+                            "partner_id": self.company.partner_id.id,
                             "name": "DEMO",
                             "credit": 100,
-                        }
+                        },
                     ),
                 ]
             }
@@ -258,20 +271,24 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
         move_3 = self.env["account.move"].create(
             {
                 "line_ids": [
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.current_assets_account.id,
                             "name": "DEMO",
                             "debit": 100,
-                        }
+                        },
                     ),
-                    Command.create(
+                    (
+                        0,
+                        0,
                         {
                             "account_id": self.asset_receivable_account.id,
                             "partner_id": self.env.user.partner_id.id,
                             "name": "DEMO",
                             "credit": 100,
-                        }
+                        },
                     ),
                 ]
             }

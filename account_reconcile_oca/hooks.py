@@ -1,5 +1,5 @@
-def post_init_hook(env):
-    env.cr.execute(
+def post_init_hook(cr, registry):
+    cr.execute(
         """
         UPDATE account_bank_statement_line
         SET reconcile_mode = 'edit'

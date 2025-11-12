@@ -2,17 +2,16 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 {
-    "name": "Account Reconcile Oca",
+    "name": "Account Reconcile OCA",
     "summary": """
         Reconcile addons for Odoo CE accounting""",
-    "version": "18.0.1.0.16",
+    "version": "16.0.2.4.10",
     "license": "AGPL-3",
     "author": "CreuBlanca,Dixmit,Odoo Community Association (OCA)",
     "maintainers": ["etobella"],
     "website": "https://github.com/OCA/account-reconcile",
     "depends": [
         "account_statement_base",
-        "account_reconcile_model_oca",
         "base_sparse_field",
     ],
     "data": [
@@ -37,6 +36,7 @@
             "account_reconcile_oca/static/src/js/widgets/reconcile_move_line_widget.esm.js",
             "account_reconcile_oca/static/src/js/reconcile_move_line/*.esm.js",
             "account_reconcile_oca/static/src/js/reconcile_form/*.esm.js",
+            "account_reconcile_oca/static/src/js/reconcile_manual/*.esm.js",
             "account_reconcile_oca/static/src/js/reconcile/*.esm.js",
             "account_reconcile_oca/static/src/xml/reconcile.xml",
             "account_reconcile_oca/static/src/scss/reconcile.scss",

@@ -2,6 +2,7 @@
 <!-- Copyright 2023 Dixmit
      License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <odoo>
+
     <record model="ir.ui.view" id="account_move_form_view">
         <field name="name">account.move.form (in account_reconcile_oca)</field>
         <field name="model">account.move</field>
@@ -15,9 +16,12 @@
                     context="{'search_default_move_id': id}"
                     class="btn btn-primary"
                     icon="fa-list"
-                    invisible="statement_line_id == False"
+                    attrs="{'invisible': [('statement_line_id', '=', False)]}"
                 />
             </div>
         </field>
     </record>
+
+
+
 </odoo>
