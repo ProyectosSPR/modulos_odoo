@@ -1,10 +1,8 @@
 /** @odoo-module **/
 
-import { Component } from "@odoo/owl";
+import { Component, useState, onWillStart } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-
-const { useState, onWillStart } = owl;
 
 export class MetabaseDashboardViewer extends Component {
     setup() {
