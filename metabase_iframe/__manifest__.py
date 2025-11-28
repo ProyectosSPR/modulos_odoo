@@ -25,12 +25,10 @@
         'views/metabase_dashboard_views.xml',
         'views/metabase_menus.xml',
     ],
-    'qweb': [
-        'static/src/xml/metabase_dashboard.xml',
-    ],
     'assets': {
         'web.assets_backend': [
             'metabase_iframe/static/src/js/metabase_dashboard.js',
+            'metabase_iframe/static/src/xml/metabase_dashboard.xml',
         ],
     },
     'installable': True,
