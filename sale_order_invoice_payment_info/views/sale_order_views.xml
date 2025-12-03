@@ -11,7 +11,7 @@
             <!-- Agregar campos de comisión en el grupo de información -->
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="commission_paid" widget="boolean_toggle"/>
-                <field name="commission_paid_date" invisible="commission_paid == False"/>
+                <field name="commission_paid_date" attrs="{'invisible': [('commission_paid', '=', False)]}"/>
             </xpath>
 
             <!-- Agregar botones de comisión -->
@@ -20,12 +20,12 @@
                         string="Marcar Comisión Pagada"
                         type="object"
                         class="btn-primary"
-                        invisible="commission_paid == True or state not in ['sale', 'done']"/>
+                        attrs="{'invisible': ['|', ('commission_paid', '=', True), ('state', 'not in', ['sale', 'done'])]}"/>
                 <button name="action_unmark_commission_paid"
                         string="Desmarcar Comisión"
                         type="object"
                         class="btn-secondary"
-                        invisible="commission_paid == False"/>
+                        attrs="{'invisible': [('commission_paid', '=', False)]}"/>
             </xpath>
 
             <!-- Agregar una nueva página después de las líneas de pedido -->
