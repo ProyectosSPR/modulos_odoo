@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================== -->
+    <!-- EQUIPOS UNIFICADOS -->
+    <!-- ========================================== -->
+
+    <!-- Vista Tree de Equipos Unificados -->
+    <record id="view_commission_team_unified_tree" model="ir.ui.view">
+        <field name="name">commission.team.unified.tree</field>
+        <field name="model">commission.team.unified</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="commission_percentage"/>
+                <field name="team_ids" widget="many2many_tags"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Equipos Unificados -->
+    <record id="view_commission_team_unified_form" model="ir.ui.view">
+        <field name="name">commission.team.unified.form</field>
+        <field name="model">commission.team.unified</field>
+        <field name="arch" type="xml">
+            <form string="Equipo Unificado">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <field name="active" widget="boolean_button"
+                               options='{"terminology": "active"}'/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="commission_percentage"/>
+                        </group>
+                        <group>
+                            <field name="team_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- REGLAS DE ALCANCE -->
+    <!-- ========================================== -->
+
+    <!-- Vista Tree de Reglas -->
+    <record id="view_commission_goal_rule_tree" model="ir.ui.view">
+        <field name="name">commission.goal.rule.tree</field>
+        <field name="model">commission.goal.rule</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="goal_percentage"/>
+                <field name="reward_percentage"/>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Reglas -->
+    <record id="view_commission_goal_rule_form" model="ir.ui.view">
+        <field name="name">commission.goal.rule.form</field>
+        <field name="model">commission.goal.rule</field>
+        <field name="arch" type="xml">
+            <form string="Regla de Alcance">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <field name="active" widget="boolean_button"
+                               options='{"terminology": "active"}'/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="goal_percentage"/>
+                            <field name="reward_percentage"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="name"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- METAS POR VENDEDOR -->
+    <!-- ========================================== -->
+
+    <!-- Vista Tree de Metas -->
+    <record id="view_commission_goal_tree" model="ir.ui.view">
+        <field name="name">commission.goal.tree</field>
+        <field name="model">commission.goal</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="period_year"/>
+                <field name="period_month"/>
+                <field name="user_id"/>
+                <field name="goal_amount"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Metas -->
+    <record id="view_commission_goal_form" model="ir.ui.view">
+        <field name="name">commission.goal.form</field>
+        <field name="model">commission.goal</field>
+        <field name="arch" type="xml">
+            <form string="Meta de Ventas">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <field name="active" widget="boolean_button"
+                               options='{"terminology": "active"}'/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period_year"/>
+                            <field name="period_month"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="goal_amount"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- CÁLCULO DE COMISIONES -->
+    <!-- ========================================== -->
+
+    <!-- Vista Tree de Cálculo de Comisiones -->
+    <record id="view_commission_calculation_tree" model="ir.ui.view">
+        <field name="name">commission.calculation.tree</field>
+        <field name="model">commission.calculation</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state == 'draft'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-muted="state == 'paid'">
+                <field name="period_year"/>
+                <field name="period_month"/>
+                <field name="user_id"/>
+                <field name="team_unified_id"/>
+                <field name="total_sales"/>
+                <field name="goal_amount"/>
+                <field name="goal_percentage" decoration-success="goal_percentage >= 100"/>
+                <field name="reward_percentage"/>
+                <field name="commission_percentage"/>
+                <field name="commission_amount"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state == 'paid'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Cálculo de Comisiones -->
+    <record id="view_commission_calculation_form" model="ir.ui.view">
+        <field name="name">commission.calculation.form</field>
+        <field name="model">commission.calculation</field>
+        <field name="arch" type="xml">
+            <form string="Cálculo de Comisión">
+                <header>
+                    <button name="action_calculate_commission"
+                            string="Recalcular"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_confirm"
+                            string="Confirmar"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_mark_paid"
+                            string="Marcar como Pagado"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_back_to_draft"
+                            string="Volver a Borrador"
+                            type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_sale_orders"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart">
+                            <field name="sale_order_count" widget="statinfo"
+                                   string="Órdenes"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Periodo y Vendedor">
+                            <field name="period_year"/>
+                            <field name="period_month"/>
+                            <field name="user_id"/>
+                            <field name="team_unified_id"/>
+                        </group>
+                        <group string="Configuración">
+                            <field name="calculation_base"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Ventas y Meta">
+                            <field name="total_sales"/>
+                            <field name="goal_amount"/>
+                            <field name="goal_percentage" widget="percentage"/>
+                        </group>
+                        <group string="Comisión">
+                            <field name="reward_percentage" widget="percentage"/>
+                            <field name="commission_percentage" widget="percentage"/>
+                            <field name="commission_amount"/>
+                        </group>
+                    </group>
+
+                    <group string="Pago" invisible="state != 'paid'">
+                        <field name="paid_date"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Órdenes de Venta" name="sale_orders">
+                            <field name="sale_order_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_untaxed"/>
+                                    <field name="amount_total"/>
+                                    <field name="commission_paid"/>
+                                    <field name="commission_paid_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Search de Cálculo de Comisiones -->
+    <record id="view_commission_calculation_search" model="ir.ui.view">
+        <field name="name">commission.calculation.search</field>
+        <field name="model">commission.calculation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="user_id"/>
+                <field name="period_year"/>
+                <field name="period_month"/>
+                <field name="team_unified_id"/>
+                <separator/>
+                <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmado" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Pagado" name="paid" domain="[('state', '=', 'paid')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Vendedor" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
+                    <filter string="Año" name="group_year" context="{'group_by': 'period_year'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vista Pivot de Cálculo de Comisiones -->
+    <record id="view_commission_calculation_pivot" model="ir.ui.view">
+        <field name="name">commission.calculation.pivot</field>
+        <field name="model">commission.calculation</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de Comisiones">
+                <field name="user_id" type="row"/>
+                <field name="period_month" type="col"/>
+                <field name="total_sales" type="measure"/>
+                <field name="commission_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Vista Graph de Cálculo de Comisiones -->
+    <record id="view_commission_calculation_graph" model="ir.ui.view">
+        <field name="name">commission.calculation.graph</field>
+        <field name="model">commission.calculation</field>
+        <field name="arch" type="xml">
+            <graph string="Gráfico de Comisiones" type="bar">
+                <field name="user_id"/>
+                <field name="commission_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>

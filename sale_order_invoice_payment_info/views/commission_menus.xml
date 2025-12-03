@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================== -->
+    <!-- MENÚ PRINCIPAL DE COMISIONES -->
+    <!-- ========================================== -->
+
+    <menuitem id="menu_commission_root"
+              name="Comisiones de Vendedores"
+              sequence="100"
+              web_icon="sale_order_invoice_payment_info,static/description/icon.png"/>
+
+    <!-- ========================================== -->
+    <!-- ACCIONES -->
+    <!-- ========================================== -->
+
+    <!-- Acción: Equipos Unificados -->
+    <record id="action_commission_team_unified" model="ir.actions.act_window">
+        <field name="name">Equipos Unificados</field>
+        <field name="res_model">commission.team.unified</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un Equipo Unificado
+            </p>
+            <p>
+                Los equipos unificados agrupan múltiples equipos de ventas bajo un mismo nombre
+                y porcentaje de comisión. Por ejemplo: "Mercado Libre" puede incluir "ML Full" y "ML Agencia".
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción: Reglas de Alcance -->
+    <record id="action_commission_goal_rule" model="ir.actions.act_window">
+        <field name="name">Reglas de Alcance</field>
+        <field name="res_model">commission.goal.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una Regla de Alcance
+            </p>
+            <p>
+                Define qué porcentaje de recompensa obtiene un vendedor según su alcance de meta.
+                Por ejemplo: 100% alcance = 100% recompensa, 90% alcance = 70% recompensa.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción: Metas por Vendedor -->
+    <record id="action_commission_goal" model="ir.actions.act_window">
+        <field name="name">Metas de Ventas</field>
+        <field name="res_model">commission.goal</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una Meta de Ventas
+            </p>
+            <p>
+                Define las metas mensuales para cada vendedor. Si no especificas un vendedor,
+                la meta será general para todos.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción: Cálculo de Comisiones -->
+    <record id="action_commission_calculation" model="ir.actions.act_window">
+        <field name="name">Cálculo de Comisiones</field>
+        <field name="res_model">commission.calculation</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="context">{'search_default_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Calcular Comisiones
+            </p>
+            <p>
+                Crea un nuevo registro de cálculo de comisiones seleccionando el periodo y vendedor.
+                El sistema calculará automáticamente las comisiones basándose en las ventas marcadas como pagadas.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción: Histórico de Comisiones Pagadas -->
+    <record id="action_commission_calculation_paid" model="ir.actions.act_window">
+        <field name="name">Comisiones Pagadas</field>
+        <field name="res_model">commission.calculation</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="domain">[('state', '=', 'paid')]</field>
+        <field name="context">{'search_default_paid': 1, 'search_default_group_user': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay comisiones pagadas
+            </p>
+            <p>
+                Aquí aparecerán todas las comisiones que han sido marcadas como pagadas.
+            </p>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- ESTRUCTURA DE MENÚS -->
+    <!-- ========================================== -->
+
+    <!-- Menú: Configuración -->
+    <menuitem id="menu_commission_config"
+              name="Configuración"
+              parent="menu_commission_root"
+              sequence="10"/>
+
+    <menuitem id="menu_commission_team_unified"
+              name="Equipos Unificados"
+              parent="menu_commission_config"
+              action="action_commission_team_unified"
+              sequence="10"/>
+
+    <menuitem id="menu_commission_goal_rule"
+              name="Reglas de Alcance"
+              parent="menu_commission_config"
+              action="action_commission_goal_rule"
+              sequence="20"/>
+
+    <menuitem id="menu_commission_goal"
+              name="Metas de Ventas"
+              parent="menu_commission_config"
+              action="action_commission_goal"
+              sequence="30"/>
+
+    <!-- Menú: Cálculos -->
+    <menuitem id="menu_commission_calculation"
+              name="Cálculo de Comisiones"
+              parent="menu_commission_root"
+              action="action_commission_calculation"
+              sequence="20"/>
+
+    <!-- Menú: Histórico -->
+    <menuitem id="menu_commission_calculation_paid"
+              name="Comisiones Pagadas"
+              parent="menu_commission_root"
+              action="action_commission_calculation_paid"
+              sequence="30"/>
+
+</odoo>
