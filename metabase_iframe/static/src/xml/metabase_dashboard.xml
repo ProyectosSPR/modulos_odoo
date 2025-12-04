@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<templates xml:space="preserve">
-    <t t-name="metabase_iframe.MetabaseDashboardViewer">
+<templates id="template" xml:space="preserve">
+    <t t-name="metabase_iframe.MetabaseDashboardViewer" owl="1">
         <div class="o_metabase_dashboard">
             <t t-if="state.loading">
                 <div class="text-center p-5">
