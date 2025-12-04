@@ -297,6 +297,11 @@ class CommissionCalculation(models.Model):
         ('paid', 'Pagado')
     ], string='Estado', default='draft', required=True)
     paid_date = fields.Date(string='Fecha de Pago')
+    commission_invalid = fields.Boolean(
+        string='Comisión No Válida',
+        default=False,
+        help='Marca esta comisión como no válida cuando no se alcanzó la meta mínima para comisionar'
+    )
 
     # Detalle de órdenes
     sale_order_ids = fields.Many2many(
@@ -361,10 +366,23 @@ class CommissionCalculation(models.Model):
         if self.period_month and self.period_year:
             goal = None
             
-            _logger.info(f"Buscando meta para: periodo={self.period_month}/{self.period_year}, "
-                        f"user_id={self.user_id.name if self.user_id else 'None'}, "
-                        f"team_unified_id={self.team_unified_id.name if self.team_unified_id else 'None'}, "
-                        f"user_unified_id={self.user_unified_id.name if self.user_unified_id else 'None'}")
+            _logger.info(f"=== BÚSQUEDA DE META ===")
+            _logger.info(f"Periodo: {self.period_month}/{self.period_year}")
+            _logger.info(f"Vendedor: {self.user_id.name if self.user_id else 'None'}")
+            _logger.info(f"Equipo Unificado: {self.team_unified_id.name if self.team_unified_id else 'None'}")
+            _logger.info(f"Grupo Vendedores: {self.user_unified_id.name if self.user_unified_id else 'None'}")
+            
+            # Mostrar todas las metas disponibles para este periodo
+            all_goals = self.env['commission.goal'].search([
+                ('period_month', '=', self.period_month),
+                ('period_year', '=', self.period_year)
+            ])
+            _logger.info(f"Metas disponibles para {self.period_month}/{self.period_year}:")
+            for g in all_goals:
+                _logger.info(f"  - {g.name} | Equipo: {g.team_unified_id.name if g.team_unified_id else 'N/A'} | "
+                           f"Vendedor: {g.user_id.name if g.user_id else 'N/A'} | "
+                           f"Grupo: {g.user_unified_id.name if g.user_unified_id else 'N/A'} | "
+                           f"Monto: {g.goal_amount}")
 
             # 1. Buscar meta específica por vendedor + equipo unificado
             if self.user_id and self.team_unified_id:
@@ -375,7 +393,7 @@ class CommissionCalculation(models.Model):
                     ('team_unified_id', '=', self.team_unified_id.id)
                 ], limit=1)
                 if goal:
-                    _logger.info(f"Meta encontrada (vendedor+equipo): {goal.name} - Monto: {goal.goal_amount}")
+                    _logger.info(f"✓ Meta encontrada (vendedor+equipo): {goal.name} - Monto: {goal.goal_amount}")
 
             # 2. Si no hay meta por vendedor+equipo, buscar por equipo unificado
             if not goal and self.team_unified_id:
@@ -387,7 +405,7 @@ class CommissionCalculation(models.Model):
                     ('user_unified_id', '=', False)
                 ], limit=1)
                 if goal:
-                    _logger.info(f"Meta encontrada (equipo): {goal.name} - Monto: {goal.goal_amount}")
+                    _logger.info(f"✓ Meta encontrada (equipo): {goal.name} - Monto: {goal.goal_amount}")
 
             # 3. Si no hay meta por equipo, buscar por grupo de vendedores
             if not goal and self.user_unified_id:
@@ -399,7 +417,7 @@ class CommissionCalculation(models.Model):
                     ('team_unified_id', '=', False)
                 ], limit=1)
                 if goal:
-                    _logger.info(f"Meta encontrada (grupo vendedores): {goal.name} - Monto: {goal.goal_amount}")
+                    _logger.info(f"✓ Meta encontrada (grupo vendedores): {goal.name} - Monto: {goal.goal_amount}")
 
             # 4. Si no hay meta por grupo, buscar por vendedor individual (sin equipo)
             if not goal and self.user_id:
@@ -411,7 +429,7 @@ class CommissionCalculation(models.Model):
                     ('user_unified_id', '=', False)
                 ], limit=1)
                 if goal:
-                    _logger.info(f"Meta encontrada (vendedor individual): {goal.name} - Monto: {goal.goal_amount}")
+                    _logger.info(f"✓ Meta encontrada (vendedor individual): {goal.name} - Monto: {goal.goal_amount}")
 
             # 5. Si no hay meta individual, buscar meta general
             if not goal:
@@ -423,12 +441,13 @@ class CommissionCalculation(models.Model):
                     ('team_unified_id', '=', False)
                 ], limit=1)
                 if goal:
-                    _logger.info(f"Meta encontrada (general): {goal.name} - Monto: {goal.goal_amount}")
+                    _logger.info(f"✓ Meta encontrada (general): {goal.name} - Monto: {goal.goal_amount}")
 
             if goal:
                 self.goal_amount = goal.goal_amount
+                _logger.info(f"=== META FINAL ASIGNADA: {goal.goal_amount} ===")
             else:
-                _logger.warning(f"No se encontró meta para periodo {self.period_month}/{self.period_year}")
+                _logger.warning(f"⚠ No se encontró meta para periodo {self.period_month}/{self.period_year}")
 
     @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id',
                  'calculation_base', 'team_unified_id.team_ids', 'user_unified_id.user_ids')
@@ -546,10 +565,29 @@ class CommissionCalculation(models.Model):
 
     def action_confirm(self):
         """
-        Confirma el cálculo de comisión y marca todas las órdenes asociadas como commission_paid
+        Confirma el cálculo de comisión y marca todas las órdenes asociadas como commission_paid.
+        Si la comisión es 0, muestra advertencia y marca como no válida.
         """
-        today = fields.Date.today()
         for calc in self:
+            # Validar si la comisión es 0
+            if calc.commission_amount == 0:
+                # Retornar wizard de advertencia
+                return {
+                    'name': 'Comisión No Válida',
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'commission.invalid.wizard',
+                    'view_mode': 'form',
+                    'target': 'new',
+                    'context': {
+                        'default_commission_id': calc.id,
+                        'default_message': f'No se alcanzó la meta mínima para comisionar. '
+                                         f'Meta: {calc.goal_amount:,.2f}, '
+                                         f'Vendido: {calc.total_sales:,.2f}. '
+                                         f'Esta comisión será marcada como NO VÁLIDA y no podrá pagarse.'
+                    }
+                }
+            
+            today = fields.Date.today()
             calc.state = 'confirmed'
 
             # Marcar todas las órdenes de venta asociadas como comisión pagada
@@ -637,3 +675,32 @@ class CommissionCalculation(models.Model):
         """
         result = super().write(vals)
         return result
+
+
+class CommissionInvalidWizard(models.TransientModel):
+    _name = 'commission.invalid.wizard'
+    _description = 'Wizard para Marcar Comisión como No Válida'
+
+    commission_id = fields.Many2one(
+        'commission.calculation',
+        string='Cálculo de Comisión',
+        required=True
+    )
+    message = fields.Text(
+        string='Mensaje',
+        readonly=True
+    )
+
+    def action_mark_invalid(self):
+        """
+        Marca la comisión como no válida
+        """
+        self.ensure_one()
+        if self.commission_id:
+            self.commission_id.write({
+                'commission_invalid': True,
+                'state': 'draft'
+            })
+            _logger.info(f"Comisión {self.commission_id.name} marcada como NO VÁLIDA")
+        return {'type': 'ir.actions.act_window_close'}
+

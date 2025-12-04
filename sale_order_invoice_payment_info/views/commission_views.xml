@@ -200,6 +200,8 @@
                 <field name="reward_percentage_display"/>
                 <field name="commission_percentage_display"/>
                 <field name="commission_amount"/>
+                <field name="commission_invalid" widget="boolean_toggle" 
+                       decoration-danger="commission_invalid == True"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-warning="state == 'confirmed'"
@@ -288,6 +290,10 @@
                         <field name="paid_date"/>
                     </group>
 
+                    <group string="Estado de Comisión">
+                        <field name="commission_invalid" widget="boolean_toggle"/>
+                    </group>
+
                     <notebook>
                         <page string="Órdenes de Venta" name="sale_orders">
                             <field name="sale_order_ids" readonly="1">
@@ -329,6 +335,9 @@
                 <filter string="Confirmado" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
                 <filter string="Pagado" name="paid" domain="[('state', '=', 'paid')]"/>
                 <separator/>
+                <filter string="Comisiones Válidas" name="valid" domain="[('commission_invalid', '=', False)]"/>
+                <filter string="Comisiones No Válidas" name="invalid" domain="[('commission_invalid', '=', True)]"/>
+                <separator/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Vendedor" name="group_user" context="{'group_by': 'user_id'}"/>
                     <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
@@ -362,6 +371,32 @@
                 <field name="user_id"/>
                 <field name="commission_amount" type="measure"/>
             </graph>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- WIZARD: COMISIÓN NO VÁLIDA -->
+    <!-- ========================================== -->
+
+    <record id="view_commission_invalid_wizard_form" model="ir.ui.view">
+        <field name="name">commission.invalid.wizard.form</field>
+        <field name="model">commission.invalid.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Comisión No Válida">
+                <group>
+                    <field name="commission_id" invisible="1"/>
+                    <field name="message" nolabel="1" colspan="2"/>
+                </group>
+                <footer>
+                    <button name="action_mark_invalid" 
+                            string="Marcar como No Válida" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancelar" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 
