@@ -23,6 +23,7 @@ class ReconcileFieldMapping(models.Model):
         "ir.model",
         string="Source Model",
         required=True,
+        ondelete='cascade',
         domain=[
             "|", "|",
             ("model", "=", "sale.order"),
@@ -40,6 +41,7 @@ class ReconcileFieldMapping(models.Model):
         "ir.model.fields",
         string="Source Field",
         required=True,
+        ondelete='cascade',
         domain="[('model_id', '=', source_model_id)]",
         help="Field in the source model to match",
     )
@@ -70,6 +72,7 @@ class ReconcileFieldMapping(models.Model):
         "ir.model",
         string="Target Model",
         required=True,
+        ondelete='cascade',
         domain=[
             "|", "|",
             ("model", "=", "account.payment"),
@@ -87,6 +90,7 @@ class ReconcileFieldMapping(models.Model):
         "ir.model.fields",
         string="Target Field",
         required=True,
+        ondelete='cascade',
         domain="[('model_id', '=', target_model_id)]",
         help="Field in the target model to match against",
     )
