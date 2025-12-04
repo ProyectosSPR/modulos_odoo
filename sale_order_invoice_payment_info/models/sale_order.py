@@ -28,6 +28,11 @@ class SaleOrder(models.Model):
         string='Fecha de Comisión Pagada',
         help='Fecha en que se marcó la comisión como pagada'
     )
+    commission_invalid = fields.Boolean(
+        string='Comisión No Válida',
+        default=False,
+        help='Indica si esta venta fue marcada como comisión no válida'
+    )
 
     # Campos para mostrar facturas y pagos en vista tree
     invoice_names = fields.Char(

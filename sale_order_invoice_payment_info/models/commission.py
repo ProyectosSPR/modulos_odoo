@@ -310,12 +310,13 @@ class CommissionCalculation(models.Model):
     manual_override = fields.Boolean(
         string='Pago Manual (Override)',
         default=False,
-        help='Permite pagar comisión manualmente aunque no se haya alcanzado la meta'
+        help='Permite ajustar el porcentaje de pago manualmente'
     )
-    manual_commission_amount = fields.Monetary(
-        string='Monto Manual de Comisión',
-        currency_field='currency_id',
-        help='Monto de comisión a pagar manualmente cuando se usa override'
+    manual_commission_percentage = fields.Float(
+        string='% de Pago Manual',
+        digits=(5, 2),
+        default=100.0,
+        help='Porcentaje de la comisión a pagar (ej: 80 = 80% de la comisión calculada)'
     )
 
     # Detalle de órdenes
@@ -524,7 +525,8 @@ class CommissionCalculation(models.Model):
                 calc.sale_order_count = 0
 
     @api.depends('sale_order_ids', 'sale_order_ids.amount_total', 'sale_order_ids.amount_untaxed',
-                 'goal_amount', 'team_unified_id', 'team_unified_id.commission_percentage', 'calculation_base')
+                 'goal_amount', 'team_unified_id', 'team_unified_id.commission_percentage', 'calculation_base',
+                 'manual_override', 'manual_commission_percentage')
     def _compute_commission(self):
         for calc in self:
             # Calcular total vendido según la base de cálculo
@@ -562,7 +564,13 @@ class CommissionCalculation(models.Model):
 
             # Calcular comisión final
             if total_sales > 0 and commission_pct > 0 and reward_pct > 0:
-                calc.commission_amount = total_sales * (commission_pct / 100) * (reward_pct / 100)
+                base_commission = total_sales * (commission_pct / 100) * (reward_pct / 100)
+
+                # Aplicar porcentaje manual si está activado el override
+                if calc.manual_override and calc.manual_commission_percentage > 0:
+                    calc.commission_amount = base_commission * (calc.manual_commission_percentage / 100)
+                else:
+                    calc.commission_amount = base_commission
             else:
                 calc.commission_amount = 0.0
 
@@ -585,7 +593,7 @@ class CommissionCalculation(models.Model):
         """
         for calc in self:
             # Validar si la comisión es 0 Y no hay override manual
-            if calc.commission_amount == 0 and calc.manual_commission_amount == 0 and not calc.manual_override:
+            if calc.commission_amount == 0 and not calc.manual_override:
                 # Retornar wizard de advertencia
                 return {
                     'name': 'Comisión No Válida',
@@ -600,17 +608,17 @@ class CommissionCalculation(models.Model):
                                          f'Vendido: {calc.total_sales:,.2f}. '\
                                          f'\n\nOpciones:\n'\
                                          f'1. Marcar como No Válida (no se pagará)\n'\
-                                         f'2. Cancelar y activar "Pago Manual" para pagar un monto específico'
+                                         f'2. Cancelar y activar "Pago Manual" para pagar un porcentaje específico'
                     }
                 }
-            
+
             today = fields.Date.today()
             calc.state = 'confirmed'
-            
+
             # Log si se está usando override manual
-            if calc.manual_override and calc.manual_commission_amount > 0:
-                _logger.info(f"Comisión confirmada con OVERRIDE MANUAL: {calc.manual_commission_amount:,.2f} "
-                           f"(Comisión calculada era: {calc.commission_amount:,.2f})")
+            if calc.manual_override and calc.manual_commission_percentage != 100:
+                _logger.info(f"Comisión confirmada con OVERRIDE MANUAL: {calc.manual_commission_percentage}% "
+                           f"(Monto final: {calc.commission_amount:,.2f})")
             else:
                 _logger.info(f"Comisión confirmada: {calc.commission_amount:,.2f}")
 
@@ -717,14 +725,31 @@ class CommissionInvalidWizard(models.TransientModel):
 
     def action_mark_invalid(self):
         """
-        Marca la comisión como no válida
+        Marca la comisión como no válida y todas sus órdenes
         """
         self.ensure_one()
         if self.commission_id:
             self.commission_id.write({
                 'commission_invalid': True,
-                'state': 'draft'
+                'state': 'cancelled'
             })
-            _logger.info(f"Comisión {self.commission_id.name} marcada como NO VÁLIDA")
+
+            # Marcar todas las órdenes asociadas como comisión no válida
+            if self.commission_id.sale_order_ids:
+                order_ids = self.commission_id.sale_order_ids.ids
+                _logger.info(f"Marcando commission_invalid=True para {len(order_ids)} órdenes: {order_ids}")
+
+                orders = self.env['sale.order'].browse(order_ids)
+                orders.write({
+                    'commission_invalid': True,
+                    'commission_paid': False,
+                    'commission_paid_date': False
+                })
+
+                # Forzar commit
+                self.env.cr.commit()
+                _logger.info(f"Órdenes marcadas como comisión NO VÁLIDA exitosamente")
+
+            _logger.info(f"Comisión {self.commission_id.name} marcada como NO VÁLIDA y estado cambiado a CANCELADO")
         return {'type': 'ir.actions.act_window_close'}
 

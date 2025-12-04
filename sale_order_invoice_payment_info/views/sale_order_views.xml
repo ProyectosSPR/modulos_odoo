@@ -11,6 +11,7 @@
             <xpath expr="//field[@name='amount_total']" position="after">
                 <field name="commission_paid" widget="boolean_toggle" optional="show"/>
                 <field name="commission_paid_date" optional="show"/>
+                <field name="commission_invalid" widget="boolean_toggle" optional="show"/>
                 <field name="payment_valid_date" optional="show"/>
                 <field name="invoice_names" optional="show" widget="badge" decoration-success="invoice_names"/>
                 <field name="payment_names" optional="show" widget="badge" decoration-success="payment_names"/>
@@ -29,6 +30,7 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="commission_paid" widget="boolean_toggle"/>
                 <field name="commission_paid_date" attrs="{'invisible': [('commission_paid', '=', False)]}"/>
+                <field name="commission_invalid" widget="boolean_toggle"/>
             </xpath>
 
             <!-- Agregar botones de comisión -->

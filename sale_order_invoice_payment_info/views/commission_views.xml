@@ -205,7 +205,8 @@
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-warning="state == 'confirmed'"
-                       decoration-success="state == 'paid'"/>
+                       decoration-success="state == 'paid'"
+                       decoration-danger="state == 'cancelled'"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="goal_percentage" invisible="1"/>
                 <field name="reward_percentage" invisible="1"/>
@@ -241,7 +242,7 @@
                             type="object"
                             attrs="{'invisible': [('state', '=', 'draft')]}"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,paid"/>
+                           statusbar_visible="draft,confirmed,paid,cancelled"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -290,19 +291,21 @@
                         <field name="paid_date"/>
                     </group>
 
-                    <group string="Pago Manual / Override">
-                        <field name="manual_override" widget="boolean_toggle"/>
-                        <field name="manual_commission_amount" 
-                               attrs="{'invisible': [('manual_override', '=', False)], 
-                                       'required': [('manual_override', '=', True)]}"/>
+                    <group>
+                        <group string="Pago Manual / Override">
+                            <field name="manual_override" widget="boolean_toggle"/>
+                            <field name="manual_commission_percentage"
+                                   attrs="{'invisible': [('manual_override', '=', False)],
+                                           'required': [('manual_override', '=', True)]}"/>
+                        </group>
+                        <group string="Estado de Comisión">
+                            <field name="commission_invalid" widget="boolean_toggle"/>
+                        </group>
                     </group>
 
-                    <group string="Estado de Comisión">
-                        <field name="commission_invalid" widget="boolean_toggle"/>
-                    </group>
-
-                    <group string="Comentarios" colspan="2">
-                        <field name="comments" nolabel="1" placeholder="Ingrese comentarios sobre esta comisión..."/>
+                    <group string="Comentarios">
+                        <field name="comments" nolabel="1" colspan="2"
+                               placeholder="Ingrese comentarios sobre esta comisión..."/>
                     </group>
 
                     <notebook>
@@ -320,6 +323,7 @@
                                     <field name="payment_valid_date" string="Fecha de Pago"/>
                                     <field name="commission_paid" widget="boolean_toggle"/>
                                     <field name="commission_paid_date" optional="hide"/>
+                                    <field name="commission_invalid" widget="boolean_toggle"/>
                                     <field name="invoice_names" optional="show" widget="badge" decoration-success="invoice_names"/>
                                     <field name="payment_names" optional="show" widget="badge" decoration-success="payment_names"/>
                                 </tree>
