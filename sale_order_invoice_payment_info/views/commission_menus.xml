@@ -104,7 +104,7 @@
               name="Configuración"
               parent="menu_commission_root"
               sequence="10"
-              groups="group_commission_manager"/>
+              groups="sale_order_invoice_payment_info.group_commission_manager"/>
 
     <menuitem id="menu_commission_team_unified"
               name="Equipos Unificados"
