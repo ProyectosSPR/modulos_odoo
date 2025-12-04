@@ -2,6 +2,9 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import datetime
 from calendar import monthrange
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class CommissionTeamUnified(models.Model):
@@ -533,11 +536,21 @@ class CommissionCalculation(models.Model):
             calc.state = 'confirmed'
 
             # Marcar todas las órdenes de venta asociadas como comisión pagada
+            # IMPORTANTE: Obtener los IDs y buscar directamente en sale.order
+            # para evitar problemas con campos computados
             if calc.sale_order_ids:
-                calc.sale_order_ids.write({
+                order_ids = calc.sale_order_ids.ids
+                _logger.info(f"Marcando commission_paid=True para {len(order_ids)} órdenes: {order_ids}")
+
+                orders = self.env['sale.order'].browse(order_ids)
+                orders.write({
                     'commission_paid': True,
                     'commission_paid_date': today
                 })
+
+                # Forzar commit para asegurar que se guarden los cambios
+                self.env.cr.commit()
+                _logger.info(f"Comisiones marcadas como pagadas exitosamente")
         return True
 
     def action_mark_paid(self):
@@ -559,11 +572,21 @@ class CommissionCalculation(models.Model):
             calc.state = 'draft'
 
             # Desmarcar todas las órdenes de venta asociadas como comisión NO pagada
+            # IMPORTANTE: Obtener los IDs y buscar directamente en sale.order
+            # para evitar problemas con campos computados
             if calc.sale_order_ids:
-                calc.sale_order_ids.write({
+                order_ids = calc.sale_order_ids.ids
+                _logger.info(f"Desmarcando commission_paid=False para {len(order_ids)} órdenes: {order_ids}")
+
+                orders = self.env['sale.order'].browse(order_ids)
+                orders.write({
                     'commission_paid': False,
                     'commission_paid_date': False
                 })
+
+                # Forzar commit para asegurar que se guarden los cambios
+                self.env.cr.commit()
+                _logger.info(f"Comisiones desmarcadas exitosamente")
         return True
 
     def action_view_sale_orders(self):
