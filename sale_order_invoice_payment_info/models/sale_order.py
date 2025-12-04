@@ -41,6 +41,14 @@ class SaleOrder(models.Model):
         store=False
     )
 
+    # Campo computado para fecha de pago válida (la más reciente de las facturas pagadas)
+    payment_valid_date = fields.Date(
+        string='Fecha de Pago Válida',
+        compute='_compute_payment_valid_date',
+        store=True,
+        help='Fecha de pago más reciente de las facturas relacionadas a esta orden'
+    )
+
     @api.depends('invoice_ids', 'invoice_ids.payment_state')
     def _compute_invoice_payment_info(self):
         """
@@ -162,6 +170,35 @@ class SaleOrder(models.Model):
                         payment_list.append(payment['payment_name'])
 
             order.payment_names = ', '.join(payment_list) if payment_list else ''
+
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.line_ids.matched_debit_ids', 'invoice_ids.line_ids.matched_credit_ids')
+    def _compute_payment_valid_date(self):
+        """
+        Calcula la fecha de pago válida como la fecha más reciente de los pagos aplicados a las facturas
+        """
+        for order in self:
+            payment_dates = []
+
+            # Obtener todas las facturas de cliente (no notas de crédito por ahora)
+            invoices = order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_invoice' and inv.state == 'posted')
+
+            for invoice in invoices:
+                # Solo considerar facturas que están pagadas o parcialmente pagadas
+                if invoice.payment_state in ['paid', 'in_payment', 'partial']:
+                    # Obtener las fechas de los pagos
+                    payments = self._get_payments_for_invoice(invoice)
+                    for payment in payments:
+                        if payment.get('payment_date'):
+                            payment_dates.append(payment['payment_date'])
+                        # También considerar la fecha de conciliación
+                        if payment.get('reconcile_date'):
+                            payment_dates.append(payment['reconcile_date'])
+
+            # Establecer la fecha más reciente como fecha de pago válida
+            if payment_dates:
+                order.payment_valid_date = max(payment_dates)
+            else:
+                order.payment_valid_date = False
 
     def action_mark_commission_paid(self):
         """

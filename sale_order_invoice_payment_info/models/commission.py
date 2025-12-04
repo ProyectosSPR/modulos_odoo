@@ -336,12 +336,14 @@ class CommissionCalculation(models.Model):
                 date_from = f'{calc.period_year}-{calc.period_month.zfill(2)}-01'
                 date_to = f'{calc.period_year}-{calc.period_month.zfill(2)}-{last_day}'
 
-                # Construir dominio base
+                # Construir dominio base - usar payment_valid_date que se calcula automáticamente
+                # basándose en las fechas reales de pago de las facturas
                 domain = [
-                    ('commission_paid', '=', True),
-                    ('commission_paid_date', '>=', date_from),
-                    ('commission_paid_date', '<=', date_to),
-                    ('state', 'in', ['sale', 'done'])
+                    ('payment_valid_date', '!=', False),  # Debe tener fecha de pago válida
+                    ('payment_valid_date', '>=', date_from),
+                    ('payment_valid_date', '<=', date_to),
+                    ('state', 'in', ['sale', 'done']),
+                    ('invoice_status', 'in', ['invoiced', 'upselling'])  # Debe estar facturado
                 ]
 
                 # Agregar filtro por vendedor o por equipo
@@ -351,8 +353,16 @@ class CommissionCalculation(models.Model):
                     domain.append(('team_id', 'in', calc.team_unified_id.team_ids.ids))
 
                 orders = self.env['sale.order'].search(domain)
-                calc.sale_order_ids = [(6, 0, orders.ids)]
-                calc.sale_order_count = len(orders)
+
+                # Filtro adicional: solo incluir si commission_paid = True O si tiene facturas pagadas
+                filtered_orders = orders.filtered(
+                    lambda o: o.commission_paid or any(
+                        inv.payment_state in ['paid', 'in_payment', 'partial']
+                        for inv in o.invoice_ids.filtered(lambda i: i.move_type == 'out_invoice')
+                    )
+                )
+                calc.sale_order_ids = [(6, 0, filtered_orders.ids)]
+                calc.sale_order_count = len(filtered_orders)
             else:
                 calc.sale_order_ids = [(6, 0, [])]
                 calc.sale_order_count = 0
@@ -403,8 +413,12 @@ class CommissionCalculation(models.Model):
         """
         Fuerza el recálculo de la comisión
         """
-        self._compute_sale_orders()
-        self._compute_commission()
+        for calc in self:
+            # Actualizar la meta
+            calc._update_goal_amount()
+            # Recalcular órdenes y comisiones
+            calc._compute_sale_orders()
+            calc._compute_commission()
         return True
 
     def action_confirm(self):
