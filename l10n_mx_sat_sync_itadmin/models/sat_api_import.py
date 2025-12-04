@@ -60,7 +60,11 @@ class SAT:
             raise Exception(response.text)
         if response.status_code != requests.codes['ok']:
             error = get_element(response_xml, 's:Body/s:Fault/faultstring', external_nsmap)
-            raise Exception(error)
+            error_text = error.text if hasattr(error, 'text') else str(error)
+            # Mensaje más claro si el problema es el certificado
+            if 'certificado' in error_text.lower() or 'certificate' in error_text.lower():
+                error_text += "\n\nNOTA: Para descargar del SAT se requiere certificado FIEL (Firma Electrónica).\nEl certificado CSD (Sello Digital) solo sirve para facturación.\nVerifique que esté usando el certificado FIEL correcto y vigente."
+            raise Exception(error_text)
         return get_element(response_xml, result_xpath, external_nsmap)
 
     def get_headers(self, soap_action, token=False):

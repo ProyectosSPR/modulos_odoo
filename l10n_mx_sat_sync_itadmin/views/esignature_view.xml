@@ -16,6 +16,11 @@
             <field name="arch" type="xml">
                 <form string="esignature Form">
                     <sheet>
+                        <div class="alert alert-warning" role="alert" style="margin-bottom:10px;">
+                            <strong>IMPORTANTE:</strong> Para descargar facturas del SAT se requiere el certificado <strong>FIEL (Firma Electrónica)</strong>.
+                            <br/>El certificado <strong>CSD (Sello Digital)</strong> solo sirve para timbrar facturas, NO para descargar del portal SAT.
+                            <br/>Si recibe errores de "certificado inválido" al descargar, verifique que esté usando su FIEL, no su CSD.
+                        </div>
                         <group>
                             <field name="content"/>
                             <field name="key"/>

@@ -202,19 +202,22 @@ class CommissionCalculation(models.Model):
         string='% Alcance de Meta',
         compute='_compute_commission',
         store=True,
-        digits=(5, 2)
+        digits=(16, 2),
+        help='Porcentaje de alcance de la meta (ej: 128.04 significa 128.04%)'
     )
     reward_percentage = fields.Float(
         string='% Recompensa',
         compute='_compute_commission',
         store=True,
-        digits=(5, 2)
+        digits=(16, 2),
+        help='Porcentaje de recompensa según reglas (ej: 100 significa 100%)'
     )
     commission_percentage = fields.Float(
         string='% Comisión del Equipo',
         compute='_compute_commission',
         store=True,
-        digits=(5, 2)
+        digits=(16, 4),
+        help='Porcentaje de comisión del equipo (ej: 0.5 significa 0.5%)'
     )
     commission_amount = fields.Monetary(
         string='Monto de Comisión',
@@ -222,6 +225,24 @@ class CommissionCalculation(models.Model):
         compute='_compute_commission',
         store=True
     )
+
+    # Campos para mostrar porcentajes con formato
+    goal_percentage_display = fields.Char(
+        string='Alcance de Meta',
+        compute='_compute_percentage_display',
+        store=False
+    )
+    reward_percentage_display = fields.Char(
+        string='Recompensa',
+        compute='_compute_percentage_display',
+        store=False
+    )
+    commission_percentage_display = fields.Char(
+        string='Comisión Equipo',
+        compute='_compute_percentage_display',
+        store=False
+    )
+
     currency_id = fields.Many2one(
         'res.currency',
         string='Moneda',
@@ -259,6 +280,16 @@ class CommissionCalculation(models.Model):
             month_name = dict(self._fields['period_month'].selection).get(calc.period_month, '')
             user_name = calc.user_id.name if calc.user_id else ''
             calc.name = f'{month_name} {calc.period_year} - {user_name}: ${calc.commission_amount:,.2f}'
+
+    @api.depends('goal_percentage', 'reward_percentage', 'commission_percentage')
+    def _compute_percentage_display(self):
+        """
+        Calcula los campos de visualización de porcentajes con formato legible
+        """
+        for calc in self:
+            calc.goal_percentage_display = f'{calc.goal_percentage:.2f}%' if calc.goal_percentage else '0.00%'
+            calc.reward_percentage_display = f'{calc.reward_percentage:.2f}%' if calc.reward_percentage else '0.00%'
+            calc.commission_percentage_display = f'{calc.commission_percentage:.4f}%' if calc.commission_percentage else '0.0000%'
 
     @api.onchange('user_id')
     def _onchange_user_id(self):

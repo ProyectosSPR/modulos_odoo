@@ -219,11 +219,17 @@
                         <group string="Ventas y Meta">
                             <field name="total_sales"/>
                             <field name="goal_amount"/>
-                            <field name="goal_percentage" widget="percentage"/>
+                            <field name="goal_percentage" invisible="1"/>
+                            <field name="goal_percentage_display"
+                                   decoration-success="goal_percentage >= 100"
+                                   decoration-warning="goal_percentage >= 80 and goal_percentage &lt; 100"
+                                   decoration-danger="goal_percentage &lt; 80"/>
                         </group>
                         <group string="Comisión">
-                            <field name="reward_percentage" widget="percentage"/>
-                            <field name="commission_percentage" widget="percentage"/>
+                            <field name="reward_percentage" invisible="1"/>
+                            <field name="reward_percentage_display"/>
+                            <field name="commission_percentage" invisible="1"/>
+                            <field name="commission_percentage_display"/>
                             <field name="commission_amount"/>
                         </group>
                     </group>
@@ -239,10 +245,15 @@
                                     <field name="name"/>
                                     <field name="date_order"/>
                                     <field name="partner_id"/>
-                                    <field name="amount_untaxed"/>
-                                    <field name="amount_total"/>
-                                    <field name="commission_paid"/>
-                                    <field name="commission_paid_date"/>
+                                    <field name="user_id" string="Vendedor"/>
+                                    <field name="team_id" string="Equipo de Ventas"/>
+                                    <field name="amount_untaxed" sum="Total sin Impuestos"/>
+                                    <field name="amount_total" sum="Total con Impuestos"/>
+                                    <field name="payment_valid_date" string="Fecha de Pago"/>
+                                    <field name="commission_paid" widget="boolean_toggle"/>
+                                    <field name="commission_paid_date" optional="hide"/>
+                                    <field name="invoice_names" optional="show"/>
+                                    <field name="payment_names" optional="show"/>
                                 </tree>
                             </field>
                         </page>
