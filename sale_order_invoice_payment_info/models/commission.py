@@ -334,7 +334,7 @@ class CommissionCalculation(models.Model):
     @api.onchange('user_id')
     def _onchange_user_id(self):
         """
-        Sugiere el equipo unificado basado en el vendedor y busca la meta
+        Sugiere el equipo unificado basado en el vendedor (sin recalcular automáticamente)
         """
         if self.user_id and not self.team_unified_id:
             # Buscar el equipo del vendedor en sale.order
@@ -348,24 +348,6 @@ class CommissionCalculation(models.Model):
                 ], limit=1)
                 if unified:
                     self.team_unified_id = unified
-
-        # Buscar la meta
-        self._update_goal_amount()
-
-    @api.onchange('period_month', 'period_year', 'team_unified_id')
-    def _onchange_period_or_team(self):
-        """
-        Actualiza la meta cuando cambia el periodo o equipo
-        """
-        self._update_goal_amount()
-
-    @api.onchange('goal_amount', 'calculation_base')
-    def _onchange_goal_or_base(self):
-        """
-        Recalcula cuando cambia la meta o la base de cálculo
-        """
-        # Forzar recálculo de comisiones
-        self._compute_commission()
 
     def _update_goal_amount(self):
         """
@@ -615,20 +597,8 @@ class CommissionCalculation(models.Model):
 
     def write(self, vals):
         """
-        Al escribir ciertos campos, recalcula automáticamente
+        Sobrescribe el método write sin recalcular automáticamente.
+        El usuario debe usar el botón 'Recalcular' para actualizar los cálculos.
         """
         result = super().write(vals)
-
-        # Si se cambiaron campos que afectan el cálculo, recalcular
-        recalc_fields = {'period_month', 'period_year', 'user_id', 'user_unified_id',
-                         'team_unified_id', 'goal_amount', 'calculation_base'}
-        if any(field in vals for field in recalc_fields):
-            for record in self:
-                if vals.get('period_month') or vals.get('period_year') or vals.get('user_id') or \
-                   vals.get('user_unified_id') or vals.get('team_unified_id'):
-                    record._update_goal_amount()
-                # Forzar recálculo de órdenes y comisiones
-                record._compute_sale_orders()
-                record._compute_commission()
-
         return result
