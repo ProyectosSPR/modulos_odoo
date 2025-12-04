@@ -288,6 +288,14 @@ class CommissionCalculation(models.Model):
         """
         self._update_goal_amount()
 
+    @api.onchange('goal_amount', 'calculation_base')
+    def _onchange_goal_or_base(self):
+        """
+        Recalcula cuando cambia la meta o la base de cálculo
+        """
+        # Forzar recálculo de comisiones
+        self._compute_commission()
+
     def _update_goal_amount(self):
         """
         Busca y establece la meta correspondiente
@@ -367,7 +375,8 @@ class CommissionCalculation(models.Model):
                 calc.sale_order_ids = [(6, 0, [])]
                 calc.sale_order_count = 0
 
-    @api.depends('sale_order_ids', 'goal_amount', 'team_unified_id', 'calculation_base')
+    @api.depends('sale_order_ids', 'sale_order_ids.amount_total', 'sale_order_ids.amount_untaxed',
+                 'goal_amount', 'team_unified_id', 'team_unified_id.commission_percentage', 'calculation_base')
     def _compute_commission(self):
         for calc in self:
             # Calcular total vendido según la base de cálculo
@@ -460,3 +469,33 @@ class CommissionCalculation(models.Model):
             'view_mode': 'tree,form',
             'domain': [('id', 'in', self.sale_order_ids.ids)],
         }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """
+        Al crear, busca la meta y calcula automáticamente
+        """
+        records = super().create(vals_list)
+        for record in records:
+            if record.period_month and record.period_year:
+                record._update_goal_amount()
+        return records
+
+    def write(self, vals):
+        """
+        Al escribir ciertos campos, recalcula automáticamente
+        """
+        result = super().write(vals)
+
+        # Si se cambiaron campos que afectan el cálculo, recalcular
+        recalc_fields = {'period_month', 'period_year', 'user_id', 'team_unified_id',
+                         'goal_amount', 'calculation_base'}
+        if any(field in vals for field in recalc_fields):
+            for record in self:
+                if vals.get('period_month') or vals.get('period_year') or vals.get('user_id') or vals.get('team_unified_id'):
+                    record._update_goal_amount()
+                # Forzar recálculo de órdenes y comisiones
+                record._compute_sale_orders()
+                record._compute_commission()
+
+        return result

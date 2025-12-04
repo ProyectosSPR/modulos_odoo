@@ -211,9 +211,14 @@ class ResCompany(models.Model):
         diff = abs(pytz.timezone(timezone).utcoffset(datetime.now()).total_seconds() / (60*60))
         local_dt_from = date_from + timedelta(hours=diff)
         local_dt_to = date_to + timedelta(hours=diff)
-        solicitud_ws_ids = self.env['solicitud.ws'].search([('fecha_inicio','=', local_dt_from), ('fecha_fin','=', local_dt_to), ('rfc_receptor','=', True), 
+        solicitud_ws_ids = self.env['solicitud.ws'].search([('fecha_inicio','=', local_dt_from), ('fecha_fin','=', local_dt_to), ('rfc_receptor','=', True),
                                                             ('state','=', 'draft'), ('company_id', '=', self.id)], limit=1)
-        if not solicitud_ws_ids:
+        # Si no existe solicitud O existe pero no tiene id_solicitud válido (solicitud fallida)
+        if not solicitud_ws_ids or not solicitud_ws_ids.id_solicitud:
+           # Si existe una solicitud fallida, marcarla como cancelada
+           if solicitud_ws_ids and not solicitud_ws_ids.id_solicitud:
+               solicitud_ws_ids.write({'state': 'cancel'})
+           # Crear nueva solicitud
            solicitud = sat_obj.soap_request_download(token=token, date_from=date_from, date_to=date_to, rfc_receptor=True)
            solicitud_ws_ids = self.env['solicitud.ws'].create({'id_solicitud': solicitud['id_solicitud'],
                                                                'cod_estatus': solicitud['cod_estatus'],
@@ -232,9 +237,14 @@ class ResCompany(models.Model):
         if not solo_documentos_de_proveedor:
            time.sleep(2)
            # Emitidos -- customer
-           solicitud_ws_ids = self.env['solicitud.ws'].search([('fecha_inicio','=', local_dt_from), ('fecha_fin','=', local_dt_to), ('rfc_emisor','=', True), 
+           solicitud_ws_ids = self.env['solicitud.ws'].search([('fecha_inicio','=', local_dt_from), ('fecha_fin','=', local_dt_to), ('rfc_emisor','=', True),
                                                                ('state','=', 'draft'), ('company_id', '=', self.id)], limit=1)
-           if not solicitud_ws_ids:
+           # Si no existe solicitud O existe pero no tiene id_solicitud válido (solicitud fallida)
+           if not solicitud_ws_ids or not solicitud_ws_ids.id_solicitud:
+                # Si existe una solicitud fallida, marcarla como cancelada
+                if solicitud_ws_ids and not solicitud_ws_ids.id_solicitud:
+                    solicitud_ws_ids.write({'state': 'cancel'})
+                # Crear nueva solicitud
                 solicitud = sat_obj.soap_request_download(token=token, date_from=date_from, date_to=date_to, rfc_emisor=True)
                 solicitud_ws_ids = self.env['solicitud.ws'].create({'id_solicitud': solicitud['id_solicitud'],
                                                                   'cod_estatus': solicitud['cod_estatus'],

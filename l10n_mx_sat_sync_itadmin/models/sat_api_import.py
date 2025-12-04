@@ -138,7 +138,7 @@ class SAT:
                             element = get_element(element_root, xpath, internal_nsmap)
                             set_element(element, rfc_receptor)
                     continue
-                if arguments[key] != None:
+                if arguments[key] not in (None, False):
                     solicitud.set(key, arguments[key])
             self.sign(esignature_cer_bin, solicitud)
         except Exception as e:
