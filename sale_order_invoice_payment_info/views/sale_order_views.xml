@@ -29,11 +29,12 @@
             <!-- Agregar campos de comisión en el grupo de información -->
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="commission_paid" widget="boolean_toggle"
-                       attrs="{'readonly': [('id', '!=', False)]}"/>
+                       groups="sale_order_invoice_payment_info.group_commission_manager,base.group_system"/>
                 <field name="commission_paid_date"
-                       attrs="{'invisible': [('commission_paid', '=', False)], 'readonly': [('id', '!=', False)]}"/>
+                       attrs="{'invisible': [('commission_paid', '=', False)]}"
+                       groups="sale_order_invoice_payment_info.group_commission_manager,base.group_system"/>
                 <field name="commission_invalid" widget="boolean_toggle"
-                       attrs="{'readonly': [('id', '!=', False)]}"/>
+                       groups="sale_order_invoice_payment_info.group_commission_manager,base.group_system"/>
             </xpath>
 
             <!-- Agregar botones de comisión (solo para Responsables) -->
