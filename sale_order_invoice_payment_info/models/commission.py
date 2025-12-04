@@ -351,29 +351,33 @@ class CommissionCalculation(models.Model):
 
     def _update_goal_amount(self):
         """
-        Busca y establece la meta correspondiente
+        Busca y establece la meta correspondiente con la siguiente prioridad:
+        1. Meta específica por vendedor + equipo unificado
+        2. Meta por equipo unificado (sin vendedor específico)
+        3. Meta por grupo de vendedores unificados
+        4. Meta por vendedor individual (sin equipo)
+        5. Meta general
         """
         if self.period_month and self.period_year:
             goal = None
+            
+            _logger.info(f"Buscando meta para: periodo={self.period_month}/{self.period_year}, "
+                        f"user_id={self.user_id.name if self.user_id else 'None'}, "
+                        f"team_unified_id={self.team_unified_id.name if self.team_unified_id else 'None'}, "
+                        f"user_unified_id={self.user_unified_id.name if self.user_unified_id else 'None'}")
 
-            # 1. Buscar meta específica por vendedor
-            if self.user_id:
+            # 1. Buscar meta específica por vendedor + equipo unificado
+            if self.user_id and self.team_unified_id:
                 goal = self.env['commission.goal'].search([
                     ('period_month', '=', self.period_month),
                     ('period_year', '=', self.period_year),
-                    ('user_id', '=', self.user_id.id)
+                    ('user_id', '=', self.user_id.id),
+                    ('team_unified_id', '=', self.team_unified_id.id)
                 ], limit=1)
+                if goal:
+                    _logger.info(f"Meta encontrada (vendedor+equipo): {goal.name} - Monto: {goal.goal_amount}")
 
-            # 2. Si no hay meta por vendedor, buscar por grupo de vendedores
-            if not goal and self.user_unified_id:
-                goal = self.env['commission.goal'].search([
-                    ('period_month', '=', self.period_month),
-                    ('period_year', '=', self.period_year),
-                    ('user_unified_id', '=', self.user_unified_id.id),
-                    ('user_id', '=', False)
-                ], limit=1)
-
-            # 3. Si no hay meta por grupo, buscar por equipo
+            # 2. Si no hay meta por vendedor+equipo, buscar por equipo unificado
             if not goal and self.team_unified_id:
                 goal = self.env['commission.goal'].search([
                     ('period_month', '=', self.period_month),
@@ -382,8 +386,34 @@ class CommissionCalculation(models.Model):
                     ('user_id', '=', False),
                     ('user_unified_id', '=', False)
                 ], limit=1)
+                if goal:
+                    _logger.info(f"Meta encontrada (equipo): {goal.name} - Monto: {goal.goal_amount}")
 
-            # 4. Si no hay meta por equipo, buscar meta general
+            # 3. Si no hay meta por equipo, buscar por grupo de vendedores
+            if not goal and self.user_unified_id:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('user_unified_id', '=', self.user_unified_id.id),
+                    ('user_id', '=', False),
+                    ('team_unified_id', '=', False)
+                ], limit=1)
+                if goal:
+                    _logger.info(f"Meta encontrada (grupo vendedores): {goal.name} - Monto: {goal.goal_amount}")
+
+            # 4. Si no hay meta por grupo, buscar por vendedor individual (sin equipo)
+            if not goal and self.user_id:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('user_id', '=', self.user_id.id),
+                    ('team_unified_id', '=', False),
+                    ('user_unified_id', '=', False)
+                ], limit=1)
+                if goal:
+                    _logger.info(f"Meta encontrada (vendedor individual): {goal.name} - Monto: {goal.goal_amount}")
+
+            # 5. Si no hay meta individual, buscar meta general
             if not goal:
                 goal = self.env['commission.goal'].search([
                     ('period_month', '=', self.period_month),
@@ -392,9 +422,13 @@ class CommissionCalculation(models.Model):
                     ('user_unified_id', '=', False),
                     ('team_unified_id', '=', False)
                 ], limit=1)
+                if goal:
+                    _logger.info(f"Meta encontrada (general): {goal.name} - Monto: {goal.goal_amount}")
 
             if goal:
                 self.goal_amount = goal.goal_amount
+            else:
+                _logger.warning(f"No se encontró meta para periodo {self.period_month}/{self.period_year}")
 
     @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id',
                  'calculation_base', 'team_unified_id.team_ids', 'user_unified_id.user_ids')
