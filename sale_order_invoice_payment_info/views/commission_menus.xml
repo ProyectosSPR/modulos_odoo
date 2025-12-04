@@ -6,7 +6,7 @@
     <!-- ========================================== -->
 
     <menuitem id="menu_commission_root"
-              name="Comisiones de Vendedores"
+              name="Comisiones"
               sequence="100"
               web_icon="sale_order_invoice_payment_info,static/description/icon.png"/>
 
