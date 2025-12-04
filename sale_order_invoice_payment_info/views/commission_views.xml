@@ -92,22 +92,23 @@
     <!-- ========================================== -->
 
     <!-- Vista Tree de Metas -->
+    <!--
     <record id="view_commission_goal_tree" model="ir.ui.view">
         <field name="name">commission.goal.tree</field>
         <field name="model">commission.goal</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="name"/>
                 <field name="period_year"/>
                 <field name="period_month"/>
                 <field name="user_id"/>
                 <field name="goal_amount"/>
-                <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>
     </record>
+    -->
 
     <!-- Vista Form de Metas -->
+    <!--
     <record id="view_commission_goal_form" model="ir.ui.view">
         <field name="name">commission.goal.form</field>
         <field name="model">commission.goal</field>
@@ -136,6 +137,7 @@
             </form>
         </field>
     </record>
+    -->
 
     <!-- ========================================== -->
     <!-- CÁLCULO DE COMISIONES -->
