@@ -302,6 +302,20 @@ class CommissionCalculation(models.Model):
         default=False,
         help='Marca esta comisión como no válida cuando no se alcanzó la meta mínima para comisionar'
     )
+    comments = fields.Text(
+        string='Comentarios',
+        help='Comentarios adicionales sobre esta comisión'
+    )
+    manual_override = fields.Boolean(
+        string='Pago Manual (Override)',
+        default=False,
+        help='Permite pagar comisión manualmente aunque no se haya alcanzado la meta'
+    )
+    manual_commission_amount = fields.Monetary(
+        string='Monto Manual de Comisión',
+        currency_field='currency_id',
+        help='Monto de comisión a pagar manualmente cuando se usa override'
+    )
 
     # Detalle de órdenes
     sale_order_ids = fields.Many2many(
@@ -566,11 +580,11 @@ class CommissionCalculation(models.Model):
     def action_confirm(self):
         """
         Confirma el cálculo de comisión y marca todas las órdenes asociadas como commission_paid.
-        Si la comisión es 0, muestra advertencia y marca como no válida.
+        Si la comisión es 0 y no hay manual_override, muestra advertencia.
         """
         for calc in self:
-            # Validar si la comisión es 0
-            if calc.commission_amount == 0:
+            # Validar si la comisión es 0 Y no hay override manual
+            if calc.commission_amount == 0 and calc.manual_commission_amount == 0 and not calc.manual_override:
                 # Retornar wizard de advertencia
                 return {
                     'name': 'Comisión No Válida',
@@ -580,15 +594,24 @@ class CommissionCalculation(models.Model):
                     'target': 'new',
                     'context': {
                         'default_commission_id': calc.id,
-                        'default_message': f'No se alcanzó la meta mínima para comisionar. '
-                                         f'Meta: {calc.goal_amount:,.2f}, '
-                                         f'Vendido: {calc.total_sales:,.2f}. '
-                                         f'Esta comisión será marcada como NO VÁLIDA y no podrá pagarse.'
+                        'default_message': f'No se alcanzó la meta mínima para comisionar. '\
+                                         f'Meta: {calc.goal_amount:,.2f}, '\
+                                         f'Vendido: {calc.total_sales:,.2f}. '\
+                                         f'\n\nOpciones:\n'\
+                                         f'1. Marcar como No Válida (no se pagará)\n'\
+                                         f'2. Cancelar y activar "Pago Manual" para pagar un monto específico'
                     }
                 }
             
             today = fields.Date.today()
             calc.state = 'confirmed'
+            
+            # Log si se está usando override manual
+            if calc.manual_override and calc.manual_commission_amount > 0:
+                _logger.info(f"Comisión confirmada con OVERRIDE MANUAL: {calc.manual_commission_amount:,.2f} "
+                           f"(Comisión calculada era: {calc.commission_amount:,.2f})")
+            else:
+                _logger.info(f"Comisión confirmada: {calc.commission_amount:,.2f}")
 
             # Marcar todas las órdenes de venta asociadas como comisión pagada
             # IMPORTANTE: Obtener los IDs y buscar directamente en sale.order

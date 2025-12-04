@@ -290,8 +290,19 @@
                         <field name="paid_date"/>
                     </group>
 
+                    <group string="Pago Manual / Override">
+                        <field name="manual_override" widget="boolean_toggle"/>
+                        <field name="manual_commission_amount" 
+                               attrs="{'invisible': [('manual_override', '=', False)], 
+                                       'required': [('manual_override', '=', True)]}"/>
+                    </group>
+
                     <group string="Estado de Comisión">
                         <field name="commission_invalid" widget="boolean_toggle"/>
+                    </group>
+
+                    <group string="Comentarios" colspan="2">
+                        <field name="comments" nolabel="1" placeholder="Ingrese comentarios sobre esta comisión..."/>
                     </group>
 
                     <notebook>
