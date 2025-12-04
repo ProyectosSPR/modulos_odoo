@@ -71,9 +71,9 @@
                             <field name="reconcile_date"/>
 
                             <!-- Campos ocultos -->
-                            <field name="invoice_id" column_invisible="1"/>
-                            <field name="payment_id" column_invisible="1"/>
-                            <field name="currency_id" column_invisible="1"/>
+                            <field name="invoice_id" invisible="1"/>
+                            <field name="payment_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
                         </tree>
                     </field>
                 </page>
