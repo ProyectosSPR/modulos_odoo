@@ -144,9 +144,7 @@
         <field name="name">commission.calculation.tree</field>
         <field name="model">commission.calculation</field>
         <field name="arch" type="xml">
-            <tree decoration-info="state == 'draft'"
-                  decoration-success="state == 'confirmed'"
-                  decoration-muted="state == 'paid'">
+            <tree>
                 <field name="period_year"/>
                 <field name="period_month"/>
                 <field name="user_id"/>
@@ -158,7 +156,7 @@
                 <field name="commission_percentage"/>
                 <field name="commission_amount"/>
                 <field name="state" widget="badge"/>
-                <field name="currency_id" column_invisible="1"/>
+                <field name="currency_id" invisible="1"/>
             </tree>
         </field>
     </record>
