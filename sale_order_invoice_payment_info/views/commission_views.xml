@@ -178,21 +178,21 @@
                             string="Recalcular"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'draft'"/>
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                     <button name="action_confirm"
                             string="Confirmar"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'draft'"/>
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                     <button name="action_mark_paid"
                             string="Marcar como Pagado"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'confirmed'"/>
+                            attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
                     <button name="action_back_to_draft"
                             string="Volver a Borrador"
                             type="object"
-                            invisible="state == 'draft'"/>
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,paid"/>
                 </header>
@@ -232,7 +232,7 @@
                         </group>
                     </group>
 
-                    <group string="Pago" invisible="state != 'paid'">
+                    <group string="Pago" attrs="{'invisible': [('state', '!=', 'paid')]}">
                         <field name="paid_date"/>
                     </group>
 
