@@ -292,6 +292,7 @@
                         <page string="Órdenes de Venta" name="sale_orders">
                             <field name="sale_order_ids" readonly="1">
                                 <tree>
+                                    <field name="state" invisible="1"/>
                                     <field name="name"/>
                                     <field name="date_order"/>
                                     <field name="partner_id"/>
