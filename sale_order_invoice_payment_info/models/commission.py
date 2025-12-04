@@ -308,15 +308,22 @@ class CommissionCalculation(models.Model):
         help='Comentarios adicionales sobre esta comisión'
     )
     manual_override = fields.Boolean(
-        string='Pago Manual (Override)',
+        string='Pago Manual (Gratificación)',
         default=False,
-        help='Permite ajustar el porcentaje de pago manualmente'
+        help='Activa el modo de gratificación con cálculo manual independiente'
     )
     manual_commission_percentage = fields.Float(
-        string='% de Pago Manual',
+        string='% de Gratificación',
         digits=(5, 2),
         default=100.0,
-        help='Porcentaje de la comisión a pagar (ej: 80 = 80% de la comisión calculada)'
+        help='Porcentaje a aplicar sobre el total de ventas para calcular la gratificación'
+    )
+    gratification_amount = fields.Monetary(
+        string='Monto de Gratificación',
+        currency_field='currency_id',
+        compute='_compute_gratification',
+        store=True,
+        help='Monto calculado cuando se usa pago manual: Total Ventas × % Gratificación × % Comisión Equipo'
     )
 
     # Detalle de órdenes
@@ -562,47 +569,79 @@ class CommissionCalculation(models.Model):
                 commission_pct = calc.team_unified_id.commission_percentage
             calc.commission_percentage = commission_pct
 
-            # Calcular comisión final
+            # Calcular comisión final (SIEMPRE calculada normalmente, sin override)
+            _logger.info(f"Calculando comisión - Total Sales: {total_sales}, Commission%: {commission_pct}, Reward%: {reward_pct}")
+
             if total_sales > 0 and commission_pct > 0 and reward_pct > 0:
                 base_commission = total_sales * (commission_pct / 100) * (reward_pct / 100)
-
-                # Aplicar porcentaje manual si está activado el override
-                if calc.manual_override and calc.manual_commission_percentage > 0:
-                    calc.commission_amount = base_commission * (calc.manual_commission_percentage / 100)
-                else:
-                    calc.commission_amount = base_commission
+                calc.commission_amount = base_commission
+                _logger.info(f"Comisión calculada: {base_commission}")
             else:
                 calc.commission_amount = 0.0
+                _logger.warning(f"Comisión = 0 porque falló alguna condición: "
+                              f"total_sales={total_sales > 0}, commission_pct={commission_pct > 0}, "
+                              f"reward_pct={reward_pct > 0}")
+
+    @api.depends('total_sales', 'manual_commission_percentage', 'team_unified_id',
+                 'team_unified_id.commission_percentage', 'manual_override')
+    def _compute_gratification(self):
+        """
+        Calcula el monto de gratificación cuando está activo el pago manual.
+        Fórmula: Total Ventas × (% Gratificación / 100) × (% Comisión Equipo / 100)
+        """
+        for calc in self:
+            if calc.manual_override and calc.total_sales > 0:
+                # Obtener el porcentaje de comisión del equipo
+                commission_pct = 0.0
+                if calc.team_unified_id:
+                    commission_pct = calc.team_unified_id.commission_percentage
+
+                if commission_pct > 0 and calc.manual_commission_percentage > 0:
+                    # Cálculo: Total × % Gratificación × % Comisión Equipo
+                    gratification = calc.total_sales * (calc.manual_commission_percentage / 100) * (commission_pct / 100)
+                    calc.gratification_amount = gratification
+                    _logger.info(f"Gratificación calculada: {calc.total_sales} × {calc.manual_commission_percentage}% × {commission_pct}% = {gratification}")
+                else:
+                    calc.gratification_amount = 0.0
+                    _logger.warning(f"Gratificación = 0: commission_pct={commission_pct}, manual%={calc.manual_commission_percentage}")
+            else:
+                calc.gratification_amount = 0.0
 
     def action_calculate_commission(self):
         """
         Fuerza el recálculo de la comisión
         """
+        _logger.info("="*60)
+        _logger.info("INICIANDO RECÁLCULO DE COMISIÓN")
+        _logger.info("="*60)
+
         for calc in self:
+            _logger.info(f"Procesando cálculo ID: {calc.id}")
+            _logger.info(f"  - Periodo: {calc.period_month}/{calc.period_year}")
+            _logger.info(f"  - Vendedor: {calc.user_id.name if calc.user_id else 'N/A'}")
+            _logger.info(f"  - Equipo: {calc.team_unified_id.name if calc.team_unified_id else 'N/A'}")
+
             # Actualizar la meta
             calc._update_goal_amount()
+            _logger.info(f"  - Meta actualizada: {calc.goal_amount}")
 
             # Recalcular órdenes
             calc._compute_sale_orders()
+            _logger.info(f"  - Órdenes encontradas: {calc.sale_order_count}")
 
-            # Recalcular comisión base
+            # Recalcular comisión normal
             calc._compute_commission()
 
-            # Forzar el recálculo aplicando manualmente el porcentaje si está activo
-            if calc.manual_override and calc.manual_commission_percentage > 0:
-                # Recalcular la comisión base primero
-                total_sales = calc.total_sales
-                commission_pct = calc.commission_percentage
-                reward_pct = calc.reward_percentage
+            # Recalcular gratificación si está activo el override
+            calc._compute_gratification()
 
-                if total_sales > 0 and commission_pct > 0 and reward_pct > 0:
-                    base_commission = total_sales * (commission_pct / 100) * (reward_pct / 100)
-                    final_commission = base_commission * (calc.manual_commission_percentage / 100)
+            _logger.info(f"  - Comisión calculada: {calc.commission_amount}")
+            if calc.manual_override:
+                _logger.info(f"  - Gratificación (Pago Manual): {calc.gratification_amount}")
+            _logger.info("-"*60)
 
-                    # Escribir directamente el valor
-                    calc.write({'commission_amount': final_commission})
-                    _logger.info(f"Comisión recalculada con override manual: {calc.manual_commission_percentage}% "
-                               f"Base: {base_commission:,.2f} → Final: {final_commission:,.2f}")
+        _logger.info("RECÁLCULO COMPLETADO")
+        _logger.info("="*60)
         return True
 
     def action_confirm(self):

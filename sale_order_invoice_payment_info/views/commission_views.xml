@@ -200,8 +200,11 @@
                 <field name="reward_percentage_display"/>
                 <field name="commission_percentage_display"/>
                 <field name="commission_amount"/>
-                <field name="commission_invalid" widget="boolean_toggle" 
+                <field name="gratification_amount" optional="show"
+                       decoration-info="gratification_amount > 0"/>
+                <field name="commission_invalid" widget="boolean_toggle"
                        decoration-danger="commission_invalid == True"/>
+                <field name="manual_override" invisible="1"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-warning="state == 'confirmed'"
@@ -292,11 +295,15 @@
                     </group>
 
                     <group>
-                        <group string="Pago Manual / Override">
+                        <group string="Pago Manual (Gratificación)">
                             <field name="manual_override" widget="boolean_toggle"/>
                             <field name="manual_commission_percentage"
                                    attrs="{'invisible': [('manual_override', '=', False)],
                                            'required': [('manual_override', '=', True)]}"/>
+                            <field name="gratification_amount"
+                                   attrs="{'invisible': [('manual_override', '=', False)]}"
+                                   readonly="1"
+                                   decoration-success="gratification_amount > 0"/>
                         </group>
                         <group string="Estado de Comisión">
                             <field name="commission_invalid" widget="boolean_toggle"/>
