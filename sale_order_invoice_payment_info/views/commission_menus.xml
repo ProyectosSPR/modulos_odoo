@@ -79,23 +79,6 @@
         </field>
     </record>
 
-    <!-- Acción: Histórico de Comisiones Pagadas -->
-    <record id="action_commission_calculation_paid" model="ir.actions.act_window">
-        <field name="name">Comisiones Pagadas</field>
-        <field name="res_model">commission.calculation</field>
-        <field name="view_mode">tree,form,pivot,graph</field>
-        <field name="domain">[('state', '=', 'paid')]</field>
-        <field name="context">{'search_default_paid': 1, 'search_default_group_user': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                No hay comisiones pagadas
-            </p>
-            <p>
-                Aquí aparecerán todas las comisiones que han sido marcadas como pagadas.
-            </p>
-        </field>
-    </record>
-
     <!-- ========================================== -->
     <!-- ESTRUCTURA DE MENÚS -->
     <!-- ========================================== -->
@@ -152,12 +135,5 @@
               parent="menu_commission_root"
               action="action_commission_calculation"
               sequence="20"/>
-
-    <!-- Menú: Histórico -->
-    <menuitem id="menu_commission_calculation_paid"
-              name="Comisiones Pagadas"
-              parent="menu_commission_root"
-              action="action_commission_calculation_paid"
-              sequence="30"/>
 
 </odoo>

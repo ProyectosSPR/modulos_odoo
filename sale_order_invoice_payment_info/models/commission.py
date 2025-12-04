@@ -526,10 +526,18 @@ class CommissionCalculation(models.Model):
 
     def action_confirm(self):
         """
-        Confirma el cálculo de comisión
+        Confirma el cálculo de comisión y marca todas las órdenes asociadas como commission_paid
         """
+        today = fields.Date.today()
         for calc in self:
             calc.state = 'confirmed'
+
+            # Marcar todas las órdenes de venta asociadas como comisión pagada
+            if calc.sale_order_ids:
+                calc.sale_order_ids.write({
+                    'commission_paid': True,
+                    'commission_paid_date': today
+                })
         return True
 
     def action_mark_paid(self):
@@ -545,10 +553,17 @@ class CommissionCalculation(models.Model):
 
     def action_back_to_draft(self):
         """
-        Regresa a borrador
+        Regresa a borrador y desmarca las órdenes como comisión pagada
         """
         for calc in self:
             calc.state = 'draft'
+
+            # Desmarcar todas las órdenes de venta asociadas como comisión NO pagada
+            if calc.sale_order_ids:
+                calc.sale_order_ids.write({
+                    'commission_paid': False,
+                    'commission_paid_date': False
+                })
         return True
 
     def action_view_sale_orders(self):
