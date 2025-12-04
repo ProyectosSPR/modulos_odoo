@@ -54,9 +54,10 @@
                                 </group>
                                 <group string="Additional Filters">
                                     <field name="source_domain"
-                                           placeholder="[('state', '=', 'sale')]"
-                                           widget="domain"
-                                           options="{'model': 'source_model'}"/>
+                                           placeholder="[('state', '=', 'sale')]"/>
+                                    <div class="text-muted">
+                                        <small>Enter a domain filter as a Python list, e.g.: [('state', '=', 'sale')]</small>
+                                    </div>
                                 </group>
                             </group>
                         </page>
@@ -72,9 +73,10 @@
                                 </group>
                                 <group string="Additional Filters">
                                     <field name="target_domain"
-                                           placeholder="[('state', '=', 'posted')]"
-                                           widget="domain"
-                                           options="{'model': 'target_model'}"/>
+                                           placeholder="[('state', '=', 'posted')]"/>
+                                    <div class="text-muted">
+                                        <small>Enter a domain filter as a Python list, e.g.: [('state', '=', 'posted')]</small>
+                                    </div>
                                 </group>
                             </group>
                         </page>
