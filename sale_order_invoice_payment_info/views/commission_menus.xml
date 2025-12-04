@@ -47,7 +47,6 @@
     </record>
 
     <!-- Acción: Metas por Vendedor -->
-    <!--
     <record id="action_commission_goal" model="ir.actions.act_window">
         <field name="name">Metas de Ventas</field>
         <field name="res_model">commission.goal</field>
@@ -62,7 +61,6 @@
             </p>
         </field>
     </record>
-    -->
 
     <!-- Acción: Cálculo de Comisiones -->
     <record id="action_commission_calculation" model="ir.actions.act_window">
@@ -120,13 +118,11 @@
               action="action_commission_goal_rule"
               sequence="20"/>
 
-    <!--
     <menuitem id="menu_commission_goal"
               name="Metas de Ventas"
               parent="menu_commission_config"
               action="action_commission_goal"
               sequence="30"/>
-    -->
 
     <!-- Menú: Cálculos -->
     <menuitem id="menu_commission_calculation"

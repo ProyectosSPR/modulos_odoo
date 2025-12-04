@@ -92,7 +92,6 @@
     <!-- ========================================== -->
 
     <!-- Vista Tree de Metas -->
-    <!--
     <record id="view_commission_goal_tree" model="ir.ui.view">
         <field name="name">commission.goal.tree</field>
         <field name="model">commission.goal</field>
@@ -105,10 +104,8 @@
             </tree>
         </field>
     </record>
-    -->
 
     <!-- Vista Form de Metas -->
-    <!--
     <record id="view_commission_goal_form" model="ir.ui.view">
         <field name="name">commission.goal.form</field>
         <field name="model">commission.goal</field>
@@ -137,7 +134,6 @@
             </form>
         </field>
     </record>
-    -->
 
     <!-- ========================================== -->
     <!-- CÁLCULO DE COMISIONES -->
@@ -157,7 +153,7 @@
                 <field name="team_unified_id"/>
                 <field name="total_sales"/>
                 <field name="goal_amount"/>
-                <field name="goal_percentage" decoration-success="goal_percentage >= 100"/>
+                <field name="goal_percentage"/>
                 <field name="reward_percentage"/>
                 <field name="commission_percentage"/>
                 <field name="commission_amount"/>
