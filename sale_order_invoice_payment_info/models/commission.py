@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import datetime
+from calendar import monthrange
 
 
 class CommissionTeamUnified(models.Model):
@@ -107,7 +108,12 @@ class CommissionGoal(models.Model):
     user_id = fields.Many2one(
         'res.users',
         string='Vendedor',
-        help='Vendedor específico (dejar vacío para meta general)'
+        help='Vendedor específico (dejar vacío para meta por equipo o general)'
+    )
+    team_unified_id = fields.Many2one(
+        'commission.team.unified',
+        string='Equipo Unificado',
+        help='Equipo específico (dejar vacío si es por vendedor o general)'
     )
     goal_amount = fields.Monetary(
         string='Meta en Pesos',
@@ -122,18 +128,17 @@ class CommissionGoal(models.Model):
     )
     active = fields.Boolean(default=True)
 
-    @api.depends('period_month', 'period_year', 'user_id', 'goal_amount')
+    @api.depends('period_month', 'period_year', 'user_id', 'team_unified_id', 'goal_amount')
     def _compute_name(self):
         for goal in self:
             month_name = dict(self._fields['period_month'].selection).get(goal.period_month, '')
-            user_name = goal.user_id.name if goal.user_id else 'General'
-            goal.name = f'{month_name} {goal.period_year} - {user_name}: ${goal.goal_amount:,.2f}'
-
-    _sql_constraints = [
-        ('unique_goal_period_user',
-         'unique(period_month, period_year, user_id)',
-         'Ya existe una meta para este vendedor en este periodo.')
-    ]
+            if goal.user_id:
+                target = goal.user_id.name
+            elif goal.team_unified_id:
+                target = goal.team_unified_id.name
+            else:
+                target = 'General'
+            goal.name = f'{month_name} {goal.period_year} - {target}: ${goal.goal_amount:,.2f}'
 
 
 class CommissionCalculation(models.Model):
@@ -168,13 +173,12 @@ class CommissionCalculation(models.Model):
     user_id = fields.Many2one(
         'res.users',
         string='Vendedor',
-        required=True
+        help='Vendedor específico (dejar vacío para cálculo por equipo)'
     )
     team_unified_id = fields.Many2one(
         'commission.team.unified',
         string='Equipo Unificado',
-        compute='_compute_team_unified',
-        store=True
+        help='Equipo para calcular comisiones (se usa si no hay vendedor específico)'
     )
 
     # Configuración del cálculo
@@ -256,37 +260,97 @@ class CommissionCalculation(models.Model):
             user_name = calc.user_id.name if calc.user_id else ''
             calc.name = f'{month_name} {calc.period_year} - {user_name}: ${calc.commission_amount:,.2f}'
 
-    @api.depends('user_id')
-    def _compute_team_unified(self):
-        for calc in self:
-            if calc.user_id:
-                # Buscar el equipo del vendedor en sale.order
-                order = self.env['sale.order'].search([
-                    ('user_id', '=', calc.user_id.id)
+    @api.onchange('user_id')
+    def _onchange_user_id(self):
+        """
+        Sugiere el equipo unificado basado en el vendedor y busca la meta
+        """
+        if self.user_id and not self.team_unified_id:
+            # Buscar el equipo del vendedor en sale.order
+            order = self.env['sale.order'].search([
+                ('user_id', '=', self.user_id.id)
+            ], limit=1)
+            if order and order.team_id:
+                # Buscar el equipo unificado que contenga este team_id
+                unified = self.env['commission.team.unified'].search([
+                    ('team_ids', 'in', order.team_id.id)
                 ], limit=1)
-                if order and order.team_id:
-                    # Buscar el equipo unificado que contenga este team_id
-                    unified = self.env['commission.team.unified'].search([
-                        ('team_ids', 'in', order.team_id.id)
-                    ], limit=1)
-                    calc.team_unified_id = unified.id if unified else False
-                else:
-                    calc.team_unified_id = False
-            else:
-                calc.team_unified_id = False
+                if unified:
+                    self.team_unified_id = unified
 
-    @api.depends('period_month', 'period_year', 'user_id', 'calculation_base')
+        # Buscar la meta
+        self._update_goal_amount()
+
+    @api.onchange('period_month', 'period_year', 'team_unified_id')
+    def _onchange_period_or_team(self):
+        """
+        Actualiza la meta cuando cambia el periodo o equipo
+        """
+        self._update_goal_amount()
+
+    def _update_goal_amount(self):
+        """
+        Busca y establece la meta correspondiente
+        """
+        if self.period_month and self.period_year:
+            goal = None
+
+            # 1. Buscar meta específica por vendedor
+            if self.user_id:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('user_id', '=', self.user_id.id)
+                ], limit=1)
+
+            # 2. Si no hay meta por vendedor, buscar por equipo
+            if not goal and self.team_unified_id:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('team_unified_id', '=', self.team_unified_id.id),
+                    ('user_id', '=', False)
+                ], limit=1)
+
+            # 3. Si no hay meta por equipo, buscar meta general
+            if not goal:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('user_id', '=', False),
+                    ('team_unified_id', '=', False)
+                ], limit=1)
+
+            if goal:
+                self.goal_amount = goal.goal_amount
+
+    @api.depends('period_month', 'period_year', 'user_id', 'team_unified_id', 'calculation_base')
     def _compute_sale_orders(self):
         for calc in self:
-            if calc.period_month and calc.period_year and calc.user_id:
-                # Buscar órdenes del vendedor en el periodo con commission_paid = True
-                orders = self.env['sale.order'].search([
-                    ('user_id', '=', calc.user_id.id),
+            if calc.period_month and calc.period_year:
+                # Calcular el último día del mes correctamente
+                year = int(calc.period_year)
+                month = int(calc.period_month)
+                last_day = monthrange(year, month)[1]
+
+                date_from = f'{calc.period_year}-{calc.period_month.zfill(2)}-01'
+                date_to = f'{calc.period_year}-{calc.period_month.zfill(2)}-{last_day}'
+
+                # Construir dominio base
+                domain = [
                     ('commission_paid', '=', True),
-                    ('commission_paid_date', '>=', f'{calc.period_year}-{calc.period_month.zfill(2)}-01'),
-                    ('commission_paid_date', '<=', f'{calc.period_year}-{calc.period_month.zfill(2)}-31'),
+                    ('commission_paid_date', '>=', date_from),
+                    ('commission_paid_date', '<=', date_to),
                     ('state', 'in', ['sale', 'done'])
-                ])
+                ]
+
+                # Agregar filtro por vendedor o por equipo
+                if calc.user_id:
+                    domain.append(('user_id', '=', calc.user_id.id))
+                elif calc.team_unified_id and calc.team_unified_id.team_ids:
+                    domain.append(('team_id', 'in', calc.team_unified_id.team_ids.ids))
+
+                orders = self.env['sale.order'].search(domain)
                 calc.sale_order_ids = [(6, 0, orders.ids)]
                 calc.sale_order_count = len(orders)
             else:

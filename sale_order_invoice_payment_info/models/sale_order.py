@@ -29,6 +29,18 @@ class SaleOrder(models.Model):
         help='Fecha en que se marcó la comisión como pagada'
     )
 
+    # Campos para mostrar facturas y pagos en vista tree
+    invoice_names = fields.Char(
+        string='Facturas',
+        compute='_compute_invoice_payment_names',
+        store=False
+    )
+    payment_names = fields.Char(
+        string='Pagos',
+        compute='_compute_invoice_payment_names',
+        store=False
+    )
+
     @api.depends('invoice_ids', 'invoice_ids.payment_state')
     def _compute_invoice_payment_info(self):
         """
@@ -129,6 +141,27 @@ class SaleOrder(models.Model):
                         })
 
         return payments_data
+
+    @api.depends('invoice_ids', 'invoice_ids.name')
+    def _compute_invoice_payment_names(self):
+        """
+        Calcula los nombres de facturas y pagos para mostrar en la vista tree
+        """
+        for order in self:
+            # Obtener facturas
+            invoices = order.invoice_ids.filtered(lambda inv: inv.move_type in ('out_invoice', 'out_refund'))
+            invoice_list = [inv.name for inv in invoices if inv.name]
+            order.invoice_names = ', '.join(invoice_list) if invoice_list else ''
+
+            # Obtener pagos
+            payment_list = []
+            for invoice in invoices:
+                payments = self._get_payments_for_invoice(invoice)
+                for payment in payments:
+                    if payment['payment_name'] and payment['payment_name'] not in payment_list:
+                        payment_list.append(payment['payment_name'])
+
+            order.payment_names = ', '.join(payment_list) if payment_list else ''
 
     def action_mark_commission_paid(self):
         """
