@@ -100,6 +100,22 @@
     <!-- ESTRUCTURA DE MENÚS -->
     <!-- ========================================== -->
 
+    <!-- Acción: Vendedores Unificados -->
+    <record id="action_commission_user_unified" model="ir.actions.act_window">
+        <field name="name">Grupos de Vendedores</field>
+        <field name="res_model">commission.user.unified</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un Grupo de Vendedores
+            </p>
+            <p>
+                Los grupos de vendedores unifican las ventas de varios vendedores para calcular comisiones conjuntas.
+                Por ejemplo: "Equipo Mercado Libre" puede incluir a Juan, María y Pedro.
+            </p>
+        </field>
+    </record>
+
     <!-- Menú: Configuración -->
     <menuitem id="menu_commission_config"
               name="Configuración"
@@ -111,6 +127,12 @@
               parent="menu_commission_config"
               action="action_commission_team_unified"
               sequence="10"/>
+
+    <menuitem id="menu_commission_user_unified"
+              name="Grupos de Vendedores"
+              parent="menu_commission_config"
+              action="action_commission_user_unified"
+              sequence="15"/>
 
     <menuitem id="menu_commission_goal_rule"
               name="Reglas de Alcance"

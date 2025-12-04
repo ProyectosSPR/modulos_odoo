@@ -3,6 +3,8 @@ access_sale_order_invoice_payment_info_user,sale.order.invoice.payment.info.user
 access_sale_order_invoice_payment_info_manager,sale.order.invoice.payment.info.manager,model_sale_order_invoice_payment_info,sales_team.group_sale_manager,1,1,1,1
 access_commission_team_unified_user,commission.team.unified.user,model_commission_team_unified,sales_team.group_sale_salesman,1,0,0,0
 access_commission_team_unified_manager,commission.team.unified.manager,model_commission_team_unified,sales_team.group_sale_manager,1,1,1,1
+access_commission_user_unified_user,commission.user.unified.user,model_commission_user_unified,sales_team.group_sale_salesman,1,0,0,0
+access_commission_user_unified_manager,commission.user.unified.manager,model_commission_user_unified,sales_team.group_sale_manager,1,1,1,1
 access_commission_goal_rule_user,commission.goal.rule.user,model_commission_goal_rule,sales_team.group_sale_salesman,1,0,0,0
 access_commission_goal_rule_manager,commission.goal.rule.manager,model_commission_goal_rule,sales_team.group_sale_manager,1,1,1,1
 access_commission_goal_user,commission.goal.user,model_commission_goal,sales_team.group_sale_salesman,1,0,0,0

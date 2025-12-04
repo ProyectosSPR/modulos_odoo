@@ -36,6 +36,31 @@ class CommissionTeamUnified(models.Model):
     ]
 
 
+class CommissionUserUnified(models.Model):
+    _name = 'commission.user.unified'
+    _description = 'Vendedores Unificados'
+    _order = 'name'
+
+    name = fields.Char(
+        string='Nombre del Grupo de Vendedores',
+        required=True,
+        help='Nombre del grupo de vendedores (ej: Equipo Mercado Libre)'
+    )
+    user_ids = fields.Many2many(
+        'res.users',
+        'commission_user_unified_res_users_rel',
+        'unified_id',
+        'user_id',
+        string='Vendedores',
+        help='Vendedores que pertenecen a este grupo unificado'
+    )
+    active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        ('name_unique', 'unique(name)', 'El nombre del grupo de vendedores debe ser único.')
+    ]
+
+
 class CommissionGoalRule(models.Model):
     _name = 'commission.goal.rule'
     _description = 'Reglas de Alcance de Meta vs Recompensa'
@@ -108,7 +133,12 @@ class CommissionGoal(models.Model):
     user_id = fields.Many2one(
         'res.users',
         string='Vendedor',
-        help='Vendedor específico (dejar vacío para meta por equipo o general)'
+        help='Vendedor específico (dejar vacío para meta por grupo de vendedores, equipo o general)'
+    )
+    user_unified_id = fields.Many2one(
+        'commission.user.unified',
+        string='Grupo de Vendedores',
+        help='Grupo de vendedores unificados (dejar vacío si es por vendedor individual, equipo o general)'
     )
     team_unified_id = fields.Many2one(
         'commission.team.unified',
@@ -128,12 +158,14 @@ class CommissionGoal(models.Model):
     )
     active = fields.Boolean(default=True)
 
-    @api.depends('period_month', 'period_year', 'user_id', 'team_unified_id', 'goal_amount')
+    @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id', 'goal_amount')
     def _compute_name(self):
         for goal in self:
             month_name = dict(self._fields['period_month'].selection).get(goal.period_month, '')
             if goal.user_id:
                 target = goal.user_id.name
+            elif goal.user_unified_id:
+                target = goal.user_unified_id.name
             elif goal.team_unified_id:
                 target = goal.team_unified_id.name
             else:
@@ -173,7 +205,12 @@ class CommissionCalculation(models.Model):
     user_id = fields.Many2one(
         'res.users',
         string='Vendedor',
-        help='Vendedor específico (dejar vacío para cálculo por equipo)'
+        help='Vendedor específico (dejar vacío para cálculo por grupo o equipo)'
+    )
+    user_unified_id = fields.Many2one(
+        'commission.user.unified',
+        string='Grupo de Vendedores',
+        help='Grupo de vendedores unificados para calcular comisiones conjuntas'
     )
     team_unified_id = fields.Many2one(
         'commission.team.unified',
@@ -342,28 +379,39 @@ class CommissionCalculation(models.Model):
                     ('user_id', '=', self.user_id.id)
                 ], limit=1)
 
-            # 2. Si no hay meta por vendedor, buscar por equipo
+            # 2. Si no hay meta por vendedor, buscar por grupo de vendedores
+            if not goal and self.user_unified_id:
+                goal = self.env['commission.goal'].search([
+                    ('period_month', '=', self.period_month),
+                    ('period_year', '=', self.period_year),
+                    ('user_unified_id', '=', self.user_unified_id.id),
+                    ('user_id', '=', False)
+                ], limit=1)
+
+            # 3. Si no hay meta por grupo, buscar por equipo
             if not goal and self.team_unified_id:
                 goal = self.env['commission.goal'].search([
                     ('period_month', '=', self.period_month),
                     ('period_year', '=', self.period_year),
                     ('team_unified_id', '=', self.team_unified_id.id),
-                    ('user_id', '=', False)
+                    ('user_id', '=', False),
+                    ('user_unified_id', '=', False)
                 ], limit=1)
 
-            # 3. Si no hay meta por equipo, buscar meta general
+            # 4. Si no hay meta por equipo, buscar meta general
             if not goal:
                 goal = self.env['commission.goal'].search([
                     ('period_month', '=', self.period_month),
                     ('period_year', '=', self.period_year),
                     ('user_id', '=', False),
+                    ('user_unified_id', '=', False),
                     ('team_unified_id', '=', False)
                 ], limit=1)
 
             if goal:
                 self.goal_amount = goal.goal_amount
 
-    @api.depends('period_month', 'period_year', 'user_id', 'team_unified_id', 'calculation_base')
+    @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id', 'calculation_base')
     def _compute_sale_orders(self):
         for calc in self:
             if calc.period_month and calc.period_year:
@@ -385,11 +433,24 @@ class CommissionCalculation(models.Model):
                     ('invoice_status', 'in', ['invoiced', 'upselling'])  # Debe estar facturado
                 ]
 
-                # Agregar filtro por vendedor o por equipo
+                # Agregar filtro por vendedor, grupo de vendedores o por equipo
                 if calc.user_id:
+                    # Filtro por vendedor individual
                     domain.append(('user_id', '=', calc.user_id.id))
-                elif calc.team_unified_id and calc.team_unified_id.team_ids:
-                    domain.append(('team_id', 'in', calc.team_unified_id.team_ids.ids))
+                elif calc.user_unified_id:
+                    # Filtro por grupo de vendedores unificados
+                    if calc.user_unified_id.user_ids:
+                        domain.append(('user_id', 'in', calc.user_unified_id.user_ids.ids))
+                    else:
+                        # Si el grupo no tiene vendedores, no hay órdenes
+                        domain.append(('id', '=', False))
+                elif calc.team_unified_id:
+                    # Filtro por equipo unificado
+                    if calc.team_unified_id.team_ids:
+                        domain.append(('team_id', 'in', calc.team_unified_id.team_ids.ids))
+                    else:
+                        # Si el equipo unificado no tiene equipos asignados, no hay órdenes
+                        domain.append(('id', '=', False))
 
                 orders = self.env['sale.order'].search(domain)
 
