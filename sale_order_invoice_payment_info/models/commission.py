@@ -411,7 +411,8 @@ class CommissionCalculation(models.Model):
             if goal:
                 self.goal_amount = goal.goal_amount
 
-    @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id', 'calculation_base')
+    @api.depends('period_month', 'period_year', 'user_id', 'user_unified_id', 'team_unified_id',
+                 'calculation_base', 'team_unified_id.team_ids', 'user_unified_id.user_ids')
     def _compute_sale_orders(self):
         for calc in self:
             if calc.period_month and calc.period_year:
@@ -433,24 +434,25 @@ class CommissionCalculation(models.Model):
                     ('invoice_status', 'in', ['invoiced', 'upselling'])  # Debe estar facturado
                 ]
 
-                # Agregar filtro por vendedor, grupo de vendedores o por equipo
-                if calc.user_id:
-                    # Filtro por vendedor individual
-                    domain.append(('user_id', '=', calc.user_id.id))
-                elif calc.user_unified_id:
-                    # Filtro por grupo de vendedores unificados
-                    if calc.user_unified_id.user_ids:
-                        domain.append(('user_id', 'in', calc.user_unified_id.user_ids.ids))
-                    else:
-                        # Si el grupo no tiene vendedores, no hay órdenes
-                        domain.append(('id', '=', False))
-                elif calc.team_unified_id:
-                    # Filtro por equipo unificado
+                # Agregar filtro con prioridad: team_unified > user_unified > user_id
+                # IMPORTANTE: Si hay equipo unificado o grupo de vendedores, esos tienen prioridad
+                if calc.team_unified_id:
+                    # Filtro por equipo unificado (PRIORIDAD 1)
                     if calc.team_unified_id.team_ids:
                         domain.append(('team_id', 'in', calc.team_unified_id.team_ids.ids))
                     else:
                         # Si el equipo unificado no tiene equipos asignados, no hay órdenes
                         domain.append(('id', '=', False))
+                elif calc.user_unified_id:
+                    # Filtro por grupo de vendedores unificados (PRIORIDAD 2)
+                    if calc.user_unified_id.user_ids:
+                        domain.append(('user_id', 'in', calc.user_unified_id.user_ids.ids))
+                    else:
+                        # Si el grupo no tiene vendedores, no hay órdenes
+                        domain.append(('id', '=', False))
+                elif calc.user_id:
+                    # Filtro por vendedor individual (PRIORIDAD 3 - solo si no hay grupo ni equipo)
+                    domain.append(('user_id', '=', calc.user_id.id))
 
                 orders = self.env['sale.order'].search(domain)
 
@@ -580,11 +582,12 @@ class CommissionCalculation(models.Model):
         result = super().write(vals)
 
         # Si se cambiaron campos que afectan el cálculo, recalcular
-        recalc_fields = {'period_month', 'period_year', 'user_id', 'team_unified_id',
-                         'goal_amount', 'calculation_base'}
+        recalc_fields = {'period_month', 'period_year', 'user_id', 'user_unified_id',
+                         'team_unified_id', 'goal_amount', 'calculation_base'}
         if any(field in vals for field in recalc_fields):
             for record in self:
-                if vals.get('period_month') or vals.get('period_year') or vals.get('user_id') or vals.get('team_unified_id'):
+                if vals.get('period_month') or vals.get('period_year') or vals.get('user_id') or \
+                   vals.get('user_unified_id') or vals.get('team_unified_id'):
                     record._update_goal_amount()
                 # Forzar recálculo de órdenes y comisiones
                 record._compute_sale_orders()
