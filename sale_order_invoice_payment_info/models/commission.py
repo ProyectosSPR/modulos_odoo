@@ -581,9 +581,28 @@ class CommissionCalculation(models.Model):
         for calc in self:
             # Actualizar la meta
             calc._update_goal_amount()
-            # Recalcular órdenes y comisiones
+
+            # Recalcular órdenes
             calc._compute_sale_orders()
+
+            # Recalcular comisión base
             calc._compute_commission()
+
+            # Forzar el recálculo aplicando manualmente el porcentaje si está activo
+            if calc.manual_override and calc.manual_commission_percentage > 0:
+                # Recalcular la comisión base primero
+                total_sales = calc.total_sales
+                commission_pct = calc.commission_percentage
+                reward_pct = calc.reward_percentage
+
+                if total_sales > 0 and commission_pct > 0 and reward_pct > 0:
+                    base_commission = total_sales * (commission_pct / 100) * (reward_pct / 100)
+                    final_commission = base_commission * (calc.manual_commission_percentage / 100)
+
+                    # Escribir directamente el valor
+                    calc.write({'commission_amount': final_commission})
+                    _logger.info(f"Comisión recalculada con override manual: {calc.manual_commission_percentage}% "
+                               f"Base: {base_commission:,.2f} → Final: {final_commission:,.2f}")
         return True
 
     def action_confirm(self):
