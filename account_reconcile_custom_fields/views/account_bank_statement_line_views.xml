@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Extend the bank statement line form view to add custom matching button -->
+    <record id="view_bank_statement_line_form_custom_fields" model="ir.ui.view">
+        <field name="name">account.bank.statement.line.form.custom.fields</field>
+        <field name="model">account.bank.statement.line</field>
+        <field name="inherit_id" ref="account_reconcile_oca.account_bank_statement_line_form_reconcile"/>
+        <field name="arch" type="xml">
+            <!-- Add button in the header -->
+            <xpath expr="//header" position="inside">
+                <button name="button_find_custom_matches"
+                        string="Find Custom Matches"
+                        type="object"
+                        class="btn-primary"
+                        attrs="{'invisible': [('available_field_mappings_count', '=', 0)]}"/>
+                <button name="action_show_custom_field_mappings"
+                        string="Configure Mappings"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-cog"/>
+            </xpath>
+
+            <!-- Add field to track available mappings (invisible) -->
+            <xpath expr="//sheet" position="before">
+                <field name="available_field_mappings_count" invisible="1"/>
+            </xpath>
+
+            <!-- Add information banner when mappings are available -->
+            <xpath expr="//sheet/group[@name='statement_line_info']" position="before">
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('available_field_mappings_count', '=', 0)]}">
+                    <i class="fa fa-info-circle"/>
+                    <field name="available_field_mappings_count" class="oe_inline"/>
+                    custom field mapping(s) available for this line.
+                    Click "Find Custom Matches" to search for matching invoices automatically.
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

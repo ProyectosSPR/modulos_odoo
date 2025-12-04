@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_reconcile_field_mapping_user,reconcile.field.mapping user,model_reconcile_field_mapping,account.group_account_invoice,1,0,0,0
+access_reconcile_field_mapping_manager,reconcile.field.mapping manager,model_reconcile_field_mapping,account.group_account_manager,1,1,1,1

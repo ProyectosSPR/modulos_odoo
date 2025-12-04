@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Mapping 1: Match Sale Orders by payment reference -->
+        <record id="demo_mapping_sale_payment_ref" model="reconcile.field.mapping">
+            <field name="name">Demo: Match Sale Order by Payment Reference</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+            <field name="source_model_id" ref="sale.model_sale_order"/>
+            <field name="source_field_id" ref="sale.field_sale_order__name"/>
+            <field name="operator">like</field>
+            <field name="target_model_id" ref="account.model_account_bank_statement_line"/>
+            <field name="target_field_id" ref="account.field_account_bank_statement_line__payment_ref"/>
+            <field name="source_domain">[('state', 'in', ['sale', 'done'])]</field>
+            <field name="target_domain">[]</field>
+            <field name="match_type">exact</field>
+        </record>
+
+        <!-- Demo Mapping 2: Match Purchase Orders by reference -->
+        <record id="demo_mapping_purchase_ref" model="reconcile.field.mapping">
+            <field name="name">Demo: Match Purchase Order by Reference</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+            <field name="source_model_id" ref="purchase.model_purchase_order"/>
+            <field name="source_field_id" ref="purchase.field_purchase_order__name"/>
+            <field name="operator">like</field>
+            <field name="target_model_id" ref="account.model_account_bank_statement_line"/>
+            <field name="target_field_id" ref="account.field_account_bank_statement_line__payment_ref"/>
+            <field name="source_domain">[('state', 'in', ['purchase', 'done'])]</field>
+            <field name="target_domain">[]</field>
+            <field name="match_type">exact</field>
+        </record>
+
+        <!-- Demo Mapping 3: Match Invoices directly by reference -->
+        <record id="demo_mapping_invoice_ref" model="reconcile.field.mapping">
+            <field name="name">Demo: Match Invoice by Payment Reference</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+            <field name="source_model_id" ref="account.model_account_move"/>
+            <field name="source_field_id" ref="account.field_account_move__payment_reference"/>
+            <field name="operator">=</field>
+            <field name="target_model_id" ref="account.model_account_bank_statement_line"/>
+            <field name="target_field_id" ref="account.field_account_bank_statement_line__payment_ref"/>
+            <field name="source_domain">[('move_type', 'in', ['out_invoice', 'in_invoice']), ('state', '=', 'posted')]</field>
+            <field name="target_domain">[]</field>
+            <field name="match_type">exact</field>
+        </record>
+    </data>
+</odoo>
