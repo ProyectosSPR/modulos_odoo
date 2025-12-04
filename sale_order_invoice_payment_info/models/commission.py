@@ -294,7 +294,8 @@ class CommissionCalculation(models.Model):
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('confirmed', 'Confirmado'),
-        ('paid', 'Pagado')
+        ('paid', 'Pagado'),
+        ('cancelled', 'Cancelado')
     ], string='Estado', default='draft', required=True)
     paid_date = fields.Date(string='Fecha de Pago')
     commission_invalid = fields.Boolean(
