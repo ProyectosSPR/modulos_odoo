@@ -3,7 +3,7 @@
     'version': '16.0.1.0.0',
     'summary': 'Extender Sale Order con información de facturas, pagos y sistema de comisiones',
     'description': """
-        Este módulo extiende el modelo sale.order para mostrar información detallada
+        Este módulo extiende el modelo sale.order para mostrar información detallada por vendedores
         de las facturas relacionadas y los pagos aplicados a esas facturas.
 
         Características:
