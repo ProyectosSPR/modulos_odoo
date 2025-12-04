@@ -441,9 +441,10 @@ class CommissionCalculation(models.Model):
 
                 orders = self.env['sale.order'].search(domain)
 
-                # Filtro adicional: solo incluir si commission_paid = True O si tiene facturas pagadas
+                # Filtro adicional: EXCLUIR órdenes que ya tienen commission_paid = True
+                # Solo incluir órdenes con facturas pagadas que AÚN NO tienen comisión pagada
                 filtered_orders = orders.filtered(
-                    lambda o: o.commission_paid or any(
+                    lambda o: not o.commission_paid and any(
                         inv.payment_state in ['paid', 'in_payment', 'partial']
                         for inv in o.invoice_ids.filtered(lambda i: i.move_type == 'out_invoice')
                     )
