@@ -28,22 +28,27 @@
 
             <!-- Agregar campos de comisión en el grupo de información -->
             <xpath expr="//field[@name='partner_id']" position="after">
-                <field name="commission_paid" widget="boolean_toggle"/>
-                <field name="commission_paid_date" attrs="{'invisible': [('commission_paid', '=', False)]}"/>
-                <field name="commission_invalid" widget="boolean_toggle"/>
+                <field name="commission_paid" widget="boolean_toggle"
+                       attrs="{'readonly': [('id', '!=', False)]}"/>
+                <field name="commission_paid_date"
+                       attrs="{'invisible': [('commission_paid', '=', False)], 'readonly': [('id', '!=', False)]}"/>
+                <field name="commission_invalid" widget="boolean_toggle"
+                       attrs="{'readonly': [('id', '!=', False)]}"/>
             </xpath>
 
-            <!-- Agregar botones de comisión -->
+            <!-- Agregar botones de comisión (solo para Responsables) -->
             <xpath expr="//button[@name='action_quotation_send']" position="after">
                 <button name="action_mark_commission_paid"
                         string="Marcar Comisión Pagada"
                         type="object"
                         class="btn-primary"
+                        groups="sale_order_invoice_payment_info.group_commission_manager"
                         attrs="{'invisible': ['|', ('commission_paid', '=', True), ('state', 'not in', ['sale', 'done'])]}"/>
                 <button name="action_unmark_commission_paid"
                         string="Desmarcar Comisión"
                         type="object"
                         class="btn-secondary"
+                        groups="sale_order_invoice_payment_info.group_commission_manager"
                         attrs="{'invisible': [('commission_paid', '=', False)]}"/>
             </xpath>
 

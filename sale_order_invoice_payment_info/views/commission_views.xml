@@ -234,15 +234,18 @@
                             string="Confirmar"
                             type="object"
                             class="oe_highlight"
+                            groups="group_commission_manager"
                             attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                     <button name="action_mark_paid"
                             string="Marcar como Pagado"
                             type="object"
                             class="oe_highlight"
+                            groups="group_commission_manager"
                             attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
                     <button name="action_back_to_draft"
                             string="Volver a Borrador"
                             type="object"
+                            groups="group_commission_manager"
                             attrs="{'invisible': [('state', '=', 'draft')]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,paid,cancelled"/>

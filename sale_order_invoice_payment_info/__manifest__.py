@@ -29,6 +29,7 @@
         'sales_team',
     ],
     'data': [
+        'security/commission_security.xml',
         'security/ir.model.access.csv',
         'views/sale_order_views.xml',
         'views/commission_views.xml',

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Categoría para los grupos de comisiones -->
+        <record id="module_category_commission" model="ir.module.category">
+            <field name="name">Comisiones</field>
+            <field name="description">Gestión de comisiones de vendedores</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Grupo: Vendedor - Solo lectura -->
+        <record id="group_commission_salesperson" model="res.groups">
+            <field name="name">Vendedor</field>
+            <field name="category_id" ref="module_category_commission"/>
+            <field name="comment">Puede ver sus propias comisiones y recalcular. No puede editar ni acceder a configuración.</field>
+            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+        </record>
+
+        <!-- Grupo: Responsable de Comisiones - Acceso completo -->
+        <record id="group_commission_manager" model="res.groups">
+            <field name="name">Responsable de Comisiones</field>
+            <field name="category_id" ref="module_category_commission"/>
+            <field name="comment">Acceso completo a todas las comisiones y configuración.</field>
+            <field name="implied_ids" eval="[(4, ref('group_commission_salesperson')), (4, ref('sales_team.group_sale_manager'))]"/>
+        </record>
+
+        <!-- Regla de registro: Vendedores solo ven sus propias comisiones -->
+        <record id="commission_calculation_salesperson_rule" model="ir.rule">
+            <field name="name">Comisión: Vendedor ve solo sus comisiones</field>
+            <field name="model_id" ref="model_commission_calculation"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_commission_salesperson'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Regla de registro: Responsables ven todo -->
+        <record id="commission_calculation_manager_rule" model="ir.rule">
+            <field name="name">Comisión: Responsable ve todo</field>
+            <field name="model_id" ref="model_commission_calculation"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_commission_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

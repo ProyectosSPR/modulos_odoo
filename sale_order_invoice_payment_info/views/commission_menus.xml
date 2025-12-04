@@ -99,11 +99,12 @@
         </field>
     </record>
 
-    <!-- Menú: Configuración -->
+    <!-- Menú: Configuración (solo para Responsables) -->
     <menuitem id="menu_commission_config"
               name="Configuración"
               parent="menu_commission_root"
-              sequence="10"/>
+              sequence="10"
+              groups="group_commission_manager"/>
 
     <menuitem id="menu_commission_team_unified"
               name="Equipos Unificados"
