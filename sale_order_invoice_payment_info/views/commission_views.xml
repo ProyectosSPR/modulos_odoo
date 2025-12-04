@@ -157,10 +157,7 @@
                 <field name="reward_percentage"/>
                 <field name="commission_percentage"/>
                 <field name="commission_amount"/>
-                <field name="state" widget="badge"
-                       decoration-info="state == 'draft'"
-                       decoration-success="state == 'confirmed'"
-                       decoration-muted="state == 'paid'"/>
+                <field name="state" widget="badge"/>
                 <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>
