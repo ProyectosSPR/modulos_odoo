@@ -103,6 +103,11 @@ if records:
                 No se encontraron inconsistencias de proveedores
             </p>
             <p>
+                <a type="action" name="%(action_open_inconsistency_wizard)d" class="btn btn-primary">
+                    🔍 Buscar Inconsistencias
+                </a>
+            </p>
+            <p>
                 Esta herramienta busca apuntes de pagos y facturas que deberían
                 coincidir por una referencia (ej. número de orden) pero tienen
                 proveedores diferentes.

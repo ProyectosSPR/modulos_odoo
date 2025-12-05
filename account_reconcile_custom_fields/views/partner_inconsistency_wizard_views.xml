@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Wizard View for Search Button -->
+    <record id="partner_inconsistency_wizard_form" model="ir.ui.view">
+        <field name="name">partner.inconsistency.wizard.form</field>
+        <field name="model">partner.inconsistency.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Buscar Inconsistencias">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Buscar Inconsistencias de Proveedores</h1>
+                    </div>
+                    <group>
+                        <p>
+                            Esta herramienta buscará apuntes de pagos y facturas que deberían
+                            coincidir por una referencia pero tienen proveedores diferentes.
+                        </p>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_find_inconsistencies" 
+                            string="🔍 Buscar Inconsistencias" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the wizard -->
+    <record id="action_open_inconsistency_wizard" model="ir.actions.act_window">
+        <field name="name">Buscar Inconsistencias</field>
+        <field name="res_model">partner.inconsistency.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
