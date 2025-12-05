@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Extend the reconcile form view to add custom field filters -->
+    <record id="account_account_reconcile_form_custom_view" model="ir.ui.view">
+        <field name="name">account.account.reconcile.form.custom</field>
+        <field name="model">account.account.reconcile</field>
+        <field name="inherit_id" ref="account_reconcile_oca.account_account_reconcile_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Add custom filter fields -->
+            <xpath expr="//field[@name='is_reconciled']" position="after">
+                <field name="custom_field_mapping_id" invisible="1"/>
+                <field name="custom_filter_value" invisible="1"/>
+            </xpath>
+
+            <!-- Add custom filter buttons -->
+            <xpath expr="//div[@class='o_statusbar_buttons']/button[@name='clean_reconcile']" position="after">
+                <button name="button_apply_custom_filter"
+                        string="Apply Custom Filter"
+                        type="object"
+                        class="btn btn-info"
+                        attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
+                <button name="button_clear_custom_filter"
+                        string="Clear Filter"
+                        type="object"
+                        class="btn btn-secondary"
+                        attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
+            </xpath>
+
+            <!-- Add custom filter fields in the form -->
+            <xpath expr="//group" position="after">
+                <group string="Custom Field Filters" name="custom_filters"
+                       attrs="{'invisible': [('is_reconciled', '=', True)]}">
+                    <group>
+                        <field name="custom_field_mapping_id"
+                               placeholder="Select a custom field mapping..."
+                               options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <field name="custom_filter_value"
+                               placeholder="Enter value to search (e.g., SO001, REF-12345)..."
+                               attrs="{'invisible': [('custom_field_mapping_id', '=', False)]}"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend the search view to add custom filters -->
+    <record id="account_account_reconcile_search_custom_view" model="ir.ui.view">
+        <field name="name">account.account.reconcile.search.custom</field>
+        <field name="model">account.account.reconcile</field>
+        <field name="inherit_id" ref="account_reconcile_oca.account_account_reconcile_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="With Custom Mappings" name="with_custom_mappings"
+                        domain="[]"
+                        help="Show only accounts with available custom field mappings"/>
+                <group expand="0" string="Group By">
+                    <filter string="Account" name="group_account"
+                            context="{'group_by': 'account_id'}"/>
+                    <filter string="Partner" name="group_partner"
+                            context="{'group_by': 'partner_id'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Custom Kanban view for reconciliation with custom fields -->
+    <record id="account_account_reconcile_custom_kanban_view" model="ir.ui.view">
+        <field name="name">account.account.reconcile.custom.kanban</field>
+        <field name="model">account.account.reconcile.custom</field>
+        <field name="arch" type="xml">
+            <kanban js_class="reconcile" create="false" delete="false">
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click" style="width:100%">
+                            <div class="o_kanban_card_header">
+                                <div class="o_kanban_card_header_title">
+                                    <div class="o_primary">
+                                        <i class="fa fa-building-o mr-2"/>
+                                        <strong><field name="account_id"/></strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="container o_kanban_card_content mt-2">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <i class="fa fa-user mr-2"/>
+                                        <field name="partner_id"/>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <span class="badge badge-info">
+                                            <i class="fa fa-filter"/>
+                                            Click to apply custom filters
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Custom Form view -->
+    <record id="account_account_reconcile_custom_form_view" model="ir.ui.view">
+        <field name="name">account.account.reconcile.custom.form</field>
+        <field name="model">account.account.reconcile.custom</field>
+        <field name="inherit_id" ref="account_reconcile_custom_fields.account_account_reconcile_form_custom_view"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="string">Reconcile with Custom Fields</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action for custom field reconciliation -->
+    <record id="account_account_reconcile_custom_action" model="ir.actions.act_window">
+        <field name="name">Reconcile with Custom Fields</field>
+        <field name="res_model">account.account.reconcile.custom</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{
+            'view_ref': 'account_reconcile_custom_fields.account_account_reconcile_custom_form_view'
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Start reconciling with custom field filters
+            </p>
+            <p>
+                Select an account and partner combination to reconcile,
+                then use custom field mappings to automatically find matching invoices
+                based on sale orders, purchase orders, or custom fields.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu item -->
+    <menuitem
+        id="menu_account_reconcile_custom"
+        name="Reconcile with Custom Fields"
+        parent="account.menu_finance_entries_actions"
+        action="account_account_reconcile_custom_action"
+        sequence="11"/>
+</odoo>
