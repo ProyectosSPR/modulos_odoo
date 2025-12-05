@@ -161,6 +161,7 @@ class PartnerInconsistency(models.TransientModel):
     def _find_partner_inconsistencies_for_mapping(self, mapping):
         """
         Detecta inconsistencias para un mapeo específico y devuelve una lista de valores.
+        Esta es la lógica central de detección.
         """
         domain = [
             ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
@@ -189,38 +190,41 @@ class PartnerInconsistency(models.TransientModel):
             _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
             _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
             for line in lines:
-                _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}")
+                _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}, Tipo Mov: {line.move_id.move_type}")
             # --- FIN LOG MEJORADO ---
 
-            # --- Lógica de emparejamiento simplificada ---
-            line_a = lines[0]
-            line_b = next((l for l in lines if l.partner_id != line_a.partner_id), None)
+            # --- Lógica Robusta de Clasificación y Emparejamiento ---
+            invoice_lines = lines.filtered(lambda l: l.move_id.is_invoice(include_receipts=True))
+            payment_lines = lines - invoice_lines
 
-            if line_a and line_b:
-                # Heurística simple: el apunte con saldo negativo (crédito) es probablemente el pago o abono
-                if line_a.balance < 0:
-                    payment_line, invoice_line = line_a, line_b
-                else:
-                    invoice_line, payment_line = line_a, line_b
-                
-                # Verificación final para evitar asignar dos del mismo tipo si la heurística falla
-                if invoice_line.balance < 0 and payment_line.balance < 0:
-                    _logger.warning(f"      Omitiendo par para ref '{ref_value}' porque ambos apuntes son créditos.")
-                    continue
-                if invoice_line.balance > 0 and payment_line.balance > 0:
-                    _logger.warning(f"      Omitiendo par para ref '{ref_value}' porque ambos apuntes son débitos.")
-                    continue
+            # Se necesita al menos una factura y un pago para tener un caso claro de corrección
+            if not invoice_lines or not payment_lines:
+                _logger.warning(f"      Omitiendo ref '{ref_value}': El grupo no contiene una combinación de factura(s) y pago(s).")
+                continue
 
-                vals = {
-                    "referencia_comun": ref_value,
-                    "pago_line_id": payment_line.id,
-                    "factura_line_id": invoice_line.id,
-                    "mapping_id": mapping.id,
-                    "tipo_problema": "Discrepancia de Proveedor",
-                }
-                inconsistencies_vals.append(vals)
-            else:
-                _logger.warning(f"      No se pudo construir un par de líneas inconsistentes para la ref '{ref_value}'.")
+            # Tomamos la primera factura como ancla para definir el proveedor "correcto"
+            anchor_invoice = invoice_lines[0]
+            target_partner = anchor_invoice.partner_id
+
+            # Buscamos el primer pago que tenga un proveedor incorrecto para crear el par
+            inconsistent_payment_found = False
+            for payment in payment_lines:
+                if payment.partner_id and payment.partner_id != target_partner:
+                    vals = {
+                        "referencia_comun": ref_value,
+                        "pago_line_id": payment.id,
+                        "factura_line_id": anchor_invoice.id,
+                        "mapping_id": mapping.id,
+                        "tipo_problema": "Discrepancia de Proveedor",
+                    }
+                    inconsistencies_vals.append(vals)
+                    inconsistent_payment_found = True
+                    # Creamos solo un caso por grupo para que el usuario lo corrija.
+                    # Una vez corregido, en la siguiente ejecución se pueden revelar otros.
+                    break
+            
+            if not inconsistent_payment_found:
+                 _logger.info(f"      Ref '{ref_value}': Grupo con múltiples proveedores pero los pagos ya coinciden con el proveedor de la factura principal.")
 
         return inconsistencies_vals
 
