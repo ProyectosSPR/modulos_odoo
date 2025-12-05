@@ -6,6 +6,12 @@
         <field name="model">partner.inconsistency</field>
         <field name="arch" type="xml">
             <tree create="false" delete="true" edit="false" decoration-danger="True">
+                <header>
+                    <button name="%(action_scan_inconsistencies)d"
+                            string="Buscar Inconsistencias"
+                            type="action"
+                            class="btn-primary"/>
+                </header>
                 <field name="referencia_comun"/>
                 <field name="tipo_problema"/>
                 <field name="pago_move_id" string="Pago"/>
