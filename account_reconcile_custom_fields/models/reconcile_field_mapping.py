@@ -226,16 +226,33 @@ class ReconcileFieldMapping(models.Model):
         :param invoices: recordset de facturas
         :return: recordset de account.move.line
         """
+        import logging
+        _logger = logging.getLogger(__name__)
+
         lines = self.env["account.move.line"].browse()
 
+        _logger.info(f"Getting receivable/payable lines from {len(invoices)} invoices")
+
         for invoice in invoices:
-            lines |= invoice.line_ids.filtered(
+            invoice_lines = invoice.line_ids.filtered(
                 lambda line: line.account_id.account_type in [
                     "asset_receivable",
                     "liability_payable",
                 ]
                 and not line.reconciled
             )
+            if invoice_lines:
+                lines |= invoice_lines
+                _logger.info(f"  Invoice {invoice.name}: {len(invoice_lines)} unreconciled receivable/payable lines")
+            else:
+                # Verificar por qué no hay líneas
+                all_rec_pay = invoice.line_ids.filtered(
+                    lambda line: line.account_id.account_type in ["asset_receivable", "liability_payable"]
+                )
+                if all_rec_pay:
+                    _logger.warning(f"  Invoice {invoice.name}: Has {len(all_rec_pay)} receivable/payable lines but ALL are reconciled")
+                else:
+                    _logger.warning(f"  Invoice {invoice.name}: NO receivable/payable lines found at all!")
 
         return lines
 

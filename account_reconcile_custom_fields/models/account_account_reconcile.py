@@ -182,6 +182,9 @@ class AccountAccountReconcile(models.Model):
 
         mapping = self.custom_field_mapping_id
 
+        # Limpiar conciliación actual primero
+        self.clean_reconcile()
+
         # Buscar todas las órdenes/facturas con facturas pendientes
         # que coincidan con la cuenta y partner actuales
         matching_lines = self._find_all_automatic_matches(mapping)
@@ -198,18 +201,30 @@ class AccountAccountReconcile(models.Model):
                 },
             }
 
-        # Agregar todas las líneas encontradas
-        for line in matching_lines:
-            self._add_account_move_line(line, keep_current=True)
+        _logger.info(f"Adding {len(matching_lines)} lines to reconciliation widget...")
 
+        # Obtener los datos actuales de conciliación
+        data = self.reconcile_data_info
+        if not data:
+            data = {"data": [], "counterparts": []}
+
+        # Agregar todas las líneas encontradas a counterparts
+        for line in matching_lines:
+            if line.id not in data["counterparts"]:
+                data["counterparts"].append(line.id)
+                _logger.info(f"  Added line {line.id} - {line.name}")
+
+        # Recomputar los datos para actualizar el widget
+        self.reconcile_data_info = self._recompute_data(data)
+
+        _logger.info(f"Reconcile data updated. Total counterparts: {len(data['counterparts'])}")
+
+        # Retornar una acción que recargue el formulario para refrescar el widget
         return {
             "type": "ir.actions.client",
-            "tag": "display_notification",
+            "tag": "reload",
             "params": {
-                "title": "Matches Found",
-                "message": f"Found {len(matching_lines)} matching line(s) automatically!",
-                "type": "success",
-                "sticky": False,
+                "message": f"Found and added {len(matching_lines)} matching line(s)!",
             },
         }
 
@@ -331,12 +346,30 @@ class AccountAccountReconcile(models.Model):
         _logger.info(f"Found {len(all_lines)} receivable/payable lines")
 
         # 8. Filtrar por cuenta y partner
-        matching_lines = all_lines.filtered(
-            lambda l: l.account_id == self.account_id and
-                     (not self.partner_id or l.partner_id == self.partner_id)
-        )
+        _logger.info(f"Filtering - Account: {self.account_id.code}, Partner: {self.partner_id.name if self.partner_id else 'None'}")
+        _logger.info(f"Sample lines before filter:")
+        for line in all_lines[:3]:
+            _logger.info(f"  Line {line.id}: Account={line.account_id.code}, Partner={line.partner_id.name if line.partner_id else 'None'}, Reconciled={line.reconciled}")
+
+        # IMPORTANTE: Si no hay partner seleccionado, NO filtrar todas las líneas
+        # Solo filtrar por cuenta
+        if self.partner_id:
+            matching_lines = all_lines.filtered(
+                lambda l: l.account_id == self.account_id and l.partner_id == self.partner_id
+            )
+        else:
+            # Si no hay partner, solo filtrar por cuenta
+            matching_lines = all_lines.filtered(
+                lambda l: l.account_id == self.account_id
+            )
 
         _logger.info(f"Final matching lines after filtering: {len(matching_lines)}")
+
+        # Si aún no hay líneas, mostrar por qué
+        if not matching_lines and all_lines:
+            _logger.warning(f"No lines matched filters! Unique accounts in results: {set(all_lines.mapped('account_id.code'))}")
+            _logger.warning(f"Unique partners in results: {set(all_lines.mapped('partner_id.name'))}")
+
         _logger.info(f"========== FIND ALL MATCHES END ==========")
 
         return matching_lines
