@@ -222,6 +222,7 @@ class ReconcileFieldMapping(models.Model):
     def _get_receivable_payable_lines(self, invoices):
         """
         Obtener líneas de cuentas por cobrar/pagar de las facturas
+        Incluye líneas NO conciliadas Y líneas parcialmente conciliadas (con saldo pendiente)
 
         :param invoices: recordset de facturas
         :return: recordset de account.move.line
@@ -234,23 +235,28 @@ class ReconcileFieldMapping(models.Model):
         _logger.info(f"Getting receivable/payable lines from {len(invoices)} invoices")
 
         for invoice in invoices:
+            # Buscar líneas que:
+            # 1. Sean de cuentas por cobrar/pagar
+            # 2. NO estén totalmente conciliadas (amount_residual != 0)
             invoice_lines = invoice.line_ids.filtered(
                 lambda line: line.account_id.account_type in [
                     "asset_receivable",
                     "liability_payable",
                 ]
-                and not line.reconciled
+                and line.amount_residual != 0  # Incluye NO conciliadas y parcialmente conciliadas
             )
             if invoice_lines:
                 lines |= invoice_lines
-                _logger.info(f"  Invoice {invoice.name}: {len(invoice_lines)} unreconciled receivable/payable lines")
+                for line in invoice_lines:
+                    status = "unreconciled" if not line.reconciled else "partially reconciled"
+                    _logger.info(f"  Invoice {invoice.name}: Line {line.id} - {status}, residual: {line.amount_residual}")
             else:
                 # Verificar por qué no hay líneas
                 all_rec_pay = invoice.line_ids.filtered(
                     lambda line: line.account_id.account_type in ["asset_receivable", "liability_payable"]
                 )
                 if all_rec_pay:
-                    _logger.warning(f"  Invoice {invoice.name}: Has {len(all_rec_pay)} receivable/payable lines but ALL are reconciled")
+                    _logger.warning(f"  Invoice {invoice.name}: Has {len(all_rec_pay)} receivable/payable lines but ALL are fully reconciled (residual=0)")
                 else:
                     _logger.warning(f"  Invoice {invoice.name}: NO receivable/payable lines found at all!")
 

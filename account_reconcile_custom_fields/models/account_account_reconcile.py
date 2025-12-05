@@ -237,7 +237,8 @@ class AccountAccountReconcile(models.Model):
         2. Para cada pago, obtener el valor del campo
         3. Buscar órdenes que tengan ese mismo valor en el campo origen
         4. Obtener las facturas de esas órdenes
-        5. Filtrar por cuenta/partner y agregar
+        5. Obtener las líneas de pagos que coincidieron
+        6. Retornar AMBOS: líneas de facturas + líneas de pagos
         """
         self.ensure_one()
         matching_lines = self.env["account.move.line"].browse()
@@ -258,7 +259,7 @@ class AccountAccountReconcile(models.Model):
             _logger.warning("No target records found!")
             return matching_lines
 
-        # 2. Crear diccionario: {valor_pago: [payment_ids]}
+        # 2. Crear diccionario: {valor_pago: [payment_records]}
         payment_values = {}
         for target_record in target_records:
             if not mapping.target_field_name:
@@ -316,15 +317,19 @@ class AccountAccountReconcile(models.Model):
             _logger.warning("No order values found!")
             return matching_lines
 
-        # 5. Encontrar coincidencias
+        # 5. Encontrar coincidencias y rastrear qué pagos coincidieron
         matched_order_ids = set()
+        matched_payment_ids = set()
+
         for payment_value, payment_ids in payment_values.items():
             for order_value, order_ids in order_values.items():
                 if self._compare_values(order_value, payment_value, mapping.operator):
                     matched_order_ids.update(order_ids)
+                    matched_payment_ids.update(payment_ids)
                     _logger.info(f"MATCH FOUND: '{order_value}' = '{payment_value}'")
 
         _logger.info(f"Total matched orders: {len(matched_order_ids)}")
+        _logger.info(f"Total matched payments: {len(matched_payment_ids)}")
 
         if not matched_order_ids:
             _logger.warning("No matching orders found!")
@@ -336,21 +341,27 @@ class AccountAccountReconcile(models.Model):
 
         _logger.info(f"Found {len(invoices)} invoices from matched orders")
 
-        if not invoices:
-            _logger.warning("No invoices found for matched orders!")
-            return matching_lines
+        # 7. Obtener líneas por cobrar/pagar de esas facturas (incluyendo parcialmente conciliadas)
+        invoice_lines = mapping._get_receivable_payable_lines(invoices)
 
-        # 7. Obtener líneas por cobrar/pagar de esas facturas
-        all_lines = mapping._get_receivable_payable_lines(invoices)
+        _logger.info(f"Found {len(invoice_lines)} invoice receivable/payable lines")
 
-        _logger.info(f"Found {len(all_lines)} receivable/payable lines")
+        # 8. Obtener líneas de los pagos que coincidieron
+        payment_lines = self._get_payment_lines(matched_payment_ids, mapping.target_model)
 
-        # 8. Filtrar SOLO por cuenta (no por partner)
+        _logger.info(f"Found {len(payment_lines)} payment lines")
+
+        # 9. Combinar ambas: líneas de facturas + líneas de pagos
+        all_lines = invoice_lines | payment_lines
+
+        _logger.info(f"Total lines (invoices + payments): {len(all_lines)}")
+
+        # 10. Filtrar SOLO por cuenta (no por partner)
         # Porque las coincidencias pueden ser de diferentes partners
         _logger.info(f"Filtering - Account: {self.account_id.code}, Partner: {self.partner_id.name if self.partner_id else 'None'}")
         _logger.info(f"Sample lines before filter:")
-        for line in all_lines[:3]:
-            _logger.info(f"  Line {line.id}: Account={line.account_id.code}, Partner={line.partner_id.name if line.partner_id else 'None'}, Reconciled={line.reconciled}")
+        for line in all_lines[:5]:
+            _logger.info(f"  Line {line.id}: Account={line.account_id.code}, Partner={line.partner_id.name if line.partner_id else 'None'}, Reconciled={line.reconciled}, Residual={line.amount_residual}")
 
         # SOLO filtrar por cuenta, NO por partner
         # Esto permite conciliar facturas de diferentes partners
@@ -369,8 +380,83 @@ class AccountAccountReconcile(models.Model):
 
         return matching_lines
 
+    def _get_payment_lines(self, payment_ids, target_model):
+        """
+        Obtener las líneas de journal items de los pagos que coincidieron
+        Incluye líneas NO conciliadas Y líneas parcialmente conciliadas (con saldo pendiente)
+
+        :param payment_ids: IDs de pagos/registros que coincidieron
+        :param target_model: modelo destino (account.payment, account.bank.statement.line, account.move.line)
+        :return: recordset de account.move.line
+        """
+        lines = self.env["account.move.line"].browse()
+
+        if not payment_ids:
+            return lines
+
+        if target_model == "account.payment":
+            # Los pagos tienen move_id que contiene las líneas
+            payments = self.env["account.payment"].browse(list(payment_ids))
+            _logger.info(f"Processing {len(payments)} payments to extract lines")
+
+            for payment in payments:
+                if payment.move_id:
+                    # Obtener líneas de cuentas por cobrar/pagar del asiento de pago
+                    # que tengan saldo pendiente (amount_residual != 0)
+                    payment_lines = payment.move_id.line_ids.filtered(
+                        lambda line: line.account_id.account_type in [
+                            "asset_receivable",
+                            "liability_payable",
+                        ]
+                        and line.amount_residual != 0  # Incluye NO conciliadas y parcialmente conciliadas
+                    )
+                    if payment_lines:
+                        lines |= payment_lines
+                        for line in payment_lines:
+                            status = "unreconciled" if not line.reconciled else "partially reconciled"
+                            _logger.info(f"  Payment {payment.name}: Line {line.id} - {status}, residual: {line.amount_residual}")
+
+        elif target_model == "account.bank.statement.line":
+            # Las líneas bancarias tienen move_id
+            bank_lines = self.env["account.bank.statement.line"].browse(list(payment_ids))
+            _logger.info(f"Processing {len(bank_lines)} bank statement lines to extract move lines")
+
+            for bank_line in bank_lines:
+                if bank_line.move_id:
+                    # Obtener líneas de cuentas por cobrar/pagar del asiento
+                    # que tengan saldo pendiente (amount_residual != 0)
+                    move_lines = bank_line.move_id.line_ids.filtered(
+                        lambda line: line.account_id.account_type in [
+                            "asset_receivable",
+                            "liability_payable",
+                        ]
+                        and line.amount_residual != 0  # Incluye NO conciliadas y parcialmente conciliadas
+                    )
+                    if move_lines:
+                        lines |= move_lines
+                        for line in move_lines:
+                            status = "unreconciled" if not line.reconciled else "partially reconciled"
+                            _logger.info(f"  Bank Line {bank_line.name}: Line {line.id} - {status}, residual: {line.amount_residual}")
+
+        elif target_model == "account.move.line":
+            # Ya son move.line, solo filtrar por tipo de cuenta y saldo pendiente
+            all_lines = self.env["account.move.line"].browse(list(payment_ids))
+            lines = all_lines.filtered(
+                lambda line: line.account_id.account_type in [
+                    "asset_receivable",
+                    "liability_payable",
+                ]
+                and line.amount_residual != 0  # Incluye NO conciliadas y parcialmente conciliadas
+            )
+            _logger.info(f"Processing {len(all_lines)} move lines, {len(lines)} have pending residual (unreconciled or partial)")
+
+        return lines
+
     def _search_all_target_records(self, mapping):
-        """Buscar todos los registros en el modelo destino"""
+        """
+        Buscar todos los registros en el modelo destino
+        Incluye tanto registros NO conciliados como parcialmente conciliados
+        """
         domain = [("company_id", "=", self.company_id.id)]
 
         # Agregar filtros adicionales si existen
@@ -383,14 +469,15 @@ class AccountAccountReconcile(models.Model):
 
         # Filtros específicos por tipo de modelo
         if mapping.target_model == "account.payment":
+            # Incluir pagos posted Y reconciled (pueden tener saldo pendiente en conciliaciones parciales)
             domain.append(("state", "in", ["posted", "reconciled"]))
         elif mapping.target_model == "account.bank.statement.line":
             domain.append(("state", "=", "posted"))
         elif mapping.target_model == "account.move.line":
-            domain.extend([
-                ("parent_state", "=", "posted"),
-                ("reconciled", "=", False),
-            ])
+            # Para move.line, buscar todas las líneas posted
+            # El filtro de amount_residual se aplica después en _get_payment_lines()
+            domain.append(("parent_state", "=", "posted"))
+            # NO filtrar por reconciled aquí para incluir parcialmente conciliadas
 
         return self.env[mapping.target_model].search(domain)
 
