@@ -6,6 +6,10 @@
         <field name="model">partner.inconsistency</field>
         <field name="arch" type="xml">
             <search>
+                <button name="%(action_scan_inconsistencies)d" 
+                        string="🔍 Buscar Inconsistencias" 
+                        type="action" 
+                        class="oe_highlight"/>
                 <field name="referencia_comun"/>
                 <field name="proveedor_pago"/>
                 <field name="proveedor_factura"/>
