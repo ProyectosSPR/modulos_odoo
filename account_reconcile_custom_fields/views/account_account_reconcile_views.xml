@@ -8,6 +8,7 @@
         <field name="arch" type="xml">
             <!-- Add custom filter fields (hidden) -->
             <xpath expr="//field[@name='is_reconciled']" position="after">
+                <field name="company_id" invisible="1"/>
                 <field name="custom_field_mapping_id" invisible="1"/>
                 <field name="custom_filter_value" invisible="1"/>
                 <field name="flexible_mode" invisible="1"/>
