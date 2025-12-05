@@ -160,136 +160,79 @@ class PartnerInconsistency(models.TransientModel):
 
     def _find_partner_inconsistencies_for_mapping(self, mapping):
         """
-        Detecta inconsistencias para un mapeo específico y devuelve una lista de valores.
-        Esta es la lógica central de detección.
+        Detecta inconsistencias para un mapeo específico, siguiendo un flujo "referencia por referencia".
+        1. Obtiene todas las referencias únicas del modelo origen.
+        2. Para cada referencia, busca todos los apuntes (facturas y pagos) asociados.
+        3. Si en el grupo de apuntes de una referencia hay más de un proveedor, lo marca como inconsistencia.
         """
-        domain = [
-            ("reconciled", "=", False),
-            ("move_id.state", "=", "posted"),
-            ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
-            ("amount_residual", "!=", 0),
-        ]
-        _logger.info(f"  Dominio de búsqueda de apuntes: {domain}")
-        all_lines = self.env["account.move.line"].search(domain)
-        _logger.info(f"  Encontrados {len(all_lines)} apuntes para el mapeo que cumplen el dominio.")
+        _logger.info(f"Procesando mapeo '{mapping.name}' con flujo 'referencia por referencia'")
 
-        if not all_lines:
+        # 1. Obtener todas las referencias únicas del modelo de origen.
+        source_field = mapping.source_field_name
+        
+        # Omitimos registros sin valor en el campo de referencia y evitamos duplicados.
+        all_source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
+        unique_refs = all_source_records.mapped(source_field)
+        _logger.info(f"  Encontradas {len(unique_refs)} referencias únicas en el campo '{source_field}' del modelo '{mapping.source_model}'.")
+
+        if not unique_refs:
             return []
 
-        groups = self._group_lines_by_reference(all_lines, mapping)
-        _logger.info(f"  Agrupados en {len(groups)} grupos por referencia.")
-
+        # Usamos el modelo de mapeo para usar sus funciones de búsqueda.
+        MappingModel = self.env['reconcile.field.mapping']
         inconsistencies_vals = []
-        for ref_value, lines in groups.items():
-            if len(lines) < 2:
+
+        # 2. Iterar sobre cada referencia única.
+        for ref_value in unique_refs:
+            # 3. Construir el "expediente" para esta referencia.
+            # Usamos las funciones del propio mapeo para encontrar los apuntes relacionados.
+            
+            # Construir un "pseudo" registro de destino para la búsqueda
+            # Esto simula un apunte de pago con la referencia que estamos buscando.
+            target_search_record = type('TargetSearch', (object,), {
+                mapping.target_field_name: ref_value,
+                '__getitem__': lambda self, key: self.__dict__[key]
+            })()
+            
+            # Encontrar apuntes de factura
+            invoice_lines = mapping.find_matching_lines(target_search_record)
+
+            # Encontrar apuntes de pago
+            payment_lines = self.env['account.move.line'].search([
+                (mapping.target_field_name, '=', ref_value),
+                ("reconciled", "=", False),
+                ("move_id.state", "=", "posted"),
+                ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
+                ("amount_residual", "!=", 0),
+            ])
+
+            all_lines_for_ref = (invoice_lines | payment_lines)
+
+            if len(all_lines_for_ref) < 2:
                 continue
 
-            partners = lines.mapped("partner_id")
-            if len(partners) <= 1:
-                continue
+            # 4. Analizar el "expediente".
+            partners = all_lines_for_ref.mapped('partner_id')
+            if len(partners) > 1:
+                _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
+                _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
 
-            # --- LOG MEJORADO ---
-            _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
-            _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
-            for line in lines:
-                _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}, Tipo Mov: {line.move_id.move_type}")
-            # --- FIN LOG MEJORADO ---
-
-            # --- Lógica v5: Mostrar TODAS las inconsistencias ---
-            anchor_line = lines[0]
-            anchor_partner = anchor_line.partner_id
-
-            # Iterar sobre todas las demás líneas para encontrar conflictos con el ancla
-            for other_line in lines:
-                if other_line.id == anchor_line.id:
-                    continue
-
-                if other_line.partner_id and other_line.partner_id != anchor_partner:
-                    # Se encontró una línea con un proveedor diferente. Se crea un registro.
-                    vals = {
-                        "referencia_comun": ref_value,
-                        "pago_line_id": other_line.id,
-                        "factura_line_id": anchor_line.id,
-                        "mapping_id": mapping.id,
-                        "tipo_problema": "Discrepancia de Proveedor",
-                    }
-                    inconsistencies_vals.append(vals)
+                # Lógica para mostrar todas las combinaciones conflictivas
+                anchor_line = all_lines_for_ref[0]
+                for other_line in all_lines_for_ref[1:]:
+                    if other_line.partner_id != anchor_line.partner_id:
+                        vals = {
+                            'referencia_comun': ref_value,
+                            'pago_line_id': other_line.id,
+                            'factura_line_id': anchor_line.id,
+                            'mapping_id': mapping.id,
+                            'tipo_problema': 'Discrepancia de Proveedor',
+                        }
+                        inconsistencies_vals.append(vals)
         
         return inconsistencies_vals
 
-    def _group_lines_by_reference(self, lines, mapping):
-        """
-        Agrupar líneas de apuntes por el valor de referencia del mapeo
 
-        :param lines: recordset de account.move.line
-        :param mapping: reconcile.field.mapping
-        :return: dict {ref_value: recordset de lines}
-        """
-        groups = {}
-
-        for line in lines:
-            # Obtener el valor de referencia para esta línea
-            ref_value = self._get_reference_value_for_line(line, mapping)
-
-            if not ref_value:
-                continue
-
-            if ref_value not in groups:
-                groups[ref_value] = self.env["account.move.line"].browse()
-
-            groups[ref_value] |= line
-
-        return groups
-
-    def _get_reference_value_for_line(self, line, mapping):
-        """
-        Obtiene dinámicamente el valor de referencia para una línea, basándose
-        estrictamente en los campos definidos en el mapeo.
-        """
-        _logger.info(f"    [Extracción Dinámica] Procesando línea {line.id} con mapeo '{mapping.name}'...")
-
-        # Lista de posibles ubicaciones para encontrar el valor, usando los campos del mapeo.
-        # Se verifica la existencia del atributo antes de intentar acceder.
-
-        # 1. Directamente en la línea (común para 'target_field_name')
-        if hasattr(line, mapping.target_field_name):
-            value = line[mapping.target_field_name]
-            if value:
-                value = getattr(value, 'name', value) # Obtiene .name si es un m2o, si no, el valor mismo
-                _logger.info(f"      -> Valor encontrado en 'line.{mapping.target_field_name}': {value}")
-                return str(value)
-
-        # 2. Directamente en el asiento contable de la línea (común para campos en 'account.move')
-        if hasattr(line.move_id, mapping.source_field_name):
-            value = line.move_id[mapping.source_field_name]
-            if value:
-                value = getattr(value, 'name', value)
-                _logger.info(f"      -> Valor encontrado en 'move_id.{mapping.source_field_name}': {value}")
-                return str(value)
-
-        # 3. A través de la relación a Órdenes de Venta (si el mapeo lo especifica)
-        if mapping.source_model == "sale.order" and line.move_id.invoice_line_ids:
-            for inv_line in line.move_id.invoice_line_ids.filtered(lambda l: not l.display_type):
-                for sale_line in inv_line.sale_line_ids:
-                    if sale_line.order_id and hasattr(sale_line.order_id, mapping.source_field_name):
-                        value = sale_line.order_id[mapping.source_field_name]
-                        if value:
-                            value = getattr(value, 'name', value)
-                            _logger.info(f"      -> Valor encontrado vía SO en '{mapping.source_field_name}': {value}")
-                            return str(value)
-
-        # 4. A través de la relación a Órdenes de Compra (si el mapeo lo especifica)
-        if mapping.source_model == "purchase.order" and line.move_id.invoice_line_ids:
-            for inv_line in line.move_id.invoice_line_ids.filtered(lambda l: not l.display_type):
-                if inv_line.purchase_line_id and hasattr(inv_line.purchase_line_id.order_id, mapping.source_field_name):
-                    value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
-                    if value:
-                        value = getattr(value, 'name', value)
-                        _logger.info(f"      -> Valor encontrado vía PO en '{mapping.source_field_name}': {value}")
-                        return str(value)
-        
-        _logger.debug(f"      -> No se encontró valor para la línea {line.id} usando el mapeo '{mapping.name}'. La línea será ignorada en este agrupamiento.")
-        return False # No hay fallback. Si el mapeo no arroja un valor, no se puede agrupar.
 
     def action_correct_partner_on_payments(self):
         """
