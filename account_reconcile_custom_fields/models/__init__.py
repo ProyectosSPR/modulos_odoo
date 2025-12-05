@@ -3,3 +3,4 @@
 from . import reconcile_field_mapping
 from . import account_bank_statement_line
 from . import account_account_reconcile
+from . import partner_inconsistency

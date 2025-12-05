@@ -3,3 +3,5 @@ access_reconcile_field_mapping_user,reconcile.field.mapping user,model_reconcile
 access_reconcile_field_mapping_manager,reconcile.field.mapping manager,model_reconcile_field_mapping,account.group_account_manager,1,1,1,1
 access_account_account_reconcile_custom_user,account.account.reconcile.custom user,model_account_account_reconcile_custom,account.group_account_invoice,1,1,0,0
 access_account_account_reconcile_custom_manager,account.account.reconcile.custom manager,model_account_account_reconcile_custom,account.group_account_manager,1,1,0,0
+access_partner_inconsistency_user,partner.inconsistency user,model_partner_inconsistency,account.group_account_invoice,1,1,1,1
+access_partner_inconsistency_manager,partner.inconsistency manager,model_partner_inconsistency,account.group_account_manager,1,1,1,1

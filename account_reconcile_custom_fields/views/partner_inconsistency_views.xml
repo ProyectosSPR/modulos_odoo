@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Tree View for Partner Inconsistencies -->
+    <record id="partner_inconsistency_tree_view" model="ir.ui.view">
+        <field name="name">partner.inconsistency.tree</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="true" edit="false" decoration-danger="True">
+                <field name="referencia_comun"/>
+                <field name="tipo_problema"/>
+                <field name="pago_move_id" string="Pago"/>
+                <field name="proveedor_pago"/>
+                <field name="monto_pago" sum="Total Pagos"/>
+                <field name="factura_move_id" string="Factura"/>
+                <field name="proveedor_factura"/>
+                <field name="monto_factura" sum="Total Facturas"/>
+                <field name="cuenta_id"/>
+                <field name="mapping_id"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Partner Inconsistencies -->
+    <record id="partner_inconsistency_form_view" model="ir.ui.view">
+        <field name="name">partner.inconsistency.form</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="arch" type="xml">
+            <form create="false" delete="false" edit="false">
+                <sheet>
+                    <group>
+                        <group string="Información General">
+                            <field name="referencia_comun"/>
+                            <field name="tipo_problema"/>
+                            <field name="mapping_id"/>
+                        </group>
+                        <group string="Montos">
+                            <field name="monto_pago"/>
+                            <field name="monto_factura"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Información del Pago">
+                            <field name="pago_line_id"/>
+                            <field name="pago_move_id"/>
+                            <field name="proveedor_pago_id"/>
+                        </group>
+                        <group string="Información de la Factura">
+                            <field name="factura_line_id"/>
+                            <field name="factura_move_id"/>
+                            <field name="proveedor_factura_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="cuenta_id"/>
+                        <field name="company_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Server Action: Correct Partner on Payments -->
+    <record id="action_server_correct_partner" model="ir.actions.server">
+        <field name="name">Corregir Proveedor del Pago (usar de la Factura)</field>
+        <field name="model_id" ref="model_partner_inconsistency"/>
+        <field name="binding_model_id" ref="model_partner_inconsistency"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_correct_partner_on_payments()
+        </field>
+    </record>
+
+    <!-- Window Action: Find Inconsistencies -->
+    <record id="action_find_partner_inconsistencies" model="ir.actions.act_window">
+        <field name="name">Corregir Inconsistencias de Proveedores</field>
+        <field name="res_model">partner.inconsistency</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="domain">[]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No se encontraron inconsistencias de proveedores
+            </p>
+            <p>
+                Esta herramienta busca apuntes de pagos y facturas que deberían
+                coincidir por una referencia (ej. número de orden) pero tienen
+                proveedores diferentes.
+            </p>
+            <p>
+                <strong>¿Qué hace?</strong>
+            </p>
+            <ul>
+                <li>Agrupa apuntes no conciliados por referencia</li>
+                <li>Detecta grupos con diferentes proveedores</li>
+                <li>Permite corregir el proveedor del pago para que coincida con la factura</li>
+            </ul>
+            <p>
+                <strong>¿Cómo usar?</strong>
+            </p>
+            <ol>
+                <li>Haz clic en "Buscar Inconsistencias" para escanear</li>
+                <li>Revisa los resultados en la tabla</li>
+                <li>Selecciona los registros a corregir</li>
+                <li>Usa "Acción > Corregir Proveedor del Pago"</li>
+            </ol>
+            <p>
+                <em>Nota: Esta herramienta NO concilia, solo limpia los datos
+                para que la conciliación funcione correctamente.</em>
+            </p>
+        </field>
+    </record>
+
+    <!-- Client Action Button: Scan for Inconsistencies -->
+    <record id="action_scan_inconsistencies" model="ir.actions.server">
+        <field name="name">Buscar Inconsistencias</field>
+        <field name="model_id" ref="model_partner_inconsistency"/>
+        <field name="state">code</field>
+        <field name="code">
+action = model.find_inconsistencies()
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem
+        id="menu_partner_inconsistency"
+        name="Corregir Inconsistencias"
+        parent="account.menu_finance_entries_actions"
+        action="action_find_partner_inconsistencies"
+        sequence="12"/>
+
+</odoo>

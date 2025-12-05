@@ -19,6 +19,7 @@
         "views/reconcile_field_mapping_views.xml",
         "views/account_bank_statement_line_views.xml",
         "views/account_account_reconcile_views.xml",
+        "views/partner_inconsistency_views.xml",
     ],
     "demo": [
         "demo/demo_data.xml",
