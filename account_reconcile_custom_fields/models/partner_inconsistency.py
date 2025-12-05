@@ -193,7 +193,7 @@ class PartnerInconsistency(models.TransientModel):
                 _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}, Tipo Mov: {line.move_id.move_type}")
             # --- FIN LOG MEJORADO ---
 
-            # --- Lógica Definitiva v3: Si hay más de un proveedor, es una inconsistencia. ---
+            # --- Lógica Definitiva v4: Si hay más de un proveedor, es una inconsistencia. ---
             # No se discrimina por tipo de apunte, solo por la discrepancia de proveedor.
             
             anchor_line = lines[0]
@@ -202,16 +202,10 @@ class PartnerInconsistency(models.TransientModel):
             if conflicting_line:
                 # Para la UI, simplemente mostramos los dos apuntes en conflicto.
                 # El usuario decidirá cuál es el proveedor correcto y la acción lo corregirá.
-                # Asignamos el de saldo negativo a "pago" como heurística visual.
-                if anchor_line.balance < 0:
-                    pago_line, fact_line = anchor_line, conflicting_line
-                else:
-                    fact_line, pago_line = anchor_line, conflicting_line
-
                 vals = {
                     "referencia_comun": ref_value,
-                    "pago_line_id": pago_line.id,
-                    "factura_line_id": fact_line.id,
+                    "pago_line_id": conflicting_line.id,
+                    "factura_line_id": anchor_line.id,
                     "mapping_id": mapping.id,
                     "tipo_problema": "Discrepancia de Proveedor",
                 }
@@ -221,8 +215,6 @@ class PartnerInconsistency(models.TransientModel):
                 _logger.warning(f"      Ref '{ref_value}': Grupo marcado como inconsistente pero no se pudo aislar un par de apuntes conflictivos.")
 
         return inconsistencies_vals
-
-
 
     def _group_lines_by_reference(self, lines, mapping):
         """
@@ -264,6 +256,8 @@ class PartnerInconsistency(models.TransientModel):
                             if sale_line.order_id and hasattr(sale_line.order_id, mapping.source_field_name):
                                 value = sale_line.order_id[mapping.source_field_name]
                                 if value:
+                                    if hasattr(value, 'name'):
+                                        value = value.name
                                     _logger.info(f"      -> Valor encontrado vía SO: {value}")
                                     return str(value)
 
@@ -272,12 +266,16 @@ class PartnerInconsistency(models.TransientModel):
                         if inv_line.purchase_line_id and hasattr(inv_line.purchase_line_id.order_id, mapping.source_field_name):
                             value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
                             if value:
+                                if hasattr(value, 'name'):
+                                    value = value.name
                                 _logger.info(f"      -> Valor encontrado vía PO: {value}")
                                 return str(value)
 
                 elif mapping.source_model == "account.move" and hasattr(line.move_id, mapping.source_field_name):
                     value = line.move_id[mapping.source_field_name]
                     if value:
+                        if hasattr(value, 'name'):
+                            value = value.name
                         _logger.info(f"      -> Valor encontrado en Asiento Contable (move): {value}")
                         return str(value)
 
@@ -285,6 +283,8 @@ class PartnerInconsistency(models.TransientModel):
                 if hasattr(line.move_id, mapping.target_field_name):
                     value = line.move_id[mapping.target_field_name]
                     if value:
+                        if hasattr(value, 'name'):
+                            value = value.name
                         _logger.info(f"      -> Valor encontrado en Asiento Contable (target): {value}")
                         return str(value)
             except Exception as e:
@@ -295,6 +295,8 @@ class PartnerInconsistency(models.TransientModel):
             if hasattr(line, mapping.target_field_name):
                 value = line[mapping.target_field_name]
                 if value:
+                    if hasattr(value, 'name'):
+                        value = value.name
                     _logger.info(f"      -> Valor encontrado en la propia Línea (target): {value}")
                     return str(value)
         except Exception as e:
