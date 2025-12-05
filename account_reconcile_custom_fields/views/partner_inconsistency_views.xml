@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- Search View for Partner Inconsistencies with Search Button -->
+    <record id="partner_inconsistency_search_view" model="ir.ui.view">
+        <field name="name">partner.inconsistency.search</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="referencia_comun"/>
+                <field name="proveedor_pago"/>
+                <field name="proveedor_factura"/>
+                <field name="mapping_id"/>
+                <separator/>
+                <filter string="Por Referencia" name="group_referencia" context="{'group_by': 'referencia_comun'}"/>
+                <filter string="Por Mapeo" name="group_mapping" context="{'group_by': 'mapping_id'}"/>
+            </search>
+        </field>
+    </record>
+
     <!-- Tree View for Partner Inconsistencies -->
     <record id="partner_inconsistency_tree_view" model="ir.ui.view">
         <field name="name">partner.inconsistency.tree</field>
@@ -7,9 +24,9 @@
         <field name="arch" type="xml">
             <tree create="false" delete="true" edit="false" decoration-danger="True">
                 <header>
-                    <button name="%(action_scan_inconsistencies)d"
-                            string="Buscar Inconsistencias"
-                            type="action"
+                    <button name="find_inconsistencies" 
+                            string="🔍 Buscar Inconsistencias" 
+                            type="object" 
                             class="btn-primary"/>
                 </header>
                 <field name="referencia_comun"/>
