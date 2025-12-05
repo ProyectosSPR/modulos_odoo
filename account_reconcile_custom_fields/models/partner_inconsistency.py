@@ -164,12 +164,14 @@ class PartnerInconsistency(models.TransientModel):
         Esta es la lógica central de detección.
         """
         domain = [
+            ("reconciled", "=", False),
+            ("move_id.state", "=", "posted"),
             ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
             ("amount_residual", "!=", 0),
-            ("reconciled", "=", False),
         ]
+        _logger.info(f"  Dominio de búsqueda de apuntes: {domain}")
         all_lines = self.env["account.move.line"].search(domain)
-        _logger.info(f"  Encontrados {len(all_lines)} apuntes no conciliados para el mapeo.")
+        _logger.info(f"  Encontrados {len(all_lines)} apuntes para el mapeo que cumplen el dominio.")
 
         if not all_lines:
             return []
@@ -193,27 +195,26 @@ class PartnerInconsistency(models.TransientModel):
                 _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}, Tipo Mov: {line.move_id.move_type}")
             # --- FIN LOG MEJORADO ---
 
-            # --- Lógica Definitiva v4: Si hay más de un proveedor, es una inconsistencia. ---
-            # No se discrimina por tipo de apunte, solo por la discrepancia de proveedor.
-            
+            # --- Lógica v5: Mostrar TODAS las inconsistencias ---
             anchor_line = lines[0]
-            conflicting_line = next((l for l in lines if l.partner_id != anchor_line.partner_id), None)
+            anchor_partner = anchor_line.partner_id
 
-            if conflicting_line:
-                # Para la UI, simplemente mostramos los dos apuntes en conflicto.
-                # El usuario decidirá cuál es el proveedor correcto y la acción lo corregirá.
-                vals = {
-                    "referencia_comun": ref_value,
-                    "pago_line_id": conflicting_line.id,
-                    "factura_line_id": anchor_line.id,
-                    "mapping_id": mapping.id,
-                    "tipo_problema": "Discrepancia de Proveedor",
-                }
-                inconsistencies_vals.append(vals)
-            else:
-                # Este caso es raro si len(partners)>1, pero es una salvaguarda.
-                _logger.warning(f"      Ref '{ref_value}': Grupo marcado como inconsistente pero no se pudo aislar un par de apuntes conflictivos.")
+            # Iterar sobre todas las demás líneas para encontrar conflictos con el ancla
+            for other_line in lines:
+                if other_line.id == anchor_line.id:
+                    continue
 
+                if other_line.partner_id and other_line.partner_id != anchor_partner:
+                    # Se encontró una línea con un proveedor diferente. Se crea un registro.
+                    vals = {
+                        "referencia_comun": ref_value,
+                        "pago_line_id": other_line.id,
+                        "factura_line_id": anchor_line.id,
+                        "mapping_id": mapping.id,
+                        "tipo_problema": "Discrepancia de Proveedor",
+                    }
+                    inconsistencies_vals.append(vals)
+        
         return inconsistencies_vals
 
     def _group_lines_by_reference(self, lines, mapping):
