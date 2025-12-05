@@ -12,7 +12,7 @@ class AccountAccountReconcile(models.Model):
         string="Custom Field Mapping",
         compute="_compute_custom_filter_fields",
         inverse="_inverse_custom_field_mapping_id",
-        domain="[('active', '=', True), ('target_model', '=', 'account.move.line')]",
+        domain="[('active', '=', True), ('target_model', 'in', ['account.move.line', 'account.payment', 'account.bank.statement.line'])]",
     )
 
     # Campos de filtro dinámicos
@@ -131,6 +131,19 @@ class AccountAccountReconcile(models.Model):
 
         # Obtener líneas por cobrar/pagar
         matching_lines = mapping._get_receivable_payable_lines(invoices)
+
+        # Si no hay líneas directas, buscar desde pagos relacionados
+        if not matching_lines and mapping.target_model == 'account.payment':
+            # Buscar pagos relacionados con estas facturas
+            payments = self.env['account.payment'].search([
+                ('reconciled_invoice_ids', 'in', invoices.ids)
+            ])
+            # Obtener las líneas de movimiento de esos pagos
+            for payment in payments:
+                matching_lines |= payment.line_ids.filtered(
+                    lambda l: l.account_id.account_type in ['asset_receivable', 'liability_payable']
+                    and not l.reconciled
+                )
 
         # Filtrar por cuenta y partner si aplica
         if self.account_id:
