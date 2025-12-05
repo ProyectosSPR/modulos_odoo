@@ -170,34 +170,32 @@ class PartnerInconsistency(models.TransientModel):
         # 1. Obtener todas las referencias únicas del modelo de origen.
         source_field = mapping.source_field_name
         
-        # Omitimos registros sin valor en el campo de referencia y evitamos duplicados.
-        all_source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
-        unique_refs = all_source_records.mapped(source_field)
-        _logger.info(f"  Encontradas {len(unique_refs)} referencias únicas en el campo '{source_field}' del modelo '{mapping.source_model}'.")
+        try:
+            all_source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
+            unique_refs = all_source_records.mapped(source_field)
+            _logger.info(f"  Encontradas {len(unique_refs)} referencias únicas en el campo '{source_field}' del modelo '{mapping.source_model}'.")
+        except Exception as e:
+            _logger.error(f"  Error al buscar referencias únicas en {mapping.source_model} con campo {source_field}: {e}")
+            return []
 
         if not unique_refs:
             return []
 
-        # Usamos el modelo de mapeo para usar sus funciones de búsqueda.
-        MappingModel = self.env['reconcile.field.mapping']
         inconsistencies_vals = []
 
         # 2. Iterar sobre cada referencia única.
         for ref_value in unique_refs:
             # 3. Construir el "expediente" para esta referencia.
-            # Usamos las funciones del propio mapeo para encontrar los apuntes relacionados.
             
-            # Construir un "pseudo" registro de destino para la búsqueda
-            # Esto simula un apunte de pago con la referencia que estamos buscando.
-            target_search_record = type('TargetSearch', (object,), {
-                mapping.target_field_name: ref_value,
-                '__getitem__': lambda self, key: self.__dict__[key]
-            })()
-            
-            # Encontrar apuntes de factura
-            invoice_lines = mapping.find_matching_lines(target_search_record)
+            # --- Encontrar apuntes de FACTURA ---
+            # 3.1. Encontrar los registros origen (ej: sale.order) que tienen esta referencia.
+            source_records = mapping._get_source_records(ref_value)
+            # 3.2. A partir de esos registros, encontrar las facturas asociadas.
+            invoices = mapping._get_invoices_from_source(source_records)
+            # 3.3. De esas facturas, obtener los apuntes contables relevantes.
+            invoice_lines = mapping._get_receivable_payable_lines(invoices)
 
-            # Encontrar apuntes de pago
+            # --- Encontrar apuntes de PAGO ---
             payment_lines = self.env['account.move.line'].search([
                 (mapping.target_field_name, '=', ref_value),
                 ("reconciled", "=", False),
@@ -222,7 +220,7 @@ class PartnerInconsistency(models.TransientModel):
                 for other_line in all_lines_for_ref[1:]:
                     if other_line.partner_id != anchor_line.partner_id:
                         vals = {
-                            'referencia_comun': ref_value,
+                            'referencia_comun': str(ref_value),
                             'pago_line_id': other_line.id,
                             'factura_line_id': anchor_line.id,
                             'mapping_id': mapping.id,
