@@ -23,7 +23,6 @@ class AccountAccountReconcile(models.Model):
         help="Enter the value to search for in the source model",
     )
 
-    @api.depends("id")
     def _compute_custom_filter_fields(self):
         """Obtener los valores de filtro desde el modelo de datos"""
         data_obj = self.env["account.account.reconcile.data"]
