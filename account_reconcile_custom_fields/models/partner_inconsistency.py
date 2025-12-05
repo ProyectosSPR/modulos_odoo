@@ -193,38 +193,32 @@ class PartnerInconsistency(models.TransientModel):
                 _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}, Tipo Mov: {line.move_id.move_type}")
             # --- FIN LOG MEJORADO ---
 
-            # --- Lógica Robusta de Clasificación y Emparejamiento ---
-            invoice_lines = lines.filtered(lambda l: l.move_id.is_invoice(include_receipts=True))
-            payment_lines = lines - invoice_lines
-
-            # Se necesita al menos una factura y un pago para tener un caso claro de corrección
-            if not invoice_lines or not payment_lines:
-                _logger.warning(f"      Omitiendo ref '{ref_value}': El grupo no contiene una combinación de factura(s) y pago(s).")
-                continue
-
-            # Tomamos la primera factura como ancla para definir el proveedor "correcto"
-            anchor_invoice = invoice_lines[0]
-            target_partner = anchor_invoice.partner_id
-
-            # Buscamos el primer pago que tenga un proveedor incorrecto para crear el par
-            inconsistent_payment_found = False
-            for payment in payment_lines:
-                if payment.partner_id and payment.partner_id != target_partner:
-                    vals = {
-                        "referencia_comun": ref_value,
-                        "pago_line_id": payment.id,
-                        "factura_line_id": anchor_invoice.id,
-                        "mapping_id": mapping.id,
-                        "tipo_problema": "Discrepancia de Proveedor",
-                    }
-                    inconsistencies_vals.append(vals)
-                    inconsistent_payment_found = True
-                    # Creamos solo un caso por grupo para que el usuario lo corrija.
-                    # Una vez corregido, en la siguiente ejecución se pueden revelar otros.
-                    break
+            # --- Lógica Definitiva v3: Si hay más de un proveedor, es una inconsistencia. ---
+            # No se discrimina por tipo de apunte, solo por la discrepancia de proveedor.
             
-            if not inconsistent_payment_found:
-                 _logger.info(f"      Ref '{ref_value}': Grupo con múltiples proveedores pero los pagos ya coinciden con el proveedor de la factura principal.")
+            anchor_line = lines[0]
+            conflicting_line = next((l for l in lines if l.partner_id != anchor_line.partner_id), None)
+
+            if conflicting_line:
+                # Para la UI, simplemente mostramos los dos apuntes en conflicto.
+                # El usuario decidirá cuál es el proveedor correcto y la acción lo corregirá.
+                # Asignamos el de saldo negativo a "pago" como heurística visual.
+                if anchor_line.balance < 0:
+                    pago_line, fact_line = anchor_line, conflicting_line
+                else:
+                    fact_line, pago_line = anchor_line, conflicting_line
+
+                vals = {
+                    "referencia_comun": ref_value,
+                    "pago_line_id": pago_line.id,
+                    "factura_line_id": fact_line.id,
+                    "mapping_id": mapping.id,
+                    "tipo_problema": "Discrepancia de Proveedor",
+                }
+                inconsistencies_vals.append(vals)
+            else:
+                # Este caso es raro si len(partners)>1, pero es una salvaguarda.
+                _logger.warning(f"      Ref '{ref_value}': Grupo marcado como inconsistente pero no se pudo aislar un par de apuntes conflictivos.")
 
         return inconsistencies_vals
 
