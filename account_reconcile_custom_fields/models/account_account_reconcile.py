@@ -1,6 +1,9 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+import logging
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class AccountAccountReconcile(models.Model):
@@ -214,66 +217,34 @@ class AccountAccountReconcile(models.Model):
         """
         Buscar TODAS las coincidencias automáticas comparando campos
 
-        Lógica:
-        1. Buscar todas las facturas pendientes para esta cuenta/partner
-        2. Para cada factura, obtener las órdenes relacionadas
-        3. Para cada orden, obtener el valor del campo origen
-        4. Buscar en TODOS los registros destino (pagos) si tienen ese valor
-        5. Si coincide, agregar las líneas
+        Lógica INVERSA (más eficiente):
+        1. Buscar TODOS los pagos que tengan valor en el campo destino
+        2. Para cada pago, obtener el valor del campo
+        3. Buscar órdenes que tengan ese mismo valor en el campo origen
+        4. Obtener las facturas de esas órdenes
+        5. Filtrar por cuenta/partner y agregar
         """
         self.ensure_one()
         matching_lines = self.env["account.move.line"].browse()
 
-        # 1. Obtener todas las facturas pendientes para esta cuenta/partner
-        invoice_lines = self.env["account.move.line"].search([
-            ("account_id", "=", self.account_id.id),
-            ("partner_id", "=", self.partner_id.id) if self.partner_id else ("partner_id", "!=", False),
-            ("reconciled", "=", False),
-            ("parent_state", "=", "posted"),
-            ("account_id.account_type", "in", ["asset_receivable", "liability_payable"]),
-        ])
+        _logger.info(f"========== FIND ALL MATCHES START ==========")
+        _logger.info(f"Account: {self.account_id.code} - Partner: {self.partner_id.name if self.partner_id else 'All'}")
+        _logger.info(f"Mapping: {mapping.name}")
+        _logger.info(f"Source: {mapping.source_model}.{mapping.source_field_name}")
+        _logger.info(f"Target: {mapping.target_model}.{mapping.target_field_name}")
+        _logger.info(f"Operator: {mapping.operator}")
 
-        if not invoice_lines:
-            return matching_lines
-
-        # 2. Para cada línea, obtener las facturas y sus órdenes relacionadas
-        invoices = invoice_lines.mapped("move_id")
-
-        # Diccionario: {valor_campo_origen: [invoice_ids]}
-        value_to_invoices = {}
-
-        for invoice in invoices:
-            # Obtener órdenes relacionadas
-            source_records = self.env[mapping.source_model].browse()
-
-            if mapping.source_model == "sale.order":
-                source_records = invoice.invoice_line_ids.mapped("sale_line_ids.order_id")
-            elif mapping.source_model == "purchase.order":
-                source_records = invoice.invoice_line_ids.mapped("purchase_line_id.order_id")
-            elif mapping.source_model == "account.move":
-                source_records = invoice
-
-            # Para cada orden, obtener el valor del campo
-            for source_record in source_records:
-                if source_record and mapping.source_field_name:
-                    field_value = source_record[mapping.source_field_name]
-                    if field_value:
-                        # Convertir a string para comparación
-                        field_value_str = str(field_value).strip()
-                        if field_value_str:
-                            if field_value_str not in value_to_invoices:
-                                value_to_invoices[field_value_str] = []
-                            value_to_invoices[field_value_str].append(invoice.id)
-
-        if not value_to_invoices:
-            return matching_lines
-
-        # 3. Buscar en TODOS los registros destino (pagos/líneas bancarias)
+        # 1. Buscar TODOS los pagos/registros destino con valores
         target_records = self._search_all_target_records(mapping)
 
-        # 4. Comparar valores
-        matched_invoice_ids = set()
+        _logger.info(f"Found {len(target_records)} target records ({mapping.target_model})")
 
+        if not target_records:
+            _logger.warning("No target records found!")
+            return matching_lines
+
+        # 2. Crear diccionario: {valor_pago: [payment_ids]}
+        payment_values = {}
         for target_record in target_records:
             if not mapping.target_field_name:
                 continue
@@ -283,17 +254,90 @@ class AccountAccountReconcile(models.Model):
                 continue
 
             target_value_str = str(target_value).strip()
+            if target_value_str:
+                if target_value_str not in payment_values:
+                    payment_values[target_value_str] = []
+                payment_values[target_value_str].append(target_record.id)
 
-            # Comparar usando el operador configurado
-            for source_value, invoice_ids in value_to_invoices.items():
-                if self._compare_values(source_value, target_value_str, mapping.operator):
-                    matched_invoice_ids.update(invoice_ids)
+        _logger.info(f"Payment values collected: {len(payment_values)} unique values")
+        _logger.info(f"Sample payment values: {list(payment_values.keys())[:5]}")
 
-        # 5. Obtener las líneas de las facturas que coincidieron
-        if matched_invoice_ids:
-            matching_lines = invoice_lines.filtered(
-                lambda l: l.move_id.id in matched_invoice_ids
-            )
+        if not payment_values:
+            _logger.warning("No payment values found!")
+            return matching_lines
+
+        # 3. Buscar órdenes que coincidan con esos valores
+        source_domain = []
+        if mapping.source_domain and mapping.source_domain != "[]":
+            try:
+                source_domain = eval(mapping.source_domain)
+            except Exception:
+                pass
+
+        # Buscar todas las órdenes de forma eficiente
+        all_source_records = self.env[mapping.source_model].search(source_domain)
+        _logger.info(f"Found {len(all_source_records)} source records ({mapping.source_model})")
+
+        # 4. Mapear: {valor_orden: [order_ids]}
+        order_values = {}
+        for source_record in all_source_records:
+            if not mapping.source_field_name:
+                continue
+
+            source_value = source_record[mapping.source_field_name]
+            if not source_value:
+                continue
+
+            source_value_str = str(source_value).strip()
+            if source_value_str:
+                if source_value_str not in order_values:
+                    order_values[source_value_str] = []
+                order_values[source_value_str].append(source_record.id)
+
+        _logger.info(f"Order values collected: {len(order_values)} unique values")
+        _logger.info(f"Sample order values: {list(order_values.keys())[:5]}")
+
+        if not order_values:
+            _logger.warning("No order values found!")
+            return matching_lines
+
+        # 5. Encontrar coincidencias
+        matched_order_ids = set()
+        for payment_value, payment_ids in payment_values.items():
+            for order_value, order_ids in order_values.items():
+                if self._compare_values(order_value, payment_value, mapping.operator):
+                    matched_order_ids.update(order_ids)
+                    _logger.info(f"MATCH FOUND: '{order_value}' = '{payment_value}'")
+
+        _logger.info(f"Total matched orders: {len(matched_order_ids)}")
+
+        if not matched_order_ids:
+            _logger.warning("No matching orders found!")
+            return matching_lines
+
+        # 6. Obtener facturas de esas órdenes
+        matched_orders = self.env[mapping.source_model].browse(list(matched_order_ids))
+        invoices = mapping._get_invoices_from_source(matched_orders)
+
+        _logger.info(f"Found {len(invoices)} invoices from matched orders")
+
+        if not invoices:
+            _logger.warning("No invoices found for matched orders!")
+            return matching_lines
+
+        # 7. Obtener líneas por cobrar/pagar de esas facturas
+        all_lines = mapping._get_receivable_payable_lines(invoices)
+
+        _logger.info(f"Found {len(all_lines)} receivable/payable lines")
+
+        # 8. Filtrar por cuenta y partner
+        matching_lines = all_lines.filtered(
+            lambda l: l.account_id == self.account_id and
+                     (not self.partner_id or l.partner_id == self.partner_id)
+        )
+
+        _logger.info(f"Final matching lines after filtering: {len(matching_lines)}")
+        _logger.info(f"========== FIND ALL MATCHES END ==========")
 
         return matching_lines
 
