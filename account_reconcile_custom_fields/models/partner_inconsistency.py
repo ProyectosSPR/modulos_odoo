@@ -243,74 +243,53 @@ class PartnerInconsistency(models.TransientModel):
 
     def _get_reference_value_for_line(self, line, mapping):
         """
-        Obtener el valor de referencia de una línea según el mapeo, con logging detallado.
+        Obtiene dinámicamente el valor de referencia para una línea, basándose
+        estrictamente en los campos definidos en el mapeo.
         """
-        _logger.info(f"    [Extracción] Procesando línea {line.id} con mapeo '{mapping.name}'...")
-        
-        # Intentar desde la factura/pago
-        if line.move_id:
-            try:
-                # Si es factura, buscar en la orden relacionada
-                if mapping.source_model == "sale.order" and line.move_id.invoice_line_ids:
-                    for inv_line in line.move_id.invoice_line_ids:
-                        for sale_line in inv_line.sale_line_ids:
-                            if sale_line.order_id and hasattr(sale_line.order_id, mapping.source_field_name):
-                                value = sale_line.order_id[mapping.source_field_name]
-                                if value:
-                                    if hasattr(value, 'name'):
-                                        value = value.name
-                                    _logger.info(f"      -> Valor encontrado vía SO: {value}")
-                                    return str(value)
+        _logger.info(f"    [Extracción Dinámica] Procesando línea {line.id} con mapeo '{mapping.name}'...")
 
-                elif mapping.source_model == "purchase.order" and line.move_id.invoice_line_ids:
-                    for inv_line in line.move_id.invoice_line_ids:
-                        if inv_line.purchase_line_id and hasattr(inv_line.purchase_line_id.order_id, mapping.source_field_name):
-                            value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
-                            if value:
-                                if hasattr(value, 'name'):
-                                    value = value.name
-                                _logger.info(f"      -> Valor encontrado vía PO: {value}")
-                                return str(value)
+        # Lista de posibles ubicaciones para encontrar el valor, usando los campos del mapeo.
+        # Se verifica la existencia del atributo antes de intentar acceder.
 
-                elif mapping.source_model == "account.move" and hasattr(line.move_id, mapping.source_field_name):
-                    value = line.move_id[mapping.source_field_name]
+        # 1. Directamente en la línea (común para 'target_field_name')
+        if hasattr(line, mapping.target_field_name):
+            value = line[mapping.target_field_name]
+            if value:
+                value = getattr(value, 'name', value) # Obtiene .name si es un m2o, si no, el valor mismo
+                _logger.info(f"      -> Valor encontrado en 'line.{mapping.target_field_name}': {value}")
+                return str(value)
+
+        # 2. Directamente en el asiento contable de la línea (común para campos en 'account.move')
+        if hasattr(line.move_id, mapping.source_field_name):
+            value = line.move_id[mapping.source_field_name]
+            if value:
+                value = getattr(value, 'name', value)
+                _logger.info(f"      -> Valor encontrado en 'move_id.{mapping.source_field_name}': {value}")
+                return str(value)
+
+        # 3. A través de la relación a Órdenes de Venta (si el mapeo lo especifica)
+        if mapping.source_model == "sale.order" and line.move_id.invoice_line_ids:
+            for inv_line in line.move_id.invoice_line_ids.filtered(lambda l: not l.display_type):
+                for sale_line in inv_line.sale_line_ids:
+                    if sale_line.order_id and hasattr(sale_line.order_id, mapping.source_field_name):
+                        value = sale_line.order_id[mapping.source_field_name]
+                        if value:
+                            value = getattr(value, 'name', value)
+                            _logger.info(f"      -> Valor encontrado vía SO en '{mapping.source_field_name}': {value}")
+                            return str(value)
+
+        # 4. A través de la relación a Órdenes de Compra (si el mapeo lo especifica)
+        if mapping.source_model == "purchase.order" and line.move_id.invoice_line_ids:
+            for inv_line in line.move_id.invoice_line_ids.filtered(lambda l: not l.display_type):
+                if inv_line.purchase_line_id and hasattr(inv_line.purchase_line_id.order_id, mapping.source_field_name):
+                    value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
                     if value:
-                        if hasattr(value, 'name'):
-                            value = value.name
-                        _logger.info(f"      -> Valor encontrado en Asiento Contable (move): {value}")
+                        value = getattr(value, 'name', value)
+                        _logger.info(f"      -> Valor encontrado vía PO en '{mapping.source_field_name}': {value}")
                         return str(value)
-
-                # Si es pago, intentar desde el campo target
-                if hasattr(line.move_id, mapping.target_field_name):
-                    value = line.move_id[mapping.target_field_name]
-                    if value:
-                        if hasattr(value, 'name'):
-                            value = value.name
-                        _logger.info(f"      -> Valor encontrado en Asiento Contable (target): {value}")
-                        return str(value)
-            except Exception as e:
-                _logger.error(f"      -> Error extrayendo referencia desde move_id: {e}")
-
-        # Buscar en la línea misma
-        try:
-            if hasattr(line, mapping.target_field_name):
-                value = line[mapping.target_field_name]
-                if value:
-                    if hasattr(value, 'name'):
-                        value = value.name
-                    _logger.info(f"      -> Valor encontrado en la propia Línea (target): {value}")
-                    return str(value)
-        except Exception as e:
-            _logger.error(f"      -> Error extrayendo referencia desde la línea: {e}")
-
-        # Último recurso: usar name o ref de la línea
-        fallback_value = line.name or line.ref
-        if fallback_value:
-            _logger.info(f"      -> Usando fallback (name/ref): {fallback_value}")
-            return fallback_value
         
-        _logger.warning(f"      -> No se encontró ningún valor de referencia para la línea {line.id}")
-        return False
+        _logger.debug(f"      -> No se encontró valor para la línea {line.id} usando el mapeo '{mapping.name}'. La línea será ignorada en este agrupamiento.")
+        return False # No hay fallback. Si el mapeo no arroja un valor, no se puede agrupar.
 
     def action_correct_partner_on_payments(self):
         """
