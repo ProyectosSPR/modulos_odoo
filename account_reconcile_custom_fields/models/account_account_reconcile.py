@@ -345,23 +345,18 @@ class AccountAccountReconcile(models.Model):
 
         _logger.info(f"Found {len(all_lines)} receivable/payable lines")
 
-        # 8. Filtrar por cuenta y partner
+        # 8. Filtrar SOLO por cuenta (no por partner)
+        # Porque las coincidencias pueden ser de diferentes partners
         _logger.info(f"Filtering - Account: {self.account_id.code}, Partner: {self.partner_id.name if self.partner_id else 'None'}")
         _logger.info(f"Sample lines before filter:")
         for line in all_lines[:3]:
             _logger.info(f"  Line {line.id}: Account={line.account_id.code}, Partner={line.partner_id.name if line.partner_id else 'None'}, Reconciled={line.reconciled}")
 
-        # IMPORTANTE: Si no hay partner seleccionado, NO filtrar todas las líneas
-        # Solo filtrar por cuenta
-        if self.partner_id:
-            matching_lines = all_lines.filtered(
-                lambda l: l.account_id == self.account_id and l.partner_id == self.partner_id
-            )
-        else:
-            # Si no hay partner, solo filtrar por cuenta
-            matching_lines = all_lines.filtered(
-                lambda l: l.account_id == self.account_id
-            )
+        # SOLO filtrar por cuenta, NO por partner
+        # Esto permite conciliar facturas de diferentes partners
+        matching_lines = all_lines.filtered(
+            lambda l: l.account_id == self.account_id
+        )
 
         _logger.info(f"Final matching lines after filtering: {len(matching_lines)}")
 
