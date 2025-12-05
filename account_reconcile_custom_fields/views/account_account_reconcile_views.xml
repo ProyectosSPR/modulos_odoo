@@ -14,13 +14,18 @@
 
             <!-- Add custom filter buttons -->
             <xpath expr="//div[@class='o_statusbar_buttons']/button[@name='clean_reconcile']" position="after">
+                <button name="button_find_all_matches"
+                        string="Find All Matches"
+                        type="object"
+                        class="btn btn-success"
+                        attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}"/>
                 <button name="button_apply_custom_filter"
-                        string="Apply Custom Filter"
+                        string="Manual Search"
                         type="object"
                         class="btn btn-info"
-                        attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
+                        attrs="{'invisible': ['|', ('is_reconciled', '=', True), '|', ('custom_field_mapping_id', '=', False), ('custom_filter_value', '=', False)]}"/>
                 <button name="button_clear_custom_filter"
-                        string="Clear Filter"
+                        string="Clear"
                         type="object"
                         class="btn btn-secondary"
                         attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
@@ -28,24 +33,30 @@
 
             <!-- Add custom filter fields in the form -->
             <xpath expr="//group" position="after">
-                <div class="alert alert-info" role="alert"
+                <div class="alert alert-success" role="alert"
                      attrs="{'invisible': [('is_reconciled', '=', True)]}">
-                    <h4><i class="fa fa-filter"/> Custom Field Filters</h4>
-                    <p>Use custom field mappings to automatically find matching invoices based on sale orders, purchase orders, or custom fields.</p>
+                    <h4><i class="fa fa-magic"/> Automatic Matching</h4>
+                    <p><strong>Click "Find All Matches"</strong> to automatically compare ALL invoices with ALL payments and find coincidences.</p>
+                    <p>The system will compare the configured fields (e.g., MercadoLibre Order ID) between all sale orders and all payments.</p>
                 </div>
-                <group string="Custom Field Filters" name="custom_filters"
+                <group string="1. Select Mapping" name="custom_filters"
                        attrs="{'invisible': [('is_reconciled', '=', True)]}">
-                    <group>
-                        <field name="custom_field_mapping_id"
-                               placeholder="Select a custom field mapping..."
-                               options="{'no_create': True, 'no_open': True}"
-                               required="0"/>
-                    </group>
-                    <group>
-                        <field name="custom_filter_value"
-                               placeholder="Enter value to search (e.g., SO001, REF-12345)..."
-                               attrs="{'required': [('custom_field_mapping_id', '!=', False)], 'invisible': [('custom_field_mapping_id', '=', False)]}"/>
-                    </group>
+                    <field name="custom_field_mapping_id"
+                           placeholder="Select a custom field mapping..."
+                           options="{'no_create': True, 'no_open': True}"
+                           required="0"/>
+                    <div class="text-muted" attrs="{'invisible': [('custom_field_mapping_id', '!=', False)]}">
+                        <small><i class="fa fa-arrow-up"/> Select a mapping to enable automatic matching</small>
+                    </div>
+                </group>
+                <group string="2. Manual Search (Optional)" name="manual_search"
+                       attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}">
+                    <field name="custom_filter_value"
+                           placeholder="Or enter a specific value to search manually (e.g., 1234568)..."
+                           nolabel="1"/>
+                    <div class="text-muted">
+                        <small>Leave empty to search ALL automatically, or enter a specific value for manual search</small>
+                    </div>
                 </group>
             </xpath>
         </field>

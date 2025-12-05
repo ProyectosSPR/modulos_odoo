@@ -158,9 +158,196 @@ class AccountAccountReconcile(models.Model):
 
         return matching_lines
 
+    def button_find_all_matches(self):
+        """
+        Buscar TODAS las coincidencias automáticamente usando el mapeo seleccionado
+        Sin necesidad de ingresar un valor manualmente
+        """
+        self.ensure_one()
+
+        if not self.custom_field_mapping_id:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "Missing Mapping",
+                    "message": "Please select a custom field mapping first.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        mapping = self.custom_field_mapping_id
+
+        # Buscar todas las órdenes/facturas con facturas pendientes
+        # que coincidan con la cuenta y partner actuales
+        matching_lines = self._find_all_automatic_matches(mapping)
+
+        if not matching_lines:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "No Matches Found",
+                    "message": "No automatic matches found using the selected mapping.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        # Agregar todas las líneas encontradas
+        for line in matching_lines:
+            self._add_account_move_line(line, keep_current=True)
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Matches Found",
+                "message": f"Found {len(matching_lines)} matching line(s) automatically!",
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def _find_all_automatic_matches(self, mapping):
+        """
+        Buscar TODAS las coincidencias automáticas comparando campos
+
+        Lógica:
+        1. Buscar todas las facturas pendientes para esta cuenta/partner
+        2. Para cada factura, obtener las órdenes relacionadas
+        3. Para cada orden, obtener el valor del campo origen
+        4. Buscar en TODOS los registros destino (pagos) si tienen ese valor
+        5. Si coincide, agregar las líneas
+        """
+        self.ensure_one()
+        matching_lines = self.env["account.move.line"].browse()
+
+        # 1. Obtener todas las facturas pendientes para esta cuenta/partner
+        invoice_lines = self.env["account.move.line"].search([
+            ("account_id", "=", self.account_id.id),
+            ("partner_id", "=", self.partner_id.id) if self.partner_id else ("partner_id", "!=", False),
+            ("reconciled", "=", False),
+            ("parent_state", "=", "posted"),
+            ("account_id.account_type", "in", ["asset_receivable", "liability_payable"]),
+        ])
+
+        if not invoice_lines:
+            return matching_lines
+
+        # 2. Para cada línea, obtener las facturas y sus órdenes relacionadas
+        invoices = invoice_lines.mapped("move_id")
+
+        # Diccionario: {valor_campo_origen: [invoice_ids]}
+        value_to_invoices = {}
+
+        for invoice in invoices:
+            # Obtener órdenes relacionadas
+            source_records = self.env[mapping.source_model].browse()
+
+            if mapping.source_model == "sale.order":
+                source_records = invoice.invoice_line_ids.mapped("sale_line_ids.order_id")
+            elif mapping.source_model == "purchase.order":
+                source_records = invoice.invoice_line_ids.mapped("purchase_line_id.order_id")
+            elif mapping.source_model == "account.move":
+                source_records = invoice
+
+            # Para cada orden, obtener el valor del campo
+            for source_record in source_records:
+                if source_record and mapping.source_field_name:
+                    field_value = source_record[mapping.source_field_name]
+                    if field_value:
+                        # Convertir a string para comparación
+                        field_value_str = str(field_value).strip()
+                        if field_value_str:
+                            if field_value_str not in value_to_invoices:
+                                value_to_invoices[field_value_str] = []
+                            value_to_invoices[field_value_str].append(invoice.id)
+
+        if not value_to_invoices:
+            return matching_lines
+
+        # 3. Buscar en TODOS los registros destino (pagos/líneas bancarias)
+        target_records = self._search_all_target_records(mapping)
+
+        # 4. Comparar valores
+        matched_invoice_ids = set()
+
+        for target_record in target_records:
+            if not mapping.target_field_name:
+                continue
+
+            target_value = target_record[mapping.target_field_name]
+            if not target_value:
+                continue
+
+            target_value_str = str(target_value).strip()
+
+            # Comparar usando el operador configurado
+            for source_value, invoice_ids in value_to_invoices.items():
+                if self._compare_values(source_value, target_value_str, mapping.operator):
+                    matched_invoice_ids.update(invoice_ids)
+
+        # 5. Obtener las líneas de las facturas que coincidieron
+        if matched_invoice_ids:
+            matching_lines = invoice_lines.filtered(
+                lambda l: l.move_id.id in matched_invoice_ids
+            )
+
+        return matching_lines
+
+    def _search_all_target_records(self, mapping):
+        """Buscar todos los registros en el modelo destino"""
+        domain = [("company_id", "=", self.company_id.id)]
+
+        # Agregar filtros adicionales si existen
+        if mapping.target_domain and mapping.target_domain != "[]":
+            try:
+                additional_domain = eval(mapping.target_domain)
+                domain.extend(additional_domain)
+            except Exception:
+                pass
+
+        # Filtros específicos por tipo de modelo
+        if mapping.target_model == "account.payment":
+            domain.append(("state", "in", ["posted", "reconciled"]))
+        elif mapping.target_model == "account.bank.statement.line":
+            domain.append(("state", "=", "posted"))
+        elif mapping.target_model == "account.move.line":
+            domain.extend([
+                ("parent_state", "=", "posted"),
+                ("reconciled", "=", False),
+            ])
+
+        return self.env[mapping.target_model].search(domain)
+
+    def _compare_values(self, source_value, target_value, operator):
+        """Comparar dos valores usando el operador especificado"""
+        if not source_value or not target_value:
+            return False
+
+        source_value = str(source_value).strip().lower()
+        target_value = str(target_value).strip().lower()
+
+        if operator == "=":
+            return source_value == target_value
+        elif operator == "!=":
+            return source_value != target_value
+        elif operator == "like":
+            return source_value in target_value or target_value in source_value
+        elif operator == "ilike":
+            return source_value in target_value or target_value in source_value
+        elif operator == "in":
+            return source_value in target_value.split(",")
+        elif operator == "not in":
+            return source_value not in target_value.split(",")
+
+        return False
+
     def button_apply_custom_filter(self):
         """
-        Botón para aplicar el filtro personalizado
+        Botón para aplicar el filtro personalizado (búsqueda manual)
         """
         self.ensure_one()
 
