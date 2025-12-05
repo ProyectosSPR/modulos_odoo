@@ -161,61 +161,78 @@ class PartnerInconsistency(models.TransientModel):
     def _find_partner_inconsistencies_for_mapping(self, mapping):
         """
         Detecta inconsistencias para un mapeo específico, siguiendo un flujo "referencia por referencia".
-        1. Obtiene todas las referencias únicas del modelo origen.
-        2. Para cada referencia, busca todos los apuntes (facturas y pagos) asociados.
-        3. Si en el grupo de apuntes de una referencia hay más de un proveedor, lo marca como inconsistencia.
+        Es resiliente a campos mal configurados en el mapeo.
         """
         _logger.info(f"Procesando mapeo '{mapping.name}' con flujo 'referencia por referencia'")
 
-        # 1. Obtener todas las referencias únicas del modelo de origen.
         source_field = mapping.source_field_name
-        
+        target_field = mapping.target_field_name
+        source_refs = set()
+        target_refs = set()
+
+        # 1. Obtener referencias únicas del ORIGEN, con manejo de errores.
         try:
-            all_source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
-            unique_refs = all_source_records.mapped(source_field)
-            _logger.info(f"  Encontradas {len(unique_refs)} referencias únicas en el campo '{source_field}' del modelo '{mapping.source_model}'.")
+            if mapping.source_model and source_field:
+                source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
+                source_refs = set(source_records.mapped(source_field))
+                _logger.info(f"  OK: Encontradas {len(source_refs)} referencias únicas desde '{mapping.source_model}.{source_field}'.")
         except Exception as e:
-            _logger.error(f"  Error al buscar referencias únicas en {mapping.source_model} con campo {source_field}: {e}")
-            return []
+            _logger.warning(f"  AVISO: No se pudieron obtener referencias desde el origen '{mapping.source_model}.{source_field}'. Causa: {e}")
+
+        # 2. Obtener referencias únicas del DESTINO (account.move.line), con manejo de errores.
+        try:
+            if target_field:
+                target_lines = self.env['account.move.line'].search([(target_field, '!=', False)])
+                target_refs = set(target_lines.mapped(target_field))
+                _logger.info(f"  OK: Encontradas {len(target_refs)} referencias únicas desde 'account.move.line.{target_field}'.")
+        except Exception as e:
+            _logger.warning(f"  AVISO: No se pudieron obtener referencias desde el destino 'account.move.line.{target_field}'. Causa: {e}")
+        
+        # 3. Combinar todas las referencias encontradas.
+        unique_refs = list(source_refs | target_refs)
+        _logger.info(f"  Total de {len(unique_refs)} referencias únicas a procesar.")
 
         if not unique_refs:
             return []
 
         inconsistencies_vals = []
 
-        # 2. Iterar sobre cada referencia única.
+        # 4. Iterar sobre cada referencia única.
         for ref_value in unique_refs:
-            # 3. Construir el "expediente" para esta referencia.
+            invoice_lines = self.env['account.move.line']
+            payment_lines = self.env['account.move.line']
             
             # --- Encontrar apuntes de FACTURA ---
-            # 3.1. Encontrar los registros origen (ej: sale.order) que tienen esta referencia.
-            source_records = mapping._get_source_records(ref_value)
-            # 3.2. A partir de esos registros, encontrar las facturas asociadas.
-            invoices = mapping._get_invoices_from_source(source_records)
-            # 3.3. De esas facturas, obtener los apuntes contables relevantes.
-            invoice_lines = mapping._get_receivable_payable_lines(invoices)
+            try:
+                source_records = mapping._get_source_records(ref_value)
+                invoices = mapping._get_invoices_from_source(source_records)
+                invoice_lines = mapping._get_receivable_payable_lines(invoices)
+            except Exception as e:
+                _logger.error(f"  Error al buscar líneas de factura para la referencia '{ref_value}': {e}")
 
             # --- Encontrar apuntes de PAGO ---
-            payment_lines = self.env['account.move.line'].search([
-                (mapping.target_field_name, '=', ref_value),
-                ("reconciled", "=", False),
-                ("move_id.state", "=", "posted"),
-                ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
-                ("amount_residual", "!=", 0),
-            ])
+            try:
+                payment_lines = self.env['account.move.line'].search([
+                    (target_field, '=', ref_value),
+                    ("reconciled", "=", False),
+                    ("move_id.state", "=", "posted"),
+                    ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
+                    ("amount_residual", "!=", 0),
+                ])
+            except Exception as e:
+                 _logger.error(f"  Error al buscar líneas de pago para la referencia '{ref_value}' (campo: {target_field}): {e}")
 
             all_lines_for_ref = (invoice_lines | payment_lines)
 
             if len(all_lines_for_ref) < 2:
                 continue
 
-            # 4. Analizar el "expediente".
+            # 5. Analizar el "expediente".
             partners = all_lines_for_ref.mapped('partner_id')
             if len(partners) > 1:
                 _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
                 _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
 
-                # Lógica para mostrar todas las combinaciones conflictivas
                 anchor_line = all_lines_for_ref[0]
                 for other_line in all_lines_for_ref[1:]:
                     if other_line.partner_id != anchor_line.partner_id:
