@@ -178,6 +178,9 @@ class PartnerInconsistency(models.TransientModel):
 
         inconsistencies_vals = []
         for ref_value, lines in groups.items():
+            if len(lines) < 2:
+                continue
+
             partners = lines.mapped("partner_id")
             if len(partners) <= 1:
                 continue
@@ -185,44 +188,42 @@ class PartnerInconsistency(models.TransientModel):
             # --- LOG MEJORADO ---
             _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
             _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
-
-            invoice_lines = lines.filtered(lambda l: l.move_id.is_invoice(include_receipts=True))
-            payment_lines = lines - invoice_lines
-            
             for line in lines:
                 _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}")
             # --- FIN LOG MEJORADO ---
 
-            if not invoice_lines:
-                _logger.warning(f"      Grupo '{ref_value}': Sin facturas, solo otros apuntes. No se puede determinar el proveedor correcto. Omitiendo.")
-                continue
+            # --- Lógica de emparejamiento simplificada ---
+            line_a = lines[0]
+            line_b = next((l for l in lines if l.partner_id != line_a.partner_id), None)
 
-            # Usar el proveedor de la primera factura como el "correcto"
-            correct_partner = invoice_lines[0].partner_id
+            if line_a and line_b:
+                # Heurística simple: el apunte con saldo negativo (crédito) es probablemente el pago o abono
+                if line_a.balance < 0:
+                    payment_line, invoice_line = line_a, line_b
+                else:
+                    invoice_line, payment_line = line_a, line_b
+                
+                # Verificación final para evitar asignar dos del mismo tipo si la heurística falla
+                if invoice_line.balance < 0 and payment_line.balance < 0:
+                    _logger.warning(f"      Omitiendo par para ref '{ref_value}' porque ambos apuntes son créditos.")
+                    continue
+                if invoice_line.balance > 0 and payment_line.balance > 0:
+                    _logger.warning(f"      Omitiendo par para ref '{ref_value}' porque ambos apuntes son débitos.")
+                    continue
 
-            # Crear registros de inconsistencia para cada apunte con proveedor diferente
-            for line in lines:
-                if line.partner_id and line.partner_id != correct_partner:
-                    vals = {
-                        "referencia_comun": ref_value,
-                        "pago_line_id": line.id if line in payment_lines else (payment_lines and payment_lines[0].id or False),
-                        "factura_line_id": invoice_lines[0].id,
-                        "mapping_id": mapping.id,
-                        "tipo_problema": "Discrepancia de Proveedor",
-                    }
-                    # Asegurarse de que el 'pago' sea realmente un pago y la 'factura' una factura
-                    if line.move_id.is_invoice(include_receipts=True):
-                         vals.update({
-                            "factura_line_id": line.id,
-                            "pago_line_id": payment_lines[0].id if payment_lines else False,
-                         })
-
-                    if vals['pago_line_id'] and vals['factura_line_id']:
-                        inconsistencies_vals.append(vals)
-                    else:
-                        _logger.warning(f"      Omitiendo par para ref '{ref_value}' por falta de pago o factura clara.")
+                vals = {
+                    "referencia_comun": ref_value,
+                    "pago_line_id": payment_line.id,
+                    "factura_line_id": invoice_line.id,
+                    "mapping_id": mapping.id,
+                    "tipo_problema": "Discrepancia de Proveedor",
+                }
+                inconsistencies_vals.append(vals)
+            else:
+                _logger.warning(f"      No se pudo construir un par de líneas inconsistentes para la ref '{ref_value}'.")
 
         return inconsistencies_vals
+
 
 
     def _group_lines_by_reference(self, lines, mapping):
