@@ -124,33 +124,30 @@ class PartnerInconsistency(models.TransientModel):
     @api.model
     def find_inconsistencies(self, mapping_id=None):
         """
-        Buscar todas las inconsistencias de proveedores en apuntes no conciliados
-
-        :param mapping_id: ID del mapeo a usar (opcional, si no se especifica usa todos)
-        :return: action para abrir la vista con los resultados
+        Busca y prepara todas las inconsistencias de proveedores para ser mostradas.
         """
         _logger.info("========== BÚSQUEDA DE INCONSISTENCIAS DE PROVEEDORES ==========")
-
-        # Limpiar registros anteriores de este usuario
         self.search([]).unlink()
 
-        # Obtener mapeos a usar
         mappings = self.env["reconcile.field.mapping"].browse(mapping_id) if mapping_id else \
                    self.env["reconcile.field.mapping"].search([("active", "=", True)])
 
         if not mappings:
-            raise UserError(_("No hay mapeos de campos configurados. Por favor configure al menos uno."))
+            raise UserError(_("No hay mapeos de campos configurados."))
 
-        inconsistencies_created = 0
-
+        all_inconsistencies_vals = []
         for mapping in mappings:
             _logger.info(f"Procesando mapeo: {mapping.name}")
-            inconsistencies = self._find_partner_inconsistencies(mapping)
-            inconsistencies_created += len(inconsistencies)
+            # Este método ahora solo devuelve los diccionarios de valores, no crea nada.
+            inconsistency_vals = self._find_partner_inconsistencies_for_mapping(mapping)
+            if inconsistency_vals:
+                all_inconsistencies_vals.extend(inconsistency_vals)
 
-        _logger.info(f"Total de inconsistencias encontradas: {inconsistencies_created}")
+        if all_inconsistencies_vals:
+            self.create(all_inconsistencies_vals)
+        
+        _logger.info(f"Total de inconsistencias encontradas y creadas: {len(all_inconsistencies_vals)}")
 
-        # Retornar acción para abrir la vista
         return {
             "type": "ir.actions.act_window",
             "name": "Inconsistencias de Proveedores",
@@ -161,81 +158,72 @@ class PartnerInconsistency(models.TransientModel):
             "target": "current",
         }
 
-    def _find_partner_inconsistencies(self, mapping):
+    def _find_partner_inconsistencies_for_mapping(self, mapping):
         """
-        Detectar inconsistencias de proveedores para un mapeo específico
-
-        Lógica:
-        1. Buscar todos los apuntes no conciliados de proveedores
-        2. Agruparlos por el valor del campo de referencia
-        3. Identificar grupos donde los partner_id son diferentes
-        4. Crear registros transitorios para mostrar en la vista
-
-        :param mapping: reconcile.field.mapping
-        :return: recordset de partner.inconsistency creados
+        Detecta inconsistencias para un mapeo específico y devuelve una lista de valores.
         """
-
-        # Buscar apuntes no conciliados de cuentas por pagar
         domain = [
             ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
             ("amount_residual", "!=", 0),
             ("reconciled", "=", False),
         ]
-
         all_lines = self.env["account.move.line"].search(domain)
-        _logger.info(f"  Encontrados {len(all_lines)} apuntes no conciliados")
+        _logger.info(f"  Encontrados {len(all_lines)} apuntes no conciliados para el mapeo.")
 
         if not all_lines:
-            return self.env["partner.inconsistency"].browse()
+            return []
 
-        # Agrupar líneas por el valor de referencia
         groups = self._group_lines_by_reference(all_lines, mapping)
+        _logger.info(f"  Agrupados en {len(groups)} grupos por referencia.")
 
-        _logger.info(f"  Agrupados en {len(groups)} grupos por referencia")
-
-        # Detectar inconsistencias (grupos con diferentes proveedores)
-        inconsistencies = []
-
+        inconsistencies_vals = []
         for ref_value, lines in groups.items():
-            # Obtener proveedores únicos en este grupo
             partners = lines.mapped("partner_id")
-
             if len(partners) <= 1:
-                # No hay inconsistencia si todos tienen el mismo proveedor
                 continue
 
-            _logger.info(f"    Inconsistencia en ref '{ref_value}': {len(lines)} líneas, {len(partners)} proveedores diferentes")
+            # --- LOG MEJORADO ---
+            _logger.info(f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}'")
+            _logger.info(f"    Proveedores involucrados: {partners.mapped('name')}")
 
-            # Separar facturas y pagos
-            invoice_lines = lines.filtered(lambda l: l.move_id.move_type in ["in_invoice", "in_refund", "out_invoice", "out_refund"])
-            payment_lines = lines.filtered(lambda l: l.move_id.move_type == "entry" or l.move_id.payment_id)
+            invoice_lines = lines.filtered(lambda l: l.move_id.is_invoice(include_receipts=True))
+            payment_lines = lines - invoice_lines
+            
+            for line in lines:
+                _logger.info(f"    -> Apunte: {line.id}, Proveedor: {line.partner_id.name}, Saldo: {line.balance}")
+            # --- FIN LOG MEJORADO ---
 
-            # Si no hay facturas, no podemos corregir
             if not invoice_lines:
-                _logger.warning(f"      Grupo '{ref_value}': Sin facturas, solo pagos. No se puede auto-corregir.")
+                _logger.warning(f"      Grupo '{ref_value}': Sin facturas, solo otros apuntes. No se puede determinar el proveedor correcto. Omitiendo.")
                 continue
 
-            # Usar el proveedor de la primera factura como referencia
+            # Usar el proveedor de la primera factura como el "correcto"
             correct_partner = invoice_lines[0].partner_id
 
-            # Crear registros de inconsistencia para cada pago con proveedor diferente
-            for payment_line in payment_lines:
-                if payment_line.partner_id != correct_partner:
+            # Crear registros de inconsistencia para cada apunte con proveedor diferente
+            for line in lines:
+                if line.partner_id and line.partner_id != correct_partner:
                     vals = {
                         "referencia_comun": ref_value,
-                        "pago_line_id": payment_line.id,
+                        "pago_line_id": line.id if line in payment_lines else (payment_lines and payment_lines[0].id or False),
                         "factura_line_id": invoice_lines[0].id,
                         "mapping_id": mapping.id,
+                        "tipo_problema": "Discrepancia de Proveedor",
                     }
-                    inconsistencies.append(vals)
+                    # Asegurarse de que el 'pago' sea realmente un pago y la 'factura' una factura
+                    if line.move_id.is_invoice(include_receipts=True):
+                         vals.update({
+                            "factura_line_id": line.id,
+                            "pago_line_id": payment_lines[0].id if payment_lines else False,
+                         })
 
-        # Crear registros transitorios
-        if inconsistencies:
-            created = self.env["partner.inconsistency"].create(inconsistencies)
-            _logger.info(f"  Creados {len(created)} registros de inconsistencias para mapeo {mapping.name}")
-            return created
+                    if vals['pago_line_id'] and vals['factura_line_id']:
+                        inconsistencies_vals.append(vals)
+                    else:
+                        _logger.warning(f"      Omitiendo par para ref '{ref_value}' por falta de pago o factura clara.")
 
-        return self.env["partner.inconsistency"].browse()
+        return inconsistencies_vals
+
 
     def _group_lines_by_reference(self, lines, mapping):
         """
