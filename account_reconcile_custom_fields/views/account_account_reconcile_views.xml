@@ -28,17 +28,23 @@
 
             <!-- Add custom filter fields in the form -->
             <xpath expr="//group" position="after">
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('is_reconciled', '=', True)]}">
+                    <h4><i class="fa fa-filter"/> Custom Field Filters</h4>
+                    <p>Use custom field mappings to automatically find matching invoices based on sale orders, purchase orders, or custom fields.</p>
+                </div>
                 <group string="Custom Field Filters" name="custom_filters"
                        attrs="{'invisible': [('is_reconciled', '=', True)]}">
                     <group>
                         <field name="custom_field_mapping_id"
                                placeholder="Select a custom field mapping..."
-                               options="{'no_create': True}"/>
+                               options="{'no_create': True, 'no_open': True}"
+                               required="0"/>
                     </group>
                     <group>
                         <field name="custom_filter_value"
                                placeholder="Enter value to search (e.g., SO001, REF-12345)..."
-                               attrs="{'invisible': [('custom_field_mapping_id', '=', False)]}"/>
+                               attrs="{'required': [('custom_field_mapping_id', '!=', False)], 'invisible': [('custom_field_mapping_id', '=', False)]}"/>
                     </group>
                 </group>
             </xpath>

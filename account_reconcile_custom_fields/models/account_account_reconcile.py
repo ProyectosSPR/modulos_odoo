@@ -10,16 +10,86 @@ class AccountAccountReconcile(models.Model):
     custom_field_mapping_id = fields.Many2one(
         "reconcile.field.mapping",
         string="Custom Field Mapping",
-        store=False,
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_custom_field_mapping_id",
         domain="[('active', '=', True), ('target_model', '=', 'account.move.line')]",
     )
 
     # Campos de filtro dinámicos
     custom_filter_value = fields.Char(
         string="Filter Value",
-        store=False,
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_custom_filter_value",
         help="Enter the value to search for in the source model",
     )
+
+    @api.depends("id")
+    def _compute_custom_filter_fields(self):
+        """Obtener los valores de filtro desde el modelo de datos"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if data_record and data_record.custom_filter_data:
+                record.custom_field_mapping_id = data_record.custom_filter_data.get(
+                    "mapping_id", False
+                )
+                record.custom_filter_value = data_record.custom_filter_data.get(
+                    "filter_value", False
+                )
+            else:
+                record.custom_field_mapping_id = False
+                record.custom_filter_value = False
+
+    def _inverse_custom_field_mapping_id(self):
+        """Guardar el mapeo seleccionado"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["mapping_id"] = (
+                record.custom_field_mapping_id.id
+                if record.custom_field_mapping_id
+                else False
+            )
+            data_record.custom_filter_data = custom_data
+
+    def _inverse_custom_filter_value(self):
+        """Guardar el valor del filtro"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["filter_value"] = record.custom_filter_value or False
+            data_record.custom_filter_data = custom_data
 
     def _compute_reconcile_data_info(self):
         """
@@ -131,6 +201,15 @@ class AccountAccountReconcile(models.Model):
         self.custom_field_mapping_id = False
         self.custom_filter_value = False
         self.clean_reconcile()
+
+
+class AccountAccountReconcileData(models.TransientModel):
+    _inherit = "account.account.reconcile.data"
+
+    custom_filter_data = fields.Serialized(
+        string="Custom Filter Data",
+        help="Store custom field mapping and filter value",
+    )
 
 
 class AccountAccountReconcileCustom(models.Model):

@@ -66,7 +66,7 @@ class SaleOrder(models.Model):
             existing_records = InvoicePaymentInfo.search([('order_id', '=', order.id)])
             existing_records.unlink()
 
-            invoice_payment_data = []
+            records_to_create = []
 
             # Obtener todas las facturas relacionadas
             invoices = order.invoice_ids.filtered(lambda inv: inv.move_type in ('out_invoice', 'out_refund'))
@@ -96,7 +96,7 @@ class SaleOrder(models.Model):
                             'payment_create_date': payment['payment_create_date'],
                             'reconcile_date': payment['reconcile_date'],
                         }
-                        invoice_payment_data.append((0, 0, vals))
+                        records_to_create.append(vals)
                 else:
                     # Si no hay pagos, crear un registro solo con la información de la factura
                     vals = {
@@ -110,10 +110,12 @@ class SaleOrder(models.Model):
                         'invoice_state': invoice.state,
                         'invoice_payment_state': invoice.payment_state,
                     }
-                    invoice_payment_data.append((0, 0, vals))
+                    records_to_create.append(vals)
 
-            order.invoice_payment_info_ids = invoice_payment_data
-            order.invoice_payment_count = len(invoice_payment_data)
+            # Crear todos los registros de una vez
+            created_records = InvoicePaymentInfo.create(records_to_create) if records_to_create else InvoicePaymentInfo
+            order.invoice_payment_info_ids = created_records
+            order.invoice_payment_count = len(created_records)
 
     def _get_payments_for_invoice(self, invoice):
         """
@@ -228,7 +230,7 @@ class SaleOrder(models.Model):
         return True
 
 
-class SaleOrderInvoicePaymentInfo(models.TransientModel):
+class SaleOrderInvoicePaymentInfo(models.Model):
     _name = 'sale.order.invoice.payment.info'
     _description = 'Información de Facturas y Pagos de Orden de Venta'
     _order = 'invoice_date desc, payment_date desc'
