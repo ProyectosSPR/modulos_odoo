@@ -25,6 +25,9 @@
         <field name="model">reconcile.field.mapping</field>
         <field name="arch" type="xml">
             <form string="Custom Field Mapping">
+                <header>
+                    <button name="action_test_mapping_domain" type="object" string="Probar Filtro" class="oe_highlight"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger"
@@ -175,4 +178,21 @@
         parent="account.menu_finance_configuration"
         action="action_reconcile_field_mapping"
         sequence="100"/>
+    
+    <!-- Custom Tree View for Debugging account.move.line -->
+    <record id="view_move_line_tree_for_mapping_test" model="ir.ui.view">
+        <field name="name">account.move.line.tree.mapping.test</field>
+        <field name="model">account.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="Resultado Filtro de Mapeo" create="false" edit="false" delete="false">
+                <field name="move_id"/>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+                <field name="debit" sum="Total Debit"/>
+                <field name="credit" sum="Total Credit"/>
+                <field name="ref"/>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
 </odoo>

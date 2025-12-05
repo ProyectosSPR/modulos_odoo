@@ -293,3 +293,29 @@ class ReconcileFieldMapping(models.Model):
         matching_lines = self._get_receivable_payable_lines(invoices)
 
         return matching_lines
+
+    def action_test_mapping_domain(self):
+        """
+        Muestra los apuntes que cumplen el dominio base de búsqueda para depuración.
+        """
+        self.ensure_one()
+        domain = [
+            ("reconciled", "=", False),
+            ("move_id.state", "=", "posted"),
+            ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
+            ("amount_residual", "!=", 0),
+        ]
+        
+        # Obtenemos la vista custom que crearemos en el XML
+        view_id = self.env.ref("account_reconcile_custom_fields.view_move_line_tree_for_mapping_test").id
+        
+        return {
+            "name": _("Resultado del Filtro de Mapeo"),
+            "type": "ir.actions.act_window",
+            "res_model": "account.move.line",
+            "view_mode": "tree",
+            "views": [(view_id, "tree")],
+            "domain": domain,
+            "target": "new",  # Abrir en una ventana modal
+            "context": self.env.context,
+        }
