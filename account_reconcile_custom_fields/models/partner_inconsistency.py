@@ -256,49 +256,64 @@ class PartnerInconsistency(models.TransientModel):
 
     def _get_reference_value_for_line(self, line, mapping):
         """
-        Obtener el valor de referencia de una línea según el mapeo
-
-        :param line: account.move.line
-        :param mapping: reconcile.field.mapping
-        :return: string con el valor de referencia o False
+        Obtener el valor de referencia de una línea según el mapeo, con logging detallado.
         """
+        _logger.info(f"    [Extracción] Procesando línea {line.id} con mapeo '{mapping.name}'...")
+        
         # Intentar desde la factura/pago
         if line.move_id:
-            # Si es factura, buscar en la orden relacionada
-            if mapping.source_model == "sale.order":
-                for inv_line in line.move_id.invoice_line_ids:
-                    for sale_line in inv_line.sale_line_ids:
-                        if sale_line.order_id:
-                            value = sale_line.order_id[mapping.source_field_name]
+            try:
+                # Si es factura, buscar en la orden relacionada
+                if mapping.source_model == "sale.order" and line.move_id.invoice_line_ids:
+                    for inv_line in line.move_id.invoice_line_ids:
+                        for sale_line in inv_line.sale_line_ids:
+                            if sale_line.order_id and hasattr(sale_line.order_id, mapping.source_field_name):
+                                value = sale_line.order_id[mapping.source_field_name]
+                                if value:
+                                    _logger.info(f"      -> Valor encontrado vía SO: {value}")
+                                    return str(value)
+
+                elif mapping.source_model == "purchase.order" and line.move_id.invoice_line_ids:
+                    for inv_line in line.move_id.invoice_line_ids:
+                        if inv_line.purchase_line_id and hasattr(inv_line.purchase_line_id.order_id, mapping.source_field_name):
+                            value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
                             if value:
+                                _logger.info(f"      -> Valor encontrado vía PO: {value}")
                                 return str(value)
 
-            elif mapping.source_model == "purchase.order":
-                for inv_line in line.move_id.invoice_line_ids:
-                    if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id:
-                        value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
-                        if value:
-                            return str(value)
+                elif mapping.source_model == "account.move" and hasattr(line.move_id, mapping.source_field_name):
+                    value = line.move_id[mapping.source_field_name]
+                    if value:
+                        _logger.info(f"      -> Valor encontrado en Asiento Contable (move): {value}")
+                        return str(value)
 
-            elif mapping.source_model == "account.move":
-                value = line.move_id[mapping.source_field_name]
-                if value:
-                    return str(value)
-
-            # Si es pago, intentar desde el campo target
-            if hasattr(line.move_id, mapping.target_field_name):
-                value = line.move_id[mapping.target_field_name]
-                if value:
-                    return str(value)
+                # Si es pago, intentar desde el campo target
+                if hasattr(line.move_id, mapping.target_field_name):
+                    value = line.move_id[mapping.target_field_name]
+                    if value:
+                        _logger.info(f"      -> Valor encontrado en Asiento Contable (target): {value}")
+                        return str(value)
+            except Exception as e:
+                _logger.error(f"      -> Error extrayendo referencia desde move_id: {e}")
 
         # Buscar en la línea misma
-        if hasattr(line, mapping.target_field_name):
-            value = line[mapping.target_field_name]
-            if value:
-                return str(value)
+        try:
+            if hasattr(line, mapping.target_field_name):
+                value = line[mapping.target_field_name]
+                if value:
+                    _logger.info(f"      -> Valor encontrado en la propia Línea (target): {value}")
+                    return str(value)
+        except Exception as e:
+            _logger.error(f"      -> Error extrayendo referencia desde la línea: {e}")
 
-        # Último recurso: usar name o ref
-        return line.name or line.ref or False
+        # Último recurso: usar name o ref de la línea
+        fallback_value = line.name or line.ref
+        if fallback_value:
+            _logger.info(f"      -> Usando fallback (name/ref): {fallback_value}")
+            return fallback_value
+        
+        _logger.warning(f"      -> No se encontró ningún valor de referencia para la línea {line.id}")
+        return False
 
     def action_correct_partner_on_payments(self):
         """
