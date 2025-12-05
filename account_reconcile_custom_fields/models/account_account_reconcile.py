@@ -26,6 +26,45 @@ class AccountAccountReconcile(models.Model):
         help="Enter the value to search for in the source model",
     )
 
+    # Nuevos campos para conciliación masiva asistida
+    flexible_mode = fields.Boolean(
+        string="Modo Flexible",
+        default=False,
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_flexible_mode",
+        help="Activar para ignorar el margen de error y mostrar todos los grupos",
+    )
+
+    tolerance_amount = fields.Monetary(
+        string="Margen de Error Permitido",
+        currency_field="company_currency_id",
+        default=0.0,
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_tolerance_amount",
+        help="Diferencia máxima permitida para considerar un grupo como conciliable automáticamente",
+    )
+
+    adjustment_account_id = fields.Many2one(
+        "account.account",
+        string="Cuenta de Ajuste",
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_adjustment_account_id",
+        help="Cuenta contable para registrar las diferencias de redondeo",
+    )
+
+    processed_groups = fields.Text(
+        string="Grupos Procesados",
+        compute="_compute_custom_filter_fields",
+        inverse="_inverse_processed_groups",
+        help="Lista de grupos ya procesados en esta sesión",
+    )
+
+    company_currency_id = fields.Many2one(
+        related="company_id.currency_id",
+        string="Company Currency",
+        readonly=True,
+    )
+
     def _compute_custom_filter_fields(self):
         """Obtener los valores de filtro desde el modelo de datos"""
         data_obj = self.env["account.account.reconcile.data"]
@@ -41,9 +80,25 @@ class AccountAccountReconcile(models.Model):
                 record.custom_filter_value = data_record.custom_filter_data.get(
                     "filter_value", False
                 )
+                record.flexible_mode = data_record.custom_filter_data.get(
+                    "flexible_mode", False
+                )
+                record.tolerance_amount = data_record.custom_filter_data.get(
+                    "tolerance_amount", 0.0
+                )
+                record.adjustment_account_id = data_record.custom_filter_data.get(
+                    "adjustment_account_id", False
+                )
+                record.processed_groups = data_record.custom_filter_data.get(
+                    "processed_groups", "[]"
+                )
             else:
                 record.custom_field_mapping_id = False
                 record.custom_filter_value = False
+                record.flexible_mode = False
+                record.tolerance_amount = 0.0
+                record.adjustment_account_id = False
+                record.processed_groups = "[]"
 
     def _inverse_custom_field_mapping_id(self):
         """Guardar el mapeo seleccionado"""
@@ -91,6 +146,96 @@ class AccountAccountReconcile(models.Model):
 
             custom_data = data_record.custom_filter_data or {}
             custom_data["filter_value"] = record.custom_filter_value or False
+            data_record.custom_filter_data = custom_data
+
+    def _inverse_flexible_mode(self):
+        """Guardar el modo flexible"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["flexible_mode"] = record.flexible_mode
+            data_record.custom_filter_data = custom_data
+
+    def _inverse_tolerance_amount(self):
+        """Guardar el margen de error"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["tolerance_amount"] = record.tolerance_amount
+            data_record.custom_filter_data = custom_data
+
+    def _inverse_adjustment_account_id(self):
+        """Guardar la cuenta de ajuste"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["adjustment_account_id"] = (
+                record.adjustment_account_id.id if record.adjustment_account_id else False
+            )
+            data_record.custom_filter_data = custom_data
+
+    def _inverse_processed_groups(self):
+        """Guardar los grupos procesados"""
+        data_obj = self.env["account.account.reconcile.data"]
+        for record in self:
+            data_record = data_obj.search(
+                [("user_id", "=", self.env.user.id), ("reconcile_id", "=", record.id)],
+                limit=1,
+            )
+            if not data_record:
+                data_record = data_obj.create(
+                    {
+                        "reconcile_id": record.id,
+                        "user_id": self.env.user.id,
+                        "data": {"data": [], "counterparts": []},
+                        "custom_filter_data": {},
+                    }
+                )
+
+            custom_data = data_record.custom_filter_data or {}
+            custom_data["processed_groups"] = record.processed_groups or "[]"
             data_record.custom_filter_data = custom_data
 
     def _compute_reconcile_data_info(self):
@@ -611,6 +756,413 @@ class AccountAccountReconcile(models.Model):
                 "sticky": False,
             },
         }
+
+    def find_next_match(self):
+        """
+        Buscar el siguiente grupo de conciliación y presentarlo en el widget
+
+        Lógica:
+        - Buscar todos los grupos de líneas que coincidan con el mapeo
+        - Filtrar los grupos ya procesados
+        - Si flexible_mode = False: Filtrar por abs(balance) <= tolerance_amount
+        - Si flexible_mode = True: Mostrar cualquier grupo
+        - Presentar el primer grupo elegible
+        - Crear línea de ajuste si es necesario (solo en modo preciso)
+        """
+        self.ensure_one()
+
+        if not self.custom_field_mapping_id:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "Missing Mapping",
+                    "message": "Please select a custom field mapping first.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        mapping = self.custom_field_mapping_id
+
+        # Limpiar conciliación actual
+        self.clean_reconcile()
+
+        # Obtener grupos procesados
+        import json
+        processed_groups = json.loads(self.processed_groups or "[]")
+
+        # Buscar todos los grupos
+        all_groups = self._find_all_groups(mapping)
+
+        if not all_groups:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "No Matches Found",
+                    "message": "No matching groups found.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        # Filtrar grupos ya procesados
+        eligible_groups = [
+            group for group in all_groups
+            if group['group_key'] not in processed_groups
+        ]
+
+        if not eligible_groups:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "All Groups Processed",
+                    "message": "All matching groups have been processed. Click 'Reiniciar Sesión' to start over.",
+                    "type": "info",
+                    "sticky": False,
+                },
+            }
+
+        # Aplicar filtro de tolerancia si modo preciso
+        if not self.flexible_mode:
+            eligible_groups = [
+                group for group in eligible_groups
+                if abs(group['balance']) <= self.tolerance_amount
+            ]
+
+        if not eligible_groups:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "No Groups Within Tolerance",
+                    "message": f"No groups found with balance <= {self.tolerance_amount}. {len([g for g in all_groups if g['group_key'] not in processed_groups])} groups exceed tolerance.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        # Tomar el primer grupo
+        next_group = eligible_groups[0]
+
+        _logger.info(f"Presenting group {next_group['group_key']}: {len(next_group['lines'])} lines, balance: {next_group['balance']}")
+
+        # Obtener los datos actuales de conciliación
+        data = self.reconcile_data_info
+        if not data:
+            data = {"data": [], "counterparts": []}
+
+        # Agregar líneas del grupo
+        for line in next_group['lines']:
+            if line.id not in data["counterparts"]:
+                data["counterparts"].append(line.id)
+
+        # Si está en modo preciso y hay diferencia, crear línea de ajuste
+        if not self.flexible_mode and abs(next_group['balance']) > 0.01:
+            adjustment_line = self._create_adjustment_line(next_group['balance'])
+            if adjustment_line and adjustment_line.id not in data["counterparts"]:
+                data["counterparts"].append(adjustment_line.id)
+
+        # Recomputar los datos para actualizar el widget
+        self.reconcile_data_info = self._recompute_data(data)
+
+        # Marcar grupo como procesado
+        processed_groups.append(next_group['group_key'])
+        self.processed_groups = json.dumps(processed_groups)
+
+        # Retornar acción de recarga
+        return {
+            "type": "ir.actions.client",
+            "tag": "reload",
+            "params": {
+                "message": f"Group {next_group['group_key']}: {len(next_group['lines'])} lines, balance: {next_group['balance']:.2f}",
+            },
+        }
+
+    def reconcile_all_remaining_matches(self):
+        """
+        Conciliar automáticamente todos los grupos restantes que estén dentro del margen de tolerancia
+
+        Solo funciona en modo preciso (flexible_mode = False)
+        """
+        self.ensure_one()
+
+        if not self.custom_field_mapping_id:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "Missing Mapping",
+                    "message": "Please select a custom field mapping first.",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        if self.flexible_mode:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "Not Available in Flexible Mode",
+                    "message": "Batch reconciliation is only available in Precise Mode (flexible_mode = False).",
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        mapping = self.custom_field_mapping_id
+
+        # Obtener grupos procesados
+        import json
+        processed_groups = json.loads(self.processed_groups or "[]")
+
+        # Buscar todos los grupos
+        all_groups = self._find_all_groups(mapping)
+
+        # Filtrar grupos ya procesados y dentro de tolerancia
+        eligible_groups = [
+            group for group in all_groups
+            if group['group_key'] not in processed_groups
+            and abs(group['balance']) <= self.tolerance_amount
+        ]
+
+        if not eligible_groups:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "No Groups to Reconcile",
+                    "message": "No eligible groups found within tolerance.",
+                    "type": "info",
+                    "sticky": False,
+                },
+            }
+
+        _logger.info(f"Batch reconciling {len(eligible_groups)} groups...")
+
+        reconciled_count = 0
+        errors = []
+
+        for group in eligible_groups:
+            try:
+                # Limpiar widget
+                self.clean_reconcile()
+
+                # Obtener los datos actuales de conciliación
+                data = self.reconcile_data_info
+                if not data:
+                    data = {"data": [], "counterparts": []}
+
+                # Agregar líneas del grupo
+                for line in group['lines']:
+                    if line.id not in data["counterparts"]:
+                        data["counterparts"].append(line.id)
+
+                # Crear línea de ajuste si es necesario
+                if abs(group['balance']) > 0.01:
+                    adjustment_line = self._create_adjustment_line(group['balance'])
+                    if adjustment_line and adjustment_line.id not in data["counterparts"]:
+                        data["counterparts"].append(adjustment_line.id)
+
+                # Recomputar los datos
+                self.reconcile_data_info = self._recompute_data(data)
+
+                # Intentar conciliar
+                self.button_reconcile()
+
+                # Marcar como procesado
+                processed_groups.append(group['group_key'])
+                reconciled_count += 1
+
+                _logger.info(f"  Reconciled group {group['group_key']}: {len(group['lines'])} lines, balance: {group['balance']}")
+
+            except Exception as e:
+                error_msg = f"Group {group['group_key']}: {str(e)}"
+                errors.append(error_msg)
+                _logger.error(f"  Error reconciling group: {error_msg}")
+
+        # Actualizar grupos procesados
+        self.processed_groups = json.dumps(processed_groups)
+
+        # Limpiar widget final
+        self.clean_reconcile()
+
+        # Mensaje de resultado
+        message = f"Successfully reconciled {reconciled_count} groups."
+        if errors:
+            message += f" {len(errors)} errors occurred."
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Batch Reconciliation Complete",
+                "message": message,
+                "type": "success" if reconciled_count > 0 else "warning",
+                "sticky": True,
+            },
+        }
+
+    def button_reset_session(self):
+        """
+        Reiniciar la sesión de conciliación: limpiar grupos procesados y widget
+        """
+        self.ensure_one()
+
+        import json
+        self.processed_groups = json.dumps([])
+        self.clean_reconcile()
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Session Reset",
+                "message": "The reconciliation session has been reset. You can now process all groups again.",
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def _find_all_groups(self, mapping):
+        """
+        Encontrar todos los grupos de líneas que coincidan con el mapeo
+
+        Retorna lista de diccionarios:
+        [
+            {
+                'group_key': 'SO001',  # Valor de referencia
+                'lines': recordset de account.move.line,
+                'balance': 123.45,  # Balance total del grupo
+            },
+            ...
+        ]
+        """
+        self.ensure_one()
+
+        # Buscar todas las líneas coincidentes usando la lógica bidireccional
+        all_matching_lines = self._find_all_automatic_matches(mapping)
+
+        if not all_matching_lines:
+            return []
+
+        # Agrupar líneas por referencia/orden
+        groups = {}
+
+        for line in all_matching_lines:
+            # Intentar obtener la referencia del grupo
+            group_key = self._get_group_key_for_line(line, mapping)
+
+            if not group_key:
+                continue
+
+            if group_key not in groups:
+                groups[group_key] = self.env["account.move.line"].browse()
+
+            groups[group_key] |= line
+
+        # Convertir a lista con balance
+        result = []
+        for group_key, lines in groups.items():
+            balance = sum(lines.mapped('amount_residual'))
+            result.append({
+                'group_key': group_key,
+                'lines': lines,
+                'balance': balance,
+            })
+
+        # Ordenar por balance absoluto (los más balanceados primero)
+        result.sort(key=lambda g: abs(g['balance']))
+
+        _logger.info(f"Found {len(result)} groups from {len(all_matching_lines)} total lines")
+
+        return result
+
+    def _get_group_key_for_line(self, line, mapping):
+        """
+        Obtener la clave de grupo para una línea
+
+        Busca en la factura/pago el valor del campo de mapeo para agrupar
+        """
+        # Intentar desde la factura
+        if line.move_id:
+            # Buscar orden relacionada
+            if mapping.source_model == "sale.order":
+                # Buscar en invoice_line_ids -> sale_line_ids -> order_id
+                for inv_line in line.move_id.invoice_line_ids:
+                    for sale_line in inv_line.sale_line_ids:
+                        if sale_line.order_id:
+                            value = sale_line.order_id[mapping.source_field_name]
+                            if value:
+                                return str(value)
+
+            elif mapping.source_model == "purchase.order":
+                # Buscar en invoice_line_ids -> purchase_line_id -> order_id
+                for inv_line in line.move_id.invoice_line_ids:
+                    if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id:
+                        value = inv_line.purchase_line_id.order_id[mapping.source_field_name]
+                        if value:
+                            return str(value)
+
+            elif mapping.source_model == "account.move":
+                # Usar directamente el campo de la factura
+                value = line.move_id[mapping.source_field_name]
+                if value:
+                    return str(value)
+
+        # Si no encontramos desde la orden, usar el name o ref de la línea
+        return line.name or line.ref or f"line_{line.id}"
+
+    def _create_adjustment_line(self, balance):
+        """
+        Crear una línea de ajuste para la diferencia
+
+        :param balance: diferencia a ajustar (positivo o negativo)
+        :return: account.move.line de ajuste
+        """
+        self.ensure_one()
+
+        if not self.adjustment_account_id:
+            _logger.warning("No adjustment account configured, cannot create adjustment line")
+            return None
+
+        # Crear un asiento de ajuste
+        move_vals = {
+            'journal_id': self.journal_id.id,
+            'date': fields.Date.today(),
+            'ref': f"Adjustment for reconciliation - Balance: {balance:.2f}",
+            'line_ids': [
+                (0, 0, {
+                    'account_id': self.adjustment_account_id.id,
+                    'partner_id': self.partner_id.id if self.partner_id else False,
+                    'name': f"Rounding adjustment",
+                    'debit': abs(balance) if balance < 0 else 0.0,
+                    'credit': abs(balance) if balance > 0 else 0.0,
+                }),
+                (0, 0, {
+                    'account_id': self.account_id.id,
+                    'partner_id': self.partner_id.id if self.partner_id else False,
+                    'name': f"Rounding adjustment counterpart",
+                    'debit': abs(balance) if balance > 0 else 0.0,
+                    'credit': abs(balance) if balance < 0 else 0.0,
+                }),
+            ],
+        }
+
+        move = self.env['account.move'].create(move_vals)
+        move.action_post()
+
+        # Retornar la línea de la cuenta de ajuste
+        adjustment_line = move.line_ids.filtered(
+            lambda l: l.account_id == self.account_id
+        )
+
+        _logger.info(f"Created adjustment line {adjustment_line.id} for balance {balance:.2f}")
+
+        return adjustment_line
 
     def button_clear_custom_filter(self):
         """

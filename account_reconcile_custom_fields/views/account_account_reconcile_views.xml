@@ -6,26 +6,36 @@
         <field name="model">account.account.reconcile</field>
         <field name="inherit_id" ref="account_reconcile_oca.account_account_reconcile_form_view"/>
         <field name="arch" type="xml">
-            <!-- Add custom filter fields -->
+            <!-- Add custom filter fields (hidden) -->
             <xpath expr="//field[@name='is_reconciled']" position="after">
                 <field name="custom_field_mapping_id" invisible="1"/>
                 <field name="custom_filter_value" invisible="1"/>
+                <field name="flexible_mode" invisible="1"/>
+                <field name="tolerance_amount" invisible="1"/>
+                <field name="adjustment_account_id" invisible="1"/>
+                <field name="processed_groups" invisible="1"/>
+                <field name="company_currency_id" invisible="1"/>
             </xpath>
 
             <!-- Add custom filter buttons -->
             <xpath expr="//div[@class='o_statusbar_buttons']/button[@name='clean_reconcile']" position="after">
-                <button name="button_find_all_matches"
-                        string="Find All Matches"
+                <button name="find_next_match"
+                        string="Buscar Siguiente Coincidencia"
                         type="object"
                         class="btn btn-success"
                         attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}"/>
-                <button name="button_apply_custom_filter"
-                        string="Manual Search"
+                <button name="reconcile_all_remaining_matches"
+                        string="Aplicar Todos los Restantes"
                         type="object"
-                        class="btn btn-info"
-                        attrs="{'invisible': ['|', ('is_reconciled', '=', True), '|', ('custom_field_mapping_id', '=', False), ('custom_filter_value', '=', False)]}"/>
+                        class="btn btn-primary"
+                        attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}"/>
+                <button name="button_reset_session"
+                        string="Reiniciar Sesión"
+                        type="object"
+                        class="btn btn-warning"
+                        attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}"/>
                 <button name="button_clear_custom_filter"
-                        string="Clear"
+                        string="Limpiar"
                         type="object"
                         class="btn btn-secondary"
                         attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
@@ -33,31 +43,50 @@
 
             <!-- Add custom filter fields in the form -->
             <xpath expr="//group" position="after">
-                <div class="alert alert-success" role="alert"
+                <div class="alert alert-info" role="alert"
                      attrs="{'invisible': [('is_reconciled', '=', True)]}">
-                    <h4><i class="fa fa-magic"/> Automatic Matching</h4>
-                    <p><strong>Click "Find All Matches"</strong> to automatically compare ALL invoices with ALL payments and find coincidences.</p>
-                    <p>The system will compare the configured fields (e.g., MercadoLibre Order ID) between all sale orders and all payments.</p>
+                    <h4><i class="fa fa-magic"/> Conciliación Masiva Asistida</h4>
+                    <p><strong>Modo de Operación:</strong></p>
+                    <ul>
+                        <li><strong>Buscar Siguiente:</strong> Presenta el siguiente grupo balanceado para conciliar</li>
+                        <li><strong>Aplicar Todos:</strong> Concilia automáticamente todos los grupos restantes dentro del margen de error</li>
+                    </ul>
                 </div>
-                <group string="1. Select Mapping" name="custom_filters"
+
+                <group string="1. Configuración del Mapeo" name="custom_filters"
                        attrs="{'invisible': [('is_reconciled', '=', True)]}">
                     <field name="custom_field_mapping_id"
-                           placeholder="Select a custom field mapping..."
+                           placeholder="Seleccione un mapeo de campos..."
                            options="{'no_create': True, 'no_open': True}"
                            required="0"/>
-                    <div class="text-muted" attrs="{'invisible': [('custom_field_mapping_id', '!=', False)]}">
-                        <small><i class="fa fa-arrow-up"/> Select a mapping to enable automatic matching</small>
-                    </div>
                 </group>
-                <group string="2. Manual Search (Optional)" name="manual_search"
-                       attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}">
-                    <field name="custom_filter_value"
-                           placeholder="Or enter a specific value to search manually (e.g., 1234568)..."
-                           nolabel="1"/>
-                    <div class="text-muted">
-                        <small>Leave empty to search ALL automatically, or enter a specific value for manual search</small>
-                    </div>
+
+                <group string="2. Configuración de Tolerancia" name="tolerance_config"
+                       attrs="{'invisible': ['|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False)]}"
+                       col="2">
+                    <group>
+                        <field name="flexible_mode" widget="boolean_toggle"/>
+                        <field name="tolerance_amount"
+                               attrs="{'invisible': [('flexible_mode', '=', True)], 'required': [('flexible_mode', '=', False)]}"
+                               widget="monetary"/>
+                    </group>
+                    <group>
+                        <field name="adjustment_account_id"
+                               domain="[('company_id', '=', company_id), ('reconcile', '=', True)]"
+                               options="{'no_create': True}"
+                               attrs="{'required': [('flexible_mode', '=', False), ('tolerance_amount', '>', 0)]}"/>
+                    </group>
                 </group>
+
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': ['|', '|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False), ('flexible_mode', '=', False)]}">
+                    <p><i class="fa fa-warning"/> <strong>Modo Flexible Activado:</strong> Se mostrarán todos los grupos sin importar su balance. Deberás resolverlos manualmente.</p>
+                </div>
+
+                <div class="alert alert-success" role="alert"
+                     attrs="{'invisible': ['|', '|', ('is_reconciled', '=', True), ('custom_field_mapping_id', '=', False), ('flexible_mode', '=', True)]}">
+                    <p><i class="fa fa-check"/> <strong>Modo Preciso:</strong> Solo se mostrarán grupos con diferencia ≤ <field name="tolerance_amount" readonly="1" class="oe_inline"/>. Se crearán ajustes automáticos si es necesario.</p>
+                </div>
             </xpath>
         </field>
     </record>
