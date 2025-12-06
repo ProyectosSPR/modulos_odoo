@@ -214,10 +214,10 @@ class PartnerInconsistency(models.TransientModel):
             try:
                 payment_lines = self.env['account.move.line'].search([
                     (target_field, '=', ref_value),
-                    ("reconciled", "=", False),
-                    ("move_id.state", "=", "posted"),
+                    # Flexibilizamos el dominio para incluir apuntes ya conciliados,
+                    # ya que la inconsistencia de proveedor puede existir incluso si se forzó la conciliación.
+                    ("parent_state", "=", "posted"),
                     ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
-                    ("amount_residual", "!=", 0),
                 ])
             except Exception as e:
                  _logger.error(f"  Error al buscar líneas de pago para la referencia '{ref_value}' (campo: {target_field}): {e}")
