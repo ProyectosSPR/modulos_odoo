@@ -8,7 +8,7 @@
             <form string="Buscar Inconsistencias">
                 <sheet>
                     <div class="oe_title">
-                        <h1>Buscar Inconsistencias de Proveedores</h1>
+                        <h1>Buscar Inconsistencias de Proveedores - Account Reconcile Custom Fields</h1>
                     </div>
                     <group>
                         <p>
