@@ -211,14 +211,22 @@ class PartnerInconsistency(models.TransientModel):
                 _logger.error(f"  Error al buscar líneas de factura para la referencia '{ref_value}': {e}")
 
             # --- Encontrar apuntes de PAGO ---
+            payment_lines = self.env['account.move.line'] # Inicializar como recordset vacío
             try:
-                payment_lines = self.env['account.move.line'].search([
-                    (target_field, '=', ref_value),
-                    # Flexibilizamos el dominio para incluir apuntes ya conciliados,
-                    # ya que la inconsistencia de proveedor puede existir incluso si se forzó la conciliación.
-                    ("parent_state", "=", "posted"),
-                    ("account_id.account_type", "in", ["liability_payable", "asset_receivable"]),
-                ])
+                # 1. Buscar en el modelo de destino configurado en el mapeo (ej: account.move).
+                if mapping.target_model and target_field:
+                    target_records = self.env[mapping.target_model].search([(target_field, '=', ref_value)])
+                    
+                    if target_records:
+                        # 2. De los registros encontrados, obtener TODAS sus líneas.
+                        #    Asumimos que el modelo destino tiene un campo 'line_ids'.
+                        all_lines_from_target = target_records.mapped('line_ids')
+
+                        # 3. Filtrar esas líneas para quedarnos solo con las relevantes.
+                        payment_lines = all_lines_from_target.filtered(
+                            lambda line: line.parent_state == 'posted' and \
+                                         line.account_id.account_type in ('liability_payable', 'asset_receivable')
+                        )
             except Exception as e:
                  _logger.error(f"  Error al buscar líneas de pago para la referencia '{ref_value}' (campo: {target_field}): {e}")
 
