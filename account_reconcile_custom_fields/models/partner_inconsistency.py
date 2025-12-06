@@ -177,7 +177,7 @@ class PartnerInconsistency(models.TransientModel):
                 source_refs = set(source_records.mapped(source_field))
                 _logger.info(f"  OK: Encontradas {len(source_refs)} referencias únicas desde '{mapping.source_model}.{source_field}'.")
         except Exception as e:
-            _logger.warning(f"  AVISO: No se pudieron obtener referencias desde el origen '{mapping.source_model}.{source_field}'. Causa: {e}")
+            _logger.warning(f"  AVISO: No se pudieron obtener referencias desde el origen del '{mapping.source_model}.{source_field}'. Causa: {e}")
 
         # 2. Obtener referencias únicas del DESTINO (account.move.line), con manejo de errores.
         try:
