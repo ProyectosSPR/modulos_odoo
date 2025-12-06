@@ -89,7 +89,7 @@
                 Haz clic en el botón para iniciar una nueva búsqueda con filtros.
             </p>
             <p>
-                <button type="action" name="%(account_reconcile_custom_fields.action_launch_partner_inconsistency_wizard)d" string="🔍 Buscar Inconsistencias" class="btn btn-primary"/>
+                <button type="action" name="account_reconcile_custom_fields.action_launch_partner_inconsistency_wizard" string="🔍 Buscar Inconsistencias" class="btn btn-primary"/>
             </p>
         </field>
     </record>
