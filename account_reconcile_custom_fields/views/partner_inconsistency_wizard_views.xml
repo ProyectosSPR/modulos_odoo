@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
+    <!--
+    Wizard Action and View are defined here, but the menu item is now in
+    partner_inconsistency_views.xml, which will call the main result action.
+    -->
+
     <!-- Wizard Form View -->
     <record id="view_partner_inconsistency_wizard_form" model="ir.ui.view">
         <field name="name">partner.inconsistency.wizard.form</field>
         <field name="model">partner.inconsistency.wizard</field>
         <field name="arch" type="xml">
             <form string="Detectar Inconsistencias de Proveedor">
+                <p>
+                    Seleccione los filtros para acotar la búsqueda de inconsistencias.
+                    Es muy recomendable usar un rango de fechas para mejorar el rendimiento.
+                </p>
                 <group>
                     <group>
                         <field name="mapping_id" options="{'no_create': True}"/>
@@ -18,8 +28,8 @@
                     </group>
                 </group>
                 <footer>
-                    <button name="action_find_inconsistencies" string="Buscar Inconsistencias" type="object" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button name="action_find_inconsistencies" string="Buscar" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" data-hotkey="z"/>
                 </footer>
             </form>
         </field>
@@ -27,18 +37,10 @@
 
     <!-- Action to launch the wizard -->
     <record id="action_launch_partner_inconsistency_wizard" model="ir.actions.act_window">
-        <field name="name">Detectar Inconsistencias de Proveedor</field>
+        <field name="name">Buscar Inconsistencias</field>
         <field name="res_model">partner.inconsistency.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <!-- Menu Item - This overrides the original menu item to call our new wizard action -->
-    <menuitem
-        id="menu_partner_inconsistency"
-        name="Inconsistencias de Proveedores"
-        parent="account.menu_finance_entries_actions"
-        action="action_launch_partner_inconsistency_wizard"
-        sequence="100"/>
 
 </odoo>

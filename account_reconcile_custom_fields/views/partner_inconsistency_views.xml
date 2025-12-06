@@ -83,13 +83,23 @@
         <field name="domain">[]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No se encontraron inconsistencias con los filtros aplicados.
+                No hay inconsistencias para mostrar.
             </p>
             <p>
-                Prueba a cambiar los filtros en el asistente, por ejemplo, ampliando el rango de fechas
-                o seleccionando la casilla "Incluir Apuntes Conciliados" para una búsqueda más profunda.
+                Haz clic en el botón para iniciar una nueva búsqueda con filtros.
+            </p>
+            <p>
+                <button type="action" name="%(account_reconcile_custom_fields.action_launch_partner_inconsistency_wizard)d" string="🔍 Buscar Inconsistencias" class="btn btn-primary"/>
             </p>
         </field>
     </record>
+
+    <!-- Menu Item -->
+    <menuitem
+        id="menu_partner_inconsistency"
+        name="Inconsistencias de Proveedores"
+        parent="account.menu_finance_entries_actions"
+        action="action_partner_inconsistency_result"
+        sequence="100"/>
 
 </odoo>
