@@ -37,38 +37,6 @@
         <field name="target">new</field>
     </record>
 
-    <!-- Server action to trigger the wizard -->
-    <record id="action_server_launch_inconsistency_wizard" model="ir.actions.server">
-        <field name="name">Buscar Inconsistencias</field>
-        <field name="model_id" ref="model_partner_inconsistency"/>
-        <field name="binding_model_id" ref="model_partner_inconsistency"/>
-        <field name="binding_view_types">list</field>
-        <field name="state">code</field>
-        <field name="code">
-action = env.ref('account_reconcile_custom_fields.action_launch_partner_inconsistency_wizard').read()[0]
-        </field>
-    </record>
-
-    <!-- Tree View for Partner Inconsistencies -->
-    <record id="partner_inconsistency_tree_view" model="ir.ui.view">
-        <field name="name">partner.inconsistency.tree</field>
-        <field name="model">partner.inconsistency</field>
-        <field name="arch" type="xml">
-            <tree create="false" delete="true" edit="false" decoration-danger="True">
-                <field name="referencia_comun"/>
-                <field name="tipo_problema"/>
-                <field name="pago_line_id" string="Apunte 1"/>
-                <field name="proveedor_pago_id"/>
-                <field name="monto_pago" sum="Total Saldo Apunte 1"/>
-                <field name="factura_line_id" string="Apunte 2"/>
-                <field name="proveedor_factura_id"/>
-                <field name="monto_factura" sum="Total Saldo Apunte 2"/>
-                <field name="mapping_id"/>
-                <field name="currency_id" invisible="1"/>
-            </tree>
-        </field>
-    </record>
-
     <!-- Form View for Partner Inconsistencies -->
     <record id="partner_inconsistency_form_view" model="ir.ui.view">
         <field name="name">partner.inconsistency.form</field>
@@ -112,6 +80,17 @@ action = env.ref('account_reconcile_custom_fields.action_launch_partner_inconsis
         <field name="res_model">partner.inconsistency</field>
         <field name="view_mode">tree,form</field>
         <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            No se han encontrado inconsistencias.
+          </p>
+          <p>
+            Para empezar, haz clic en el botón para realizar una búsqueda con filtros.
+          </p>
+          <p>
+            <button type="action" name="%(action_launch_partner_inconsistency_wizard)d" string="🔍 Buscar Inconsistencias" class="btn-primary"/>
+          </p>
+        </field>
     </record>
 
     <!-- Menu Item -->
