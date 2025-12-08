@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- Partner Correction Wizard Form View -->
+    <record id="view_partner_correction_wizard_form" model="ir.ui.view">
+        <field name="name">partner.correction.wizard.form</field>
+        <field name="model">partner.correction.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Corregir Partner del Pago">
+                <div class="alert alert-warning" role="alert">
+                    <strong>⚠️ IMPORTANTE:</strong> Esta acción modificará el partner del <strong>PAGO</strong>,
+                    nunca la factura. El pago se pasará a borrador, se actualizará y se volverá a publicar.
+                </div>
+
+                <group>
+                    <group string="Información de la Inconsistencia">
+                        <field name="referencia_comun"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+
+                <group>
+                    <group string="PAGO (Se va a corregir)">
+                        <field name="payment_move_name"/>
+                        <field name="current_partner_id"/>
+                        <field name="payment_amount" widget="monetary"/>
+                    </group>
+                    <group string="FACTURA (Referencia)">
+                        <field name="invoice_move_name"/>
+                        <field name="suggested_partner_id"/>
+                        <field name="invoice_amount" widget="monetary"/>
+                    </group>
+                </group>
+
+                <separator string="Seleccione qué Partner usar en el Pago"/>
+
+                <group>
+                    <field name="correction_option" widget="radio"/>
+                    <field name="manual_partner_id"
+                           attrs="{'invisible': [('correction_option', '!=', 'use_manual')],
+                                   'required': [('correction_option', '=', 'use_manual')]}"/>
+                </group>
+
+                <div class="alert alert-info" role="alert" attrs="{'invisible': [('correction_option', '!=', 'use_invoice')]}">
+                    <strong>✓ Acción:</strong> El pago se actualizará con el partner de la factura: <field name="suggested_partner_id" readonly="1" nolabel="1"/>
+                </div>
+
+                <div class="alert alert-secondary" role="alert" attrs="{'invisible': [('correction_option', '!=', 'use_current')]}">
+                    <strong>ℹ️ Acción:</strong> No se realizará ningún cambio. La inconsistencia se eliminará de la lista.
+                </div>
+
+                <div class="alert alert-info" role="alert" attrs="{'invisible': [('correction_option', '!=', 'use_manual')]}">
+                    <strong>✓ Acción:</strong> El pago se actualizará con el partner seleccionado manualmente.
+                </div>
+
+                <footer>
+                    <button name="action_apply_correction"
+                            string="Aplicar Corrección"
+                            type="object"
+                            class="btn-primary"
+                            data-hotkey="q"/>
+                    <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"
+                            data-hotkey="z"/>
+                </footer>
+
+                <field name="inconsistency_id" invisible="1"/>
+                <field name="payment_line_id" invisible="1"/>
+                <field name="invoice_line_id" invisible="1"/>
+            </form>
+        </field>
+    </record>
+
+</odoo>

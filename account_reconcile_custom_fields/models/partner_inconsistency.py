@@ -276,32 +276,49 @@ class PartnerInconsistency(models.TransientModel):
         return inconsistencies_vals
 
     def action_correct_partner(self):
-        # Esta acción es un ejemplo y puede necesitar ajustes
+        """
+        Abrir wizard para seleccionar qué partner usar en el PAGO
+        IMPORTANTE: SIEMPRE se corrige el PAGO, nunca la factura
+        """
+        self.ensure_one()
+
         if not self.pago_line_id or not self.factura_line_id:
             raise UserError(_("Ambos apuntes deben estar presentes para la corrección."))
 
-        correct_partner_id = self.factura_line_id.partner_id.id
-        line_to_correct = self.pago_line_id
-        
-        _logger.info(f"Corrigiendo Apunte ID {line_to_correct.id}. Cambiando partner a {self.factura_line_id.partner_id.name}")
+        # Identificar cuál es el pago (crédito) y cuál la factura (débito)
+        payment_line = None
+        invoice_line = None
 
-        move_to_correct = line_to_correct.move_id
-        if move_to_correct.state == 'posted':
-            move_to_correct.button_draft()
-            move_to_correct.line_ids.with_context(check_move_validity=False).partner_id = correct_partner_id
-            move_to_correct.action_post()
+        if self.pago_line_id.credit > 0:
+            payment_line = self.pago_line_id
+            invoice_line = self.factura_line_id
+        elif self.factura_line_id.credit > 0:
+            payment_line = self.factura_line_id
+            invoice_line = self.pago_line_id
         else:
-            move_to_correct.line_ids.with_context(check_move_validity=False).partner_id = correct_partner_id
+            # Si ambos son débito o crédito, usar el tipo de apunte
+            if self.tipo_apunte_1 == 'credit':
+                payment_line = self.pago_line_id
+                invoice_line = self.factura_line_id
+            else:
+                payment_line = self.factura_line_id
+                invoice_line = self.pago_line_id
 
-        self.unlink()
-        
+        if not payment_line:
+            raise UserError(_("No se pudo identificar cuál es el pago a corregir."))
+
+        # Abrir wizard de corrección
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Corrección Exitosa',
-                'message': f'El asiento {move_to_correct.name} ha sido actualizado.',
-                'type': 'success',
-                'sticky': False,
+            'name': _('Corregir Partner del Pago'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'partner.correction.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_inconsistency_id': self.id,
+                'default_payment_line_id': payment_line.id,
+                'default_invoice_line_id': invoice_line.id,
+                'default_current_partner_id': payment_line.partner_id.id,
+                'default_suggested_partner_id': invoice_line.partner_id.id,
             },
         }
