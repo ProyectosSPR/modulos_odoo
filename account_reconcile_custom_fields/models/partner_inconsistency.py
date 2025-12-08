@@ -62,16 +62,26 @@ class PartnerInconsistency(models.TransientModel):
         if not mapping:
             raise UserError(_("No se encontró el mapeo de campos seleccionado."))
 
-        # Dominio base para los A PUNTES CONTABLES, que se usará DENTRO del bucle.
-        line_domain = [('account_id', 'in', account_ids)]
+        # Dominio base para los APUNTES CONTABLES, que se usará DENTRO del bucle.
+        line_domain = [
+            ('account_id', 'in', account_ids),
+            ('parent_state', '=', 'posted'),  # Solo facturas/pagos publicados
+        ]
+
+        # Filtros de fecha - MUY IMPORTANTE para rendimiento
         if date_from:
             line_domain.append(('date', '>=', date_from))
         if date_to:
             line_domain.append(('date', '<=', date_to))
+
+        # Filtro de conciliación
         if not include_reconciled:
+            # Solo apuntes NO totalmente conciliados (con saldo pendiente)
             line_domain.append(('amount_residual', '!=', 0))
-        else:
-            line_domain.append(('parent_state', '=', 'posted'))
+            line_domain.append(('reconciled', '=', False))
+
+        # Filtro adicional: solo cuentas por cobrar/pagar
+        line_domain.append(('account_id.account_type', 'in', ['asset_receivable', 'liability_payable']))
         
         _logger.info(f"Filtros: Cuentas: {account_ids}, Mapeo: {mapping.name}, Fechas: {date_from}-{date_to}, Incluir Conciliados: {include_reconciled}")
 
@@ -91,27 +101,56 @@ class PartnerInconsistency(models.TransientModel):
 
         source_field = mapping.source_field_name
         target_field = mapping.target_field_name
-        source_refs, target_refs = set(), set()
 
-        # 1. Obtener TODAS las referencias únicas, sin filtros de dominio.
-        try:
-            _logger.info(f"Buscando referencias en Origen: {mapping.source_model}.{source_field}")
-            source_records = self.env[mapping.source_model].search([(source_field, '!=', False)])
-            source_refs = set(source_records.mapped(source_field))
-            _logger.info(f"  -> OK: Encontradas {len(source_refs)} referencias.")
-        except Exception as e:
-            _logger.warning(f"  -> AVISO al buscar en Origen: {e}")
+        # OPTIMIZACIÓN: Primero buscar apuntes que cumplan los filtros (fecha, cuenta, etc.)
+        # Y de ahí extraer las referencias, en lugar de buscar todas las referencias del sistema
+        _logger.info(f"Buscando apuntes contables que cumplan filtros: {line_domain}")
 
-        try:
-            _logger.info(f"Buscando referencias en Destino: {mapping.target_model}.{target_field}")
-            target_records = self.env[mapping.target_model].search([(target_field, '!=', False)])
-            target_refs = set(target_records.mapped(target_field))
-            _logger.info(f"  -> OK: Encontradas {len(target_refs)} referencias.")
-        except Exception as e:
-            _logger.warning(f"  -> AVISO al buscar en Destino: {e}")
-        
-        unique_refs = list(source_refs | target_refs)
-        _logger.info(f"Total de {len(unique_refs)} referencias únicas a procesar.")
+        # Buscar los apuntes que cumplen los criterios (line_domain ya incluye todos los filtros necesarios)
+        candidate_lines = self.env['account.move.line'].search(line_domain, limit=10000)  # Límite de seguridad
+        _logger.info(f"  -> Encontrados {len(candidate_lines)} apuntes contables candidatos")
+
+        if not candidate_lines:
+            _logger.warning("No se encontraron apuntes que cumplan los criterios de búsqueda")
+            return []
+
+        # Extraer referencias únicas de estos apuntes
+        unique_refs = set()
+
+        # Extraer referencias de los moves relacionados
+        for line in candidate_lines:
+            move = line.move_id
+
+            # Intentar obtener valor del campo fuente desde el move o sus relaciones
+            if mapping.source_model == 'account.move':
+                if hasattr(move, source_field):
+                    value = getattr(move, source_field, None)
+                    if value:
+                        unique_refs.add(str(value))
+            elif mapping.source_model == 'sale.order':
+                # Buscar órdenes de venta relacionadas
+                for inv_line in move.invoice_line_ids:
+                    for sale_line in inv_line.sale_line_ids:
+                        if sale_line.order_id:
+                            value = getattr(sale_line.order_id, source_field, None)
+                            if value:
+                                unique_refs.add(str(value))
+            elif mapping.source_model == 'purchase.order':
+                # Buscar órdenes de compra relacionadas
+                for inv_line in move.invoice_line_ids:
+                    if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id:
+                        value = getattr(inv_line.purchase_line_id.order_id, source_field, None)
+                        if value:
+                            unique_refs.add(str(value))
+
+            # También obtener del campo destino si está en el move
+            if hasattr(move, target_field):
+                value = getattr(move, target_field, None)
+                if value:
+                    unique_refs.add(str(value))
+
+        unique_refs = list(unique_refs)
+        _logger.info(f"Total de {len(unique_refs)} referencias únicas extraídas de los apuntes filtrados.")
         if not unique_refs:
             return []
 
