@@ -55,9 +55,6 @@ action = env.ref('account_reconcile_custom_fields.action_launch_partner_inconsis
         <field name="model">partner.inconsistency</field>
         <field name="arch" type="xml">
             <tree create="false" delete="true" edit="false" decoration-danger="True">
-                <header>
-                    <button name="%(action_server_launch_inconsistency_wizard)d" string="🔍 Buscar Inconsistencias" type="action" class="btn-primary"/>
-                </header>
                 <field name="referencia_comun"/>
                 <field name="tipo_problema"/>
                 <field name="pago_line_id" string="Apunte 1"/>
