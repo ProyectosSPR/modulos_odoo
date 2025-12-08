@@ -149,8 +149,13 @@
           <p>
             Esta herramienta busca cargos y abonos con la misma referencia pero diferentes proveedores/clientes según los mappings configurados.
           </p>
-          <p>
-            <button name="%(action_launch_partner_inconsistency_wizard)d" type="action" class="btn-primary" string="🔍 Buscar Inconsistencias"/>
+          <p class="text-center" style="margin: 20px 0;">
+            <a name="%(account_reconcile_custom_fields.action_launch_partner_inconsistency_wizard)d"
+               type="action"
+               class="btn btn-primary btn-lg"
+               style="padding: 10px 30px; font-size: 16px;">
+              🔍 Buscar Inconsistencias
+            </a>
           </p>
           <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
             <strong>Pasos para usar esta herramienta:</strong><br/>
