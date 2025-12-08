@@ -25,7 +25,7 @@ class PartnerInconsistency(models.TransientModel):
 
     @api.model
     def find_inconsistencies(self, account_ids, mapping_id, date_from=None, date_to=None, include_reconciled=False):
-        _logger.info("========== INICIO DE BÚSQUEDA DE INCONSISTENCIAS ==========")
+        _logger.info("========== INICIO DE BÚSQUEDA DE INCONSISTENCIAS (VERIFICANDO PERSISTENCIA) ==========")
         self.search([]).unlink()
 
         mapping = self.env["reconcile.field.mapping"].browse(mapping_id)
