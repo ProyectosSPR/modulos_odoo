@@ -155,29 +155,36 @@ class PartnerInconsistency(models.TransientModel):
             return []
 
         inconsistencies_vals = []
-        # 2. Iterar sobre cada referencia y APLICAR FILTROS de línea
+        # 2. Iterar sobre cada referencia
+        # IMPORTANTE: Al buscar apuntes para cada referencia, NO aplicamos filtro de fechas
+        # porque queremos encontrar TODOS los apuntes con esa referencia, no solo los del rango
         for ref_value in unique_refs:
-            # Construir un dominio para encontrar todos los apuntes relacionados con esta referencia
-            # Este dominio se aplicará al modelo account.move.line
-            
-            domain_for_ref = []
-            # Lógica para construir el dominio de referencia cruzada
-            # Usamos un OR para buscar la referencia en cualquiera de los campos mapeados
-            # Esto es más flexible si los datos no son consistentes.
-            if source_field and hasattr(self.env['account.move.line'], f'move_id.{source_field}'):
-                 domain_for_ref.append((f'move_id.{source_field}', '=', ref_value))
-            if target_field:
-                 if hasattr(self.env['account.move.line'], target_field):
-                     domain_for_ref.append((target_field, '=', ref_value))
-                 elif hasattr(self.env['account.move.line'], f'move_id.{target_field}'):
-                     domain_for_ref.append((f'move_id.{target_field}', '=', ref_value))
-            
-            if len(domain_for_ref) > 1:
-                domain_for_ref.insert(0, '|')
+            # Construir un dominio para encontrar TODOS los apuntes con esta referencia
+            # SIN filtro de fechas, solo con filtros básicos (cuenta, estado, conciliación)
 
-            # El dominio final combina los filtros del wizard y el filtro de la referencia actual
-            final_line_domain = line_domain + domain_for_ref
-            
+            # Dominio base SIN fechas
+            base_domain = [
+                ('parent_state', '=', 'posted'),
+                ('account_id.account_type', 'in', ['asset_receivable', 'liability_payable']),
+            ]
+
+            # Agregar filtro de cuentas si aplica
+            if 'account_id' in str(line_domain):
+                for item in line_domain:
+                    if isinstance(item, tuple) and item[0] == 'account_id':
+                        base_domain.append(item)
+                        break
+
+            # Buscar por ref en move.ref o move_line.ref
+            domain_for_ref = [
+                '|',
+                ('ref', '=', ref_value),
+                ('move_id.ref', '=', ref_value)
+            ]
+
+            # El dominio final NO incluye filtros de fecha
+            final_line_domain = base_domain + domain_for_ref
+
             _logger.debug(f"Buscando apuntes para Ref '{ref_value}' con dominio: {final_line_domain}")
             lines_for_ref = self.env['account.move.line'].search(final_line_domain)
             
