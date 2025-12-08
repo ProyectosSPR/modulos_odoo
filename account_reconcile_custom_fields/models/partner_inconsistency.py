@@ -233,79 +233,87 @@ class PartnerInconsistency(models.TransientModel):
                 continue
 
             # 3. Analizar el grupo de apuntes para esta referencia
-            # MEJORA: Separar cargos (débitos) y abonos (créditos)
-            debits = lines_for_ref.filtered(lambda l: l.debit > 0)
-            credits = lines_for_ref.filtered(lambda l: l.credit > 0)
+            # IMPORTANTE: Solo detectar parejas FACTURA-PAGO, no PAGO-PAGO ni FACTURA-FACTURA
 
-            # Verificar si hay tanto cargos como abonos
-            if debits and credits:
-                # Obtener partners únicos en cada lado
-                debit_partners = debits.mapped('partner_id')
-                credit_partners = credits.mapped('partner_id')
+            # Separar FACTURAS de PAGOS por move_type
+            invoice_lines = lines_for_ref.filtered(
+                lambda l: l.move_id.move_type in ('out_invoice', 'in_invoice')
+            )
 
-                # CASO 1: Detectar si los partners de cargos son diferentes a los de abonos
-                # Este es el caso más común: mismo cargo y abono pero con partners diferentes
-                for debit_line in debits:
-                    for credit_line in credits:
-                        if debit_line.partner_id != credit_line.partner_id:
-                            _logger.info(
-                                f"  [INCONSISTENCIA DETECTADA - Cargo/Abono] Ref: '{ref_value}', "
-                                f"Cargo Partner: {debit_line.partner_id.name}, "
-                                f"Abono Partner: {credit_line.partner_id.name}"
-                            )
-                            inconsistencies_vals.append({
-                                'referencia_comun': str(ref_value),
-                                'pago_line_id': debit_line.id,
-                                'factura_line_id': credit_line.id,
-                                'mapping_id': mapping.id,
-                            })
-            else:
-                # CASO 2: Si solo hay cargos O solo abonos, verificar partners diferentes entre ellos
-                partners = lines_for_ref.mapped('partner_id')
-                if len(partners) > 1:
-                    _logger.info(f"  [INCONSISTENCIA DETECTADA - Mismo Tipo] Ref: '{ref_value}', Partners: {partners.mapped('name')}")
-                    anchor_line = lines_for_ref[0]
-                    for other_line in lines_for_ref[1:]:
-                        if other_line.partner_id != anchor_line.partner_id:
-                            inconsistencies_vals.append({
-                                'referencia_comun': str(ref_value),
-                                'pago_line_id': other_line.id,
-                                'factura_line_id': anchor_line.id,
-                                'mapping_id': mapping.id,
-                            })
+            # Para los pagos, verificar que vengan de un account.payment real
+            payment_lines = self.env['account.move.line'].browse()
+            for line in lines_for_ref:
+                # Verificar si este move viene de un payment
+                payment = self.env['account.payment'].search([('move_id', '=', line.move_id.id)], limit=1)
+                if payment:
+                    payment_lines |= line
+
+            _logger.info(f"    -> {len(invoice_lines)} líneas de facturas, {len(payment_lines)} líneas de pagos")
+
+            # Solo procesar si hay tanto facturas como pagos
+            if not invoice_lines or not payment_lines:
+                _logger.info(f"    -> Saltando ref '{ref_value}': no hay parejas factura-pago")
+                continue
+
+            # Ahora emparejar facturas con pagos, validando:
+            # 1. Que tengan partners diferentes
+            # 2. Que el tipo de pago coincida con el tipo de factura
+            for invoice_line in invoice_lines:
+                invoice_type = invoice_line.move_id.move_type
+
+                for payment_line in payment_lines:
+                    # Obtener el payment para verificar el payment_type
+                    payment = self.env['account.payment'].search([('move_id', '=', payment_line.move_id.id)], limit=1)
+                    if not payment:
+                        continue
+
+                    # Validar que el tipo de pago coincida con el tipo de factura
+                    # out_invoice (factura de cliente) -> debe emparejar con inbound (pago recibido)
+                    # in_invoice (factura de proveedor) -> debe emparejar con outbound (pago enviado)
+                    valid_pairing = False
+                    if invoice_type == 'out_invoice' and payment.payment_type == 'inbound':
+                        valid_pairing = True
+                    elif invoice_type == 'in_invoice' and payment.payment_type == 'outbound':
+                        valid_pairing = True
+
+                    if not valid_pairing:
+                        _logger.info(
+                            f"    -> Saltando pareja: factura {invoice_type} no empareja con pago {payment.payment_type}"
+                        )
+                        continue
+
+                    # Verificar si tienen partners diferentes
+                    if invoice_line.partner_id != payment_line.partner_id:
+                        _logger.info(
+                            f"  [INCONSISTENCIA DETECTADA] Ref: '{ref_value}', "
+                            f"Factura ({invoice_type}): {invoice_line.move_id.name} - Partner: {invoice_line.partner_id.name}, "
+                            f"Pago ({payment.payment_type}): {payment_line.move_id.name} - Partner: {payment_line.partner_id.name}"
+                        )
+
+                        # Determinar cuál va en pago_line_id y cuál en factura_line_id
+                        # Siempre ponemos el PAGO en pago_line_id y la FACTURA en factura_line_id
+                        inconsistencies_vals.append({
+                            'referencia_comun': str(ref_value),
+                            'pago_line_id': payment_line.id,
+                            'factura_line_id': invoice_line.id,
+                            'mapping_id': mapping.id,
+                        })
         return inconsistencies_vals
 
     def action_correct_partner(self):
         """
         Abrir wizard para seleccionar qué partner usar en el PAGO
         IMPORTANTE: SIEMPRE se corrige el PAGO, nunca la factura
+        NOTA: Con la nueva lógica, pago_line_id siempre es el PAGO y factura_line_id siempre es la FACTURA
         """
         self.ensure_one()
 
         if not self.pago_line_id or not self.factura_line_id:
             raise UserError(_("Ambos apuntes deben estar presentes para la corrección."))
 
-        # Identificar cuál es el pago (crédito) y cuál la factura (débito)
-        payment_line = None
-        invoice_line = None
-
-        if self.pago_line_id.credit > 0:
-            payment_line = self.pago_line_id
-            invoice_line = self.factura_line_id
-        elif self.factura_line_id.credit > 0:
-            payment_line = self.factura_line_id
-            invoice_line = self.pago_line_id
-        else:
-            # Si ambos son débito o crédito, usar el tipo de apunte
-            if self.tipo_apunte_1 == 'credit':
-                payment_line = self.pago_line_id
-                invoice_line = self.factura_line_id
-            else:
-                payment_line = self.factura_line_id
-                invoice_line = self.pago_line_id
-
-        if not payment_line:
-            raise UserError(_("No se pudo identificar cuál es el pago a corregir."))
+        # Con la nueva lógica, pago_line_id siempre contiene el PAGO y factura_line_id la FACTURA
+        payment_line = self.pago_line_id
+        invoice_line = self.factura_line_id
 
         # Abrir wizard de corrección
         return {
