@@ -35,6 +35,8 @@
         <field name="res_model">partner.inconsistency.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
+        <field name="binding_model_id" ref="model_partner_inconsistency"/>
+        <field name="binding_type">action</field>
     </record>
 
     <!-- Tree View for Partner Inconsistencies -->
@@ -103,30 +105,29 @@
         </field>
     </record>
 
-    <!-- Search view with button always visible -->
+    <!-- Search view -->
     <record id="partner_inconsistency_search_view" model="ir.ui.view">
         <field name="name">partner.inconsistency.search</field>
         <field name="model">partner.inconsistency</field>
         <field name="arch" type="xml">
             <search>
-                <button name="%(action_launch_partner_inconsistency_wizard)d"
-                        string="Buscar Inconsistencias"
-                        type="action"
-                        class="oe_highlight"
-                        icon="fa-search"/>
                 <field name="referencia_comun"/>
                 <field name="proveedor_pago_id"/>
                 <field name="proveedor_factura_id"/>
                 <field name="mapping_id"/>
+                <filter string="Cargo (Débito)" name="filter_debit" domain="[('tipo_apunte_1', '=', 'debit')]"/>
+                <filter string="Abono (Crédito)" name="filter_credit" domain="[('tipo_apunte_1', '=', 'credit')]"/>
+                <separator/>
                 <group expand="0" string="Group By">
                     <filter string="Referencia" name="group_referencia" context="{'group_by':'referencia_comun'}"/>
                     <filter string="Mapeo" name="group_mapping" context="{'group_by':'mapping_id'}"/>
+                    <filter string="Tipo Apunte 1" name="group_tipo1" context="{'group_by':'tipo_apunte_1'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- Main Window Action with Search Button -->
+    <!-- Main Window Action -->
     <record id="action_partner_inconsistency_main" model="ir.actions.act_window">
         <field name="name">Inconsistencias de Proveedores</field>
         <field name="res_model">partner.inconsistency</field>
@@ -138,7 +139,7 @@
             No se han encontrado inconsistencias.
           </p>
           <p>
-            Para empezar, haz clic en el botón <strong>"Buscar Inconsistencias"</strong> ubicado arriba (al lado de los filtros) para realizar una búsqueda con filtros personalizados.
+            Para empezar, haz clic en el menú <strong>"Action"</strong> (icono ⚙️ arriba a la derecha) y selecciona <strong>"Buscar Inconsistencias"</strong> para realizar una búsqueda con filtros personalizados.
           </p>
         </field>
     </record>
@@ -155,7 +156,8 @@
             No se encontraron inconsistencias con los filtros aplicados.
           </p>
           <p>
-            Intenta cambiar los filtros de búsqueda (cuentas, fechas, mapeo) para ampliar los resultados. Usa el botón <strong>"Buscar Inconsistencias"</strong> arriba para iniciar una nueva búsqueda.
+            Intenta cambiar los filtros de búsqueda (cuentas, fechas, mapeo) para ampliar los resultados.
+            Usa el menú <strong>"Action"</strong> (⚙️) → <strong>"Buscar Inconsistencias"</strong> para iniciar una nueva búsqueda.
           </p>
         </field>
     </record>
