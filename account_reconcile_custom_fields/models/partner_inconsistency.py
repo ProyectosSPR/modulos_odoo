@@ -114,40 +114,59 @@ class PartnerInconsistency(models.TransientModel):
             _logger.warning("No se encontraron apuntes que cumplan los criterios de búsqueda")
             return []
 
-        # Extraer referencias únicas de estos apuntes
+        # Extraer referencias únicas de estos apuntes USANDO LOS CAMPOS DEL MAPPING
         unique_refs = set()
 
-        # Extraer referencias de los moves relacionados
+        # Estrategia: Buscar en los modelos origen y destino del mapping
+        _logger.info(f"  Extrayendo referencias usando mapping: {mapping.source_model}.{source_field} vs {mapping.target_model}.{target_field}")
+
+        # 1. Buscar en el modelo TARGET (normalmente account.payment)
+        if mapping.target_model == 'account.payment':
+            # Obtener payments de los moves de los apuntes candidatos
+            payment_ids = []
+            for line in candidate_lines:
+                # Un payment tiene un move_id, buscar el payment que generó este move
+                payments = self.env['account.payment'].search([('move_id', '=', line.move_id.id)])
+                payment_ids.extend(payments.ids)
+
+            if payment_ids:
+                payments = self.env['account.payment'].browse(payment_ids)
+                for payment in payments:
+                    if hasattr(payment, target_field):
+                        value = getattr(payment, target_field, None)
+                        if value:
+                            unique_refs.add(str(value).strip())
+                            _logger.info(f"    -> Agregada ref de payment.{target_field}: {value}")
+
+        # 2. Buscar en el modelo SOURCE (normalmente sale.order o purchase.order)
         for line in candidate_lines:
             move = line.move_id
 
-            # Intentar obtener valor del campo fuente desde el move o sus relaciones
             if mapping.source_model == 'account.move':
                 if hasattr(move, source_field):
                     value = getattr(move, source_field, None)
                     if value:
-                        unique_refs.add(str(value))
+                        unique_refs.add(str(value).strip())
+                        _logger.info(f"    -> Agregada ref de move.{source_field}: {value}")
+
             elif mapping.source_model == 'sale.order':
-                # Buscar órdenes de venta relacionadas
+                # Buscar órdenes de venta relacionadas con esta factura
                 for inv_line in move.invoice_line_ids:
                     for sale_line in inv_line.sale_line_ids:
                         if sale_line.order_id:
                             value = getattr(sale_line.order_id, source_field, None)
                             if value:
-                                unique_refs.add(str(value))
+                                unique_refs.add(str(value).strip())
+                                _logger.info(f"    -> Agregada ref de sale_order.{source_field}: {value}")
+
             elif mapping.source_model == 'purchase.order':
                 # Buscar órdenes de compra relacionadas
                 for inv_line in move.invoice_line_ids:
                     if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id:
                         value = getattr(inv_line.purchase_line_id.order_id, source_field, None)
                         if value:
-                            unique_refs.add(str(value))
-
-            # También obtener del campo destino si está en el move
-            if hasattr(move, target_field):
-                value = getattr(move, target_field, None)
-                if value:
-                    unique_refs.add(str(value))
+                            unique_refs.add(str(value).strip())
+                            _logger.info(f"    -> Agregada ref de purchase_order.{source_field}: {value}")
 
         unique_refs = list(unique_refs)
         _logger.info(f"Total de {len(unique_refs)} referencias únicas extraídas de los apuntes filtrados.")
@@ -159,34 +178,56 @@ class PartnerInconsistency(models.TransientModel):
         # IMPORTANTE: Al buscar apuntes para cada referencia, NO aplicamos filtro de fechas
         # porque queremos encontrar TODOS los apuntes con esa referencia, no solo los del rango
         for ref_value in unique_refs:
-            # Construir un dominio para encontrar TODOS los apuntes con esta referencia
-            # SIN filtro de fechas, solo con filtros básicos (cuenta, estado, conciliación)
+            _logger.info(f"  Procesando referencia: {ref_value}")
 
-            # Dominio base SIN fechas
-            base_domain = [
-                ('parent_state', '=', 'posted'),
-                ('account_id.account_type', 'in', ['asset_receivable', 'liability_payable']),
-            ]
+            # Buscar en el modelo SOURCE usando el campo source_field
+            source_records = self.env[mapping.source_model].search([
+                (source_field, '=', ref_value)
+            ])
+            _logger.info(f"    -> Encontrados {len(source_records)} registros en {mapping.source_model}")
 
-            # Agregar filtro de cuentas si aplica
-            if 'account_id' in str(line_domain):
-                for item in line_domain:
-                    if isinstance(item, tuple) and item[0] == 'account_id':
-                        base_domain.append(item)
-                        break
+            # Buscar en el modelo TARGET usando el campo target_field
+            target_records = self.env[mapping.target_model].search([
+                (target_field, '=', ref_value)
+            ])
+            _logger.info(f"    -> Encontrados {len(target_records)} registros en {mapping.target_model}")
 
-            # Buscar por ref en move.ref o move_line.ref
-            domain_for_ref = [
-                '|',
-                ('ref', '=', ref_value),
-                ('move_id.ref', '=', ref_value)
-            ]
+            # Ahora obtener los apuntes contables de ambos lados
+            all_lines_for_ref = self.env['account.move.line'].browse()
 
-            # El dominio final NO incluye filtros de fecha
-            final_line_domain = base_domain + domain_for_ref
+            # Obtener líneas de las facturas del SOURCE
+            if mapping.source_model in ['sale.order', 'purchase.order']:
+                invoices = mapping._get_invoices_from_source(source_records)
+                source_lines = mapping._get_receivable_payable_lines(invoices)
+                _logger.info(f"    -> {len(source_lines)} líneas de facturas del source")
+                all_lines_for_ref |= source_lines
+            elif mapping.source_model == 'account.move':
+                source_lines = mapping._get_receivable_payable_lines(source_records)
+                _logger.info(f"    -> {len(source_lines)} líneas del source")
+                all_lines_for_ref |= source_lines
 
-            _logger.debug(f"Buscando apuntes para Ref '{ref_value}' con dominio: {final_line_domain}")
-            lines_for_ref = self.env['account.move.line'].search(final_line_domain)
+            # Obtener líneas del TARGET (payments)
+            if mapping.target_model == 'account.payment':
+                for payment in target_records:
+                    if payment.move_id:
+                        payment_lines = payment.move_id.line_ids.filtered(
+                            lambda l: l.account_id.account_type in ['asset_receivable', 'liability_payable']
+                        )
+                        _logger.info(f"    -> {len(payment_lines)} líneas del payment {payment.id}")
+                        all_lines_for_ref |= payment_lines
+
+            # Filtrar por las cuentas seleccionadas en el wizard
+            account_ids = []
+            for item in line_domain:
+                if isinstance(item, tuple) and item[0] == 'account_id' and item[1] == 'in':
+                    account_ids = item[2]
+                    break
+
+            if account_ids:
+                all_lines_for_ref = all_lines_for_ref.filtered(lambda l: l.account_id.id in account_ids)
+
+            lines_for_ref = all_lines_for_ref
+            _logger.info(f"    -> Total de {len(lines_for_ref)} líneas para analizar")
             
             if len(lines_for_ref) < 2:
                 continue
