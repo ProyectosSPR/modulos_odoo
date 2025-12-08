@@ -37,6 +37,25 @@
         <field name="target">new</field>
     </record>
 
+    <!-- Tree View for Partner Inconsistencies -->
+    <record id="partner_inconsistency_tree_view" model="ir.ui.view">
+        <field name="name">partner.inconsistency.tree</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" edit="false">
+                <field name="referencia_comun"/>
+                <field name="tipo_apunte_1" widget="badge" decoration-info="tipo_apunte_1 == 'debit'" decoration-success="tipo_apunte_1 == 'credit'"/>
+                <field name="proveedor_pago_id"/>
+                <field name="monto_pago" sum="Total"/>
+                <field name="tipo_apunte_2" widget="badge" decoration-info="tipo_apunte_2 == 'debit'" decoration-success="tipo_apunte_2 == 'credit'"/>
+                <field name="proveedor_factura_id"/>
+                <field name="monto_factura" sum="Total"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="mapping_id"/>
+            </tree>
+        </field>
+    </record>
+
     <!-- Form View for Partner Inconsistencies -->
     <record id="partner_inconsistency_form_view" model="ir.ui.view">
         <field name="name">partner.inconsistency.form</field>
@@ -53,9 +72,7 @@
                             <field name="tipo_problema"/>
                             <field name="mapping_id"/>
                         </group>
-                        <group string="Montos">
-                            <field name="monto_pago"/>
-                            <field name="monto_factura"/>
+                        <group string="Balance">
                             <field name="currency_id"/>
                         </group>
                     </group>
@@ -63,10 +80,22 @@
                         <group string="Apunte 1 (a corregir)">
                             <field name="pago_line_id"/>
                             <field name="proveedor_pago_id"/>
+                            <field name="tipo_apunte_1" widget="badge"/>
+                            <label for="debito_apunte_1" string="Débito"/>
+                            <field name="debito_apunte_1"/>
+                            <label for="credito_apunte_1" string="Crédito"/>
+                            <field name="credito_apunte_1"/>
+                            <field name="monto_pago" string="Saldo Pendiente"/>
                         </group>
                         <group string="Apunte 2 (correcto)">
                             <field name="factura_line_id"/>
                             <field name="proveedor_factura_id"/>
+                            <field name="tipo_apunte_2" widget="badge"/>
+                            <label for="debito_apunte_2" string="Débito"/>
+                            <field name="debito_apunte_2"/>
+                            <label for="credito_apunte_2" string="Crédito"/>
+                            <field name="credito_apunte_2"/>
+                            <field name="monto_factura" string="Saldo Pendiente"/>
                         </group>
                     </group>
                 </sheet>
@@ -74,7 +103,7 @@
         </field>
     </record>
 
-    <!-- Main Window Action -->
+    <!-- Main Window Action with Search Button -->
     <record id="action_partner_inconsistency_main" model="ir.actions.act_window">
         <field name="name">Inconsistencias de Proveedores</field>
         <field name="res_model">partner.inconsistency</field>
@@ -85,11 +114,41 @@
             No se han encontrado inconsistencias.
           </p>
           <p>
-            Para empezar, haz clic en el botón para realizar una búsqueda con filtros.
+            Para empezar, haz clic en el botón "Buscar Inconsistencias" en la parte superior para realizar una búsqueda con filtros personalizados.
+          </p>
+        </field>
+    </record>
+
+    <!-- Action result after search (to keep results visible) -->
+    <record id="action_partner_inconsistency_result" model="ir.actions.act_window">
+        <field name="name">Resultados de Inconsistencias</field>
+        <field name="res_model">partner.inconsistency</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            No se encontraron inconsistencias con los filtros aplicados.
           </p>
           <p>
-            <button type="action" name="%(action_launch_partner_inconsistency_wizard)d" string="🔍 Buscar Inconsistencias" class="btn-primary"/>
+            Intenta cambiar los filtros de búsqueda (cuentas, fechas, mapeo) para ampliar los resultados.
           </p>
+        </field>
+    </record>
+
+    <!-- Add custom tree view with search button -->
+    <record id="partner_inconsistency_tree_view_button" model="ir.ui.view">
+        <field name="name">partner.inconsistency.tree.button</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="inherit_id" ref="partner_inconsistency_tree_view"/>
+        <field name="arch" type="xml">
+            <tree position="inside">
+                <header>
+                    <button name="%(action_launch_partner_inconsistency_wizard)d"
+                            string="Buscar Inconsistencias"
+                            type="action"
+                            class="btn-primary"/>
+                </header>
+            </tree>
         </field>
     </record>
 
