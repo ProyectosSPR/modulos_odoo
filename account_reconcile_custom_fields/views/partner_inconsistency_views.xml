@@ -103,18 +103,42 @@
         </field>
     </record>
 
+    <!-- Search view with button always visible -->
+    <record id="partner_inconsistency_search_view" model="ir.ui.view">
+        <field name="name">partner.inconsistency.search</field>
+        <field name="model">partner.inconsistency</field>
+        <field name="arch" type="xml">
+            <search>
+                <button name="%(action_launch_partner_inconsistency_wizard)d"
+                        string="Buscar Inconsistencias"
+                        type="action"
+                        class="oe_highlight"
+                        icon="fa-search"/>
+                <field name="referencia_comun"/>
+                <field name="proveedor_pago_id"/>
+                <field name="proveedor_factura_id"/>
+                <field name="mapping_id"/>
+                <group expand="0" string="Group By">
+                    <filter string="Referencia" name="group_referencia" context="{'group_by':'referencia_comun'}"/>
+                    <filter string="Mapeo" name="group_mapping" context="{'group_by':'mapping_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <!-- Main Window Action with Search Button -->
     <record id="action_partner_inconsistency_main" model="ir.actions.act_window">
         <field name="name">Inconsistencias de Proveedores</field>
         <field name="res_model">partner.inconsistency</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'create': False}</field>
+        <field name="search_view_id" ref="partner_inconsistency_search_view"/>
+        <field name="context">{'create': False, 'search_default_group_referencia': 1}</field>
         <field name="help" type="html">
           <p class="o_view_nocontent_smiling_face">
             No se han encontrado inconsistencias.
           </p>
           <p>
-            Para empezar, haz clic en el botón "Buscar Inconsistencias" en la parte superior para realizar una búsqueda con filtros personalizados.
+            Para empezar, haz clic en el botón <strong>"Buscar Inconsistencias"</strong> ubicado arriba (al lado de los filtros) para realizar una búsqueda con filtros personalizados.
           </p>
         </field>
     </record>
@@ -124,31 +148,15 @@
         <field name="name">Resultados de Inconsistencias</field>
         <field name="res_model">partner.inconsistency</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="partner_inconsistency_search_view"/>
         <field name="context">{'create': False}</field>
         <field name="help" type="html">
           <p class="o_view_nocontent_smiling_face">
             No se encontraron inconsistencias con los filtros aplicados.
           </p>
           <p>
-            Intenta cambiar los filtros de búsqueda (cuentas, fechas, mapeo) para ampliar los resultados.
+            Intenta cambiar los filtros de búsqueda (cuentas, fechas, mapeo) para ampliar los resultados. Usa el botón <strong>"Buscar Inconsistencias"</strong> arriba para iniciar una nueva búsqueda.
           </p>
-        </field>
-    </record>
-
-    <!-- Add custom tree view with search button -->
-    <record id="partner_inconsistency_tree_view_button" model="ir.ui.view">
-        <field name="name">partner.inconsistency.tree.button</field>
-        <field name="model">partner.inconsistency</field>
-        <field name="inherit_id" ref="partner_inconsistency_tree_view"/>
-        <field name="arch" type="xml">
-            <tree position="inside">
-                <header>
-                    <button name="%(action_launch_partner_inconsistency_wizard)d"
-                            string="Buscar Inconsistencias"
-                            type="action"
-                            class="btn-primary"/>
-                </header>
-            </tree>
         </field>
     </record>
 
