@@ -143,6 +143,7 @@ class PartnerCorrectionWizard(models.TransientModel):
         # Eliminar la inconsistencia de la lista
         self.inconsistency_id.unlink()
 
+        # Cerrar el wizard y mostrar notificación
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -154,5 +155,6 @@ class PartnerCorrectionWizard(models.TransientModel):
                 ),
                 'type': 'success',
                 'sticky': False,
+                'next': {'type': 'ir.actions.act_window_close'},
             },
         }
