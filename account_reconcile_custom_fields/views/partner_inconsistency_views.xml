@@ -6,23 +6,31 @@
         <field name="name">partner.inconsistency.wizard.form</field>
         <field name="model">partner.inconsistency.wizard</field>
         <field name="arch" type="xml">
-            <form string="Detectar Inconsistencias">
-                <p>
-                    Seleccione los filtros para acotar la búsqueda. Es muy recomendable usar un rango de fechas para mejorar el rendimiento.
-                </p>
+            <form string="Buscar Inconsistencias de Proveedores/Clientes">
+                <div class="alert alert-info" role="alert">
+                    <strong>¿Qué hace esta búsqueda?</strong><br/>
+                    Encuentra cargos y abonos que tienen la <strong>misma referencia</strong> según el mapeo seleccionado,
+                    pero que están asociados a <strong>proveedores o clientes diferentes</strong>.
+                    <br/><br/>
+                    <strong>Ejemplo:</strong> Una factura y un pago con referencia "REF-12345" pero con diferentes proveedores.
+                </div>
                 <group>
-                    <group>
+                    <group string="Configuración de Búsqueda (Requerido)">
                         <field name="mapping_id" options="{'no_create': True}"/>
                         <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
-                    <group>
+                    <group string="Filtros Opcionales">
                         <field name="date_from"/>
                         <field name="date_to"/>
                         <field name="include_reconciled"/>
                     </group>
                 </group>
+                <div class="alert alert-warning" role="alert" style="margin-top: 10px;">
+                    <strong>💡 Recomendación:</strong> Use un rango de fechas para mejorar el rendimiento,
+                    especialmente si tiene muchos movimientos contables.
+                </div>
                 <footer>
-                    <button name="action_find_inconsistencies" string="Buscar" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button name="action_find_inconsistencies" string="🔍 Buscar Inconsistencias" type="object" class="btn-primary" data-hotkey="q"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel" data-hotkey="z"/>
                 </footer>
             </form>
@@ -127,7 +135,7 @@
         </field>
     </record>
 
-    <!-- Main Window Action -->
+    <!-- Main Window Action with direct button -->
     <record id="action_partner_inconsistency_main" model="ir.actions.act_window">
         <field name="name">Inconsistencias de Proveedores</field>
         <field name="res_model">partner.inconsistency</field>
@@ -139,7 +147,18 @@
             No se han encontrado inconsistencias.
           </p>
           <p>
-            Para empezar, haz clic en el menú <strong>"Action"</strong> (icono ⚙️ arriba a la derecha) y selecciona <strong>"Buscar Inconsistencias"</strong> para realizar una búsqueda con filtros personalizados.
+            Esta herramienta busca cargos y abonos con la misma referencia pero diferentes proveedores/clientes según los mappings configurados.
+          </p>
+          <p>
+            <button name="%(action_launch_partner_inconsistency_wizard)d" type="action" class="btn-primary" string="🔍 Buscar Inconsistencias"/>
+          </p>
+          <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+            <strong>Pasos para usar esta herramienta:</strong><br/>
+            1. Haz clic en "Buscar Inconsistencias"<br/>
+            2. Selecciona el <strong>Mapeo</strong> (la regla de búsqueda a usar)<br/>
+            3. Selecciona las <strong>Cuentas Contables</strong> donde buscar (ej: cuentas por cobrar/pagar)<br/>
+            4. Opcionalmente define un rango de fechas<br/>
+            5. Haz clic en "Buscar" para encontrar las inconsistencias
           </p>
         </field>
     </record>
