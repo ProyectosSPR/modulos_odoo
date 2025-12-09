@@ -52,7 +52,13 @@
         <field name="name">partner.inconsistency.tree</field>
         <field name="model">partner.inconsistency</field>
         <field name="arch" type="xml">
-            <tree create="false" delete="false" edit="false">
+            <tree create="false" delete="false" edit="false"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-success="state == 'corrected'">
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'corrected'"
+                       decoration-muted="state == 'cancelled'"/>
                 <field name="referencia_comun"/>
                 <field name="tipo_apunte_1" widget="badge" decoration-info="tipo_apunte_1 == 'debit'" decoration-success="tipo_apunte_1 == 'credit'"/>
                 <field name="proveedor_pago_id"/>
@@ -62,6 +68,8 @@
                 <field name="monto_factura" sum="Total"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="mapping_id"/>
+                <field name="corrected_date"/>
+                <field name="corrected_user_id"/>
             </tree>
         </field>
     </record>
@@ -73,9 +81,31 @@
         <field name="arch" type="xml">
             <form create="false" delete="false" edit="true">
                 <header>
-                    <button name="action_correct_partner" string="Corregir Partner (Usar de Apunte 2)" type="object" class="btn-primary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,corrected,cancelled"/>
+                    <button name="action_correct_partner" string="Corregir Partner"
+                            type="object" class="btn-primary"
+                            invisible="state != 'pending'"/>
+                    <button name="action_mark_cancelled" string="Cancelar (No Corregir)"
+                            type="object" class="btn-secondary"
+                            invisible="state != 'pending'"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_payment"
+                                icon="fa-money" invisible="not pago_line_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Ver Pago</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_invoice"
+                                icon="fa-file-text-o" invisible="not factura_line_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Ver Factura</span>
+                            </div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Corregido" bg_color="bg-success" invisible="state != 'corrected'"/>
+                    <widget name="web_ribbon" title="Cancelado" bg_color="bg-secondary" invisible="state != 'cancelled'"/>
                     <group>
                         <group string="Información General">
                             <field name="referencia_comun"/>
@@ -87,7 +117,7 @@
                         </group>
                     </group>
                     <group>
-                        <group string="Apunte 1 (a corregir)">
+                        <group string="Pago (Apunte a Corregir)">
                             <field name="pago_line_id"/>
                             <field name="proveedor_pago_id"/>
                             <field name="tipo_apunte_1" widget="badge"/>
@@ -97,7 +127,7 @@
                             <field name="credito_apunte_1"/>
                             <field name="monto_pago" string="Saldo Pendiente"/>
                         </group>
-                        <group string="Apunte 2 (correcto)">
+                        <group string="Factura (Referencia Correcta)">
                             <field name="factura_line_id"/>
                             <field name="proveedor_factura_id"/>
                             <field name="tipo_apunte_2" widget="badge"/>
@@ -107,6 +137,19 @@
                             <field name="credito_apunte_2"/>
                             <field name="monto_factura" string="Saldo Pendiente"/>
                         </group>
+                    </group>
+                    <group string="Historial de Corrección" invisible="state == 'pending'">
+                        <group>
+                            <field name="corrected_date"/>
+                            <field name="corrected_user_id"/>
+                        </group>
+                        <group invisible="state != 'corrected'">
+                            <field name="partner_original_id"/>
+                            <field name="partner_corregido_id"/>
+                        </group>
+                    </group>
+                    <group string="Notas" invisible="not notas">
+                        <field name="notas" nolabel="1"/>
                     </group>
                 </sheet>
             </form>
@@ -123,10 +166,16 @@
                 <field name="proveedor_pago_id"/>
                 <field name="proveedor_factura_id"/>
                 <field name="mapping_id"/>
+                <field name="state"/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Corregidas" name="corrected" domain="[('state', '=', 'corrected')]"/>
+                <filter string="Canceladas" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
                 <filter string="Cargo (Débito)" name="filter_debit" domain="[('tipo_apunte_1', '=', 'debit')]"/>
                 <filter string="Abono (Crédito)" name="filter_credit" domain="[('tipo_apunte_1', '=', 'credit')]"/>
                 <separator/>
                 <group expand="0" string="Group By">
+                    <filter string="Estado" name="group_state" context="{'group_by':'state'}"/>
                     <filter string="Referencia" name="group_referencia" context="{'group_by':'referencia_comun'}"/>
                     <filter string="Mapeo" name="group_mapping" context="{'group_by':'mapping_id'}"/>
                     <filter string="Tipo Apunte 1" name="group_tipo1" context="{'group_by':'tipo_apunte_1'}"/>

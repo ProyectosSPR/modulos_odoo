@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- Cancel Wizard Form View -->
+    <record id="view_partner_inconsistency_cancel_wizard_form" model="ir.ui.view">
+        <field name="name">partner.inconsistency.cancel.wizard.form</field>
+        <field name="model">partner.inconsistency.cancel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cancelar Inconsistencia">
+                <div class="alert alert-warning" role="alert">
+                    <strong>⚠️ Cancelar Inconsistencia</strong><br/>
+                    Esta inconsistencia será marcada como <strong>cancelada</strong> y no aparecerá en futuras búsquedas de inconsistencias pendientes.
+                    <br/>
+                    Por favor explique la razón por la cual no se corregirá (ej: "Se aplicará nota de crédito", "El pago es correcto").
+                </div>
+                <group>
+                    <field name="inconsistency_ids" invisible="1"/>
+                    <field name="notas" placeholder="Ejemplo: Se aplicará nota de crédito a la factura y el pago quedará asociado al cliente correcto."/>
+                </group>
+                <footer>
+                    <button name="action_cancel_inconsistencies" string="Marcar como Cancelado" type="object" class="btn-primary"/>
+                    <button string="Volver" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

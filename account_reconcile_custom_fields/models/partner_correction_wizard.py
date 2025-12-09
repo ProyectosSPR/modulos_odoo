@@ -104,16 +104,33 @@ class PartnerCorrectionWizard(models.TransientModel):
 
         # Determinar qué partner usar
         new_partner_id = False
+        partner_original_id = self.current_partner_id.id
+        notas = ""
+
         if self.correction_option == 'use_invoice':
             new_partner_id = self.suggested_partner_id.id
+            notas = f"Corregido usando el partner de la factura: {self.suggested_partner_id.name}"
         elif self.correction_option == 'use_manual':
             if not self.manual_partner_id:
                 raise UserError(_("Debe seleccionar un partner manualmente."))
             new_partner_id = self.manual_partner_id.id
+            notas = f"Corregido manualmente al partner: {self.manual_partner_id.name}"
         elif self.correction_option == 'use_current':
-            # No hacer nada, solo cerrar el wizard
-            self.inconsistency_id.unlink()
-            return {'type': 'ir.actions.act_window_close'}
+            # No corregir, solo marcar como cancelado
+            self.inconsistency_id.mark_as_cancelled(
+                notas="El contador decidió mantener el partner actual del pago sin corregir."
+            )
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Inconsistencia Cancelada'),
+                    'message': _('Se mantuvo el partner actual. Inconsistencia marcada como cancelada.'),
+                    'type': 'info',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.act_window_close'},
+                },
+            }
 
         if not new_partner_id:
             raise UserError(_("No se pudo determinar el partner a usar."))
@@ -140,8 +157,12 @@ class PartnerCorrectionWizard(models.TransientModel):
         if was_posted:
             payment_move.action_post()
 
-        # Eliminar la inconsistencia de la lista
-        self.inconsistency_id.unlink()
+        # Marcar inconsistencia como corregida (NO eliminarla)
+        self.inconsistency_id.mark_as_corrected(
+            partner_original_id=partner_original_id,
+            partner_corregido_id=new_partner_id,
+            notas=notas
+        )
 
         # Cerrar el wizard y mostrar notificación
         return {

@@ -7,21 +7,34 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-class PartnerInconsistency(models.TransientModel):
+class PartnerInconsistency(models.Model):
     _name = "partner.inconsistency"
     _description = "Partner Inconsistency"
-    _order = "referencia_comun, id"
+    _order = "create_date desc, referencia_comun, id"
 
-    referencia_comun = fields.Char(string="Referencia Común", readonly=True)
+    referencia_comun = fields.Char(string="Referencia Común", readonly=True, index=True)
     tipo_problema = fields.Char(string="Tipo de Problema", readonly=True, default="Discrepancia de Partner")
-    pago_line_id = fields.Many2one("account.move.line", string="Apunte 1", readonly=True)
-    factura_line_id = fields.Many2one("account.move.line", string="Apunte 2", readonly=True)
-    proveedor_pago_id = fields.Many2one("res.partner", string="Partner en Apunte 1", related="pago_line_id.partner_id", readonly=True)
-    proveedor_factura_id = fields.Many2one("res.partner", string="Partner en Apunte 2", related="factura_line_id.partner_id", readonly=True)
+    pago_line_id = fields.Many2one("account.move.line", string="Apunte 1", readonly=True, ondelete='set null')
+    factura_line_id = fields.Many2one("account.move.line", string="Apunte 2", readonly=True, ondelete='set null')
+    proveedor_pago_id = fields.Many2one("res.partner", string="Partner en Apunte 1", related="pago_line_id.partner_id", readonly=True, store=True)
+    proveedor_factura_id = fields.Many2one("res.partner", string="Partner en Apunte 2", related="factura_line_id.partner_id", readonly=True, store=True)
     monto_pago = fields.Monetary(string="Saldo Apunte 1", related="pago_line_id.amount_residual", readonly=True)
     monto_factura = fields.Monetary(string="Saldo Apunte 2", related="factura_line_id.amount_residual", readonly=True)
     currency_id = fields.Many2one("res.currency", related="pago_line_id.currency_id", readonly=True)
-    mapping_id = fields.Many2one("reconcile.field.mapping", string="Mapeo Utilizado", readonly=True)
+    mapping_id = fields.Many2one("reconcile.field.mapping", string="Mapeo Utilizado", readonly=True, ondelete='cascade')
+
+    # Campos de estado y auditoría
+    state = fields.Selection([
+        ('pending', 'Pendiente'),
+        ('corrected', 'Corregido'),
+        ('cancelled', 'Cancelado')
+    ], string="Estado", default='pending', required=True, index=True, tracking=True)
+
+    corrected_date = fields.Datetime(string="Fecha de Corrección/Cancelación", readonly=True)
+    corrected_user_id = fields.Many2one("res.users", string="Usuario que Procesó", readonly=True)
+    partner_original_id = fields.Many2one("res.partner", string="Partner Original del Pago", readonly=True)
+    partner_corregido_id = fields.Many2one("res.partner", string="Partner Corregido", readonly=True)
+    notas = fields.Text(string="Notas/Razón")
 
     # Nuevos campos para identificar tipo de movimiento (cargo/abono)
     tipo_apunte_1 = fields.Selection([
@@ -55,8 +68,7 @@ class PartnerInconsistency(models.TransientModel):
 
     @api.model
     def find_inconsistencies(self, account_ids, mapping_id, date_from=None, date_to=None, include_reconciled=False):
-        _logger.info("========== INICIO DE BÚSQUEDA DE INCONSISTENCIAS (VERIFICANDO PERSISTENCIA) ==========")
-        self.search([]).unlink()
+        _logger.info("========== INICIO DE BÚSQUEDA DE INCONSISTENCIAS ==========")
 
         mapping = self.env["reconcile.field.mapping"].browse(mapping_id)
         if not mapping:
@@ -82,18 +94,35 @@ class PartnerInconsistency(models.TransientModel):
 
         # Filtro adicional: solo cuentas por cobrar/pagar
         line_domain.append(('account_id.account_type', 'in', ['asset_receivable', 'liability_payable']))
-        
+
         _logger.info(f"Filtros: Cuentas: {account_ids}, Mapeo: {mapping.name}, Fechas: {date_from}-{date_to}, Incluir Conciliados: {include_reconciled}")
 
         inconsistency_vals = self._find_partner_inconsistencies_for_mapping(mapping, line_domain)
 
-        if inconsistency_vals:
-            self.create(inconsistency_vals)
-        
-        _logger.info(f"========== FIN DE BÚSQUEDA: {len(inconsistency_vals)} inconsistencias encontradas ==========")
-        
-        # Devolver la acción para mostrar los resultados en la vista de este modelo
+        # Crear solo las inconsistencias nuevas (evitar duplicados)
+        nuevas_creadas = 0
+        for vals in inconsistency_vals:
+            # Verificar si ya existe esta inconsistencia PENDIENTE
+            existing = self.search([
+                ('referencia_comun', '=', vals['referencia_comun']),
+                ('pago_line_id', '=', vals['pago_line_id']),
+                ('factura_line_id', '=', vals['factura_line_id']),
+                ('mapping_id', '=', vals['mapping_id']),
+                ('state', '=', 'pending')  # Solo verificar las pendientes
+            ], limit=1)
+
+            if not existing:
+                self.create(vals)
+                nuevas_creadas += 1
+            else:
+                _logger.info(f"Inconsistencia duplicada omitida: {vals['referencia_comun']}")
+
+        _logger.info(f"========== FIN DE BÚSQUEDA: {nuevas_creadas} nuevas inconsistencias creadas de {len(inconsistency_vals)} encontradas ==========")
+
+        # Devolver la acción para mostrar SOLO las inconsistencias PENDIENTES
         action = self.env['ir.actions.actions']._for_xml_id('account_reconcile_custom_fields.action_partner_inconsistency_result')
+        action['domain'] = [('state', '=', 'pending')]
+        action['context'] = {'search_default_pending': 1}
         return action
 
     def _find_partner_inconsistencies_for_mapping(self, mapping, line_domain):
@@ -308,6 +337,9 @@ class PartnerInconsistency(models.TransientModel):
         """
         self.ensure_one()
 
+        if self.state != 'pending':
+            raise UserError(_("Solo se pueden corregir inconsistencias en estado 'Pendiente'."))
+
         if not self.pago_line_id or not self.factura_line_id:
             raise UserError(_("Ambos apuntes deben estar presentes para la corrección."))
 
@@ -330,3 +362,51 @@ class PartnerInconsistency(models.TransientModel):
                 'default_suggested_partner_id': invoice_line.partner_id.id,
             },
         }
+
+    def action_mark_cancelled(self):
+        """
+        Marcar inconsistencia como cancelada (el contador decide no corregir)
+        """
+        for record in self:
+            if record.state != 'pending':
+                raise UserError(_("Solo se pueden cancelar inconsistencias en estado 'Pendiente'."))
+
+        # Abrir wizard para pedir notas
+        return {
+            'name': _('Cancelar Inconsistencia'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'partner.inconsistency.cancel.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_inconsistency_ids': self.ids,
+            },
+        }
+
+    def mark_as_cancelled(self, notas=None):
+        """
+        Marcar como cancelado con notas
+        """
+        for record in self:
+            record.write({
+                'state': 'cancelled',
+                'corrected_date': fields.Datetime.now(),
+                'corrected_user_id': self.env.user.id,
+                'notas': notas or '',
+            })
+        _logger.info(f"Inconsistencias {self.ids} marcadas como canceladas por {self.env.user.name}")
+
+    def mark_as_corrected(self, partner_original_id, partner_corregido_id, notas=None):
+        """
+        Marcar como corregido después de aplicar la corrección
+        """
+        self.ensure_one()
+        self.write({
+            'state': 'corrected',
+            'corrected_date': fields.Datetime.now(),
+            'corrected_user_id': self.env.user.id,
+            'partner_original_id': partner_original_id,
+            'partner_corregido_id': partner_corregido_id,
+            'notas': notas or '',
+        })
+        _logger.info(f"Inconsistencia {self.id} marcada como corregida por {self.env.user.name}")
