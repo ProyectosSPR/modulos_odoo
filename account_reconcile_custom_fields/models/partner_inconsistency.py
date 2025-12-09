@@ -329,6 +329,38 @@ class PartnerInconsistency(models.Model):
                         })
         return inconsistencies_vals
 
+    def action_view_payment(self):
+        """
+        Open the move associated with the payment line.
+        """
+        self.ensure_one()
+        if not self.pago_line_id:
+            return {}
+        return {
+            'name': _('Pago'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.pago_line_id.move_id.id,
+            'target': 'current',
+        }
+
+    def action_view_invoice(self):
+        """
+        Open the move associated with the invoice line.
+        """
+        self.ensure_one()
+        if not self.factura_line_id:
+            return {}
+        return {
+            'name': _('Factura'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.factura_line_id.move_id.id,
+            'target': 'current',
+        }
+
     def action_correct_partner(self):
         """
         Abrir wizard para seleccionar qué partner usar en el PAGO
