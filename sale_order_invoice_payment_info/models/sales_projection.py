@@ -210,13 +210,6 @@ class SalesProjectionLine(models.Model):
     )
 
     # Campos de seguimiento de ventas reales
-    goal_amount = fields.Monetary(
-        string='Objetivo (Meta)',
-        compute='_compute_sales_tracking',
-        currency_field='currency_id',
-        help='Meta configurada para este mes y equipo'
-    )
-
     actual_sales = fields.Monetary(
         string='Venta Real',
         compute='_compute_sales_tracking',
@@ -236,13 +229,6 @@ class SalesProjectionLine(models.Model):
         compute='_compute_sales_tracking',
         currency_field='currency_id',
         help='Diferencia entre venta real y proyectado'
-    )
-
-    goal_percentage = fields.Float(
-        string='% Objetivo',
-        compute='_compute_sales_tracking',
-        digits=(16, 2),
-        help='Porcentaje de venta real vs objetivo (meta)'
     )
 
     estimated_percentage = fields.Float(
@@ -295,14 +281,12 @@ class SalesProjectionLine(models.Model):
 
     @api.depends('period_month', 'year', 'team_unified_id', 'estimated_amount', 'projected_amount')
     def _compute_sales_tracking(self):
-        """Calcula las ventas reales, meta, diferencias y porcentajes del mes"""
+        """Calcula las ventas reales, diferencias y porcentajes del mes"""
         for line in self:
             if not line.period_month or not line.year or not line.team_unified_id:
-                line.goal_amount = 0.0
                 line.actual_sales = 0.0
                 line.difference_estimated = 0.0
                 line.difference_projected = 0.0
-                line.goal_percentage = 0.0
                 line.estimated_percentage = 0.0
                 line.projected_percentage = 0.0
                 continue
@@ -314,17 +298,7 @@ class SalesProjectionLine(models.Model):
             date_from = f'{line.year}-{line.period_month.zfill(2)}-01'
             date_to = f'{line.year}-{line.period_month.zfill(2)}-{last_day}'
 
-            # 1. Buscar la meta configurada para este mes y equipo
-            goal = self.env['commission.goal'].search([
-                ('team_unified_id', '=', line.team_unified_id.id),
-                ('period_year', '=', line.year),
-                ('period_month', '=', line.period_month),
-                ('user_id', '=', False),
-                ('user_unified_id', '=', False)
-            ], limit=1)
-            line.goal_amount = goal.goal_amount if goal else 0.0
-
-            # 2. Calcular ventas reales del mes usando ORM
+            # 1. Calcular ventas reales del mes usando ORM
             if line.team_unified_id.team_ids:
                 domain = [
                     ('payment_valid_date', '>=', date_from),
@@ -338,23 +312,17 @@ class SalesProjectionLine(models.Model):
             else:
                 line.actual_sales = 0.0
 
-            # 3. Calcular diferencias
+            # 2. Calcular diferencias
             line.difference_estimated = line.actual_sales - line.estimated_amount
             line.difference_projected = line.actual_sales - line.projected_amount
 
-            # 4. Calcular % Objetivo (venta real vs meta)
-            if line.goal_amount > 0:
-                line.goal_percentage = (line.actual_sales / line.goal_amount) * 100
-            else:
-                line.goal_percentage = 0.0
-
-            # 5. Calcular % al Estimado
+            # 3. Calcular % al Estimado
             if line.estimated_amount > 0:
                 line.estimated_percentage = (line.actual_sales / line.estimated_amount) * 100
             else:
                 line.estimated_percentage = 0.0
 
-            # 6. Calcular % al Proyectado
+            # 4. Calcular % al Proyectado
             if line.projected_amount > 0:
                 line.projected_percentage = (line.actual_sales / line.projected_amount) * 100
             else:
@@ -449,13 +417,13 @@ class QuarterlySalesReport(models.Model):
         readonly=True
     )
 
-    # Objetivo del cuatrimestre (suma de metas mensuales)
+    # Objetivo del cuatrimestre (suma de proyecciones mensuales)
     quarter_goal = fields.Monetary(
         string='Objetivo Cuatrimestre',
         compute='_compute_quarter_goal',
         store=True,
         currency_field='currency_id',
-        help='Suma de las metas mensuales del cuatrimestre para este equipo'
+        help='Suma de las proyecciones mensuales del cuatrimestre para este equipo'
     )
 
     # Estimado (de la proyección)
@@ -520,11 +488,11 @@ class QuarterlySalesReport(models.Model):
             team_name = record.team_unified_id.name if record.team_unified_id else ''
             record.display_name = f'{record.quarter} - {month_name} {record.year} - {team_name}'
 
-    @api.depends('quarter', 'year', 'team_unified_id')
+    @api.depends('quarter', 'year', 'team_unified_id', 'projection_id', 'projection_id.line_ids', 'projection_id.line_ids.projected_amount')
     def _compute_quarter_goal(self):
-        """Calcula el objetivo del cuatrimestre sumando las metas mensuales"""
+        """Calcula el objetivo del cuatrimestre sumando las proyecciones mensuales"""
         for record in self:
-            if record.quarter and record.year and record.team_unified_id:
+            if record.quarter and record.year and record.team_unified_id and record.projection_id:
                 # Determinar los meses del cuatrimestre
                 if record.quarter == 'Q1':
                     months = ['1', '2', '3', '4']
@@ -535,17 +503,15 @@ class QuarterlySalesReport(models.Model):
                 else:
                     months = []
 
-                # Buscar las metas mensuales para este equipo y periodo usando ORM
-                goals = self.env['commission.goal'].search([
+                # Buscar las líneas de proyección para este equipo y periodo usando ORM
+                projection_lines = self.env['sales.projection.line'].search([
+                    ('projection_id', '=', record.projection_id.id),
                     ('team_unified_id', '=', record.team_unified_id.id),
-                    ('period_year', '=', record.year),
-                    ('period_month', 'in', months),
-                    ('user_id', '=', False),
-                    ('user_unified_id', '=', False)
+                    ('period_month', 'in', months)
                 ])
 
-                # Sumar las metas usando el ORM
-                record.quarter_goal = sum(goals.mapped('goal_amount'))
+                # Sumar las proyecciones usando el ORM
+                record.quarter_goal = sum(projection_lines.mapped('projected_amount'))
             else:
                 record.quarter_goal = 0.0
 
