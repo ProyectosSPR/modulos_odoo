@@ -74,8 +74,8 @@
                                 </p>
                             </group>
                             <!-- Aquí se podría agregar una vista pivot personalizada -->
-                            <field name="line_ids" context="{'group_by': 'team_unified_id'}">
-                                <tree string="Por Equipo">
+                            <field name="line_ids">
+                                <tree string="Por Equipo" default_order="team_unified_id,period_month">
                                     <field name="team_unified_id"/>
                                     <field name="period_month"/>
                                     <field name="projected_amount" widget="monetary"/>
