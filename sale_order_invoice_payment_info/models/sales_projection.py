@@ -180,6 +180,7 @@ class SalesProjectionLine(models.Model):
     estimated_amount = fields.Monetary(
         string='Estimado',
         required=True,
+        default=0.0,
         currency_field='currency_id',
         help='Monto estimado de ventas para este mes y equipo (llenado manualmente)'
     )
@@ -187,6 +188,7 @@ class SalesProjectionLine(models.Model):
     projected_amount = fields.Monetary(
         string='Proyectado',
         required=True,
+        default=0.0,
         currency_field='currency_id',
         help='Monto proyectado para este equipo en este mes (llenado manualmente)'
     )
