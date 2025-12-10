@@ -51,12 +51,13 @@ class SalesProjection(models.Model):
     )
 
     temporality = fields.Float(
-        string='Temporalidad (%)',
+        string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
         digits=(16, 2),
-        help='Cambio porcentual respecto a la proyección anterior. '
-             'Ej: +15% = aumentó 15%, -10% = disminuyó 10%, 0% = sin cambios'
+        help='Suma de todas las temporalidades mensuales. '
+             'Equivale al ratio: Total Proyectado / Total Anterior. '
+             'Ej: 1.5 (150%) = el total actual es 1.5 veces el anterior, 1.0 (100%) = sin cambios'
     )
 
     currency_id = fields.Many2one(
@@ -89,17 +90,13 @@ class SalesProjection(models.Model):
         for projection in self:
             projection.total_projected = sum(projection.line_ids.mapped('projected_amount'))
 
-    @api.depends('total_projected', 'previous_projection_id', 'previous_projection_id.total_projected')
+    @api.depends('line_ids', 'line_ids.monthly_temporality')
     def _compute_temporality(self):
-        """Calcula la temporalidad como cambio porcentual vs proyección anterior"""
+        """Calcula la temporalidad total como suma de todas las temporalidades mensuales"""
         for projection in self:
-            if projection.previous_projection_id and projection.previous_projection_id.total_projected > 0:
-                # Calcular el cambio como decimal (widget percentage lo convertirá a %)
-                # Ej: si crece 20%, esto retorna 0.20, widget muestra 20%
-                change = projection.total_projected - projection.previous_projection_id.total_projected
-                projection.temporality = change / projection.previous_projection_id.total_projected
-            else:
-                projection.temporality = 0.0
+            # La suma de todas las monthly_temporality da el ratio total
+            # Σ(projected_i / total_anterior) = total_actual / total_anterior
+            projection.temporality = sum(projection.line_ids.mapped('monthly_temporality'))
 
     def action_activate(self):
         """Activa la proyección y genera los reportes automáticamente"""
