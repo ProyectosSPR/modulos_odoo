@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Tree de Proyecciones -->
+    <record id="view_sales_projection_tree" model="ir.ui.view">
+        <field name="name">sales.projection.tree</field>
+        <field name="model">sales.projection</field>
+        <field name="arch" type="xml">
+            <tree string="Proyecciones de Ventas">
+                <field name="name"/>
+                <field name="year"/>
+                <field name="state" widget="badge" decoration-success="state == 'active'" decoration-info="state == 'draft'" decoration-muted="state == 'closed'"/>
+                <field name="total_projected" widget="monetary"/>
+                <field name="previous_projection_id"/>
+                <field name="temporality" string="Temporalidad (%)" widget="progressbar"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Proyecciones -->
+    <record id="view_sales_projection_form" model="ir.ui.view">
+        <field name="name">sales.projection.form</field>
+        <field name="model">sales.projection</field>
+        <field name="arch" type="xml">
+            <form string="Proyección de Ventas">
+                <header>
+                    <button name="action_activate" string="Activar" type="object"
+                            states="draft" class="oe_highlight"/>
+                    <button name="action_close" string="Cerrar" type="object"
+                            states="active" class="oe_highlight"/>
+                    <button name="action_back_to_draft" string="Regresar a Borrador" type="object"
+                            states="active,closed"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="ej: Proyección 2025 v1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="year"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="total_projected" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="previous_projection_id" domain="[('year', '=', year)]"/>
+                            <field name="temporality" widget="percentage"/>
+                            <field name="create_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Notas o comentarios sobre esta proyección..."/>
+                    </group>
+                    <notebook>
+                        <page string="Proyecciones Mensuales" name="monthly_projections">
+                            <field name="line_ids">
+                                <tree editable="bottom" string="Proyecciones por Mes y Equipo">
+                                    <field name="period_month"/>
+                                    <field name="quarter" readonly="1"/>
+                                    <field name="team_unified_id"/>
+                                    <field name="projected_amount" sum="total_projected" widget="monetary"/>
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="year" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Vista por Equipo" name="team_view">
+                            <group>
+                                <p class="text-muted">
+                                    Esta vista muestra las proyecciones agrupadas por equipo de ventas,
+                                    similar a la tabla que proporcionaste con equipos en filas y meses en columnas.
+                                </p>
+                            </group>
+                            <!-- Aquí se podría agregar una vista pivot personalizada -->
+                            <field name="line_ids" context="{'group_by': 'team_unified_id'}">
+                                <tree string="Por Equipo">
+                                    <field name="team_unified_id"/>
+                                    <field name="period_month"/>
+                                    <field name="projected_amount" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Pivot de Proyecciones por Equipo y Mes -->
+    <record id="view_sales_projection_line_pivot" model="ir.ui.view">
+        <field name="name">sales.projection.line.pivot</field>
+        <field name="model">sales.projection.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Proyecciones por Equipo y Mes" display_quantity="true">
+                <field name="team_unified_id" type="row"/>
+                <field name="period_month" type="col"/>
+                <field name="projected_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Vista Graph de Proyecciones -->
+    <record id="view_sales_projection_line_graph" model="ir.ui.view">
+        <field name="name">sales.projection.line.graph</field>
+        <field name="model">sales.projection.line</field>
+        <field name="arch" type="xml">
+            <graph string="Proyecciones" type="line">
+                <field name="period_month"/>
+                <field name="projected_amount" type="measure"/>
+                <field name="team_unified_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Acción para Proyecciones -->
+    <record id="action_sales_projection" model="ir.actions.act_window">
+        <field name="name">Proyecciones de Ventas</field>
+        <field name="res_model">sales.projection</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una nueva proyección de ventas
+            </p>
+            <p>
+                Las proyecciones te permiten planificar las ventas esperadas por equipo y mes.
+                Puedes crear múltiples versiones y compararlas.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción para Vista Pivot de Proyecciones -->
+    <record id="action_sales_projection_line_pivot" model="ir.actions.act_window">
+        <field name="name">Análisis de Proyecciones</field>
+        <field name="res_model">sales.projection.line</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('projection_id.state', '=', 'active')]</field>
+        <field name="context">{'group_by': ['team_unified_id', 'period_month']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay proyecciones activas
+            </p>
+            <p>
+                Crea una proyección y actívala para ver el análisis aquí.
+            </p>
+        </field>
+    </record>
+
+</odoo>

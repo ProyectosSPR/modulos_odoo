@@ -1,7 +1,7 @@
 {
     'name': 'Sale Order Invoice Payment Info',
     'version': '16.0.1.0.0',
-    'summary': 'Extender Sale Order con información de facturas, pagos y sistema de comisiones',
+    'summary': 'Extender Sale Order con información de facturas, pagos, comisiones y proyecciones de ventas',
     'description': """
         Este módulo extiende el modelo sale.order para mostrar información detallada por vendedores
         de las facturas relacionadas y los pagos aplicados a esas facturas.
@@ -20,6 +20,14 @@
         - Cálculo automático de comisiones basado en ventas
         - Histórico de comisiones pagadas
         - Opción de calcular comisión sobre subtotal o total
+
+        Sistema de Proyecciones y Reportes:
+        - Proyecciones de ventas mensuales por equipo
+        - Versiones de proyecciones editables
+        - Cálculo de temporalidad (% vs proyección anterior)
+        - Reportes por cuatrimestre con comparativa objetivo/estimado/real
+        - Análisis de diferencias y porcentajes de cumplimiento
+        - Vistas pivot y gráficas para análisis detallado
     """,
     'author': 'Tu Empresa',
     'category': 'Sales',
@@ -34,6 +42,9 @@
         'views/sale_order_views.xml',
         'views/commission_views.xml',
         'views/commission_menus.xml',
+        'views/sales_projection_views.xml',
+        'views/quarterly_report_views.xml',
+        'views/sales_projection_menus.xml',
     ],
     'installable': True,
     'application': False,

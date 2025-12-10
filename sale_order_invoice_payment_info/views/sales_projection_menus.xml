@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú principal de Proyecciones (dentro del menú de Comisiones existente) -->
+    <menuitem id="menu_sales_projections_root"
+              name="Proyecciones y Reportes"
+              parent="menu_commission_root"
+              sequence="50"/>
+
+    <!-- Sub-menú: Proyecciones de Ventas -->
+    <menuitem id="menu_sales_projections"
+              name="Proyecciones de Ventas"
+              parent="menu_sales_projections_root"
+              action="action_sales_projection"
+              sequence="10"/>
+
+    <!-- Sub-menú: Análisis de Proyecciones (Pivot) -->
+    <menuitem id="menu_sales_projections_analysis"
+              name="Análisis de Proyecciones"
+              parent="menu_sales_projections_root"
+              action="action_sales_projection_line_pivot"
+              sequence="20"/>
+
+    <!-- Sub-menú: Reporte por Cuatrimestre -->
+    <menuitem id="menu_quarterly_sales_report"
+              name="Reporte por Cuatrimestre"
+              parent="menu_sales_projections_root"
+              action="action_quarterly_sales_report"
+              sequence="30"/>
+
+</odoo>
