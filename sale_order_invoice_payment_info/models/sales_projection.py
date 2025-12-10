@@ -482,8 +482,9 @@ class QuarterlySalesReport(models.Model):
     @api.depends('year', 'quarter', 'period_month', 'team_unified_id')
     def _compute_display_name(self):
         """Calcula el nombre de visualización"""
+        selection = self.env['sales.projection.line']._fields['period_month'].selection
         for record in self:
-            month_name = dict(self._fields['period_month'].selection).get(record.period_month, '')
+            month_name = dict(selection).get(record.period_month, '')
             team_name = record.team_unified_id.name if record.team_unified_id else ''
             record.display_name = f'{record.quarter} - {month_name} {record.year} - {team_name}'
 
