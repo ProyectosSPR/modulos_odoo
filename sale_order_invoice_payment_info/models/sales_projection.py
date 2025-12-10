@@ -177,11 +177,18 @@ class SalesProjectionLine(models.Model):
         help='Equipo de ventas unificado (Mercado Libre, Amazon, etc.)'
     )
 
-    projected_amount = fields.Monetary(
-        string='Monto Proyectado',
+    estimated_amount = fields.Monetary(
+        string='Estimado',
         required=True,
         currency_field='currency_id',
-        help='Monto proyectado para este equipo en este mes'
+        help='Monto estimado de ventas para este mes y equipo (llenado manualmente)'
+    )
+
+    projected_amount = fields.Monetary(
+        string='Proyectado',
+        required=True,
+        currency_field='currency_id',
+        help='Monto proyectado para este equipo en este mes (llenado manualmente)'
     )
 
     previous_amount = fields.Monetary(
@@ -215,11 +222,18 @@ class SalesProjectionLine(models.Model):
         help='Ventas reales del mes (órdenes con payment_valid_date en este mes)'
     )
 
-    difference = fields.Monetary(
-        string='Diferencia',
+    difference_estimated = fields.Monetary(
+        string='Dif. vs Estimado',
         compute='_compute_sales_tracking',
         currency_field='currency_id',
-        help='Diferencia entre venta real y estimado (proyectado)'
+        help='Diferencia entre venta real y estimado'
+    )
+
+    difference_projected = fields.Monetary(
+        string='Dif. vs Proyectado',
+        compute='_compute_sales_tracking',
+        currency_field='currency_id',
+        help='Diferencia entre venta real y proyectado'
     )
 
     goal_percentage = fields.Float(
@@ -229,11 +243,18 @@ class SalesProjectionLine(models.Model):
         help='Porcentaje de venta real vs objetivo (meta)'
     )
 
-    projected_percentage = fields.Float(
+    estimated_percentage = fields.Float(
         string='% al Estimado',
         compute='_compute_sales_tracking',
         digits=(16, 2),
-        help='Porcentaje de venta real vs estimado (proyección)'
+        help='Porcentaje de venta real vs estimado'
+    )
+
+    projected_percentage = fields.Float(
+        string='% al Proyectado',
+        compute='_compute_sales_tracking',
+        digits=(16, 2),
+        help='Porcentaje de venta real vs proyectado'
     )
 
     currency_id = fields.Many2one(
@@ -270,15 +291,17 @@ class SalesProjectionLine(models.Model):
             else:
                 line.quarter = False
 
-    @api.depends('period_month', 'year', 'team_unified_id', 'projected_amount')
+    @api.depends('period_month', 'year', 'team_unified_id', 'estimated_amount', 'projected_amount')
     def _compute_sales_tracking(self):
         """Calcula las ventas reales, meta, diferencias y porcentajes del mes"""
         for line in self:
             if not line.period_month or not line.year or not line.team_unified_id:
                 line.goal_amount = 0.0
                 line.actual_sales = 0.0
-                line.difference = 0.0
+                line.difference_estimated = 0.0
+                line.difference_projected = 0.0
                 line.goal_percentage = 0.0
+                line.estimated_percentage = 0.0
                 line.projected_percentage = 0.0
                 continue
 
@@ -313,8 +336,9 @@ class SalesProjectionLine(models.Model):
             else:
                 line.actual_sales = 0.0
 
-            # 3. Calcular diferencia
-            line.difference = line.actual_sales - line.projected_amount
+            # 3. Calcular diferencias
+            line.difference_estimated = line.actual_sales - line.estimated_amount
+            line.difference_projected = line.actual_sales - line.projected_amount
 
             # 4. Calcular % Objetivo (venta real vs meta)
             if line.goal_amount > 0:
@@ -322,7 +346,13 @@ class SalesProjectionLine(models.Model):
             else:
                 line.goal_percentage = 0.0
 
-            # 5. Calcular % al Estimado (venta real vs proyección)
+            # 5. Calcular % al Estimado
+            if line.estimated_amount > 0:
+                line.estimated_percentage = (line.actual_sales / line.estimated_amount) * 100
+            else:
+                line.estimated_percentage = 0.0
+
+            # 6. Calcular % al Proyectado
             if line.projected_amount > 0:
                 line.projected_percentage = (line.actual_sales / line.projected_amount) * 100
             else:
