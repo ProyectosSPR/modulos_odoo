@@ -11,7 +11,7 @@
                 <field name="state" widget="badge" decoration-success="state == 'active'" decoration-info="state == 'draft'" decoration-muted="state == 'closed'"/>
                 <field name="total_projected" widget="monetary"/>
                 <field name="previous_projection_id"/>
-                <field name="temporality" string="Ratio vs Anterior" widget="percentage"
+                <field name="temporality" string="Ratio vs Anterior"
                        decoration-success="temporality &gt; 1.0"
                        decoration-danger="temporality &lt; 1.0"
                        decoration-muted="temporality == 1.0"/>
@@ -49,7 +49,7 @@
                         </group>
                         <group>
                             <field name="previous_projection_id" domain="[('year', '=', year)]"/>
-                            <field name="temporality" widget="percentage"/>
+                            <field name="temporality"/>
                             <field name="create_date" readonly="1"/>
                         </group>
                     </group>
@@ -80,7 +80,7 @@
                                     <field name="previous_amount" readonly="1" widget="monetary" string="Total Proy. Anterior"
                                            optional="show"
                                            attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
-                                    <field name="monthly_temporality" readonly="1" widget="percentage"
+                                    <field name="monthly_temporality" readonly="1" string="Ratio vs Total Ant."
                                            optional="show"
                                            attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
                                     <field name="currency_id" invisible="1"/>
