@@ -84,11 +84,8 @@
                                            optional="hide"
                                            attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
                                     <field name="monthly_temporality" readonly="1" widget="percentage"
-                                           optional="hide"
-                                           attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"
-                                           decoration-success="monthly_temporality &gt; 0"
-                                           decoration-danger="monthly_temporality &lt; 0"
-                                           decoration-muted="monthly_temporality == 0"/>
+                                           optional="hide" string="% del Total Anterior"
+                                           attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
                                     <field name="currency_id" invisible="1"/>
                                     <field name="year" invisible="1"/>
                                 </tree>

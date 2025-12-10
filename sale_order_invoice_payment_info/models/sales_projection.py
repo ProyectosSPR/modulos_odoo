@@ -195,19 +195,19 @@ class SalesProjectionLine(models.Model):
     )
 
     previous_amount = fields.Monetary(
-        string='Proyección Anterior (mismo mes)',
+        string='Total Proyección Anterior',
         compute='_compute_monthly_temporality',
         currency_field='currency_id',
-        help='Monto proyectado para este mismo mes y equipo en la proyección anterior'
+        help='Total de la proyección anterior completa (usado como base para calcular temporalidad)'
     )
 
     monthly_temporality = fields.Float(
-        string='Temporalidad Mensual (%)',
+        string='Temporalidad (%)',
         compute='_compute_monthly_temporality',
         store=True,
         digits=(16, 2),
-        help='Cambio porcentual respecto al mismo mes de la proyección anterior. '
-             'Ej: +20% = aumentó 20%, -15% = disminuyó 15%, 0% = sin cambios'
+        help='Porcentaje que representa esta línea del total de la proyección anterior. '
+             'Ej: 15% = esta línea es el 15% del total anterior'
     )
 
     # Campos de seguimiento de ventas reales
@@ -329,41 +329,23 @@ class SalesProjectionLine(models.Model):
             else:
                 line.projected_percentage = 0.0
 
-    @api.depends('projection_id.previous_projection_id', 'period_month', 'team_unified_id', 'projected_amount')
+    @api.depends('projection_id.previous_projection_id', 'projection_id.previous_projection_id.total_projected', 'projected_amount')
     def _compute_monthly_temporality(self):
-        """Calcula la temporalidad mensual comparando con el mismo mes de la proyección anterior"""
+        """Calcula la temporalidad mensual: (monto línea actual / total proyección anterior)"""
         for line in self:
             previous_projection = line.projection_id.previous_projection_id
 
-            if previous_projection and line.period_month and line.team_unified_id:
-                # Buscar la línea del mismo mes y equipo en la proyección anterior
-                previous_line = self.search([
-                    ('projection_id', '=', previous_projection.id),
-                    ('period_month', '=', line.period_month),
-                    ('team_unified_id', '=', line.team_unified_id.id)
-                ], limit=1)
+            if previous_projection and previous_projection.total_projected > 0:
+                # Calcular qué porcentaje del total anterior representa esta línea
+                line.monthly_temporality = line.projected_amount / previous_projection.total_projected
+                line.previous_amount = previous_projection.total_projected
 
-                if previous_line:
-                    line.previous_amount = previous_line.projected_amount
-
-                    # Calcular temporalidad como decimal (widget percentage lo convertirá a %)
-                    if previous_line.projected_amount > 0:
-                        change = line.projected_amount - previous_line.projected_amount
-                        line.monthly_temporality = change / previous_line.projected_amount
-                    else:
-                        # Si anterior era 0 y ahora hay proyección, es crecimiento infinito (mostramos 1.0 = 100%)
-                        line.monthly_temporality = 1.0 if line.projected_amount > 0 else 0.0
-
-                    _logger.info(f"Temporalidad mensual calculada para {line.team_unified_id.name} - "
-                               f"{line.period_month}/{line.year}: {line.monthly_temporality*100:+.2f}% "
-                               f"(Actual: {line.projected_amount}, Anterior: {line.previous_amount})")
-                else:
-                    line.previous_amount = 0.0
-                    line.monthly_temporality = 0.0
-                    _logger.info(f"No hay línea anterior para {line.team_unified_id.name} - {line.period_month}/{line.year}")
+                _logger.info(f"Temporalidad mensual calculada para {line.team_unified_id.name} - "
+                           f"{line.period_month}/{line.year}: {line.monthly_temporality*100:.2f}% "
+                           f"(Línea actual: {line.projected_amount}, Total anterior: {previous_projection.total_projected})")
             else:
-                line.previous_amount = 0.0
                 line.monthly_temporality = 0.0
+                line.previous_amount = 0.0
 
 
 class QuarterlySalesReport(models.Model):
