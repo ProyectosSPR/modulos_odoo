@@ -92,7 +92,7 @@ class SalesProjection(models.Model):
 
     @api.depends('line_ids', 'line_ids.monthly_temporality')
     def _compute_temporality(self):
-        """Calcula la temporalidad total como suma de todas las temporalidades mensuales"""
+        """Calcula la temporalidad total como suma de las temporalidades mensuales"""
         for projection in self:
             # La suma de todas las monthly_temporality da el ratio total
             # Σ(projected_i / total_anterior) = total_actual / total_anterior
@@ -175,39 +175,37 @@ class SalesProjectionLine(models.Model):
         help='Equipo de ventas unificado (Mercado Libre, Amazon, etc.)'
     )
 
-    estimated_amount = fields.Monetary(
-        string='Estimado',
-        required=False,  # No requerido para permitir la creación de la columna
-        default=0.0,
-        currency_field='currency_id',
-        help='Monto estimado de ventas para este mes y equipo (llenado manualmente)'
-    )
-
     projected_amount = fields.Monetary(
-        string='Proyectado',
+        string='Monto Proyectado',
         required=True,
-        default=0.0,
         currency_field='currency_id',
-        help='Monto proyectado para este equipo en este mes (llenado manualmente)'
+        help='Monto proyectado para este equipo en este mes'
     )
 
     previous_amount = fields.Monetary(
         string='Total Proyección Anterior',
         compute='_compute_monthly_temporality',
         currency_field='currency_id',
-        help='Total de la proyección anterior completa (usado como base para calcular temporalidad)'
+        help='Monto total proyectado en la proyección anterior de referencia'
     )
 
     monthly_temporality = fields.Float(
-        string='Temporalidad (%)',
+        string='% del Total Anterior',
         compute='_compute_monthly_temporality',
         store=True,
-        digits=(16, 2),
-        help='Porcentaje que representa esta línea del total de la proyección anterior. '
-             'Ej: 15% = esta línea es el 15% del total anterior'
+        digits=(16, 4),
+        help='Porcentaje que esta línea representa sobre el total de la proyección anterior. '
+             'Ej: 15% significa que esta línea es el 15% del total anterior.'
     )
 
     # Campos de seguimiento de ventas reales
+    goal_amount = fields.Monetary(
+        string='Objetivo (Meta)',
+        compute='_compute_sales_tracking',
+        currency_field='currency_id',
+        help='Meta configurada para este mes y equipo'
+    )
+
     actual_sales = fields.Monetary(
         string='Venta Real',
         compute='_compute_sales_tracking',
@@ -215,32 +213,25 @@ class SalesProjectionLine(models.Model):
         help='Ventas reales del mes (órdenes con payment_valid_date en este mes)'
     )
 
-    difference_estimated = fields.Monetary(
-        string='Dif. vs Estimado',
+    difference = fields.Monetary(
+        string='Diferencia',
         compute='_compute_sales_tracking',
         currency_field='currency_id',
-        help='Diferencia entre venta real y estimado'
+        help='Diferencia entre venta real y estimado (proyectado)'
     )
 
-    difference_projected = fields.Monetary(
-        string='Dif. vs Proyectado',
-        compute='_compute_sales_tracking',
-        currency_field='currency_id',
-        help='Diferencia entre venta real y proyectado'
-    )
-
-    estimated_percentage = fields.Float(
-        string='% al Estimado',
+    goal_percentage = fields.Float(
+        string='% Objetivo',
         compute='_compute_sales_tracking',
         digits=(16, 2),
-        help='Porcentaje de venta real vs estimado'
+        help='Porcentaje de venta real vs objetivo (meta)'
     )
 
     projected_percentage = fields.Float(
-        string='% al Proyectado',
+        string='% al Estimado',
         compute='_compute_sales_tracking',
         digits=(16, 2),
-        help='Porcentaje de venta real vs proyectado'
+        help='Porcentaje de venta real vs estimado (proyección)'
     )
 
     currency_id = fields.Many2one(
@@ -277,15 +268,15 @@ class SalesProjectionLine(models.Model):
             else:
                 line.quarter = False
 
-    @api.depends('period_month', 'year', 'team_unified_id', 'estimated_amount', 'projected_amount')
+    @api.depends('period_month', 'year', 'team_unified_id', 'projected_amount')
     def _compute_sales_tracking(self):
-        """Calcula las ventas reales, diferencias y porcentajes del mes"""
+        """Calcula las ventas reales, meta, diferencias y porcentajes del mes"""
         for line in self:
             if not line.period_month or not line.year or not line.team_unified_id:
+                line.goal_amount = 0.0
                 line.actual_sales = 0.0
-                line.difference_estimated = 0.0
-                line.difference_projected = 0.0
-                line.estimated_percentage = 0.0
+                line.difference = 0.0
+                line.goal_percentage = 0.0
                 line.projected_percentage = 0.0
                 continue
 
@@ -296,7 +287,17 @@ class SalesProjectionLine(models.Model):
             date_from = f'{line.year}-{line.period_month.zfill(2)}-01'
             date_to = f'{line.year}-{line.period_month.zfill(2)}-{last_day}'
 
-            # 1. Calcular ventas reales del mes usando ORM
+            # 1. Buscar la meta configurada para este mes y equipo
+            goal = self.env['commission.goal'].search([
+                ('team_unified_id', '=', line.team_unified_id.id),
+                ('period_year', '=', line.year),
+                ('period_month', '=', line.period_month),
+                ('user_id', '=', False),
+                ('user_unified_id', '=', False)
+            ], limit=1)
+            line.goal_amount = goal.goal_amount if goal else 0.0
+
+            # 2. Calcular ventas reales del mes usando ORM
             if line.team_unified_id.team_ids:
                 domain = [
                     ('payment_valid_date', '>=', date_from),
@@ -310,17 +311,16 @@ class SalesProjectionLine(models.Model):
             else:
                 line.actual_sales = 0.0
 
-            # 2. Calcular diferencias
-            line.difference_estimated = line.actual_sales - line.estimated_amount
-            line.difference_projected = line.actual_sales - line.projected_amount
+            # 3. Calcular diferencia
+            line.difference = line.actual_sales - line.projected_amount
 
-            # 3. Calcular % al Estimado
-            if line.estimated_amount > 0:
-                line.estimated_percentage = (line.actual_sales / line.estimated_amount) * 100
+            # 4. Calcular % Objetivo (venta real vs meta)
+            if line.goal_amount > 0:
+                line.goal_percentage = (line.actual_sales / line.goal_amount) * 100
             else:
-                line.estimated_percentage = 0.0
+                line.goal_percentage = 0.0
 
-            # 4. Calcular % al Proyectado
+            # 5. Calcular % al Estimado (venta real vs proyección)
             if line.projected_amount > 0:
                 line.projected_percentage = (line.actual_sales / line.projected_amount) * 100
             else:
@@ -328,21 +328,26 @@ class SalesProjectionLine(models.Model):
 
     @api.depends('projection_id.previous_projection_id', 'projection_id.previous_projection_id.total_projected', 'projected_amount')
     def _compute_monthly_temporality(self):
-        """Calcula la temporalidad mensual: (monto línea actual / total proyección anterior)"""
+        """Calcula el porcentaje que representa la línea respecto al total de la proyección anterior."""
+        projections_map = {}
         for line in self:
-            previous_projection = line.projection_id.previous_projection_id
-
-            if previous_projection and previous_projection.total_projected > 0:
-                # Calcular qué porcentaje del total anterior representa esta línea
-                line.monthly_temporality = line.projected_amount / previous_projection.total_projected
-                line.previous_amount = previous_projection.total_projected
-
-                _logger.info(f"Temporalidad mensual calculada para {line.team_unified_id.name} - "
-                           f"{line.period_month}/{line.year}: {line.monthly_temporality*100:.2f}% "
-                           f"(Línea actual: {line.projected_amount}, Total anterior: {previous_projection.total_projected})")
-            else:
-                line.monthly_temporality = 0.0
+            prev_proj = line.projection_id.previous_projection_id
+            if prev_proj:
+                if prev_proj.id not in projections_map:
+                    projections_map[prev_proj.id] = {'total': prev_proj.total_projected, 'lines': []}
+                projections_map[prev_proj.id]['lines'].append(line)
+        for proj_id, data in projections_map.items():
+            total_previous = data['total']
+            for line in data['lines']:
+                line.previous_amount = total_previous
+                if total_previous > 0:
+                    line.monthly_temporality = line.projected_amount / total_previous
+                else:
+                    line.monthly_temporality = 0.0
+        for line in self:
+            if not line.projection_id.previous_projection_id:
                 line.previous_amount = 0.0
+                line.monthly_temporality = 0.0
 
 
 class QuarterlySalesReport(models.Model):
@@ -397,13 +402,13 @@ class QuarterlySalesReport(models.Model):
         readonly=True
     )
 
-    # Objetivo del cuatrimestre (suma de proyecciones mensuales)
+    # Objetivo del cuatrimestre (suma de metas mensuales)
     quarter_goal = fields.Monetary(
         string='Objetivo Cuatrimestre',
         compute='_compute_quarter_goal',
         store=True,
         currency_field='currency_id',
-        help='Suma de las proyecciones mensuales del cuatrimestre para este equipo'
+        help='Suma de las metas mensuales del cuatrimestre para este equipo'
     )
 
     # Estimado (de la proyección)
@@ -468,11 +473,11 @@ class QuarterlySalesReport(models.Model):
             team_name = record.team_unified_id.name if record.team_unified_id else ''
             record.display_name = f'{record.quarter} - {month_name} {record.year} - {team_name}'
 
-    @api.depends('quarter', 'year', 'team_unified_id', 'projection_id', 'projection_id.line_ids', 'projection_id.line_ids.projected_amount')
+    @api.depends('quarter', 'year', 'team_unified_id')
     def _compute_quarter_goal(self):
-        """Calcula el objetivo del cuatrimestre sumando las proyecciones mensuales"""
+        """Calcula el objetivo del cuatrimestre sumando las metas mensuales"""
         for record in self:
-            if record.quarter and record.year and record.team_unified_id and record.projection_id:
+            if record.quarter and record.year and record.team_unified_id:
                 # Determinar los meses del cuatrimestre
                 if record.quarter == 'Q1':
                     months = ['1', '2', '3', '4']
@@ -483,15 +488,17 @@ class QuarterlySalesReport(models.Model):
                 else:
                     months = []
 
-                # Buscar las líneas de proyección para este equipo y periodo usando ORM
-                projection_lines = self.env['sales.projection.line'].search([
-                    ('projection_id', '=', record.projection_id.id),
+                # Buscar las metas mensuales para este equipo y periodo usando ORM
+                goals = self.env['commission.goal'].search([
                     ('team_unified_id', '=', record.team_unified_id.id),
-                    ('period_month', 'in', months)
+                    ('period_year', '=', record.year),
+                    ('period_month', 'in', months),
+                    ('user_id', '=', False),
+                    ('user_unified_id', '=', False)
                 ])
 
-                # Sumar las proyecciones usando el ORM
-                record.quarter_goal = sum(projection_lines.mapped('projected_amount'))
+                # Sumar las metas usando el ORM
+                record.quarter_goal = sum(goals.mapped('goal_amount'))
             else:
                 record.quarter_goal = 0.0
 
@@ -531,15 +538,15 @@ class QuarterlySalesReport(models.Model):
             # Diferencia
             record.difference = record.actual_sales - record.projected_amount
 
-            # % Objetivo (como decimal, widget percentage lo convertirá a %)
+            # % Objetivo
             if record.quarter_goal > 0:
-                record.goal_percentage = record.actual_sales / record.quarter_goal
+                record.goal_percentage = (record.actual_sales / record.quarter_goal) * 100
             else:
                 record.goal_percentage = 0.0
 
-            # % Estimado (como decimal, widget percentage lo convertirá a %)
+            # % Estimado
             if record.projected_amount > 0:
-                record.projected_percentage = record.actual_sales / record.projected_amount
+                record.projected_percentage = (record.actual_sales / record.projected_amount) * 100
             else:
                 record.projected_percentage = 0.0
 
