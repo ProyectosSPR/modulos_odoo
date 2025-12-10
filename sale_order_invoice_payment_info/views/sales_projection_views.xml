@@ -99,22 +99,6 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="Vista por Equipo" name="team_view">
-                            <group>
-                                <p class="text-muted">
-                                    Esta vista muestra las proyecciones agrupadas por equipo de ventas,
-                                    similar a la tabla que proporcionaste con equipos en filas y meses en columnas.
-                                </p>
-                            </group>
-                            <!-- Aquí se podría agregar una vista pivot personalizada -->
-                            <field name="line_ids">
-                                <tree string="Por Equipo" default_order="team_unified_id,period_month">
-                                    <field name="team_unified_id"/>
-                                    <field name="period_month"/>
-                                    <field name="projected_amount" widget="monetary"/>
-                                </tree>
-                            </field>
-                        </page>
                     </notebook>
                 </sheet>
                 <div class="oe_chatter">
