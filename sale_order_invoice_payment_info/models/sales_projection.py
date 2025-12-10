@@ -100,10 +100,27 @@ class SalesProjection(models.Model):
                 projection.temporality = 100.0
 
     def action_activate(self):
-        """Activa la proyección"""
+        """Activa la proyección y genera los reportes automáticamente"""
         for projection in self:
             projection.state = 'active'
+            # Generar reportes para cada línea de proyección
+            projection._generate_quarterly_reports()
         return True
+
+    def _generate_quarterly_reports(self):
+        """Genera registros de reporte cuatrimestral para todas las líneas de esta proyección"""
+        self.ensure_one()
+        QuarterlyReport = self.env['quarterly.sales.report']
+
+        for line in self.line_ids:
+            # Verificar si ya existe un reporte para esta línea
+            existing = QuarterlyReport.search([('projection_line_id', '=', line.id)])
+            if not existing:
+                # Crear el reporte usando ORM
+                QuarterlyReport.create({'projection_line_id': line.id})
+                _logger.info(f"Reporte creado para {line.team_unified_id.name} - {line.period_month}/{line.year}")
+            else:
+                _logger.info(f"Reporte ya existe para {line.team_unified_id.name} - {line.period_month}/{line.year}")
 
     def action_close(self):
         """Cierra la proyección"""
@@ -203,22 +220,35 @@ class SalesProjectionLine(models.Model):
 class QuarterlySalesReport(models.Model):
     _name = 'quarterly.sales.report'
     _description = 'Reporte de Ventas por Cuatrimestre'
-    _auto = False
     _rec_name = 'display_name'
+    _order = 'year desc, period_month, team_unified_id'
 
     display_name = fields.Char(
         string='Nombre',
-        compute='_compute_display_name'
+        compute='_compute_display_name',
+        store=True
+    )
+
+    projection_line_id = fields.Many2one(
+        'sales.projection.line',
+        string='Línea de Proyección',
+        required=True,
+        ondelete='cascade',
+        index=True
     )
 
     projection_id = fields.Many2one(
         'sales.projection',
         string='Proyección',
+        related='projection_line_id.projection_id',
+        store=True,
         readonly=True
     )
 
     year = fields.Char(
         string='Año',
+        related='projection_line_id.year',
+        store=True,
         readonly=True
     )
 
@@ -226,7 +256,7 @@ class QuarterlySalesReport(models.Model):
         ('Q1', 'Q1 (Ene-Abr)'),
         ('Q2', 'Q2 (May-Ago)'),
         ('Q3', 'Q3 (Sep-Dic)'),
-    ], string='Cuatrimestre', readonly=True)
+    ], string='Cuatrimestre', related='projection_line_id.quarter', store=True, readonly=True)
 
     period_month = fields.Selection([
         ('1', 'Enero'),
@@ -241,18 +271,21 @@ class QuarterlySalesReport(models.Model):
         ('10', 'Octubre'),
         ('11', 'Noviembre'),
         ('12', 'Diciembre'),
-    ], string='Mes', readonly=True)
+    ], string='Mes', related='projection_line_id.period_month', store=True, readonly=True)
 
     team_unified_id = fields.Many2one(
         'commission.team.unified',
         string='Equipo de Venta',
+        related='projection_line_id.team_unified_id',
+        store=True,
         readonly=True
     )
 
     # Objetivo del cuatrimestre (suma de metas mensuales)
     quarter_goal = fields.Monetary(
         string='Objetivo Cuatrimestre',
-        readonly=True,
+        compute='_compute_quarter_goal',
+        store=True,
         currency_field='currency_id',
         help='Suma de las metas mensuales del cuatrimestre para este equipo'
     )
@@ -260,6 +293,8 @@ class QuarterlySalesReport(models.Model):
     # Estimado (de la proyección)
     projected_amount = fields.Monetary(
         string='Estimado',
+        related='projection_line_id.projected_amount',
+        store=True,
         readonly=True,
         currency_field='currency_id',
         help='Monto proyectado para este mes y equipo'
@@ -269,6 +304,7 @@ class QuarterlySalesReport(models.Model):
     actual_sales = fields.Monetary(
         string='Venta',
         compute='_compute_actual_sales',
+        store=True,
         currency_field='currency_id',
         help='Ventas reales del periodo (órdenes pagadas)'
     )
@@ -277,6 +313,7 @@ class QuarterlySalesReport(models.Model):
     difference = fields.Monetary(
         string='Diferencia',
         compute='_compute_metrics',
+        store=True,
         currency_field='currency_id',
         help='Diferencia entre venta real y estimado'
     )
@@ -285,6 +322,7 @@ class QuarterlySalesReport(models.Model):
     goal_percentage = fields.Float(
         string='% Objetivo',
         compute='_compute_metrics',
+        store=True,
         digits=(16, 2),
         help='Porcentaje de venta real vs objetivo del cuatrimestre'
     )
@@ -293,6 +331,7 @@ class QuarterlySalesReport(models.Model):
     projected_percentage = fields.Float(
         string='% Estimado',
         compute='_compute_metrics',
+        store=True,
         digits=(16, 2),
         help='Porcentaje de venta real vs estimado'
     )
@@ -300,6 +339,7 @@ class QuarterlySalesReport(models.Model):
     currency_id = fields.Many2one(
         'res.currency',
         string='Moneda',
+        related='projection_id.currency_id',
         readonly=True
     )
 
@@ -311,9 +351,38 @@ class QuarterlySalesReport(models.Model):
             team_name = record.team_unified_id.name if record.team_unified_id else ''
             record.display_name = f'{record.quarter} - {month_name} {record.year} - {team_name}'
 
+    @api.depends('quarter', 'year', 'team_unified_id')
+    def _compute_quarter_goal(self):
+        """Calcula el objetivo del cuatrimestre sumando las metas mensuales"""
+        for record in self:
+            if record.quarter and record.year and record.team_unified_id:
+                # Determinar los meses del cuatrimestre
+                if record.quarter == 'Q1':
+                    months = ['1', '2', '3', '4']
+                elif record.quarter == 'Q2':
+                    months = ['5', '6', '7', '8']
+                elif record.quarter == 'Q3':
+                    months = ['9', '10', '11', '12']
+                else:
+                    months = []
+
+                # Buscar las metas mensuales para este equipo y periodo usando ORM
+                goals = self.env['commission.goal'].search([
+                    ('team_unified_id', '=', record.team_unified_id.id),
+                    ('period_year', '=', record.year),
+                    ('period_month', 'in', months),
+                    ('user_id', '=', False),
+                    ('user_unified_id', '=', False)
+                ])
+
+                # Sumar las metas usando el ORM
+                record.quarter_goal = sum(goals.mapped('goal_amount'))
+            else:
+                record.quarter_goal = 0.0
+
     @api.depends('period_month', 'year', 'team_unified_id')
     def _compute_actual_sales(self):
-        """Calcula las ventas reales del periodo basado en payment_valid_date"""
+        """Calcula las ventas reales del periodo basado en payment_valid_date usando ORM"""
         for record in self:
             if record.period_month and record.year and record.team_unified_id:
                 # Calcular el último día del mes
@@ -324,7 +393,7 @@ class QuarterlySalesReport(models.Model):
                 date_from = f'{record.year}-{record.period_month.zfill(2)}-01'
                 date_to = f'{record.year}-{record.period_month.zfill(2)}-{last_day}'
 
-                # Buscar órdenes pagadas en el periodo para este equipo
+                # Buscar órdenes pagadas en el periodo usando solo ORM
                 domain = [
                     ('payment_valid_date', '>=', date_from),
                     ('payment_valid_date', '<=', date_to),
@@ -335,7 +404,7 @@ class QuarterlySalesReport(models.Model):
 
                 orders = self.env['sale.order'].search(domain)
 
-                # Sumar el total de las órdenes
+                # Sumar el total usando ORM
                 record.actual_sales = sum(orders.mapped('amount_total'))
             else:
                 record.actual_sales = 0.0
@@ -359,38 +428,22 @@ class QuarterlySalesReport(models.Model):
             else:
                 record.projected_percentage = 0.0
 
-    def init(self):
-        """Crea la vista SQL para el reporte"""
-        self.env.cr.execute("""
-            CREATE OR REPLACE VIEW quarterly_sales_report AS (
-                SELECT
-                    ROW_NUMBER() OVER (ORDER BY spl.year, spl.period_month, spl.team_unified_id) as id,
-                    spl.projection_id,
-                    spl.year,
-                    spl.quarter,
-                    spl.period_month,
-                    spl.team_unified_id,
-                    spl.projected_amount,
-                    sp.currency_id,
-                    COALESCE(
-                        (
-                            SELECT SUM(cg.goal_amount)
-                            FROM commission_goal cg
-                            WHERE cg.team_unified_id = spl.team_unified_id
-                                AND cg.period_year = spl.year
-                                AND cg.period_month IN (
-                                    CASE
-                                        WHEN spl.quarter = 'Q1' THEN ('1', '2', '3', '4')
-                                        WHEN spl.quarter = 'Q2' THEN ('5', '6', '7', '8')
-                                        WHEN spl.quarter = 'Q3' THEN ('9', '10', '11', '12')
-                                    END
-                                )
-                                AND cg.user_id IS NULL
-                                AND cg.user_unified_id IS NULL
-                        ), 0
-                    ) as quarter_goal
-                FROM sales_projection_line spl
-                JOIN sales_projection sp ON sp.id = spl.projection_id
-                WHERE sp.state = 'active'
-            )
-        """)
+    @api.model
+    def _generate_reports_for_active_projections(self):
+        """
+        Genera automáticamente registros de reporte para todas las líneas de proyecciones activas.
+        Este método puede ser llamado manualmente o por un cron job.
+        """
+        # Buscar proyecciones activas usando ORM
+        active_projections = self.env['sales.projection'].search([('state', '=', 'active')])
+
+        for projection in active_projections:
+            for line in projection.line_ids:
+                # Verificar si ya existe un reporte para esta línea
+                existing = self.search([('projection_line_id', '=', line.id)])
+                if not existing:
+                    # Crear el reporte usando ORM
+                    self.create({'projection_line_id': line.id})
+                    _logger.info(f"Reporte creado para {line.team_unified_id.name} - {line.period_month}/{line.year}")
+
+        return True

@@ -5,7 +5,7 @@
         <field name="name">quarterly.sales.report.tree</field>
         <field name="model">quarterly.sales.report</field>
         <field name="arch" type="xml">
-            <tree string="Reporte de Ventas por Cuatrimestre" create="false" delete="false" edit="false">
+            <tree string="Reporte de Ventas por Cuatrimestre" create="false" delete="true" edit="false">
                 <field name="year"/>
                 <field name="quarter"/>
                 <field name="period_month"/>
@@ -92,7 +92,7 @@
         <field name="name">quarterly.sales.report.form</field>
         <field name="model">quarterly.sales.report</field>
         <field name="arch" type="xml">
-            <form string="Detalle del Reporte" create="false" delete="false" edit="false">
+            <form string="Detalle del Reporte" create="false" delete="true" edit="false">
                 <sheet>
                     <group>
                         <group>
