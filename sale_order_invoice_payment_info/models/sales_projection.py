@@ -406,20 +406,8 @@ class QuarterlySalesReport(models.Model):
         ('Q3', 'Q3 (Sep-Dic)'),
     ], string='Cuatrimestre', related='projection_line_id.quarter', store=True, readonly=True)
 
-    period_month = fields.Selection([
-        ('1', 'Enero'),
-        ('2', 'Febrero'),
-        ('3', 'Marzo'),
-        ('4', 'Abril'),
-        ('5', 'Mayo'),
-        ('6', 'Junio'),
-        ('7', 'Julio'),
-        ('8', 'Agosto'),
-        ('9', 'Septiembre'),
-        ('10', 'Octubre'),
-        ('11', 'Noviembre'),
-        ('12', 'Diciembre'),
-    ], string='Mes', related='projection_line_id.period_month', store=True, readonly=True)
+    period_month = fields.Selection(
+        string='Mes', related='projection_line_id.period_month', store=True, readonly=True)
 
     team_unified_id = fields.Many2one(
         'commission.team.unified',
