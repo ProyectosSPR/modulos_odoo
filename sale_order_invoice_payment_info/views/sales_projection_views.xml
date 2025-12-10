@@ -11,7 +11,7 @@
                 <field name="state" widget="badge" decoration-success="state == 'active'" decoration-info="state == 'draft'" decoration-muted="state == 'closed'"/>
                 <field name="total_projected" widget="monetary"/>
                 <field name="previous_projection_id"/>
-                <field name="temporality" string="Cambio vs Anterior"
+                <field name="temporality" string="Cambio vs Anterior" widget="percentage"
                        decoration-success="temporality &gt; 0"
                        decoration-danger="temporality &lt; 0"
                        decoration-muted="temporality == 0"/>
@@ -83,7 +83,7 @@
                                     <field name="previous_amount" readonly="1" widget="monetary"
                                            optional="hide"
                                            attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
-                                    <field name="monthly_temporality" readonly="1"
+                                    <field name="monthly_temporality" readonly="1" widget="percentage"
                                            optional="hide"
                                            attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"
                                            decoration-success="monthly_temporality &gt; 0"

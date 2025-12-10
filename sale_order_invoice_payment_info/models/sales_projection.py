@@ -94,9 +94,10 @@ class SalesProjection(models.Model):
         """Calcula la temporalidad como cambio porcentual vs proyección anterior"""
         for projection in self:
             if projection.previous_projection_id and projection.previous_projection_id.total_projected > 0:
-                # Calcular el cambio porcentual: ((Actual - Anterior) / Anterior) * 100
+                # Calcular el cambio como decimal (widget percentage lo convertirá a %)
+                # Ej: si crece 20%, esto retorna 0.20, widget muestra 20%
                 change = projection.total_projected - projection.previous_projection_id.total_projected
-                projection.temporality = (change / projection.previous_projection_id.total_projected) * 100
+                projection.temporality = change / projection.previous_projection_id.total_projected
             else:
                 projection.temporality = 0.0
 
@@ -345,16 +346,16 @@ class SalesProjectionLine(models.Model):
                 if previous_line:
                     line.previous_amount = previous_line.projected_amount
 
-                    # Calcular temporalidad como cambio porcentual: ((Actual - Anterior) / Anterior) * 100
+                    # Calcular temporalidad como decimal (widget percentage lo convertirá a %)
                     if previous_line.projected_amount > 0:
                         change = line.projected_amount - previous_line.projected_amount
-                        line.monthly_temporality = (change / previous_line.projected_amount) * 100
+                        line.monthly_temporality = change / previous_line.projected_amount
                     else:
-                        # Si anterior era 0 y ahora hay proyección, es crecimiento infinito (mostramos 100%)
-                        line.monthly_temporality = 100.0 if line.projected_amount > 0 else 0.0
+                        # Si anterior era 0 y ahora hay proyección, es crecimiento infinito (mostramos 1.0 = 100%)
+                        line.monthly_temporality = 1.0 if line.projected_amount > 0 else 0.0
 
                     _logger.info(f"Temporalidad mensual calculada para {line.team_unified_id.name} - "
-                               f"{line.period_month}/{line.year}: {line.monthly_temporality:+.2f}% "
+                               f"{line.period_month}/{line.year}: {line.monthly_temporality*100:+.2f}% "
                                f"(Actual: {line.projected_amount}, Anterior: {line.previous_amount})")
                 else:
                     line.previous_amount = 0.0
@@ -551,15 +552,15 @@ class QuarterlySalesReport(models.Model):
             # Diferencia
             record.difference = record.actual_sales - record.projected_amount
 
-            # % Objetivo
+            # % Objetivo (como decimal, widget percentage lo convertirá a %)
             if record.quarter_goal > 0:
-                record.goal_percentage = (record.actual_sales / record.quarter_goal) * 100
+                record.goal_percentage = record.actual_sales / record.quarter_goal
             else:
                 record.goal_percentage = 0.0
 
-            # % Estimado
+            # % Estimado (como decimal, widget percentage lo convertirá a %)
             if record.projected_amount > 0:
-                record.projected_percentage = (record.actual_sales / record.projected_amount) * 100
+                record.projected_percentage = record.actual_sales / record.projected_amount
             else:
                 record.projected_percentage = 0.0
 

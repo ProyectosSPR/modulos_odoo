@@ -17,13 +17,13 @@
                        decoration-success="difference &gt;= 0"
                        decoration-danger="difference &lt; 0"/>
                 <field name="goal_percentage" widget="percentage"
-                       decoration-success="goal_percentage &gt;= 100"
-                       decoration-warning="goal_percentage &gt;= 80 and goal_percentage &lt; 100"
-                       decoration-danger="goal_percentage &lt; 80"/>
+                       decoration-success="goal_percentage &gt;= 1.0"
+                       decoration-warning="goal_percentage &gt;= 0.8 and goal_percentage &lt; 1.0"
+                       decoration-danger="goal_percentage &lt; 0.8"/>
                 <field name="projected_percentage" widget="percentage"
-                       decoration-success="projected_percentage &gt;= 100"
-                       decoration-warning="projected_percentage &gt;= 80 and projected_percentage &lt; 100"
-                       decoration-danger="projected_percentage &lt; 80"/>
+                       decoration-success="projected_percentage &gt;= 1.0"
+                       decoration-warning="projected_percentage &gt;= 0.8 and projected_percentage &lt; 1.0"
+                       decoration-danger="projected_percentage &lt; 0.8"/>
                 <field name="currency_id" invisible="1"/>
             </tree>
         </field>
