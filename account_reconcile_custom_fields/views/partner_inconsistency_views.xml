@@ -84,28 +84,28 @@
                     <field name="state" widget="statusbar" statusbar_visible="pending,corrected,cancelled"/>
                     <button name="action_correct_partner" string="Corregir Partner"
                             type="object" class="btn-primary"
-                            invisible="state != 'pending'"/>
+                            attrs="{'invisible': [('state', '!=', 'pending')]}"/>
                     <button name="action_mark_cancelled" string="Cancelar (No Corregir)"
                             type="object" class="btn-secondary"
-                            invisible="state != 'pending'"/>
+                            attrs="{'invisible': [('state', '!=', 'pending')]}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" type="object" name="action_view_payment"
-                                icon="fa-money" invisible="not pago_line_id">
+                                icon="fa-money" attrs="{'invisible': [('pago_line_id', '=', False)]}">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text">Ver Pago</span>
                             </div>
                         </button>
                         <button class="oe_stat_button" type="object" name="action_view_invoice"
-                                icon="fa-file-text-o" invisible="not factura_line_id">
+                                icon="fa-file-text-o" attrs="{'invisible': [('factura_line_id', '=', False)]}">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text">Ver Factura</span>
                             </div>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Corregido" bg_color="bg-success" invisible="state != 'corrected'"/>
-                    <widget name="web_ribbon" title="Cancelado" bg_color="bg-secondary" invisible="state != 'cancelled'"/>
+                    <widget name="web_ribbon" title="Corregido" bg_color="bg-success" attrs="{'invisible': [('state', '!=', 'corrected')]}"/>
+                    <widget name="web_ribbon" title="Cancelado" bg_color="bg-secondary" attrs="{'invisible': [('state', '!=', 'cancelled')]}"/>
                     <group>
                         <group string="Información General">
                             <field name="referencia_comun"/>
@@ -138,17 +138,17 @@
                             <field name="monto_factura" string="Saldo Pendiente"/>
                         </group>
                     </group>
-                    <group string="Historial de Corrección" invisible="state == 'pending'">
+                    <group string="Historial de Corrección" attrs="{'invisible': [('state', '=', 'pending')]}">
                         <group>
                             <field name="corrected_date"/>
                             <field name="corrected_user_id"/>
                         </group>
-                        <group invisible="state != 'corrected'">
+                        <group attrs="{'invisible': [('state', '!=', 'corrected')]}">
                             <field name="partner_original_id"/>
                             <field name="partner_corregido_id"/>
                         </group>
                     </group>
-                    <group string="Notas" invisible="not notas">
+                    <group string="Notas" attrs="{'invisible': [('notas', '=', False)]}">
                         <field name="notas" nolabel="1"/>
                     </group>
                 </sheet>
