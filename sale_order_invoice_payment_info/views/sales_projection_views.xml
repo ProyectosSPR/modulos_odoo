@@ -157,4 +157,20 @@
         </field>
     </record>
 
+    <!-- Search View for Sales Projection Line -->
+    <record id="view_sales_projection_line_search" model="ir.ui.view">
+        <field name="name">sales.projection.line.search</field>
+        <field name="model">sales.projection.line</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Línea de Proyección">
+                <field name="period_month"/>
+                <field name="team_unified_id"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
+                    <filter string="Equipo Unificado" name="group_team_unified" context="{'group_by': 'team_unified_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
 </odoo>

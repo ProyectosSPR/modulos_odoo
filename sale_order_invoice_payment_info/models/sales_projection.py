@@ -54,7 +54,7 @@ class SalesProjection(models.Model):
         string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
-        digits=(16, 2),
+        digits=(16, 4),
         help='Suma de todas las temporalidades mensuales. '
              'Equivale al ratio: Total Proyectado / Total Anterior. '
              'Ej: 1.5 (150%) = el total actual es 1.5 veces el anterior, 1.0 (100%) = sin cambios'
