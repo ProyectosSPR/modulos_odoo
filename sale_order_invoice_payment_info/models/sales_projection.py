@@ -50,7 +50,7 @@ class SalesProjection(models.Model):
         help='Proyección anterior para calcular la temporalidad'
     )
 
-    temporality = fields.Percentage(
+    temporality = fields.Float(
         string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
