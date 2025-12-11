@@ -158,7 +158,7 @@ class SalesProjectionLine(models.Model):
         string='Temporalidad Mensual (%)',
         compute='_compute_monthly_temporality',
         store=True,
-        digits=(16, 2),
+        digits=(16, 4),
         help='Porcentaje que esta línea representa sobre el total de la proyección anterior. Ej: 2.20 significa 2.20%.'
     )
 
