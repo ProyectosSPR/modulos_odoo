@@ -50,7 +50,7 @@ class SalesProjection(models.Model):
         help='Proyección anterior para calcular la temporalidad'
     )
 
-    temporality = fields.Percentage(
+    temporality = fields.Float(
         string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
@@ -152,7 +152,7 @@ class SalesProjectionLine(models.Model):
         currency_field='currency_id',
         help='Monto total proyectado en la proyección anterior de referencia'
     )
-    monthly_temporality = fields.Percentage(
+    monthly_temporality = fields.Float(
         string='Temporalidad Mensual (%)',
         compute='_compute_monthly_temporality',
         store=True,
