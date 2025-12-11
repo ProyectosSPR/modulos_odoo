@@ -50,11 +50,11 @@ class SalesProjection(models.Model):
         help='Proyección anterior para calcular la temporalidad'
     )
 
-    temporality = fields.Float(
+    temporality = fields.Percentage(
         string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
-        digits=(16, 4),
+        digits=(16, 2),
         help='Porcentaje del total actual vs el total de la proyección anterior. Ej: 120.00 significa que el total actual es un 20% mayor.'
     )
 
@@ -152,11 +152,11 @@ class SalesProjectionLine(models.Model):
         currency_field='currency_id',
         help='Monto total proyectado en la proyección anterior de referencia'
     )
-    monthly_temporality = fields.Float(
+    monthly_temporality = fields.Percentage(
         string='Temporalidad Mensual (%)',
         compute='_compute_monthly_temporality',
         store=True,
-        digits=(16, 4),
+        digits=(16, 2),
         help='Porcentaje que esta línea representa sobre el total de la proyección anterior. Ej: 2.20 significa 2.20%.'
     )
 
@@ -227,7 +227,7 @@ class SalesProjectionLine(models.Model):
             total_previous = line.projection_id.previous_projection_id.total_projected
             line.previous_amount = total_previous
             if total_previous > 0:
-                line.monthly_temporality = (line.projected_amount / total_previous) * 100
+                line.monthly_temporality = (line.projected_amount / total_previous)
             else:
                 line.monthly_temporality = 0.0
 
