@@ -102,7 +102,7 @@ class SalesProjection(models.Model):
         for projection in self:
             total_previous = projection.previous_projection_id.total_projected
             if total_previous > 0:
-                projection.temporality = (projection.total_projected / total_previous)
+                projection.temporality = (projection.total_projected / total_previous) * 100
             else:
                 projection.temporality = 0.0
 
