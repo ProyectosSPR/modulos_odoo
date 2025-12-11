@@ -50,7 +50,7 @@ class SalesProjection(models.Model):
         help='Proyección anterior para calcular la temporalidad'
     )
 
-    temporality = fields.Float(
+    temporality = fields.Percentage(
         string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
@@ -88,17 +88,15 @@ class SalesProjection(models.Model):
         for projection in self:
             projection.total_projected = sum(projection.line_ids.mapped('projected_amount'))
 
-    @api.depends('line_ids.monthly_temporality')
+    @api.depends('total_projected', 'previous_projection_id.total_projected')
     def _compute_temporality(self):
-        """
-        Calcula la temporalidad total como la suma de las temporalidades mensuales de las líneas.
-        Este es el comportamiento solicitado, ya que es matemáticamente equivalente al ratio total.
-        """
+        """Calcula la temporalidad total como un porcentaje del total actual vs el total anterior."""
         for projection in self:
-            # Sumar las temporalidades de cada línea.
-            # El valor de `monthly_temporality` en cada línea ya es un porcentaje (ej. 2.20 para 2.20%).
-            # La suma de estos porcentajes es matemáticamente igual a (total_actual / total_anterior) * 100.
-            projection.temporality = sum(projection.line_ids.mapped('monthly_temporality'))
+            total_previous = projection.previous_projection_id.total_projected
+            if total_previous > 0:
+                projection.temporality = (projection.total_projected / total_previous)
+            else:
+                projection.temporality = 0.0
 
     def action_activate(self):
         """Activa la proyección y genera los reportes automáticamente"""
