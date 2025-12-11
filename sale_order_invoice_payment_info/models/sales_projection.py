@@ -51,11 +51,11 @@ class SalesProjection(models.Model):
     )
 
     temporality = fields.Float(
-        string='Ratio vs Anterior',
+        string='Temporalidad Total (%)',
         compute='_compute_temporality',
         store=True,
         digits=(16, 4),
-        help='Ratio del total actual vs el total de la proyección anterior. Ej: 1.20 significa que el total actual es un 20% mayor.'
+        help='Porcentaje del total actual vs el total de la proyección anterior. Ej: 120.00 significa que el total actual es un 20% mayor.'
     )
 
     currency_id = fields.Many2one(
@@ -90,11 +90,11 @@ class SalesProjection(models.Model):
 
     @api.depends('total_projected', 'previous_projection_id.total_projected')
     def _compute_temporality(self):
-        """Calcula la temporalidad total como un ratio del total actual vs el total anterior."""
+        """Calcula la temporalidad total como un porcentaje del total actual vs el total anterior."""
         for projection in self:
             total_previous = projection.previous_projection_id.total_projected
             if total_previous > 0:
-                projection.temporality = projection.total_projected / total_previous
+                projection.temporality = (projection.total_projected / total_previous) * 100
             else:
                 projection.temporality = 0.0
 
@@ -153,11 +153,11 @@ class SalesProjectionLine(models.Model):
         help='Monto total proyectado en la proyección anterior de referencia'
     )
     monthly_temporality = fields.Float(
-        string='Ratio vs Total Anterior',
+        string='Temporalidad Mensual (%)',
         compute='_compute_monthly_temporality',
         store=True,
         digits=(16, 4),
-        help='Ratio que esta línea representa sobre el total de la proyección anterior. Ej: 0.15 significa que esta línea es el 15% del total anterior.'
+        help='Porcentaje que esta línea representa sobre el total de la proyección anterior. Ej: 2.20 significa 2.20%.'
     )
 
     goal_amount = fields.Monetary('Objetivo (Meta)', compute='_compute_sales_tracking', currency_field='currency_id')
@@ -222,12 +222,12 @@ class SalesProjectionLine(models.Model):
 
     @api.depends('projection_id.previous_projection_id.total_projected', 'projected_amount')
     def _compute_monthly_temporality(self):
-        """Calcula el ratio que representa la línea respecto al total de la proyección anterior."""
+        """Calcula el porcentaje que representa la línea respecto al total de la proyección anterior."""
         for line in self:
             total_previous = line.projection_id.previous_projection_id.total_projected
             line.previous_amount = total_previous
             if total_previous > 0:
-                line.monthly_temporality = line.projected_amount / total_previous
+                line.monthly_temporality = (line.projected_amount / total_previous) * 100
             else:
                 line.monthly_temporality = 0.0
 
