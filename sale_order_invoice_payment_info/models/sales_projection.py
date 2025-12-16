@@ -102,7 +102,7 @@ class SalesProjection(models.Model):
         for projection in self:
             total_previous = projection.previous_projection_id.total_projected
             if total_previous > 0:
-                projection.temporality = sum(projection.line_ids.mapped('monthly_temporality')) * 100
+                projection.temporality = sum(projection.line_ids.mapped('monthly_temporality')) 
             else:
                 projection.temporality = 0.0
 
