@@ -296,7 +296,6 @@ class QuarterlySalesReport(models.Model):
 
                 orders = self.env['sale.order'].search([
                     ('payment_valid_date', '>=', date_from), ('payment_valid_date', '<=', date_to),
-                    ('state', 'in', ['sale', 'done']),
                     ('team_id', 'in', record.team_unified_id.team_ids.ids)
                 ])
                 record.actual_sales = sum(orders.mapped('amount_total'))

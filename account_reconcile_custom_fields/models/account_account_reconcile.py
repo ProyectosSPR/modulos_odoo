@@ -375,216 +375,144 @@ class AccountAccountReconcile(models.Model):
 
     def _find_all_automatic_matches(self, mapping):
         """
-        Buscar coincidencias automáticas en AMBAS direcciones
-
-        DIRECCIÓN 1: Orden → Pago
-        1. Por cada ORDEN que tenga valor en el campo origen
-        2. Obtener las FACTURAS de esa orden
-        3. Buscar PAGOS que coincidan con el valor de la orden
-        4. Agregar las líneas de la factura + las líneas del pago
-
-        DIRECCIÓN 2: Pago → Orden
-        1. Por cada PAGO que tenga valor en el campo destino
-        2. Buscar ÓRDENES que coincidan con el valor del pago
-        3. Obtener las FACTURAS de esas órdenes
-        4. Agregar las líneas del pago + las líneas de las facturas
+        MODIFICADO: Buscar coincidencias automáticas, agruparlas por una clave de referencia
+        y luego filtrar para asegurar que todos los apuntes de un grupo pertenezcan al MISMO partner.
         """
         self.ensure_one()
-        all_matching_lines = self.env["account.move.line"].browse()
-
-        _logger.info(f"========== FIND ALL MATCHES START (BIDIRECTIONAL) ==========")
+        _logger.info("========== FIND ALL MATCHES START (STRICT PARTNER LOGIC) ==========")
         _logger.info(f"Account: {self.account_id.code} - Partner: {self.partner_id.name if self.partner_id else 'All'}")
         _logger.info(f"Mapping: {mapping.name}")
-        _logger.info(f"Source: {mapping.source_model}.{mapping.source_field_name}")
-        _logger.info(f"Target: {mapping.target_model}.{mapping.target_field_name}")
-        _logger.info(f"Operator: {mapping.operator}")
 
-        # ========== DIRECCIÓN 1: ORDEN → PAGO ==========
-        _logger.info("--- DIRECTION 1: Order → Payment ---")
-        all_matching_lines |= self._match_orders_to_payments(mapping)
+        # 1. Obtener todos los apuntes coincidentes por referencia, sin filtrar por partner aún.
+        # El resultado es un diccionario: {'ref_value': {line1, line2, ...}}
+        lines_by_ref = self._get_all_lines_grouped_by_reference(mapping)
 
-        # ========== DIRECCIÓN 2: PAGO → ORDEN ==========
-        _logger.info("--- DIRECTION 2: Payment → Order ---")
-        all_matching_lines |= self._match_payments_to_orders(mapping)
+        # 2. Filtrar los grupos para asegurar la consistencia del partner.
+        # El resultado es el mismo, pero eliminando referencias con partners mezclados.
+        consistent_lines_by_ref = self._filter_groups_for_partner_consistency(lines_by_ref)
 
-        _logger.info(f"Total unique lines to add: {len(all_matching_lines)}")
-        _logger.info(f"========== FIND ALL MATCHES END ==========")
+        # 3. Aplanar el diccionario a una lista de todos los apuntes válidos.
+        all_matching_lines = self.env["account.move.line"].browse()
+        for lines in consistent_lines_by_ref.values():
+            all_matching_lines |= lines
+        
+        # 4. (Opcional pero recomendado) Filtrar por el partner del widget si está definido
+        if self.partner_id:
+            all_matching_lines = all_matching_lines.filtered(
+                lambda l: l.partner_id == self.partner_id
+            )
+        
+        _logger.info(f"Total unique lines to add after partner consistency check: {len(all_matching_lines)}")
+        _logger.info("========== FIND ALL MATCHES END ==========")
 
         return all_matching_lines
+
+    def _get_all_lines_grouped_by_reference(self, mapping):
+        """
+        NUEVO: Busca todas las líneas de origen y destino y las agrupa en un diccionario
+        por el valor de su referencia.
+        Retorna: {'ref_value_1': {lineA, lineB}, 'ref_value_2': {lineC}}
+        """
+        lines_by_ref = {}
+
+        # Obtener todos los registros origen y destino
+        source_records = self.env[mapping.source_model].search(
+            mapping.source_domain and eval(mapping.source_domain) or []
+        )
+        target_records = self._search_all_target_records(mapping)
+
+        # Procesar registros de ORIGEN (órdenes/facturas)
+        for rec in source_records:
+            ref_value = rec[mapping.source_field_name]
+            if not ref_value:
+                continue
+            
+            ref_str = str(ref_value).strip()
+            invoices = mapping._get_invoices_from_source(rec)
+            lines = mapping._get_receivable_payable_lines(invoices)
+            
+            if ref_str not in lines_by_ref:
+                lines_by_ref[ref_str] = self.env["account.move.line"].browse()
+            lines_by_ref[ref_str] |= lines
+
+        # Procesar registros de DESTINO (pagos)
+        for rec in target_records:
+            ref_value = rec[mapping.target_field_name]
+            if not ref_value:
+                continue
+
+            ref_str = str(ref_value).strip()
+            lines = self._get_payment_lines([rec.id], mapping.target_model)
+            
+            # Buscar la orden/factura correspondiente para usar la misma clave de referencia
+            source_recs_for_target = mapping._get_source_records(ref_str)
+            if not source_recs_for_target:
+                # Si no hay orden, usamos la referencia del pago como clave
+                key = ref_str
+                if key not in lines_by_ref:
+                    lines_by_ref[key] = self.env["account.move.line"].browse()
+                lines_by_ref[key] |= lines
+            else:
+                # Usar la referencia de la orden para agrupar
+                for src in source_recs_for_target:
+                    key = src[mapping.source_field_name]
+                    if not key:
+                        continue
+                    key_str = str(key).strip()
+                    if key_str not in lines_by_ref:
+                        lines_by_ref[key_str] = self.env["account.move.line"].browse()
+                    lines_by_ref[key_str] |= lines
+        
+        return lines_by_ref
+
+    def _filter_groups_for_partner_consistency(self, lines_by_ref):
+        """
+        NUEVO: Toma un diccionario de apuntes agrupados por referencia y descarta
+        los grupos que contengan más de un partner.
+        """
+        consistent_groups = {}
+        _logger.info("--- Filtering for Partner Consistency ---")
+        for ref, lines in lines_by_ref.items():
+            if not lines:
+                continue
+
+            # Obtener todos los partners de este grupo (ignorando partners vacíos)
+            partners = lines.mapped('partner_id').filtered(lambda p: p) # Filter out False partners
+            
+            # Un grupo es consistente si solo tiene un partner (o cero si todas las líneas no tienen partner, aunque esto es raro para receivable/payable)
+            if len(partners) <= 1:
+                consistent_groups[ref] = lines
+                partner_name = partners.name if partners else "No Partner"
+                _logger.info(f"  [OK] Ref '{ref}': Consistent partner '{partner_name}' ({len(lines)} lines)")
+            else:
+                partner_names = [p.name for p in partners]
+                _logger.warning(
+                    f"  [DISCARDED] Ref '{ref}': Inconsistent partners found: {partner_names}. "
+                    f"This group will be ignored for automatic reconciliation."
+                )
+        return consistent_groups
 
     def _match_orders_to_payments(self, mapping):
         """
         DIRECCIÓN 1: Buscar desde órdenes hacia pagos
         Orden → Pago → Agregar ambos
         """
-        matching_lines = self.env["account.move.line"].browse()
-
-        # 1. Buscar todas las órdenes que tengan valor en el campo origen
-        source_domain = []
-        if mapping.source_domain and mapping.source_domain != "[]":
-            try:
-                source_domain = eval(mapping.source_domain)
-            except Exception:
-                pass
-
-        all_source_records = self.env[mapping.source_model].search(source_domain)
-        _logger.info(f"Found {len(all_source_records)} source records ({mapping.source_model})")
-
-        # 2. Buscar todos los pagos disponibles
-        all_target_records = self._search_all_target_records(mapping)
-        _logger.info(f"Found {len(all_target_records)} target records ({mapping.target_model})")
-
-        if not all_target_records:
-            return matching_lines
-
-        # Crear diccionario de pagos por valor
-        payment_by_value = {}
-        for target_record in all_target_records:
-            target_value = target_record[mapping.target_field_name]
-            if not target_value:
-                continue
-
-            target_value_str = str(target_value).strip().lower()
-            if target_value_str:
-                if target_value_str not in payment_by_value:
-                    payment_by_value[target_value_str] = []
-                payment_by_value[target_value_str].append(target_record)
-
-        # 3. Procesar cada orden individualmente
-        total_matches = 0
-        for source_record in all_source_records:
-            source_value = source_record[mapping.source_field_name]
-            if not source_value:
-                continue
-
-            source_value_str = str(source_value).strip()
-
-            # 4. Buscar pagos que coincidan con ESTA orden
-            matching_payments = self.env[mapping.target_model].browse()
-
-            for payment_value_str, payment_records in payment_by_value.items():
-                if self._compare_values(source_value_str, payment_value_str, mapping.operator):
-                    matching_payments |= self.env[mapping.target_model].browse([p.id for p in payment_records])
-
-            if not matching_payments:
-                continue
-
-            # 5. Obtener facturas de ESTA orden
-            order_invoices = mapping._get_invoices_from_source(source_record)
-
-            if not order_invoices:
-                continue
-
-            # 6. Obtener líneas de facturas y pagos
-            invoice_lines = mapping._get_receivable_payable_lines(order_invoices)
-            payment_lines = self._get_payment_lines(matching_payments.ids, mapping.target_model)
-
-            if not invoice_lines and not payment_lines:
-                continue
-
-            # Log detallado
-            if invoice_lines:
-                invoice_accounts = invoice_lines.mapped('account_id.code')
-                _logger.info(f"  Order→Payment {source_record.name}: Invoice lines in accounts: {set(invoice_accounts)}")
-            if payment_lines:
-                payment_accounts = payment_lines.mapped('account_id.code')
-                _logger.info(f"  Order→Payment {source_record.name}: Payment lines in accounts: {set(payment_accounts)}")
-
-            # Agregar TODAS las líneas
-            matching_lines |= invoice_lines
-            matching_lines |= payment_lines
-
-            total_matches += 1
-
-        _logger.info(f"Direction 1 total matches: {total_matches}")
-        return matching_lines
+        # Esta función ya no añade líneas directamente a all_matching_lines.
+        # Su lógica ahora está subsumida en _get_all_lines_grouped_by_reference.
+        # Retorna un recordset vacío para mantener la compatibilidad con el método original
+        # si alguna llamada externa aún lo espera, aunque _find_all_automatic_matches ya no lo usa.
+        return self.env["account.move.line"].browse()
 
     def _match_payments_to_orders(self, mapping):
         """
         DIRECCIÓN 2: Buscar desde pagos hacia órdenes
         Pago → Orden → Factura → Agregar ambos
         """
-        matching_lines = self.env["account.move.line"].browse()
-
-        # 1. Buscar todos los pagos
-        all_target_records = self._search_all_target_records(mapping)
-        _logger.info(f"Found {len(all_target_records)} target records for reverse search")
-
-        if not all_target_records:
-            return matching_lines
-
-        # 2. Buscar todas las órdenes
-        source_domain = []
-        if mapping.source_domain and mapping.source_domain != "[]":
-            try:
-                source_domain = eval(mapping.source_domain)
-            except Exception:
-                pass
-
-        all_source_records = self.env[mapping.source_model].search(source_domain)
-
-        # Crear diccionario de órdenes por valor
-        order_by_value = {}
-        for source_record in all_source_records:
-            source_value = source_record[mapping.source_field_name]
-            if not source_value:
-                continue
-
-            source_value_str = str(source_value).strip().lower()
-            if source_value_str:
-                if source_value_str not in order_by_value:
-                    order_by_value[source_value_str] = []
-                order_by_value[source_value_str].append(source_record)
-
-        # 3. Procesar cada pago individualmente
-        total_matches = 0
-        for target_record in all_target_records:
-            target_value = target_record[mapping.target_field_name]
-            if not target_value:
-                continue
-
-            target_value_str = str(target_value).strip()
-
-            # 4. Buscar órdenes que coincidan con ESTE pago
-            matching_orders = self.env[mapping.source_model].browse()
-
-            for order_value_str, order_records in order_by_value.items():
-                if self._compare_values(target_value_str, order_value_str, mapping.operator):
-                    matching_orders |= self.env[mapping.source_model].browse([o.id for o in order_records])
-
-            if not matching_orders:
-                continue
-
-            # 5. Obtener facturas de las órdenes encontradas
-            order_invoices = mapping._get_invoices_from_source(matching_orders)
-
-            if not order_invoices:
-                continue
-
-            # 6. Obtener líneas de facturas y del pago
-            invoice_lines = mapping._get_receivable_payable_lines(order_invoices)
-            payment_lines = self._get_payment_lines([target_record.id], mapping.target_model)
-
-            if not invoice_lines and not payment_lines:
-                continue
-
-            # Log detallado
-            payment_name = target_record.name if hasattr(target_record, 'name') else f"ID:{target_record.id}"
-            if invoice_lines:
-                invoice_accounts = invoice_lines.mapped('account_id.code')
-                _logger.info(f"  Payment→Order {payment_name}: Invoice lines in accounts: {set(invoice_accounts)}")
-            if payment_lines:
-                payment_accounts = payment_lines.mapped('account_id.code')
-                _logger.info(f"  Payment→Order {payment_name}: Payment lines in accounts: {set(payment_accounts)}")
-
-            # Agregar TODAS las líneas
-            matching_lines |= invoice_lines
-            matching_lines |= payment_lines
-
-            total_matches += 1
-
-        _logger.info(f"Direction 2 total matches: {total_matches}")
-        return matching_lines
+        # Esta función ya no añade líneas directamente a all_matching_lines.
+        # Su lógica ahora está subsumida en _get_all_lines_grouped_by_reference.
+        # Retorna un recordset vacío para mantener la compatibilidad con el método original
+        # si alguna llamada externa aún lo espera, aunque _find_all_automatic_matches ya no lo usa.
+        return self.env["account.move.line"].browse()
 
     def _get_payment_lines(self, payment_ids, target_model):
         """
@@ -1029,7 +957,8 @@ class AccountAccountReconcile(models.Model):
 
     def _find_all_groups(self, mapping):
         """
-        Encontrar todos los grupos de líneas que coincidan con el mapeo
+        MODIFICADO: Encontrar todos los grupos de líneas que coincidan con el mapeo,
+        utilizando la lógica de busqueda ya validada para la consistencia del partner.
 
         Retorna lista de diccionarios:
         [
@@ -1043,17 +972,17 @@ class AccountAccountReconcile(models.Model):
         """
         self.ensure_one()
 
-        # Buscar todas las líneas coincidentes usando la lógica bidireccional
+        # Buscar todas las líneas coincidentes utilizando la nueva lógica de _find_all_automatic_matches
+        # que ya incluye la validación de consistencia del partner.
         all_matching_lines = self._find_all_automatic_matches(mapping)
 
         if not all_matching_lines:
             return []
 
-        # Agrupar líneas por referencia/orden
+        # Agrupar las líneas ya filtradas por la clave de referencia/orden
         groups = {}
 
         for line in all_matching_lines:
-            # Intentar obtener la referencia del grupo
             group_key = self._get_group_key_for_line(line, mapping)
 
             if not group_key:
@@ -1067,6 +996,19 @@ class AccountAccountReconcile(models.Model):
         # Convertir a lista con balance
         result = []
         for group_key, lines in groups.items():
+            # Filtramos líneas sin partner para el cálculo del balance si fuera el caso,
+            # aunque la lógica anterior ya debería haberlos excluido si eran inconsistentes.
+            partners = lines.mapped('partner_id').filtered(lambda p: p)
+            if not partners and self.partner_id: # Si no hay partner en las líneas, pero el widget tiene uno, descartar
+                _logger.info(f"  [SKIPPING GROUP] Group '{group_key}' has no partners, but widget has partner {self.partner_id.name}")
+                continue
+            
+            # Si el widget tiene un partner definido, aseguramos que todas las líneas del grupo coincidan con ese partner.
+            # Esto es un filtro adicional por si _find_all_automatic_matches trajo algo más amplio.
+            if self.partner_id and any(line.partner_id != self.partner_id for line in lines):
+                _logger.info(f"  [SKIPPING GROUP] Group '{group_key}' contains lines for a different partner than the widget partner {self.partner_id.name}")
+                continue
+
             balance = sum(lines.mapped('amount_residual'))
             result.append({
                 'group_key': group_key,
@@ -1077,7 +1019,7 @@ class AccountAccountReconcile(models.Model):
         # Ordenar por balance absoluto (los más balanceados primero)
         result.sort(key=lambda g: abs(g['balance']))
 
-        _logger.info(f"Found {len(result)} groups from {len(all_matching_lines)} total lines")
+        _logger.info(f"Found {len(result)} groups from {len(all_matching_lines)} total lines after re-grouping and final checks.")
 
         return result
 
