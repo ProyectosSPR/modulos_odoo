@@ -375,118 +375,152 @@ class AccountAccountReconcile(models.Model):
 
     def _find_all_automatic_matches(self, mapping):
         """
-        REESCRITO: Buscar y agrupar coincidencias con una lógica más robusta.
-        1.  Obtiene todas las referencias únicas de los modelos de origen y destino.
-        2.  Para cada referencia, encuentra TODOS los apuntes relacionados (facturas y pagos).
-        3.  Agrupa esos apuntes y valida que el grupo sea consistente (mismo partner, >1 línea).
-        4.  Devuelve solo las líneas de los grupos consistentes.
+        REESCRITO (V3): Lógica contextual y eficiente.
+        1. Inicia desde los apuntes sin conciliar de la cuenta/partner actual.
+        2. Extrae las referencias relevantes de esos apuntes.
+        3. Para cada referencia, busca las contrapartidas (facturas/pagos).
+        4. Construye y valida los grupos (mismo partner, >1 línea, balance).
         """
         self.ensure_one()
-        _logger.info("========== FIND ALL MATCHES START (ROBUST STRATEGY V2) ==========")
-        _logger.info(f"Account: {self.account_id.code} - Partner: {self.partner_id.name if self.partner_id else 'All'}")
+        _logger.info("========== FIND ALL MATCHES START (CONTEXTUAL STRATEGY V3) ==========")
 
-        # 1. Obtener todas las referencias únicas de ambos lados (origen y destino)
-        all_refs = self._get_all_unique_references(mapping)
-        if not all_refs:
-            _logger.info("No unique references found. Exiting.")
+        # 1. Definir el dominio base: apuntes sin conciliar de la cuenta y partner actuales.
+        domain = [
+            ("account_id", "=", self.account_id.id),
+            ("reconciled", "=", False),
+            ("amount_residual", "!=", 0),
+        ]
+        if self.partner_id:
+            domain.append(("partner_id", "=", self.partner_id.id))
+
+        initial_lines = self.env["account.move.line"].search(domain)
+        if not initial_lines:
+            _logger.info("No unreconciled lines found for the current context.")
             return self.env["account.move.line"].browse()
 
-        # 2. Para cada referencia, construir y validar el grupo de apuntes.
+        _logger.info(f"Found {len(initial_lines)} initial unreconciled lines to process.")
+
+        # 2. Extraer todas las referencias únicas de estos apuntes iniciales.
+        refs_to_process = self._get_references_from_lines(initial_lines, mapping)
+        if not refs_to_process:
+            _logger.info("No references found from the initial lines.")
+            return self.env["account.move.line"].browse()
+
+        # 3. Para cada referencia, construir y validar el grupo.
         valid_lines = self.env["account.move.line"].browse()
-        for ref in all_refs:
+        for ref in refs_to_process:
             _logger.info(f"--- Processing Ref: '{ref}' ---")
 
-            # Buscar todos los documentos relacionados con esta referencia
-            source_recs = self.env[mapping.source_model].search([(mapping.source_field_name, '=', ref)])
-            target_recs = self.env[mapping.target_model].search([(mapping.target_field_name, '=', ref)])
+            lines_for_ref = self._get_all_lines_for_ref(ref, mapping)
 
-            # Obtener todos los apuntes contables asociados
-            lines_for_ref = self.env["account.move.line"].browse()
-
-            # Líneas desde el origen (Facturas de Órdenes de Venta/Compra)
-            if source_recs:
-                invoices = mapping._get_invoices_from_source(source_recs)
-                lines_for_ref |= mapping._get_receivable_payable_lines(invoices)
-
-            # Líneas desde el destino (Pagos)
-            if target_recs:
-                lines_for_ref |= self._get_payment_lines(target_recs.ids, mapping.target_model)
-                
-            # Si una línea de pago no se enlazó directamente, intentar enlazarla a través de las facturas que ya tenemos
-            if source_recs and not target_recs:
-                invoices = mapping._get_invoices_from_source(source_recs)
-                if invoices:
-                    # Buscar pagos que mencionen la referencia de la factura
-                    payments_from_invoice_ref = self.env['account.payment'].search([
-                        ('ref', '=', ref)
-                    ])
-                    lines_for_ref |= self._get_payment_lines(payments_from_invoice_ref.ids, 'account.payment')
-
-
-            # 3. Validar el grupo de apuntes para esta referencia
-            if not lines_for_ref:
-                _logger.info(f"  No lines found for ref '{ref}'.")
+            # 4. Validar el grupo de apuntes para esta referencia.
+            if len(lines_for_ref) < 2:
+                _logger.info(f"  [SKIPPED] Ref '{ref}': Group has less than 2 lines.")
                 continue
 
-            # Validación 1: Consistencia de Partner
-            partners = lines_for_ref.mapped('partner_id').filtered(lambda p: p)
+            partners = lines_for_ref.mapped("partner_id").filtered(lambda p: p)
             if len(partners) > 1:
                 _logger.warning(f"  [DISCARDED] Ref '{ref}': Inconsistent partners found: {[p.name for p in partners]}.")
                 continue
-            
-            # Si el widget tiene un partner, el grupo debe coincidir con él
+
             if self.partner_id and partners and partners != self.partner_id:
-                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group partner '{partners.name}' does not match widget partner '{self.partner_id.name}'.")
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group partner '{partners.name}' doesn't match widget partner '{self.partner_id.name}'.")
+                continue
+            
+            # Validación de balance: debe haber al menos un débito y un crédito
+            has_debit = any(line.debit > 0 for line in lines_for_ref)
+            has_credit = any(line.credit > 0 for line in lines_for_ref)
+            if not (has_debit and has_credit):
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group does not contain both debit and credit entries.")
                 continue
 
-            # Validación 2: El grupo debe ser útil (más de una línea, y con balance)
-            if len(lines_for_ref) < 2:
-                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group has only one line.")
-                continue
-
-            # Si pasa todas las validaciones, es un grupo válido.
             _logger.info(f"  [OK] Ref '{ref}': Consistent group found with {len(lines_for_ref)} lines for partner '{partners.name if partners else 'N/A'}'.")
             valid_lines |= lines_for_ref
 
         _logger.info(f"Total unique valid lines to add: {len(valid_lines)}")
-        _logger.info("========== FIND ALL MATCHES END (ROBUST STRATEGY V2) ==========")
+        _logger.info("========== FIND ALL MATCHES END (CONTEXTUAL STRATEGY V3) ==========")
 
         return valid_lines
-    
-    def _get_all_unique_references(self, mapping):
+
+    def _get_references_from_lines(self, lines, mapping):
         """
-        NUEVO: Obtiene un conjunto de todos los valores de referencia únicos de los
-        campos de origen y destino para evitar procesar la misma referencia dos veces.
+        NUEVO: A partir de un conjunto de apuntes, extrae todas las referencias únicas
+        basándose en el mapeo configurado.
         """
         refs = set()
-        
-        # Referencias desde el modelo origen
-        source_domain = mapping.source_domain and eval(mapping.source_domain) or []
         source_field = mapping.source_field_name
-        # No buscar en todos los registros, solo en los que tienen un valor en el campo
-        source_domain.append((source_field, '!=', False))
-        _logger.info(f"Searching for source refs with domain: {source_domain}")
-        # Usamos read_group para obtener los valores únicos eficientemente
-        source_groups = self.env[mapping.source_model].read_group(source_domain, [source_field], [source_field])
-        for group in source_groups:
-            if group[source_field]:
-                refs.add(str(group[source_field]).strip())
-
-        # Referencias desde el modelo destino
-        target_domain = [("company_id", "=", self.company_id.id)]
-        if mapping.target_domain and mapping.target_domain != "[]":
-            target_domain.extend(eval(mapping.target_domain))
         target_field = mapping.target_field_name
-        target_domain.append((target_field, '!=', False))
-        _logger.info(f"Searching for target refs with domain: {target_domain}")
-        # Usamos read_group para obtener los valores únicos eficientemente
-        target_groups = self.env[mapping.target_model].read_group(target_domain, [target_field], [target_field])
-        for group in target_groups:
-            if group[target_field]:
-                refs.add(str(group[target_field]).strip())
 
-        _logger.info(f"Found {len(refs)} unique references to process.")
+        for line in lines:
+            # Buscar referencia si el apunte es de una factura/orden (source)
+            move = line.move_id
+            if move:
+                # Caso 1: La factura misma es el origen
+                if mapping.source_model == "account.move" and hasattr(move, source_field):
+                    value = move[source_field]
+                    if value: refs.add(str(value).strip())
+
+                # Caso 2: La factura viene de una Orden de Venta
+                elif mapping.source_model == "sale.order":
+                    for inv_line in move.invoice_line_ids:
+                        for sale_line in inv_line.sale_line_ids:
+                            if sale_line.order_id and hasattr(sale_line.order_id, source_field):
+                                value = sale_line.order_id[source_field]
+                                if value: refs.add(str(value).strip())
+                
+                # Caso 3: La factura viene de una Orden de Compra
+                elif mapping.source_model == "purchase.order":
+                    for inv_line in move.invoice_line_ids:
+                        if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id and hasattr(inv_line.purchase_line_id.order_id, source_field):
+                            value = inv_line.purchase_line_id.order_id[source_field]
+                            if value: refs.add(str(value).strip())
+
+            # Buscar referencia si el apunte es de un pago (target)
+            if mapping.target_model == "account.payment":
+                payment = self.env["account.payment"].search([("move_id", "=", line.move_id.id)], limit=1)
+                if payment and hasattr(payment, target_field):
+                    value = payment[target_field]
+                    if value: refs.add(str(value).strip())
+            
+            # Buscar referencia si es una línea de extracto bancario
+            elif mapping.target_model == "account.bank.statement.line":
+                st_line = self.env["account.bank.statement.line"].search([("move_id", "=", line.move_id.id)], limit=1)
+                if st_line and hasattr(st_line, target_field):
+                    value = st_line[target_field]
+                    if value: refs.add(str(value).strip())
+
+        _logger.info(f"Found {len(refs)} unique references from initial lines: {refs}")
         return refs
+
+    def _get_all_lines_for_ref(self, ref, mapping):
+        """
+        NUEVO: Para una referencia dada, busca todos los apuntes contables asociados,
+        tanto de facturas como de pagos, que estén sin conciliar.
+        """
+        all_lines = self.env["account.move.line"].browse()
+        
+        # Dominio base para apuntes sin conciliar
+        line_domain = [('amount_residual', '!=', 0)]
+
+        # Buscar en origen (órdenes -> facturas)
+        source_recs = self.env[mapping.source_model].search([(mapping.source_field_name, '=', ref)])
+        if source_recs:
+            invoices = mapping._get_invoices_from_source(source_recs)
+            # Aplicamos el dominio a las líneas de las facturas encontradas
+            invoice_lines = invoices.mapped('line_ids').filtered_domain(line_domain)
+            all_lines |= invoice_lines.filtered(
+                lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')
+            )
+
+        # Buscar en destino (pagos)
+        target_recs = self.env[mapping.target_model].search([(mapping.target_field_name, '=', ref)])
+        if target_recs:
+            payment_lines = self._get_payment_lines(target_recs.ids, mapping.target_model)
+            # El dominio de 'sin conciliar' ya se aplica dentro de _get_payment_lines
+            all_lines |= payment_lines
+            
+        return all_lines
+
 
 
     def _get_payment_lines(self, payment_ids, target_model):
@@ -662,127 +696,136 @@ class AccountAccountReconcile(models.Model):
 
     def find_next_match(self):
         """
-        Buscar el siguiente grupo de conciliación y presentarlo en el widget
-
-        Lógica:
-        - Buscar todos los grupos de líneas que coincidan con el mapeo
-        - Filtrar los grupos ya procesados
-        - Si flexible_mode = False: Filtrar por abs(balance) <= tolerance_amount
-        - Si flexible_mode = True: Mostrar cualquier grupo
-        - Presentar el primer grupo elegible
-        - Crear línea de ajuste si es necesario (solo en modo preciso)
+        REESCRITO (V4): Lógica "uno por uno" estricta, iniciando desde un solo apunte.
+        1. Encuentra el primer apunte de cargo (factura) no procesado en el widget.
+        2. Extrae su referencia (ej: de la Orden de Venta).
+        3. Busca específicamente los pagos con esa referencia.
+        4. Forma y valida un único grupo (factura + pago).
+        5. Si es válido, lo presenta. Si no, intenta con el siguiente apunte.
         """
         self.ensure_one()
 
         if not self.custom_field_mapping_id:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": "Missing Mapping",
-                    "message": "Please select a custom field mapping first.",
-                    "type": "warning",
-                    "sticky": False,
-                },
-            }
+            return self._notify("Missing Mapping", "Please select a custom field mapping first.", "warning")
 
-        mapping = self.custom_field_mapping_id
-
-        # Limpiar conciliación actual
         self.clean_reconcile()
 
-        # Obtener grupos procesados
-        import json
-        processed_groups = json.loads(self.processed_groups or "[]")
-
-        # Buscar todos los grupos
-        all_groups = self._find_all_groups(mapping)
-
-        if not all_groups:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": "No Matches Found",
-                    "message": "No matching groups found.",
-                    "type": "warning",
-                    "sticky": False,
-                },
-            }
-
-        # Filtrar grupos ya procesados
-        eligible_groups = [
-            group for group in all_groups
-            if group['group_key'] not in processed_groups
+        # Obtener apuntes del widget, priorizando cargos (facturas)
+        lines_domain = [
+            ("account_id", "=", self.account_id.id),
+            ("reconciled", "=", False),
+            ("amount_residual", "!=", 0),
+            ("debit", ">", 0),  # Empezar por los cargos/facturas
         ]
+        if self.partner_id:
+            lines_domain.append(("partner_id", "=", self.partner_id.id))
+        
+        all_candidate_lines = self.env["account.move.line"].search(lines_domain, order="date, id")
+        
+        import json
+        processed_refs = json.loads(self.processed_groups or "[]")
 
-        if not eligible_groups:
+        for seed_line in all_candidate_lines:
+            # Intentar obtener la referencia principal de esta línea
+            ref, key_line_id = self._get_key_reference_for_line(seed_line, self.custom_field_mapping_id)
+            
+            # Si no hay referencia o ya fue procesada, continuar con la siguiente línea
+            if not ref or ref in processed_refs:
+                continue
+
+            _logger.info(f"--- Trying to build group for Ref: '{ref}' from seed line {seed_line.id} ---")
+            
+            # Marcar esta referencia como procesada para no volver a intentarla en esta sesión
+            processed_refs.append(ref)
+            self.processed_groups = json.dumps(processed_refs)
+
+            # Construir el grupo a partir de esta referencia
+            group_lines = self._get_all_lines_for_ref(ref, self.custom_field_mapping_id)
+
+            # Validar el grupo
+            if len(group_lines) < 2:
+                _logger.info(f"  [SKIPPED] Ref '{ref}': Group has less than 2 lines.")
+                continue
+
+            partners = group_lines.mapped("partner_id").filtered(lambda p: p)
+            if len(partners) > 1:
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Inconsistent partners: {[p.name for p in partners]}.")
+                continue
+            
+            if self.partner_id and partners and partners != self.partner_id:
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group partner '{partners.name}' doesn't match widget partner '{self.partner_id.name}'.")
+                continue
+
+            has_debit = any(line.debit > 0 for line in group_lines)
+            has_credit = any(line.credit > 0 for line in group_lines)
+            if not (has_debit and has_credit):
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group lacks both debit and credit entries.")
+                continue
+
+            # Si el grupo es válido, presentarlo y terminar
+            _logger.info(f"  [OK] Presenting group for Ref '{ref}' with {len(group_lines)} lines.")
+            balance = sum(group_lines.mapped('amount_residual'))
+            
+            data = self.reconcile_data_info or {"data": [], "counterparts": []}
+            for line in group_lines:
+                if line.id not in data["counterparts"]:
+                    data["counterparts"].append(line.id)
+            
+            # Si modo no flexible y hay diferencia, crear ajuste
+            if not self.flexible_mode and abs(balance) > 0.01 and abs(balance) <= self.tolerance_amount:
+                adjustment_line = self._create_adjustment_line(balance)
+                if adjustment_line and adjustment_line.id not in data["counterparts"]:
+                    data["counterparts"].append(adjustment_line.id)
+
+            self.reconcile_data_info = self._recompute_data(data)
+            
             return {
                 "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": "All Groups Processed",
-                    "message": "All matching groups have been processed. Click 'Reiniciar Sesión' to start over.",
-                    "type": "info",
-                    "sticky": False,
-                },
+                "tag": "reload",
+                "params": {"message": f"Group {ref}: {len(group_lines)} lines, balance: {balance:.2f}"},
             }
 
-        # Aplicar filtro de tolerancia si modo preciso
-        if not self.flexible_mode:
-            eligible_groups = [
-                group for group in eligible_groups
-                if abs(group['balance']) <= self.tolerance_amount
-            ]
+        # Si el bucle termina, no se encontraron más grupos válidos
+        return self._notify("No More Matches", "No more valid, unprocessed groups found.", "info")
 
-        if not eligible_groups:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": "No Groups Within Tolerance",
-                    "message": f"No groups found with balance <= {self.tolerance_amount}. {len([g for g in all_groups if g['group_key'] not in processed_groups])} groups exceed tolerance.",
-                    "type": "warning",
-                    "sticky": False,
-                },
-            }
+    def _get_key_reference_for_line(self, line, mapping):
+        """
+        NUEVO: A partir de una línea, obtiene la referencia clave (ej: SO001) y el ID de la línea
+        que contiene esa clave. Devuelve (None, None) si no encuentra nada.
+        """
+        source_field = mapping.source_field_name
+        
+        # Prioridad 1: Buscar hacia arriba (línea -> factura -> orden)
+        if line.move_id:
+            move = line.move_id
+            if mapping.source_model == "account.move" and hasattr(move, source_field):
+                value = move[source_field]
+                if value: return str(value).strip(), line.id
+            
+            if mapping.source_model == "sale.order":
+                for inv_line in move.invoice_line_ids:
+                    for sale_line in inv_line.sale_line_ids:
+                        if sale_line.order_id and hasattr(sale_line.order_id, source_field):
+                            value = sale_line.order_id[source_field]
+                            if value: return str(value).strip(), line.id
 
-        # Tomar el primer grupo
-        next_group = eligible_groups[0]
+            if mapping.source_model == "purchase.order":
+                for inv_line in move.invoice_line_ids:
+                    if inv_line.purchase_line_id and inv_line.purchase_line_id.order_id and hasattr(inv_line.purchase_line_id.order_id, source_field):
+                        value = inv_line.purchase_line_id.order_id[source_field]
+                        if value: return str(value).strip(), line.id
 
-        _logger.info(f"Presenting group {next_group['group_key']}: {len(next_group['lines'])} lines, balance: {next_group['balance']}")
+        # Si no se encontró, no devolver nada. La referencia debe venir del origen.
+        return None, None
 
-        # Obtener los datos actuales de conciliación
-        data = self.reconcile_data_info
-        if not data:
-            data = {"data": [], "counterparts": []}
-
-        # Agregar líneas del grupo
-        for line in next_group['lines']:
-            if line.id not in data["counterparts"]:
-                data["counterparts"].append(line.id)
-
-        # Si está en modo preciso y hay diferencia, crear línea de ajuste
-        if not self.flexible_mode and abs(next_group['balance']) > 0.01:
-            adjustment_line = self._create_adjustment_line(next_group['balance'])
-            if adjustment_line and adjustment_line.id not in data["counterparts"]:
-                data["counterparts"].append(adjustment_line.id)
-
-        # Recomputar los datos para actualizar el widget
-        self.reconcile_data_info = self._recompute_data(data)
-
-        # Marcar grupo como procesado
-        processed_groups.append(next_group['group_key'])
-        self.processed_groups = json.dumps(processed_groups)
-
-        # Retornar acción de recarga
+    def _notify(self, title, message, msg_type):
+        """Helper para enviar notificaciones al cliente."""
         return {
             "type": "ir.actions.client",
-            "tag": "reload",
-            "params": {
-                "message": f"Group {next_group['group_key']}: {len(next_group['lines'])} lines, balance: {next_group['balance']:.2f}",
-            },
+            "tag": "display_notification",
+            "params": {"title": title, "message": message, "type": msg_type, "sticky": False},
         }
+
 
     def reconcile_all_remaining_matches(self):
         """
