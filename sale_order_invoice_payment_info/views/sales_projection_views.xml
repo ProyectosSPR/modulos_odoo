@@ -169,6 +169,7 @@
                 <group expand="0" string="Agrupar Por">
                     <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
                     <filter string="Equipo Unificado" name="group_team_unified" context="{'group_by': 'team_unified_id'}"/>
+                    <field name="team_unified_id" string="Equipo Unificado"/>
                 </group>
             </search>
         </field>
