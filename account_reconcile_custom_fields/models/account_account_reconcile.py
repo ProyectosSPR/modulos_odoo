@@ -375,144 +375,119 @@ class AccountAccountReconcile(models.Model):
 
     def _find_all_automatic_matches(self, mapping):
         """
-        MODIFICADO: Buscar coincidencias automáticas, agruparlas por una clave de referencia
-        y luego filtrar para asegurar que todos los apuntes de un grupo pertenezcan al MISMO partner.
+        REESCRITO: Buscar y agrupar coincidencias con una lógica más robusta.
+        1.  Obtiene todas las referencias únicas de los modelos de origen y destino.
+        2.  Para cada referencia, encuentra TODOS los apuntes relacionados (facturas y pagos).
+        3.  Agrupa esos apuntes y valida que el grupo sea consistente (mismo partner, >1 línea).
+        4.  Devuelve solo las líneas de los grupos consistentes.
         """
         self.ensure_one()
-        _logger.info("========== FIND ALL MATCHES START (STRICT PARTNER LOGIC) ==========")
+        _logger.info("========== FIND ALL MATCHES START (ROBUST STRATEGY V2) ==========")
         _logger.info(f"Account: {self.account_id.code} - Partner: {self.partner_id.name if self.partner_id else 'All'}")
-        _logger.info(f"Mapping: {mapping.name}")
 
-        # 1. Obtener todos los apuntes coincidentes por referencia, sin filtrar por partner aún.
-        # El resultado es un diccionario: {'ref_value': {line1, line2, ...}}
-        lines_by_ref = self._get_all_lines_grouped_by_reference(mapping)
+        # 1. Obtener todas las referencias únicas de ambos lados (origen y destino)
+        all_refs = self._get_all_unique_references(mapping)
+        if not all_refs:
+            _logger.info("No unique references found. Exiting.")
+            return self.env["account.move.line"].browse()
 
-        # 2. Filtrar los grupos para asegurar la consistencia del partner.
-        # El resultado es el mismo, pero eliminando referencias con partners mezclados.
-        consistent_lines_by_ref = self._filter_groups_for_partner_consistency(lines_by_ref)
+        # 2. Para cada referencia, construir y validar el grupo de apuntes.
+        valid_lines = self.env["account.move.line"].browse()
+        for ref in all_refs:
+            _logger.info(f"--- Processing Ref: '{ref}' ---")
 
-        # 3. Aplanar el diccionario a una lista de todos los apuntes válidos.
-        all_matching_lines = self.env["account.move.line"].browse()
-        for lines in consistent_lines_by_ref.values():
-            all_matching_lines |= lines
-        
-        # 4. (Opcional pero recomendado) Filtrar por el partner del widget si está definido
-        if self.partner_id:
-            all_matching_lines = all_matching_lines.filtered(
-                lambda l: l.partner_id == self.partner_id
-            )
-        
-        _logger.info(f"Total unique lines to add after partner consistency check: {len(all_matching_lines)}")
-        _logger.info("========== FIND ALL MATCHES END ==========")
+            # Buscar todos los documentos relacionados con esta referencia
+            source_recs = self.env[mapping.source_model].search([(mapping.source_field_name, '=', ref)])
+            target_recs = self.env[mapping.target_model].search([(mapping.target_field_name, '=', ref)])
 
-        return all_matching_lines
+            # Obtener todos los apuntes contables asociados
+            lines_for_ref = self.env["account.move.line"].browse()
 
-    def _get_all_lines_grouped_by_reference(self, mapping):
-        """
-        NUEVO: Busca todas las líneas de origen y destino y las agrupa en un diccionario
-        por el valor de su referencia.
-        Retorna: {'ref_value_1': {lineA, lineB}, 'ref_value_2': {lineC}}
-        """
-        lines_by_ref = {}
+            # Líneas desde el origen (Facturas de Órdenes de Venta/Compra)
+            if source_recs:
+                invoices = mapping._get_invoices_from_source(source_recs)
+                lines_for_ref |= mapping._get_receivable_payable_lines(invoices)
 
-        # Obtener todos los registros origen y destino
-        source_records = self.env[mapping.source_model].search(
-            mapping.source_domain and eval(mapping.source_domain) or []
-        )
-        target_records = self._search_all_target_records(mapping)
+            # Líneas desde el destino (Pagos)
+            if target_recs:
+                lines_for_ref |= self._get_payment_lines(target_recs.ids, mapping.target_model)
+                
+            # Si una línea de pago no se enlazó directamente, intentar enlazarla a través de las facturas que ya tenemos
+            if source_recs and not target_recs:
+                invoices = mapping._get_invoices_from_source(source_recs)
+                if invoices:
+                    # Buscar pagos que mencionen la referencia de la factura
+                    payments_from_invoice_ref = self.env['account.payment'].search([
+                        ('ref', '=', ref)
+                    ])
+                    lines_for_ref |= self._get_payment_lines(payments_from_invoice_ref.ids, 'account.payment')
 
-        # Procesar registros de ORIGEN (órdenes/facturas)
-        for rec in source_records:
-            ref_value = rec[mapping.source_field_name]
-            if not ref_value:
-                continue
-            
-            ref_str = str(ref_value).strip()
-            invoices = mapping._get_invoices_from_source(rec)
-            lines = mapping._get_receivable_payable_lines(invoices)
-            
-            if ref_str not in lines_by_ref:
-                lines_by_ref[ref_str] = self.env["account.move.line"].browse()
-            lines_by_ref[ref_str] |= lines
 
-        # Procesar registros de DESTINO (pagos)
-        for rec in target_records:
-            ref_value = rec[mapping.target_field_name]
-            if not ref_value:
+            # 3. Validar el grupo de apuntes para esta referencia
+            if not lines_for_ref:
+                _logger.info(f"  No lines found for ref '{ref}'.")
                 continue
 
-            ref_str = str(ref_value).strip()
-            lines = self._get_payment_lines([rec.id], mapping.target_model)
+            # Validación 1: Consistencia de Partner
+            partners = lines_for_ref.mapped('partner_id').filtered(lambda p: p)
+            if len(partners) > 1:
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Inconsistent partners found: {[p.name for p in partners]}.")
+                continue
             
-            # Buscar la orden/factura correspondiente para usar la misma clave de referencia
-            source_recs_for_target = mapping._get_source_records(ref_str)
-            if not source_recs_for_target:
-                # Si no hay orden, usamos la referencia del pago como clave
-                key = ref_str
-                if key not in lines_by_ref:
-                    lines_by_ref[key] = self.env["account.move.line"].browse()
-                lines_by_ref[key] |= lines
-            else:
-                # Usar la referencia de la orden para agrupar
-                for src in source_recs_for_target:
-                    key = src[mapping.source_field_name]
-                    if not key:
-                        continue
-                    key_str = str(key).strip()
-                    if key_str not in lines_by_ref:
-                        lines_by_ref[key_str] = self.env["account.move.line"].browse()
-                    lines_by_ref[key_str] |= lines
-        
-        return lines_by_ref
-
-    def _filter_groups_for_partner_consistency(self, lines_by_ref):
-        """
-        NUEVO: Toma un diccionario de apuntes agrupados por referencia y descarta
-        los grupos que contengan más de un partner.
-        """
-        consistent_groups = {}
-        _logger.info("--- Filtering for Partner Consistency ---")
-        for ref, lines in lines_by_ref.items():
-            if not lines:
+            # Si el widget tiene un partner, el grupo debe coincidir con él
+            if self.partner_id and partners and partners != self.partner_id:
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group partner '{partners.name}' does not match widget partner '{self.partner_id.name}'.")
                 continue
 
-            # Obtener todos los partners de este grupo (ignorando partners vacíos)
-            partners = lines.mapped('partner_id').filtered(lambda p: p) # Filter out False partners
-            
-            # Un grupo es consistente si solo tiene un partner (o cero si todas las líneas no tienen partner, aunque esto es raro para receivable/payable)
-            if len(partners) <= 1:
-                consistent_groups[ref] = lines
-                partner_name = partners.name if partners else "No Partner"
-                _logger.info(f"  [OK] Ref '{ref}': Consistent partner '{partner_name}' ({len(lines)} lines)")
-            else:
-                partner_names = [p.name for p in partners]
-                _logger.warning(
-                    f"  [DISCARDED] Ref '{ref}': Inconsistent partners found: {partner_names}. "
-                    f"This group will be ignored for automatic reconciliation."
-                )
-        return consistent_groups
+            # Validación 2: El grupo debe ser útil (más de una línea, y con balance)
+            if len(lines_for_ref) < 2:
+                _logger.warning(f"  [DISCARDED] Ref '{ref}': Group has only one line.")
+                continue
 
-    def _match_orders_to_payments(self, mapping):
-        """
-        DIRECCIÓN 1: Buscar desde órdenes hacia pagos
-        Orden → Pago → Agregar ambos
-        """
-        # Esta función ya no añade líneas directamente a all_matching_lines.
-        # Su lógica ahora está subsumida en _get_all_lines_grouped_by_reference.
-        # Retorna un recordset vacío para mantener la compatibilidad con el método original
-        # si alguna llamada externa aún lo espera, aunque _find_all_automatic_matches ya no lo usa.
-        return self.env["account.move.line"].browse()
+            # Si pasa todas las validaciones, es un grupo válido.
+            _logger.info(f"  [OK] Ref '{ref}': Consistent group found with {len(lines_for_ref)} lines for partner '{partners.name if partners else 'N/A'}'.")
+            valid_lines |= lines_for_ref
 
-    def _match_payments_to_orders(self, mapping):
+        _logger.info(f"Total unique valid lines to add: {len(valid_lines)}")
+        _logger.info("========== FIND ALL MATCHES END (ROBUST STRATEGY V2) ==========")
+
+        return valid_lines
+    
+    def _get_all_unique_references(self, mapping):
         """
-        DIRECCIÓN 2: Buscar desde pagos hacia órdenes
-        Pago → Orden → Factura → Agregar ambos
+        NUEVO: Obtiene un conjunto de todos los valores de referencia únicos de los
+        campos de origen y destino para evitar procesar la misma referencia dos veces.
         """
-        # Esta función ya no añade líneas directamente a all_matching_lines.
-        # Su lógica ahora está subsumida en _get_all_lines_grouped_by_reference.
-        # Retorna un recordset vacío para mantener la compatibilidad con el método original
-        # si alguna llamada externa aún lo espera, aunque _find_all_automatic_matches ya no lo usa.
-        return self.env["account.move.line"].browse()
+        refs = set()
+        
+        # Referencias desde el modelo origen
+        source_domain = mapping.source_domain and eval(mapping.source_domain) or []
+        source_field = mapping.source_field_name
+        # No buscar en todos los registros, solo en los que tienen un valor en el campo
+        source_domain.append((source_field, '!=', False))
+        _logger.info(f"Searching for source refs with domain: {source_domain}")
+        # Usamos read_group para obtener los valores únicos eficientemente
+        source_groups = self.env[mapping.source_model].read_group(source_domain, [source_field], [source_field])
+        for group in source_groups:
+            if group[source_field]:
+                refs.add(str(group[source_field]).strip())
+
+        # Referencias desde el modelo destino
+        target_domain = [("company_id", "=", self.company_id.id)]
+        if mapping.target_domain and mapping.target_domain != "[]":
+            target_domain.extend(eval(mapping.target_domain))
+        target_field = mapping.target_field_name
+        target_domain.append((target_field, '!=', False))
+        _logger.info(f"Searching for target refs with domain: {target_domain}")
+        # Usamos read_group para obtener los valores únicos eficientemente
+        target_groups = self.env[mapping.target_model].read_group(target_domain, [target_field], [target_field])
+        for group in target_groups:
+            if group[target_field]:
+                refs.add(str(group[target_field]).strip())
+
+        _logger.info(f"Found {len(refs)} unique references to process.")
+        return refs
+
 
     def _get_payment_lines(self, payment_ids, target_model):
         """
