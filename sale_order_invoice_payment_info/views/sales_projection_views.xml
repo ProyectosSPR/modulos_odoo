@@ -60,6 +60,15 @@
                     <notebook>
                         <page string="Proyecciones Mensuales" name="monthly_projections">
                             <field name="line_ids">
+                                <search>
+                                    <field name="team_unified_id"/>
+                                    <field name="period_month"/>
+                                    <group expand="0" string="Agrupar Por">
+                                        <filter string="Equipo Unificado" name="group_by_team" context="{'group_by': 'team_unified_id'}"/>
+                                        <filter string="Mes" name="group_by_month" context="{'group_by': 'period_month'}"/>
+                                        <filter string="Trimestre" name="group_by_quarter" context="{'group_by': 'quarter'}"/>
+                                    </group>
+                                </search>
                                 <tree editable="bottom" string="Proyecciones por Mes y Equipo">
                                     <field name="period_month"/>
                                     <field name="quarter" readonly="1"/>
