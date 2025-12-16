@@ -96,7 +96,7 @@ class SalesProjection(models.Model):
         for projection in self:
             projection.total_projected = sum(projection.line_ids.mapped('projected_amount'))
 
-    @api.depends('total_projected', 'previous_projection_id.total_projected')
+    @api.depends('line_ids.monthly_temporality', 'previous_projection_id.total_projected')
     def _compute_temporality(self):
         """Calcula la temporalidad total como un porcentaje del total actual vs el total anterior."""
         for projection in self:
@@ -228,7 +228,7 @@ class SalesProjectionLine(models.Model):
             line.goal_percentage = (line.actual_sales / line.goal_amount) * 100 if line.goal_amount > 0 else 0.0
             line.projected_percentage = (line.actual_sales / line.projected_amount) * 100 if line.projected_amount > 0 else 0.0
 
-    @api.depends('projection_id.previous_projection_id.total_projected', 'projected_amount')
+    @api.depends('projection_id.previous_projection_id', 'projection_id.previous_projection_id.total_projected', 'projected_amount')
     def _compute_monthly_temporality(self):
         """Calcula el porcentaje que representa la línea respecto al total de la proyección anterior."""
         for line in self:
