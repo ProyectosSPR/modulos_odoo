@@ -59,12 +59,12 @@ class SalesProjection(models.Model):
     )
 
     temporality = fields.Float(
-        string='Temporalidad Total (%)',
-        compute='_compute_temporality',
-        store=True,
-        digits=(16, 2),
-        help='Porcentaje del total actual vs el total de la proyección anterior. Ej: 120.00 significa que el total actual es un 20% mayor.'
-    )
+    string='Temporalidad Total (%)',
+    compute='_compute_temporality',
+    store=True,
+    digits=(16, 2),
+    help='Suma de las temporalidades mensuales. Representa el % total que esta proyección representa sobre la anterior. Ej: 141.39 significa 141.39%'
+)
 
     currency_id = fields.Many2one(
         'res.currency',
@@ -102,7 +102,7 @@ class SalesProjection(models.Model):
         for projection in self:
             total_previous = projection.previous_projection_id.total_projected
             if total_previous > 0:
-                projection.temporality = (projection.total_projected / total_previous)
+                projection.temporality = sum(projection.line_ids.mapped('monthly_temporality')) * 100
             else:
                 projection.temporality = 0.0
 

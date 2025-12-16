@@ -59,44 +59,7 @@
                     </group>
                     <notebook>
                         <page string="Proyecciones Mensuales" name="monthly_projections">
-                            <field name="line_ids">
-                                <search>
-                                    <field name="team_unified_id"/>
-                                    <field name="period_month"/>
-                                    <group expand="0" string="Agrupar Por">
-                                        <filter string="Equipo Unificado" name="group_by_team" context="{'group_by': 'team_unified_id'}"/>
-                                        <filter string="Mes" name="group_by_month" context="{'group_by': 'period_month'}"/>
-                                        <filter string="Trimestre" name="group_by_quarter" context="{'group_by': 'quarter'}"/>
-                                    </group>
-                                </search>
-                                <tree editable="bottom" string="Proyecciones por Mes y Equipo">
-                                    <field name="period_month"/>
-                                    <field name="quarter" readonly="1"/>
-                                    <field name="team_unified_id"/>
-                                    <field name="goal_amount" readonly="1" widget="monetary" optional="show" string="Objetivo"/>
-                                    <field name="projected_amount" sum="total_projected" widget="monetary" string="Estimado"/>
-                                    <field name="actual_sales" readonly="1" widget="monetary" sum="total_sales" optional="show" string="Venta"/>
-                                    <field name="difference" readonly="1" widget="monetary" optional="show"
-                                           decoration-success="difference &gt;= 0"
-                                           decoration-danger="difference &lt; 0"/>
-                                    <field name="goal_percentage" readonly="1" optional="show" string="%"
-                                           decoration-success="goal_percentage &gt;= 100"
-                                           decoration-warning="goal_percentage &gt;= 80 and goal_percentage &lt; 100"
-                                           decoration-danger="goal_percentage &lt; 80"/>
-                                    <field name="projected_percentage" readonly="1" optional="show" string="% al Estimado"
-                                           decoration-success="projected_percentage &gt;= 100"
-                                           decoration-warning="projected_percentage &gt;= 80 and projected_percentage &lt; 100"
-                                           decoration-danger="projected_percentage &lt; 80"/>
-                                    <field name="previous_amount" readonly="1" widget="monetary" string="Total Proy. Anterior"
-                                           optional="show"
-                                           attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
-                                    <field name="monthly_temporality" readonly="1" widget="percentage" string="Temporalidad Mensual (%)"
-                                           optional="show"
-                                           attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
-                                    <field name="currency_id" invisible="1"/>
-                                    <field name="year" invisible="1"/>
-                                </tree>
-                            </field>
+                            <field name="line_ids" context="{'tree_view_ref': 'sale_order_invoice_payment_info.view_sales_projection_line_tree_in_form'}"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -175,12 +138,48 @@
             <search string="Buscar Línea de Proyección">
                 <field name="period_month"/>
                 <field name="team_unified_id"/>
+                <field name="quarter"/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
+                    <filter string="Trimestre" name="group_quarter" context="{'group_by': 'quarter'}"/>
                     <filter string="Equipo Unificado" name="group_team_unified" context="{'group_by': 'team_unified_id'}"/>
-                    <field name="team_unified_id" string="Equipo Unificado"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- Tree View for Sales Projection Line (used in form) -->
+    <record id="view_sales_projection_line_tree_in_form" model="ir.ui.view">
+        <field name="name">sales.projection.line.tree.in.form</field>
+        <field name="model">sales.projection.line</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" string="Proyecciones por Mes y Equipo">
+                <field name="period_month"/>
+                <field name="quarter" readonly="1"/>
+                <field name="team_unified_id"/>
+                <field name="goal_amount" readonly="1" widget="monetary" optional="show" string="Objetivo"/>
+                <field name="projected_amount" sum="total_projected" widget="monetary" string="Estimado"/>
+                <field name="actual_sales" readonly="1" widget="monetary" sum="total_sales" optional="show" string="Venta"/>
+                <field name="difference" readonly="1" widget="monetary" optional="show"
+                       decoration-success="difference &gt;= 0"
+                       decoration-danger="difference &lt; 0"/>
+                <field name="goal_percentage" readonly="1" optional="show" string="%"
+                       decoration-success="goal_percentage &gt;= 100"
+                       decoration-warning="goal_percentage &gt;= 80 and goal_percentage &lt; 100"
+                       decoration-danger="goal_percentage &lt; 80"/>
+                <field name="projected_percentage" readonly="1" optional="show" string="% al Estimado"
+                       decoration-success="projected_percentage &gt;= 100"
+                       decoration-warning="projected_percentage &gt;= 80 and projected_percentage &lt; 100"
+                       decoration-danger="projected_percentage &lt; 80"/>
+                <field name="previous_amount" readonly="1" widget="monetary" string="Total Proy. Anterior"
+                       optional="show"
+                       attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
+                <field name="monthly_temporality" readonly="1" widget="percentage" string="Temporalidad Mensual (%)"
+                       optional="show"
+                       attrs="{'column_invisible': [('parent.previous_projection_id', '=', False)]}"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="year" invisible="1"/>
+            </tree>
         </field>
     </record>
 
