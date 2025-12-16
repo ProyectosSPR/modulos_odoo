@@ -59,10 +59,7 @@
                     </group>
                     <notebook>
                         <page string="Proyecciones Mensuales" name="monthly_projections">
-                            <field name="line_ids"
-                                   mode="tree,form"
-                                   context="{'tree_view_ref': 'sale_order_invoice_payment_info.view_sales_projection_line_tree_in_form',
-                                            'search_view_ref': 'sale_order_invoice_payment_info.view_sales_projection_line_search'}">
+                            <field name="line_ids" widget="one2many" mode="tree">
                                 <tree editable="bottom" string="Proyecciones por Mes y Equipo">
                                     <field name="period_month"/>
                                     <field name="quarter" readonly="1"/>
@@ -90,6 +87,16 @@
                                     <field name="currency_id" invisible="1"/>
                                     <field name="year" invisible="1"/>
                                 </tree>
+                                <search string="Buscar Líneas">
+                                    <field name="period_month"/>
+                                    <field name="team_unified_id"/>
+                                    <field name="quarter"/>
+                                    <group expand="0" string="Agrupar Por">
+                                        <filter string="Mes" name="group_month" context="{'group_by': 'period_month'}"/>
+                                        <filter string="Trimestre" name="group_quarter" context="{'group_by': 'quarter'}"/>
+                                        <filter string="Equipo Unificado" name="group_team_unified" context="{'group_by': 'team_unified_id'}"/>
+                                    </group>
+                                </search>
                             </field>
                         </page>
                     </notebook>
