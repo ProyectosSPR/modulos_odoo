@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-    <!-- Tree View -->
-    <record id="view_mercadolibre_account_tree" model="ir.ui.view">
+        <!-- Tree View -->
+        <record id="view_mercadolibre_account_tree" model="ir.ui.view">
         <field name="name">mercadolibre.account.tree</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
@@ -16,10 +16,10 @@
                 <field name="active"/>
             </tree>
         </field>
-    </record>
+        </record>
 
-    <!-- Form View -->
-    <record id="view_mercadolibre_account_form" model="ir.ui.view">
+        <!-- Form View -->
+        <record id="view_mercadolibre_account_form" model="ir.ui.view">
         <field name="name">mercadolibre.account.form</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
@@ -80,10 +80,10 @@
                 </div>
             </form>
         </field>
-    </record>
+        </record>
 
-    <!-- Kanban View -->
-    <record id="view_mercadolibre_account_kanban" model="ir.ui.view">
+        <!-- Kanban View -->
+        <record id="view_mercadolibre_account_kanban" model="ir.ui.view">
         <field name="name">mercadolibre.account.kanban</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
@@ -116,13 +116,13 @@
                 </templates>
             </kanban>
         </field>
-    </record>
+        </record>
 
-    <!-- Action -->
-    <record id="action_mercadolibre_account" model="ir.actions.act_window">
+        <!-- Action -->
+        <record id="action_mercadolibre_account" model="ir.actions.act_window">
         <field name="name">Mis Cuentas ML</field>
         <field name="res_model">mercadolibre.account</field>
         <field name="view_mode">kanban,tree,form</field>
-    </record>
-    </data>
+        </record>
+        </data>
 </odoo>

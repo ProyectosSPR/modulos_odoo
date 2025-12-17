@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-    <!-- Tree View -->
-    <record id="view_mercadolibre_playground_tree" model="ir.ui.view">
+        <!-- Tree View -->
+        <record id="view_mercadolibre_playground_tree" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.tree</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -17,10 +17,10 @@
                 <field name="is_favorite" widget="boolean_favorite" nolabel="1"/>
             </tree>
         </field>
-    </record>
+        </record>
 
-    <!-- Form View -->
-    <record id="view_mercadolibre_playground_form" model="ir.ui.view">
+        <!-- Form View -->
+        <record id="view_mercadolibre_playground_form" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.form</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -79,10 +79,10 @@
                 </sheet>
             </form>
         </field>
-    </record>
+        </record>
 
-    <!-- Search View -->
-    <record id="view_mercadolibre_playground_search" model="ir.ui.view">
+        <!-- Search View -->
+        <record id="view_mercadolibre_playground_search" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.search</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -102,13 +102,13 @@
                 </group>
             </search>
         </field>
-    </record>
+        </record>
 
-    <!-- Action -->
-    <record id="action_mercadolibre_playground" model="ir.actions.act_window">
+        <!-- Action -->
+        <record id="action_mercadolibre_playground" model="ir.actions.act_window">
         <field name="name">API Playground</field>
         <field name="res_model">mercadolibre.api.playground</field>
         <field name="view_mode">tree,form</field>
-    </record>
-    </data>
+        </record>
+        </data>
 </odoo>

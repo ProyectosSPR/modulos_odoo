@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-    <!-- Tree View -->
-    <record id="view_mercadolibre_invitation_tree" model="ir.ui.view">
+        <!-- Tree View -->
+        <record id="view_mercadolibre_invitation_tree" model="ir.ui.view">
         <field name="name">mercadolibre.invitation.tree</field>
         <field name="model">mercadolibre.invitation</field>
         <field name="arch" type="xml">
@@ -16,10 +16,10 @@
                 <field name="account_id"/>
             </tree>
         </field>
-    </record>
+        </record>
 
-    <!-- Form View -->
-    <record id="view_mercadolibre_invitation_form" model="ir.ui.view">
+        <!-- Form View -->
+        <record id="view_mercadolibre_invitation_form" model="ir.ui.view">
         <field name="name">mercadolibre.invitation.form</field>
         <field name="model">mercadolibre.invitation</field>
         <field name="arch" type="xml">
@@ -64,13 +64,13 @@
                 </div>
             </form>
         </field>
-    </record>
+        </record>
 
-    <!-- Action -->
-    <record id="action_mercadolibre_invitation" model="ir.actions.act_window">
+        <!-- Action -->
+        <record id="action_mercadolibre_invitation" model="ir.actions.act_window">
         <field name="name">Invitaciones</field>
         <field name="res_model">mercadolibre.invitation</field>
         <field name="view_mode">tree,form</field>
-    </record>
-    </data>
+        </record>
+        </data>
 </odoo>
