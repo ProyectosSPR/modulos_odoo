@@ -10,74 +10,221 @@
                 <field name="method"/>
                 <field name="endpoint"/>
                 <field name="response_code"/>
-                <field name="execution_time"/>
+                <field name="response_size"/>
+                <field name="execution_time_display" string="Tiempo"/>
                 <field name="executed_at"/>
-                <field name="state"/>
+                <field name="state" widget="badge" decoration-success="state=='success'" decoration-danger="state=='error'" decoration-info="state=='draft'"/>
             </tree>
         </field>
     </record>
+
     <record id="view_mercadolibre_api_playground_form" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.form</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
             <form string="API Playground">
                 <header>
-                    <button name="action_execute" type="object" string="Ejecutar" class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_reset" type="object" string="Resetear" attrs="{'invisible': [('state', '=', 'draft')]}"/>
-                    <button name="action_duplicate" type="object" string="Duplicar"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,success"/>
+                    <button name="action_execute" type="object" string="Ejecutar" class="btn-primary" icon="fa-play"/>
+                    <button name="action_reset" type="object" string="Limpiar" attrs="{'invisible': [('state', '=', 'draft')]}" icon="fa-refresh"/>
+                    <button name="action_duplicate" type="object" string="Duplicar" icon="fa-copy"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,success,error"/>
                 </header>
                 <sheet>
+                    <style>
+                        .ml-playground-request {
+                            background: #f8f9fa;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin-bottom: 15px;
+                        }
+                        .ml-playground-url-bar {
+                            display: flex;
+                            gap: 10px;
+                            align-items: center;
+                            background: white;
+                            border: 2px solid #dee2e6;
+                            border-radius: 8px;
+                            padding: 8px 15px;
+                        }
+                        .ml-method-badge {
+                            font-weight: bold;
+                            padding: 5px 12px;
+                            border-radius: 4px;
+                            font-size: 13px;
+                        }
+                        .ml-method-get { background: #61affe; color: white; }
+                        .ml-method-post { background: #49cc90; color: white; }
+                        .ml-method-put { background: #fca130; color: white; }
+                        .ml-method-delete { background: #f93e3e; color: white; }
+                        .ml-response-panel {
+                            background: #1e1e1e;
+                            border-radius: 8px;
+                            overflow: hidden;
+                            margin-top: 15px;
+                        }
+                        .ml-response-header {
+                            background: #2d2d2d;
+                            padding: 10px 15px;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            border-bottom: 1px solid #404040;
+                        }
+                        .ml-status-badge {
+                            padding: 4px 12px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                        }
+                        .ml-status-2xx { background: #49cc90; color: white; }
+                        .ml-status-3xx { background: #61affe; color: white; }
+                        .ml-status-4xx { background: #fca130; color: white; }
+                        .ml-status-5xx { background: #f93e3e; color: white; }
+                        .ml-response-meta {
+                            display: flex;
+                            gap: 20px;
+                            color: #888;
+                            font-size: 12px;
+                        }
+                        .ml-response-meta span {
+                            display: flex;
+                            align-items: center;
+                            gap: 5px;
+                        }
+                        .ml-json-viewer {
+                            background: #1e1e1e;
+                            color: #d4d4d4;
+                            padding: 15px;
+                            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                            font-size: 13px;
+                            line-height: 1.5;
+                            max-height: 500px;
+                            overflow: auto;
+                            white-space: pre-wrap;
+                            word-break: break-word;
+                        }
+                        .ml-json-viewer .string { color: #ce9178; }
+                        .ml-json-viewer .number { color: #b5cea8; }
+                        .ml-json-viewer .boolean { color: #569cd6; }
+                        .ml-json-viewer .null { color: #569cd6; }
+                        .ml-json-viewer .key { color: #9cdcfe; }
+                        .ml-tabs {
+                            display: flex;
+                            background: #2d2d2d;
+                            border-bottom: 1px solid #404040;
+                        }
+                        .ml-tab {
+                            padding: 10px 20px;
+                            color: #888;
+                            cursor: pointer;
+                            border-bottom: 2px solid transparent;
+                            transition: all 0.2s;
+                        }
+                        .ml-tab:hover { color: #fff; }
+                        .ml-tab.active {
+                            color: #61affe;
+                            border-bottom-color: #61affe;
+                        }
+                        .ml-error-panel {
+                            background: #2d1f1f;
+                            border: 1px solid #f93e3e;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin-top: 15px;
+                        }
+                        .ml-error-title {
+                            color: #f93e3e;
+                            font-weight: bold;
+                            margin-bottom: 10px;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                        }
+                        .ml-error-message {
+                            color: #ff8888;
+                            font-family: monospace;
+                        }
+                    </style>
+
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only"/>
                         <h1>
                             <field name="name" placeholder="Nombre del request"/>
                         </h1>
                     </div>
+
                     <group>
                         <group>
                             <field name="account_id" options="{'no_create': True}"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                         </group>
                         <group>
-                            <field name="method"/>
+                            <field name="executed_at" readonly="1"/>
+                            <field name="full_url" readonly="1" widget="url" attrs="{'invisible': [('full_url', '=', False)]}"/>
+                        </group>
+                    </group>
+
+                    <separator string="Request"/>
+                    <group>
+                        <group>
+                            <field name="method" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group>
                             <field name="endpoint" placeholder="/users/me"/>
                         </group>
                     </group>
+
                     <notebook>
-                        <page string="Request" name="request">
-                            <group>
-                                <field name="request_params" widget="ace" options="{'mode': 'json'}" placeholder='{"q": "iphone", "limit": 10}'/>
-                                <field name="request_body" widget="ace" options="{'mode': 'json'}" placeholder='{"title": "Mi producto", "price": 100}' attrs="{'invisible': [('method', 'not in', ['POST', 'PUT'])]}"/>
-                                <field name="custom_headers" widget="ace" options="{'mode': 'json'}" placeholder='{"X-Custom-Header": "value"}'/>
-                            </group>
+                        <page string="Params" name="params">
+                            <field name="request_params" placeholder='{"q": "iphone", "limit": 10}' widget="ace" options="{'mode': 'json'}"/>
                         </page>
-                        <page string="Response" name="response" attrs="{'invisible': [('state', '=', 'draft')]}">
-                            <group>
-                                <group>
-                                    <field name="response_code"/>
-                                    <field name="execution_time"/>
-                                    <field name="executed_at"/>
-                                </group>
-                            </group>
-                            <group string="Response Body" attrs="{'invisible': [('response_body', '=', False)]}">
-                                <field name="response_body" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
-                            </group>
-                            <group string="Response Headers" attrs="{'invisible': [('response_headers', '=', False)]}">
-                                <field name="response_headers" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
-                            </group>
-                            <group string="Error" attrs="{'invisible': [('error_message', '=', False)]}">
-                                <field name="error_message" nolabel="1"/>
-                            </group>
+                        <page string="Body" name="body" attrs="{'invisible': [('method', 'not in', ['POST', 'PUT'])]}">
+                            <field name="request_body" placeholder='{"title": "Mi producto", "price": 100}' widget="ace" options="{'mode': 'json'}"/>
+                        </page>
+                        <page string="Headers" name="headers">
+                            <field name="custom_headers" placeholder='{"X-Custom-Header": "value"}' widget="ace" options="{'mode': 'json'}"/>
                         </page>
                         <page string="Notas" name="notes">
-                            <field name="notes" nolabel="1" placeholder="Documentación o notas sobre este request..."/>
+                            <field name="notes" placeholder="Notas sobre este request..."/>
                         </page>
                     </notebook>
+
+                    <separator string="Response" attrs="{'invisible': [('state', '=', 'draft')]}"/>
+
+                    <div attrs="{'invisible': [('state', '=', 'draft')]}">
+                        <group>
+                            <group>
+                                <field name="response_code" readonly="1"/>
+                                <field name="response_size" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="execution_time_display" string="Tiempo" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <div attrs="{'invisible': [('error_message', '=', False)]}">
+                            <group string="Error">
+                                <field name="error_message" readonly="1" nolabel="1"/>
+                            </group>
+                        </div>
+
+                        <notebook attrs="{'invisible': ['|', ('state', '=', 'draft'), ('response_body', '=', False)]}">
+                            <page string="Body" name="response_body">
+                                <field name="response_body" readonly="1" widget="ace" options="{'mode': 'json'}"/>
+                            </page>
+                            <page string="Headers" name="response_headers">
+                                <field name="response_headers" readonly="1" widget="ace" options="{'mode': 'json'}"/>
+                            </page>
+                            <page string="Raw" name="response_raw">
+                                <field name="response_body_raw" readonly="1"/>
+                            </page>
+                        </notebook>
+                    </div>
                 </sheet>
             </form>
         </field>
     </record>
+
     <record id="view_mercadolibre_api_playground_search" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.search</field>
         <field name="model">mercadolibre.api.playground</field>
@@ -89,6 +236,11 @@
                 <filter string="Borradores" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Exitosos" name="success" domain="[('state', '=', 'success')]"/>
                 <filter string="Con Errores" name="error" domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter string="GET" name="get" domain="[('method', '=', 'GET')]"/>
+                <filter string="POST" name="post" domain="[('method', '=', 'POST')]"/>
+                <filter string="PUT" name="put" domain="[('method', '=', 'PUT')]"/>
+                <filter string="DELETE" name="delete" domain="[('method', '=', 'DELETE')]"/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Cuenta" name="account" context="{'group_by': 'account_id'}"/>
                     <filter string="Método" name="method" context="{'group_by': 'method'}"/>
@@ -97,6 +249,7 @@
             </search>
         </field>
     </record>
+
     <record id="action_mercadolibre_api_playground" model="ir.actions.act_window">
         <field name="name">API Playground</field>
         <field name="res_model">mercadolibre.api.playground</field>
@@ -107,7 +260,15 @@
             </p>
             <p>
                 Prueba endpoints de la API de MercadoLibre con tus cuentas conectadas.
+                <br/>
+                <b>Ejemplos de endpoints:</b>
             </p>
+            <ul>
+                <li><code>/users/me</code> - Información del usuario</li>
+                <li><code>/sites/MLM/search?q=iphone</code> - Buscar productos</li>
+                <li><code>/items/{ITEM_ID}</code> - Detalle de producto</li>
+                <li><code>/orders/search?seller={USER_ID}</code> - Órdenes del vendedor</li>
+            </ul>
         </field>
     </record>
 </odoo>
