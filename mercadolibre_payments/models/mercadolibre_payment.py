@@ -328,17 +328,26 @@ class MercadolibrePayment(models.Model):
         # Preparar valores
         currency = self._get_currency(data.get('currency_id', 'MXN'))
 
-        # Parse payer info
+        # Parse payer info (can be in 'payer' object or at root level)
         payer = data.get('payer', {}) or {}
         payer_identification = payer.get('identification', {}) or {}
 
-        # Parse fee details for charges
+        # Parse fee details for charges (can be in fee_details or charges_details)
         fee_details = data.get('fee_details', []) or []
+        charges_details = data.get('charges_details', []) or []
+
+        # Extract payer_id (can be in payer.id or root payer_id)
+        payer_id = str(payer.get('id', '')) if payer.get('id') else str(data.get('payer_id', ''))
+
+        # Extract collector_id (can be at root or in collector.id)
+        collector = data.get('collector', {}) or {}
+        collector_id = str(data.get('collector_id', '')) if data.get('collector_id') else str(collector.get('id', ''))
 
         # Determine payment direction (incoming = we received, outgoing = we paid)
-        collector_id = str(data.get('collector_id', ''))
-        payer_id = str(payer.get('id', ''))
-        account_user_id = account.ml_user_id or ''
+        account_user_id = str(account.ml_user_id or '')
+
+        _logger.debug('Payment direction check - Payment ID: %s, collector_id: %s, payer_id: %s, account_user_id: %s',
+                     mp_payment_id, collector_id, payer_id, account_user_id)
 
         if collector_id and collector_id == account_user_id:
             payment_direction = 'incoming'  # We are the collector (received money)
@@ -393,17 +402,18 @@ class MercadolibrePayment(models.Model):
             is_new = True
 
         # Crear/actualizar cargos
-        self._sync_charges(payment, fee_details)
+        self._sync_charges(payment, fee_details, charges_details)
 
         return payment, is_new
 
-    def _sync_charges(self, payment, fee_details):
+    def _sync_charges(self, payment, fee_details, charges_details=None):
         """Sincroniza los cargos/comisiones del pago"""
         ChargeModel = self.env['mercadolibre.payment.charge']
 
         # Eliminar cargos existentes
         payment.charge_ids.unlink()
 
+        # Process fee_details (standard format)
         for fee in fee_details:
             ChargeModel.create({
                 'payment_id': payment.id,
@@ -411,6 +421,18 @@ class MercadolibrePayment(models.Model):
                 'fee_payer': fee.get('fee_payer', ''),
                 'amount': fee.get('amount', 0.0),
             })
+
+        # Process charges_details (alternative format used in some payments)
+        if charges_details:
+            for charge in charges_details:
+                amounts = charge.get('amounts', {}) or {}
+                accounts = charge.get('accounts', {}) or {}
+                ChargeModel.create({
+                    'payment_id': payment.id,
+                    'charge_type': charge.get('name', '') or charge.get('type', ''),
+                    'fee_payer': accounts.get('from', ''),
+                    'amount': amounts.get('original', 0.0),
+                })
 
     def _get_currency(self, currency_code):
         """Obtiene la moneda de Odoo por codigo"""
