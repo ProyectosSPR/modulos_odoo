@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mercadolibre_payment_company_rule" model="ir.rule">
+        <field name="name">Pagos ML: Multi-Company</field>
+        <field name="model_id" ref="model_mercadolibre_payment"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="mercadolibre_payment_charge_company_rule" model="ir.rule">
+        <field name="name">Cargos Pagos ML: Multi-Company</field>
+        <field name="model_id" ref="model_mercadolibre_payment_charge"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+</odoo>

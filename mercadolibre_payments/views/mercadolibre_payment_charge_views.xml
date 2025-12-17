@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mercadolibre_payment_charge_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.charge.tree</field>
+        <field name="model">mercadolibre.payment.charge</field>
+        <field name="arch" type="xml">
+            <tree string="Cargos de Pagos">
+                <field name="payment_id"/>
+                <field name="charge_type"/>
+                <field name="fee_payer"/>
+                <field name="amount" sum="Total"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_charge_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.charge.form</field>
+        <field name="model">mercadolibre.payment.charge</field>
+        <field name="arch" type="xml">
+            <form string="Cargo de Pago">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="payment_id"/>
+                            <field name="charge_type"/>
+                        </group>
+                        <group>
+                            <field name="fee_payer"/>
+                            <field name="amount"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_charge_search" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.charge.search</field>
+        <field name="model">mercadolibre.payment.charge</field>
+        <field name="arch" type="xml">
+            <search string="Cargos">
+                <field name="payment_id"/>
+                <field name="charge_type"/>
+                <separator/>
+                <filter string="Comision MP" name="mp_fee"
+                        domain="[('charge_type', '=', 'mercadopago_fee')]"/>
+                <filter string="Financiamiento" name="financing"
+                        domain="[('charge_type', '=', 'financing_fee')]"/>
+                <separator/>
+                <filter string="Pagado por Vendedor" name="collector"
+                        domain="[('fee_payer', '=', 'collector')]"/>
+                <filter string="Pagado por Comprador" name="payer"
+                        domain="[('fee_payer', '=', 'payer')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Pago" name="group_payment" context="{'group_by': 'payment_id'}"/>
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'charge_type'}"/>
+                    <filter string="Pagador" name="group_payer" context="{'group_by': 'fee_payer'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_charge_pivot" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.charge.pivot</field>
+        <field name="model">mercadolibre.payment.charge</field>
+        <field name="arch" type="xml">
+            <pivot string="Cargos por Tipo">
+                <field name="charge_type" type="row"/>
+                <field name="fee_payer" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment_charge" model="ir.actions.act_window">
+        <field name="name">Cargos/Comisiones</field>
+        <field name="res_model">mercadolibre.payment.charge</field>
+        <field name="view_mode">tree,pivot,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay cargos registrados
+            </p>
+            <p>
+                Los cargos se sincronizan automaticamente con los pagos.
+            </p>
+        </field>
+    </record>
+</odoo>

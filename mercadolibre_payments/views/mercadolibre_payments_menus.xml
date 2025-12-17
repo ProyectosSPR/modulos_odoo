@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mercadolibre_payments_root"
+              name="Pagos"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="20"/>
+
+    <menuitem id="menu_mercadolibre_payment_all"
+              name="Todos los Pagos"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment"
+              sequence="10"/>
+
+    <menuitem id="menu_mercadolibre_payment_released"
+              name="Pagos Liberados"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_released"
+              sequence="20"/>
+
+    <menuitem id="menu_mercadolibre_payment_pending_sync"
+              name="Pendientes de Sync"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_pending_sync"
+              sequence="30"/>
+
+    <menuitem id="menu_mercadolibre_payment_charges"
+              name="Comisiones"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_charge"
+              sequence="40"/>
+
+    <menuitem id="menu_mercadolibre_payment_sync"
+              name="Sincronizar Pagos"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_sync"
+              sequence="50"/>
+</odoo>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mercadolibre_payment_sync_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.form</field>
+        <field name="model">mercadolibre.payment.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Pagos">
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Configuracion">
+                        <field name="account_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filtros">
+                        <field name="only_released"/>
+                        <field name="only_approved"/>
+                        <field name="limit"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <group string="Resultados">
+                        <field name="sync_count"/>
+                        <field name="error_count"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('state', '=', 'draft')]}" string="Log de Sincronizacion">
+                    <field name="sync_log" nolabel="1" readonly="1"/>
+                </group>
+                <field name="state" invisible="1"/>
+                <footer>
+                    <button name="action_sync" type="object" string="Sincronizar"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"
+                            icon="fa-refresh"/>
+                    <button name="action_view_payments" type="object" string="Ver Pagos"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"
+                            icon="fa-list"/>
+                    <button name="action_new_sync" type="object" string="Nueva Sincronizacion"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"
+                            icon="fa-plus"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment_sync" model="ir.actions.act_window">
+        <field name="name">Sincronizar Pagos</field>
+        <field name="res_model">mercadolibre.payment.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

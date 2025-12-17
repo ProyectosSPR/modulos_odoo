@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mercadolibre_payment_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.tree</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <tree string="Pagos MercadoPago"
+                  decoration-success="status=='approved' and money_release_status=='released'"
+                  decoration-warning="status=='approved' and money_release_status=='pending'"
+                  decoration-danger="status in ('rejected','cancelled','charged_back')"
+                  decoration-muted="status=='refunded'">
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="mp_payment_id"/>
+                <field name="date_approved"/>
+                <field name="transaction_amount" sum="Total"/>
+                <field name="net_received_amount" sum="Total Neto"/>
+                <field name="total_charges" sum="Total Cargos"/>
+                <field name="payment_method_name"/>
+                <field name="payer_email"/>
+                <field name="status" widget="badge"
+                       decoration-success="status=='approved'"
+                       decoration-warning="status in ('pending','in_process')"
+                       decoration-danger="status in ('rejected','cancelled','charged_back')"/>
+                <field name="money_release_status" widget="badge"
+                       decoration-success="money_release_status=='released'"
+                       decoration-warning="money_release_status=='pending'"
+                       decoration-danger="money_release_status in ('not_released','unavailable')"/>
+                <field name="sync_status" widget="badge"
+                       decoration-success="sync_status=='synced'"
+                       decoration-warning="sync_status=='pending'"
+                       decoration-danger="sync_status=='error'"
+                       decoration-muted="sync_status=='ignored'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.form</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <form string="Pago MercadoPago">
+                <header>
+                    <button name="action_mark_synced" type="object" string="Marcar Sincronizado"
+                            class="btn-primary"
+                            attrs="{'invisible': [('sync_status', 'in', ['synced', 'ignored'])]}"/>
+                    <button name="action_mark_ignored" type="object" string="Ignorar"
+                            attrs="{'invisible': [('sync_status', '=', 'ignored')]}"/>
+                    <button name="action_retry_sync" type="object" string="Reintentar"
+                            attrs="{'invisible': [('sync_status', '!=', 'error')]}"/>
+                    <field name="status" widget="statusbar"
+                           statusbar_visible="pending,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_raw_data" type="object"
+                                class="oe_stat_button" icon="fa-code">
+                            <span>Ver JSON</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion General">
+                            <field name="account_id"/>
+                            <field name="mp_payment_id"/>
+                            <field name="mp_order_id"/>
+                            <field name="mp_external_reference"/>
+                            <field name="operation_type"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Estado">
+                            <field name="status"/>
+                            <field name="status_detail"/>
+                            <field name="money_release_status"/>
+                            <field name="money_release_date"/>
+                            <field name="sync_status"/>
+                            <field name="sync_error" attrs="{'invisible': [('sync_error', '=', False)]}"/>
+                            <field name="last_sync_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Montos">
+                            <field name="transaction_amount"/>
+                            <field name="net_received_amount"/>
+                            <field name="total_paid_amount"/>
+                            <field name="shipping_cost"/>
+                            <field name="total_charges"/>
+                            <field name="currency_id"/>
+                            <field name="mp_currency"/>
+                        </group>
+                        <group string="Metodo de Pago">
+                            <field name="payment_method_id"/>
+                            <field name="payment_method_name"/>
+                            <field name="payment_type"/>
+                            <field name="installments"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Fechas">
+                            <field name="date_created"/>
+                            <field name="date_approved"/>
+                            <field name="date_last_updated"/>
+                        </group>
+                        <group string="Pagador">
+                            <field name="payer_id"/>
+                            <field name="payer_email"/>
+                            <field name="payer_name"/>
+                            <field name="payer_identification_type"/>
+                            <field name="payer_identification_number"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cargos/Comisiones" name="charges">
+                            <field name="charge_ids">
+                                <tree editable="bottom">
+                                    <field name="charge_type"/>
+                                    <field name="fee_payer"/>
+                                    <field name="amount" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Contabilidad" name="accounting">
+                            <group>
+                                <group>
+                                    <field name="invoice_id"/>
+                                </group>
+                                <group>
+                                    <field name="payment_move_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" placeholder="Notas adicionales..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_raw_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.raw.form</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <form string="Datos Crudos">
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="mp_payment_id" readonly="1"/>
+                    </group>
+                    <separator string="JSON de MercadoPago"/>
+                    <field name="raw_data" readonly="1" widget="ace" options="{'mode': 'json'}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_search" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.search</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <search string="Pagos MercadoPago">
+                <field name="name"/>
+                <field name="mp_payment_id"/>
+                <field name="mp_order_id"/>
+                <field name="payer_email"/>
+                <field name="payer_name"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Aprobados" name="approved" domain="[('status', '=', 'approved')]"/>
+                <filter string="Pendientes" name="pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="Rechazados" name="rejected" domain="[('status', '=', 'rejected')]"/>
+                <filter string="Reembolsados" name="refunded" domain="[('status', '=', 'refunded')]"/>
+                <separator/>
+                <filter string="Dinero Liberado" name="released"
+                        domain="[('money_release_status', '=', 'released')]"/>
+                <filter string="Dinero Pendiente" name="release_pending"
+                        domain="[('money_release_status', '=', 'pending')]"/>
+                <separator/>
+                <filter string="Sync Pendiente" name="sync_pending"
+                        domain="[('sync_status', '=', 'pending')]"/>
+                <filter string="Sincronizados" name="synced"
+                        domain="[('sync_status', '=', 'synced')]"/>
+                <filter string="Con Error" name="sync_error"
+                        domain="[('sync_status', '=', 'error')]"/>
+                <separator/>
+                <filter string="Hoy" name="today"
+                        domain="[('date_approved', '>=', (context_today()).strftime('%Y-%m-%d')),
+                                 ('date_approved', '&lt;', (context_today() + relativedelta(days=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Esta Semana" name="this_week"
+                        domain="[('date_approved', '>=', (context_today() - relativedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter string="Este Mes" name="this_month"
+                        domain="[('date_approved', '>=', (context_today()).strftime('%Y-%m-01'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Liberacion" name="group_release" context="{'group_by': 'money_release_status'}"/>
+                    <filter string="Metodo Pago" name="group_method" context="{'group_by': 'payment_type'}"/>
+                    <filter string="Fecha Aprobacion" name="group_date" context="{'group_by': 'date_approved:month'}"/>
+                    <filter string="Estado Sync" name="group_sync" context="{'group_by': 'sync_status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_kanban" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.kanban</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" default_group_by="status">
+                <field name="name"/>
+                <field name="mp_payment_id"/>
+                <field name="transaction_amount"/>
+                <field name="net_received_amount"/>
+                <field name="status"/>
+                <field name="money_release_status"/>
+                <field name="payer_email"/>
+                <field name="date_approved"/>
+                <field name="payment_method_name"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top mb-2">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                </div>
+                                <div class="o_kanban_record_top_right">
+                                    <strong class="text-success">
+                                        $<field name="transaction_amount"/>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div><i class="fa fa-user mr-1"/> <field name="payer_email"/></div>
+                                <div><i class="fa fa-credit-card mr-1"/> <field name="payment_method_name"/></div>
+                                <div><i class="fa fa-calendar mr-1"/> <field name="date_approved"/></div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="money_release_status" widget="badge"
+                                           decoration-success="money_release_status=='released'"
+                                           decoration-warning="money_release_status=='pending'"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    Neto: $<field name="net_received_amount"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_pivot" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.pivot</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <pivot string="Pagos MercadoPago">
+                <field name="date_approved" type="row" interval="month"/>
+                <field name="status" type="col"/>
+                <field name="transaction_amount" type="measure"/>
+                <field name="net_received_amount" type="measure"/>
+                <field name="total_charges" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_graph" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.graph</field>
+        <field name="model">mercadolibre.payment</field>
+        <field name="arch" type="xml">
+            <graph string="Pagos MercadoPago" type="bar">
+                <field name="date_approved" type="row" interval="month"/>
+                <field name="transaction_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment" model="ir.actions.act_window">
+        <field name="name">Pagos</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="context">{'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay pagos sincronizados
+            </p>
+            <p>
+                Utiliza el asistente de sincronizacion para importar pagos desde MercadoPago.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment_released" model="ir.actions.act_window">
+        <field name="name">Pagos Liberados</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="domain">[('money_release_status', '=', 'released')]</field>
+        <field name="context">{'search_default_approved': 1}</field>
+    </record>
+
+    <record id="action_mercadolibre_payment_pending_sync" model="ir.actions.act_window">
+        <field name="name">Pendientes de Sincronizar</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('sync_status', '=', 'pending')]</field>
+    </record>
+</odoo>

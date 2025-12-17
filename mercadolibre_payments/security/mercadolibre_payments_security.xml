@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_mercadolibre_payments_user" model="res.groups">
+        <field name="name">Usuario de Pagos ML</field>
+        <field name="category_id" ref="mercadolibre_connector.module_category_mercadolibre"/>
+        <field name="implied_ids" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_user'))]"/>
+    </record>
+
+    <record id="group_mercadolibre_payments_manager" model="res.groups">
+        <field name="name">Administrador de Pagos ML</field>
+        <field name="category_id" ref="mercadolibre_connector.module_category_mercadolibre"/>
+        <field name="implied_ids" eval="[(4, ref('group_mercadolibre_payments_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>
