@@ -46,7 +46,7 @@ class MercadolibreAccount(models.Model):
         help='Email del usuario en MercadoLibre'
     )
     ml_first_name = fields.Char(
-        string='Nombre',
+        string='Primer Nombre',
         readonly=True
     )
     ml_last_name = fields.Char(
