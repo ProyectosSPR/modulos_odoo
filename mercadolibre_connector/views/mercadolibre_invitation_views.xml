@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    
         <!-- Tree View -->
         <record id="view_mercadolibre_invitation_tree" model="ir.ui.view">
         <field name="name">mercadolibre.invitation.tree</field>
@@ -72,5 +72,5 @@
         <field name="res_model">mercadolibre.invitation</field>
         <field name="view_mode">tree,form</field>
         </record>
-        </data>
+        
 </odoo>

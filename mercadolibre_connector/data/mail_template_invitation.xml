@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    
         <!-- Template de Email: Invitación -->
         <record id="mail_template_invitation" model="mail.template">
             <field name="name">ML: Invitación para Conectar Cuenta</field>
@@ -72,5 +72,5 @@
 </table>
             ]]></field>
         </record>
-    </data>
+    
 </odoo>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    
         <!-- Cron: Refresh Tokens cada 30 minutos -->
         <record id="ir_cron_refresh_tokens" model="ir.cron">
             <field name="name">ML: Refresh Tokens Automático</field>
@@ -42,5 +42,5 @@
             <field name="active" eval="True"/>
             <field name="user_id" ref="base.user_admin"/>
         </record>
-    </data>
+    
 </odoo>

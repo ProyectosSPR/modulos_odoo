@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    
         <!-- Template: OAuth Success -->
         <template id="oauth_success" name="Conexión Exitosa">
             <t t-call="web.layout">
@@ -152,5 +152,5 @@
                 </div>
             </t>
         </template>
-    </data>
+    
 </odoo>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    
         <!-- Template de Email: Confirmación de Conexión -->
         <record id="mail_template_connected" model="mail.template">
             <field name="name">ML: Confirmación de Cuenta Conectada</field>
@@ -82,5 +82,5 @@
 </table>
             ]]></field>
         </record>
-    </data>
+    
 </odoo>
