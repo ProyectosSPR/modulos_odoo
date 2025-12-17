@@ -256,7 +256,7 @@
                     </group>
 
                     <div attrs="{'invisible': [('full_url', '=', False)]}">
-                        <label string="URL Completa"/>
+                        <span class="o_form_label">URL Completa</span>
                         <div class="ml-full-url">
                             <field name="full_url" nolabel="1" readonly="1"/>
                         </div>
