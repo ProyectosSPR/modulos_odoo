@@ -224,6 +224,95 @@
                             margin-top: 10px;
                             word-break: break-all;
                         }
+
+                        /* Dark Terminal Notebook Tabs */
+                        .ml-dark-notebook {
+                            background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+                            border-radius: 12px;
+                            padding: 15px;
+                            margin-top: 15px;
+                            border: 1px solid #3d3d3d;
+                        }
+                        .ml-dark-notebook .nav-tabs {
+                            border-bottom: 1px solid #3d3d3d;
+                            margin-bottom: 15px;
+                        }
+                        .ml-dark-notebook .nav-tabs .nav-link {
+                            background: transparent;
+                            color: #888;
+                            border: none;
+                            border-bottom: 2px solid transparent;
+                            padding: 8px 16px;
+                            font-size: 12px;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            transition: all 0.2s ease;
+                        }
+                        .ml-dark-notebook .nav-tabs .nav-link:hover {
+                            color: #61affe;
+                            border-bottom-color: #61affe;
+                        }
+                        .ml-dark-notebook .nav-tabs .nav-link.active {
+                            color: #61affe;
+                            background: transparent;
+                            border-bottom: 2px solid #61affe;
+                        }
+                        .ml-dark-notebook .tab-content {
+                            background: #1a1a1a;
+                            border-radius: 8px;
+                            overflow: hidden;
+                        }
+                        .ml-dark-notebook .tab-pane {
+                            padding: 0;
+                        }
+
+                        /* ACE Editor Dark Theme Override */
+                        .ml-dark-notebook .ace_editor,
+                        .ml-dark-notebook .ace-tm {
+                            background: #1a1a1a !important;
+                            color: #d4d4d4 !important;
+                            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace !important;
+                        }
+                        .ml-dark-notebook .ace_gutter {
+                            background: #252525 !important;
+                            color: #555 !important;
+                        }
+                        .ml-dark-notebook .ace_gutter-active-line {
+                            background: #2d2d2d !important;
+                        }
+                        .ml-dark-notebook .ace_cursor {
+                            color: #61affe !important;
+                        }
+                        .ml-dark-notebook .ace_marker-layer .ace_selection {
+                            background: rgba(97, 175, 254, 0.2) !important;
+                        }
+                        .ml-dark-notebook .ace_marker-layer .ace_active-line {
+                            background: rgba(255, 255, 255, 0.05) !important;
+                        }
+                        /* JSON Syntax Highlighting */
+                        .ml-dark-notebook .ace_string { color: #ce9178 !important; }
+                        .ml-dark-notebook .ace_constant.ace_numeric { color: #b5cea8 !important; }
+                        .ml-dark-notebook .ace_constant.ace_language { color: #569cd6 !important; }
+                        .ml-dark-notebook .ace_variable { color: #9cdcfe !important; }
+                        .ml-dark-notebook .ace_support.ace_function { color: #dcdcaa !important; }
+                        .ml-dark-notebook .ace_keyword { color: #569cd6 !important; }
+                        .ml-dark-notebook .ace_comment { color: #6a9955 !important; }
+                        .ml-dark-notebook .ace_paren { color: #ffd700 !important; }
+
+                        /* Dark Notebook Header */
+                        .ml-notebook-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            margin-bottom: 10px;
+                            color: #888;
+                            font-size: 11px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        .ml-notebook-header i {
+                            color: #61affe;
+                        }
                     </style>
 
                     <div class="oe_title">
