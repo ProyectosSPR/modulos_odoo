@@ -340,14 +340,16 @@ class MercadolibrePayment(models.Model):
             _logger.info('Actualizando pago existente: %s', mp_payment_id)
             existing.write(vals)
             payment = existing
+            is_new = False
         else:
             _logger.info('Creando nuevo pago: %s', mp_payment_id)
             payment = self.create(vals)
+            is_new = True
 
         # Crear/actualizar cargos
         self._sync_charges(payment, fee_details)
 
-        return payment
+        return payment, is_new
 
     def _sync_charges(self, payment, fee_details):
         """Sincroniza los cargos/comisiones del pago"""
@@ -563,6 +565,8 @@ class MercadolibrePayment(models.Model):
         _logger.info('Encontrados %d pagos', len(results))
 
         synced_count = 0
+        created_count = 0
+        updated_count = 0
         for payment_data in results:
             # Filtrar por dinero liberado si es requerido
             if only_released:
@@ -570,11 +574,16 @@ class MercadolibrePayment(models.Model):
                     continue
 
             try:
-                self.create_from_mp_data(payment_data, account)
+                payment, is_new = self.create_from_mp_data(payment_data, account)
                 synced_count += 1
+                if is_new:
+                    created_count += 1
+                else:
+                    updated_count += 1
             except Exception as e:
                 _logger.error('Error procesando pago %s: %s',
                              payment_data.get('id'), str(e))
 
-        _logger.info('Sincronizados %d pagos para cuenta %s', synced_count, account.name)
+        _logger.info('Sincronizados %d pagos para cuenta %s (Nuevos: %d, Actualizados: %d)',
+                    synced_count, account.name, created_count, updated_count)
         return synced_count

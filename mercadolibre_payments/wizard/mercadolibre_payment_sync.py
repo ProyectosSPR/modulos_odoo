@@ -20,6 +20,13 @@ class MercadolibrePaymentSync(models.TransientModel):
         required=True,
         domain="[('state', '=', 'connected')]"
     )
+    date_field = fields.Selection([
+        ('date_created', 'Fecha de Creacion'),
+        ('date_approved', 'Fecha de Aprobacion'),
+        ('date_last_updated', 'Fecha de Actualizacion'),
+        ('money_release_date', 'Fecha de Liberacion'),
+    ], string='Filtrar por Fecha', default='date_created', required=True,
+       help='Campo de fecha a utilizar para filtrar los pagos')
     date_from = fields.Date(
         string='Desde',
         default=lambda self: fields.Date.today() - timedelta(days=30)
@@ -48,6 +55,16 @@ class MercadolibrePaymentSync(models.TransientModel):
     sync_count = fields.Integer(
         string='Pagos Sincronizados',
         readonly=True
+    )
+    created_count = fields.Integer(
+        string='Nuevos',
+        readonly=True,
+        help='Pagos nuevos creados'
+    )
+    updated_count = fields.Integer(
+        string='Actualizados',
+        readonly=True,
+        help='Pagos existentes actualizados'
     )
     error_count = fields.Integer(
         string='Errores',
@@ -91,7 +108,17 @@ class MercadolibrePaymentSync(models.TransientModel):
         log_lines.append('       SINCRONIZACION DE PAGOS MERCADOPAGO')
         log_lines.append('=' * 50)
         log_lines.append('')
+        # Mapeo de campos de fecha para mostrar en el log
+        date_field_labels = {
+            'date_created': 'Fecha de Creacion',
+            'date_approved': 'Fecha de Aprobacion',
+            'date_last_updated': 'Fecha de Actualizacion',
+            'money_release_date': 'Fecha de Liberacion',
+        }
+        date_field_label = date_field_labels.get(self.date_field, self.date_field)
+
         log_lines.append(f'  Cuenta:          {self.account_id.name}')
+        log_lines.append(f'  Filtrar por:     {date_field_label}')
         log_lines.append(f'  Periodo:         {self.date_from} a {self.date_to}')
         log_lines.append(f'  Solo liberados:  {"Si" if self.only_released else "No"}')
         log_lines.append(f'  Solo aprobados:  {"Si" if self.only_approved else "No"}')
@@ -112,15 +139,16 @@ class MercadolibrePaymentSync(models.TransientModel):
 
         # Construir parametros
         params = {
-            'sort': 'date_approved',
+            'sort': self.date_field,  # Ordenar por el campo de fecha seleccionado
             'criteria': 'desc',
             'limit': self.limit,
+            'range': self.date_field,  # Filtrar por el campo de fecha seleccionado
         }
 
         if self.date_from:
-            params['begin_date'] = f'{self.date_from}T00:00:00.000-00:00'
+            params['begin_date'] = f'{self.date_from}T00:00:00.000-06:00'
         if self.date_to:
-            params['end_date'] = f'{self.date_to}T23:59:59.999-00:00'
+            params['end_date'] = f'{self.date_to}T23:59:59.999-06:00'
 
         if self.only_approved:
             params['status'] = 'approved'
@@ -218,6 +246,8 @@ class MercadolibrePaymentSync(models.TransientModel):
 
         PaymentModel = self.env['mercadolibre.payment']
         sync_count = 0
+        created_count = 0
+        updated_count = 0
         error_count = 0
         skipped_count = 0
 
@@ -235,34 +265,44 @@ class MercadolibrePaymentSync(models.TransientModel):
                 continue
 
             try:
-                PaymentModel.create_from_mp_data(payment_data, self.account_id)
+                payment, is_new = PaymentModel.create_from_mp_data(payment_data, self.account_id)
                 sync_count += 1
-                log_lines.append(f'  [OK]    #{mp_id}  ${amount:>12,.2f}  {status}')
-                _logger.info('Sincronizado pago %s - $%.2f', mp_id, amount)
+                if is_new:
+                    created_count += 1
+                    action_label = 'NUEVO'
+                else:
+                    updated_count += 1
+                    action_label = 'ACTUALIZADO'
+                log_lines.append(f'  [{action_label:^11}]  #{mp_id}  ${amount:>12,.2f}  {status}')
+                _logger.info('Sincronizado pago %s - $%.2f (%s)', mp_id, amount, action_label)
 
             except Exception as e:
                 error_count += 1
-                log_lines.append(f'  [ERROR] #{mp_id}  {str(e)}')
+                log_lines.append(f'  [ERROR      ]  #{mp_id}  {str(e)}')
                 _logger.error('Error procesando pago %s: %s', mp_id, str(e))
 
         log_lines.append('')
         log_lines.append('=' * 50)
         log_lines.append('  RESUMEN')
         log_lines.append('=' * 50)
-        log_lines.append(f'  Sincronizados:           {sync_count}')
+        log_lines.append(f'  Total sincronizados:     {sync_count}')
+        log_lines.append(f'    - Nuevos:              {created_count}')
+        log_lines.append(f'    - Actualizados:        {updated_count}')
         log_lines.append(f'  Saltados (no liberados): {skipped_count}')
         log_lines.append(f'  Errores:                 {error_count}')
         log_lines.append('=' * 50)
 
         _logger.info('='*60)
         _logger.info('SINCRONIZACION COMPLETADA')
-        _logger.info('Sincronizados: %d | Saltados: %d | Errores: %d',
-                    sync_count, skipped_count, error_count)
+        _logger.info('Sincronizados: %d (Nuevos: %d, Actualizados: %d) | Saltados: %d | Errores: %d',
+                    sync_count, created_count, updated_count, skipped_count, error_count)
         _logger.info('='*60)
 
         self.write({
             'state': 'done',
             'sync_count': sync_count,
+            'created_count': created_count,
+            'updated_count': updated_count,
             'error_count': error_count,
             'sync_log': '\n'.join(log_lines),
         })

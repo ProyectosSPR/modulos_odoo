@@ -57,6 +57,7 @@
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Configuracion">
                         <field name="account_id" options="{'no_create': True}"/>
+                        <field name="date_field" widget="radio"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
                     </group>
@@ -70,7 +71,15 @@
                     <div class="ml-sync-stats">
                         <div class="ml-sync-stat success">
                             <div class="ml-sync-stat-value"><field name="sync_count" nolabel="1"/></div>
-                            <div class="ml-sync-stat-label">Sincronizados</div>
+                            <div class="ml-sync-stat-label">Total Sincronizados</div>
+                        </div>
+                        <div class="ml-sync-stat" style="background:#e8f5e9;">
+                            <div class="ml-sync-stat-value" style="color:#2e7d32;"><field name="created_count" nolabel="1"/></div>
+                            <div class="ml-sync-stat-label">Nuevos</div>
+                        </div>
+                        <div class="ml-sync-stat" style="background:#fff3e0;">
+                            <div class="ml-sync-stat-value" style="color:#ef6c00;"><field name="updated_count" nolabel="1"/></div>
+                            <div class="ml-sync-stat-label">Actualizados</div>
                         </div>
                         <div class="ml-sync-stat error">
                             <div class="ml-sync-stat-value"><field name="error_count" nolabel="1"/></div>
