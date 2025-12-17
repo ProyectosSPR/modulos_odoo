@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_log_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.log.tree</field>
+        <field name="model">mercadolibre.log</field>
+        <field name="arch" type="xml">
+            <tree string="Logs" create="false" edit="false">
+                <field name="created_at"/>
+                <field name="level" widget="badge" decoration-info="level == 'debug'" decoration-success="level == 'info'" decoration-warning="level == 'warning'" decoration-danger="level in ['error', 'critical']"/>
+                <field name="log_type"/>
+                <field name="operation"/>
+                <field name="short_message"/>
+                <field name="account_id"/>
+                <field name="status_code"/>
+                <field name="response_time"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_log_form" model="ir.ui.view">
+        <field name="name">mercadolibre.log.form</field>
+        <field name="model">mercadolibre.log</field>
+        <field name="arch" type="xml">
+            <form string="Log" create="false" edit="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_details" type="object" class="oe_stat_button" icon="fa-info-circle">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Ver</span>
+                                <span class="o_stat_text">Detalles</span>
+                            </div>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="created_at"/>
+                            <field name="level" widget="badge"/>
+                            <field name="log_type"/>
+                            <field name="operation"/>
+                            <field name="account_id"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="endpoint"/>
+                            <field name="http_method"/>
+                            <field name="status_code"/>
+                            <field name="response_time"/>
+                            <field name="ip_address"/>
+                        </group>
+                    </group>
+                    <group string="Mensaje">
+                        <field name="message" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Request">
+                            <group>
+                                <field name="request_headers" widget="text"/>
+                                <field name="request_body" widget="text"/>
+                            </group>
+                        </page>
+                        <page string="Response">
+                            <field name="response_body" widget="text"/>
+                        </page>
+                        <page string="Error" attrs="{'invisible': [('level', 'not in', ['error', 'critical'])]}">
+                            <group>
+                                <field name="error_code"/>
+                                <field name="error_message" widget="text"/>
+                                <field name="stack_trace" widget="text"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_log_search" model="ir.ui.view">
+        <field name="name">mercadolibre.log.search</field>
+        <field name="model">mercadolibre.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="operation"/>
+                <field name="message"/>
+                <field name="account_id"/>
+                <filter name="today" string="Hoy" domain="[('created_at', '>=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
+                <filter name="errors" string="Errores" domain="[('level', 'in', ['error', 'critical'])]"/>
+                <filter name="warnings" string="Advertencias" domain="[('level', '=', 'warning')]"/>
+                <separator/>
+                <filter name="api_requests" string="API Requests" domain="[('log_type', 'in', ['api_request', 'api_response'])]"/>
+                <filter name="token_refresh" string="Token Refresh" domain="[('log_type', '=', 'token_refresh')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'log_type'}"/>
+                    <filter name="group_account" string="Cuenta" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_date" string="Fecha" context="{'group_by': 'created_at:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_log" model="ir.actions.act_window">
+        <field name="name">Logs</field>
+        <field name="res_model">mercadolibre.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_today': 1}</field>
+    </record>
+</odoo>

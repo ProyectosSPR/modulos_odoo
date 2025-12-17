@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.config.tree</field>
+        <field name="model">mercadolibre.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuraciones ML">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="site_id"/>
+                <field name="client_id"/>
+                <field name="account_count"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.config.form</field>
+        <field name="model">mercadolibre.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración ML">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_accounts" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="account_count" widget="statinfo" string="Cuentas"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="ej: ML México - Producción"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="site_id"/>
+                            <field name="country_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="auth_url" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Credenciales" groups="mercadolibre_connector.group_mercadolibre_admin">
+                            <group>
+                                <group>
+                                    <field name="client_id"/>
+                                    <field name="client_secret" password="True"/>
+                                </group>
+                                <group>
+                                    <field name="redirect_uri"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Cuentas Conectadas">
+                            <field name="account_ids">
+                                <tree>
+                                    <field name="nickname"/>
+                                    <field name="ml_user_id"/>
+                                    <field name="is_authorized"/>
+                                    <field name="authorization_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_config" model="ir.actions.act_window">
+        <field name="name">Configuración ML</field>
+        <field name="res_model">mercadolibre.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú Principal -->
+    <menuitem id="menu_mercadolibre_root"
+              name="Mercado Libre"
+              sequence="10"
+              web_icon="mercadolibre_connector,static/description/icon.png"
+              groups="group_mercadolibre_user"/>
+
+    <!-- Mis Cuentas -->
+    <menuitem id="menu_mercadolibre_accounts"
+              name="Mis Cuentas"
+              parent="menu_mercadolibre_root"
+              action="action_mercadolibre_account"
+              sequence="10"/>
+
+    <!-- Invitaciones -->
+    <menuitem id="menu_mercadolibre_invitations"
+              name="Invitaciones"
+              parent="menu_mercadolibre_root"
+              action="action_mercadolibre_invitation"
+              sequence="20"
+              groups="group_mercadolibre_manager"/>
+
+    <!-- Herramientas -->
+    <menuitem id="menu_mercadolibre_tools"
+              name="Herramientas"
+              parent="menu_mercadolibre_root"
+              sequence="30"/>
+
+    <!-- API Playground -->
+    <menuitem id="menu_mercadolibre_playground"
+              name="API Playground"
+              parent="menu_mercadolibre_tools"
+              action="action_mercadolibre_playground"
+              sequence="10"/>
+
+    <!-- Logs -->
+    <menuitem id="menu_mercadolibre_logs"
+              name="Logs"
+              parent="menu_mercadolibre_tools"
+              action="action_mercadolibre_log"
+              sequence="20"/>
+
+    <!-- Configuración -->
+    <menuitem id="menu_mercadolibre_config"
+              name="Configuración"
+              parent="menu_mercadolibre_root"
+              sequence="90"
+              groups="group_mercadolibre_admin"/>
+
+    <!-- Configuración de Aplicaciones -->
+    <menuitem id="menu_mercadolibre_app_config"
+              name="Aplicaciones ML"
+              parent="menu_mercadolibre_config"
+              action="action_mercadolibre_config"
+              sequence="10"/>
+</odoo>

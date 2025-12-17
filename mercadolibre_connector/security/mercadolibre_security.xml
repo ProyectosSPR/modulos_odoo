@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Categoría -->
+    <record id="module_category_mercadolibre" model="ir.module.category">
+        <field name="name">Mercado Libre</field>
+        <field name="description">Integración con Mercado Libre</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <!-- Grupo: Usuario -->
+    <record id="group_mercadolibre_user" model="res.groups">
+        <field name="name">Usuario</field>
+        <field name="category_id" ref="module_category_mercadolibre"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Puede ver y gestionar sus propias cuentas de Mercado Libre</field>
+    </record>
+
+    <!-- Grupo: Manager -->
+    <record id="group_mercadolibre_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="category_id" ref="module_category_mercadolibre"/>
+        <field name="implied_ids" eval="[(4, ref('group_mercadolibre_user'))]"/>
+        <field name="comment">Puede gestionar todas las cuentas de su empresa y ver tokens</field>
+    </record>
+
+    <!-- Grupo: Administrador -->
+    <record id="group_mercadolibre_admin" model="res.groups">
+        <field name="name">Administrador</field>
+        <field name="category_id" ref="module_category_mercadolibre"/>
+        <field name="implied_ids" eval="[(4, ref('group_mercadolibre_manager'))]"/>
+        <field name="comment">Acceso total a configuración y todas las funcionalidades</field>
+    </record>
+</odoo>

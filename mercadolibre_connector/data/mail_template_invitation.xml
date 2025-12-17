@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Template de Email: Invitación -->
+    <record id="mail_template_invitation" model="mail.template">
+        <field name="name">ML: Invitación para Conectar Cuenta</field>
+        <field name="model_id" ref="model_mercadolibre_invitation"/>
+        <field name="subject">Conecta tu cuenta de Mercado Libre a ${object.company_id.name}</field>
+        <field name="email_from">${(object.company_id.email or user.email_formatted) | safe}</field>
+        <field name="email_to">${object.email}</field>
+        <field name="body_html" type="html">
+<![CDATA[
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #555; width: 100%; border-collapse:separate;">
+    <tr>
+        <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="600" style="padding: 16px; background-color: white; border: 1px solid #e0e0e0;">
+                <!-- Header -->
+                <tr>
+                    <td align="center" style="padding: 20px 0;">
+                        <img src="/logo.png" style="max-height: 60px;" alt="${object.company_id.name}"/>
+                    </td>
+                </tr>
+
+                <!-- Saludo -->
+                <tr>
+                    <td style="padding: 20px;">
+                        <h2 style="color: #333; margin: 0 0 10px 0;">
+                            Hola% if object.recipient_name: ${object.recipient_name}% endif,
+                        </h2>
+                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                            <strong>${object.sent_by.name}</strong> te invita a conectar tu cuenta de Mercado Libre
+                            a <strong>${object.company_id.name}</strong> en Odoo.
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Beneficios -->
+                <tr>
+                    <td style="padding: 0 20px 20px 20px;">
+                        <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                            Esta conexión te permitirá:
+                        </p>
+                        <ul style="font-size: 14px; color: #666; line-height: 1.8;">
+                            <li>Sincronizar automáticamente tus órdenes de venta</li>
+                            <li>Gestionar tu inventario desde Odoo</li>
+                            <li>Responder preguntas de clientes</li>
+                            <li>Generar reportes unificados</li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <!-- Botón de Acción -->
+                <tr>
+                    <td align="center" style="padding: 30px 20px;">
+                        <a href="${object.invitation_url}"
+                           style="background-color: #FFE600; color: #333; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">
+                            Conectar mi cuenta de Mercado Libre
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Info Adicional -->
+                <tr>
+                    <td style="padding: 20px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;">
+                        <p style="font-size: 12px; color: #999; margin: 0;">
+                            <strong>País/Sitio:</strong> ${dict(object.config_id._fields['site_id'].selection).get(object.config_id.site_id)}<br/>
+                            <strong>Este link expira el:</strong> ${format_datetime(object.expires_at, tz='America/Mexico_City', dt_format='dd/MM/yyyy HH:mm')}<br/><br/>
+
+                            Si no solicitaste esta invitación, puedes ignorar este correo de forma segura.
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="padding: 20px; font-size: 12px; color: #999;">
+                        <p style="margin: 0;">
+                            Este correo fue enviado por <strong>${object.company_id.name}</strong><br/>
+                            Powered by <a href="https://www.odoo.com" style="color: #875A7B;">Odoo</a>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+]]>
+        </field>
+    </record>
+</odoo>
