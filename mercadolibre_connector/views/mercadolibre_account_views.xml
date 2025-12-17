@@ -90,7 +90,6 @@
                 <filter string="Conectadas" name="connected" domain="[('state', '=', 'connected')]"/>
                 <filter string="Desconectadas" name="disconnected" domain="[('state', '=', 'disconnected')]"/>
                 <filter string="Con Errores" name="error" domain="[('state', '=', 'error')]"/>
-                <filter string="Con Token Válido" name="valid_token" domain="[('has_valid_token', '=', True)]"/>
                 <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Configuración" name="config" context="{'group_by': 'config_id'}"/>
