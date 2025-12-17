@@ -69,8 +69,8 @@
                 <field name="message"/>
                 <field name="account_id"/>
                 <field name="log_type"/>
-                <filter string="Hoy" name="today" domain="[('create_date', '&gt;=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
-                <filter string="Última Semana" name="week" domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Hoy" name="today" domain="[('create_date', '&gt;=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Última Semana" name="week" domain="[('create_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Errores" name="errors" domain="[('level', '=', 'error')]"/>
                 <filter string="Warnings" name="warnings" domain="[('level', '=', 'warning')]"/>
                 <filter string="Success" name="success" domain="[('level', '=', 'success')]"/>
@@ -87,6 +87,6 @@
         <field name="name">Logs</field>
         <field name="res_model">mercadolibre.log</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_today': 1}</field>
+        <field name="context">{}</field>
     </record>
 </odoo>
