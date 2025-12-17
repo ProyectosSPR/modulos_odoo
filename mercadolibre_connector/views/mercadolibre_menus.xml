@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data>
     <!-- Menú Principal -->
     <menuitem id="menu_mercadolibre_root"
               name="Mercado Libre"
@@ -55,4 +56,5 @@
               parent="menu_mercadolibre_config"
               action="action_mercadolibre_config"
               sequence="10"/>
+    </data>
 </odoo>

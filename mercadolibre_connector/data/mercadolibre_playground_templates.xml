@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Templates predefinidos para el Playground -->
-    <!-- Se pueden agregar registros aquí si se desea cargar templates por defecto -->
+    <data>
+        <!-- Templates predefinidos para el Playground -->
+        <!-- Se pueden agregar registros aquí si se desea cargar templates por defecto -->
+    </data>
 </odoo>

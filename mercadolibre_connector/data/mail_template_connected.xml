@@ -1,26 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Template de Email: Confirmación de Conexión -->
-    <record id="mail_template_connected" model="mail.template">
-        <field name="name">ML: Confirmación de Cuenta Conectada</field>
-        <field name="model_id" ref="model_mercadolibre_invitation"/>
-        <field name="subject">✓ Tu cuenta de Mercado Libre ha sido conectada</field>
-        <field name="email_from">${(object.company_id.email or user.email_formatted) | safe}</field>
-        <field name="email_to">${object.email}</field>
-        <field name="body_html" type="html">
-<![CDATA[
+    <data>
+        <!-- Template de Email: Confirmación de Conexión -->
+        <record id="mail_template_connected" model="mail.template">
+            <field name="name">ML: Confirmación de Cuenta Conectada</field>
+            <field name="model_id" ref="model_mercadolibre_invitation"/>
+            <field name="subject">✓ Tu cuenta de Mercado Libre ha sido conectada</field>
+            <field name="email_from">${(object.company_id.email or user.email_formatted) | safe}</field>
+            <field name="email_to">${object.email}</field>
+            <field name="body_html" type="html"><![CDATA[
 <table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #555; width: 100%; border-collapse:separate;">
     <tr>
         <td align="center">
             <table border="0" cellpadding="0" cellspacing="0" width="600" style="padding: 16px; background-color: white; border: 1px solid #e0e0e0;">
-                <!-- Header -->
                 <tr>
                     <td align="center" style="padding: 20px 0;">
                         <img src="/logo.png" style="max-height: 60px;" alt="${object.company_id.name}"/>
                     </td>
                 </tr>
-
-                <!-- Success Icon -->
                 <tr>
                     <td align="center" style="padding: 20px;">
                         <div style="width: 80px; height: 80px; background-color: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
@@ -28,26 +25,18 @@
                         </div>
                     </td>
                 </tr>
-
-                <!-- Mensaje Principal -->
                 <tr>
                     <td align="center" style="padding: 20px;">
-                        <h2 style="color: #333; margin: 0 0 10px 0;">
-                            ¡Cuenta Conectada Exitosamente!
-                        </h2>
+                        <h2 style="color: #333; margin: 0 0 10px 0;">¡Cuenta Conectada Exitosamente!</h2>
                         <p style="font-size: 16px; line-height: 1.6; color: #555;">
                             Tu cuenta de Mercado Libre <strong>${object.account_id.nickname}</strong>
                             ha sido conectada correctamente a <strong>${object.company_id.name}</strong>.
                         </p>
                     </td>
                 </tr>
-
-                <!-- Detalles -->
                 <tr>
                     <td style="padding: 20px; background-color: #f9f9f9;">
-                        <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">
-                            Detalles de la Conexión:
-                        </h3>
+                        <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">Detalles de la Conexión:</h3>
                         <table width="100%" style="font-size: 14px; color: #666;">
                             <tr>
                                 <td style="padding: 8px 0;"><strong>Nickname:</strong></td>
@@ -68,13 +57,9 @@
                         </table>
                     </td>
                 </tr>
-
-                <!-- Próximos Pasos -->
                 <tr>
                     <td style="padding: 20px;">
-                        <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">
-                            Próximos Pasos:
-                        </h3>
+                        <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">Próximos Pasos:</h3>
                         <ul style="font-size: 14px; color: #666; line-height: 1.8;">
                             <li>Tus órdenes comenzarán a sincronizarse automáticamente</li>
                             <li>El token se refrescará cada 30 minutos de forma automática</li>
@@ -83,8 +68,6 @@
                         </ul>
                     </td>
                 </tr>
-
-                <!-- Footer -->
                 <tr>
                     <td align="center" style="padding: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999;">
                         <p style="margin: 0;">
@@ -97,7 +80,7 @@
         </td>
     </tr>
 </table>
-]]>
-        </field>
-    </record>
+            ]]></field>
+        </record>
+    </data>
 </odoo>
