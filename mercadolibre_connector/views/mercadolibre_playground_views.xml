@@ -216,7 +216,7 @@
                                 <field name="response_headers" readonly="1" widget="ace" options="{'mode': 'json'}"/>
                             </page>
                             <page string="Raw" name="response_raw">
-                                <field name="response_body_raw" readonly="1"/>
+                                <field name="response_body_raw" readonly="1" widget="ace" options="{'mode': 'json'}"/>
                             </page>
                         </notebook>
                     </div>

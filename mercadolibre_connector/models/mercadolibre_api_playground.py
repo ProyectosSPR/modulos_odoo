@@ -244,15 +244,19 @@ class MercadolibreApiPlayground(models.Model):
             _logger.info('Headers: %s', json.dumps(dict(response.headers), indent=2))
 
             # Intenta parsear JSON
+            response_raw_formatted = response.text
             try:
                 response_data = response.json()
                 response_body_formatted = json.dumps(response_data, indent=2, ensure_ascii=False)
+                # También formatea el raw para mejor visualización
+                response_raw_formatted = json.dumps(response_data, indent=2, ensure_ascii=False)
                 _logger.info('Response Body (JSON):')
                 _logger.info(response_body_formatted[:2000])  # Primeros 2000 chars
                 if len(response_body_formatted) > 2000:
                     _logger.info('... (truncado, total: %d chars)', len(response_body_formatted))
             except json.JSONDecodeError:
                 response_body_formatted = response.text
+                response_raw_formatted = response.text
                 _logger.info('Response Body (Text): %s', response.text[:500])
 
             # Guarda en el log del sistema
@@ -277,7 +281,7 @@ class MercadolibreApiPlayground(models.Model):
                 'state': 'success' if is_success else 'error',
                 'response_code': response.status_code,
                 'response_body': response_body_formatted,
-                'response_body_raw': response.text,
+                'response_body_raw': response_raw_formatted,
                 'response_headers': json.dumps(dict(response.headers), indent=2),
                 'response_size': self._format_size(len(response.content)),
                 'error_message': False if is_success else f'HTTP {response.status_code}',
