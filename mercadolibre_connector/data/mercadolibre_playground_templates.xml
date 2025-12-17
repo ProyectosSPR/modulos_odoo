@@ -1,3 +1,16 @@
-<?xml version="1.0" ?>
-<odoo>
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="playground_template_get_user" model="mercadolibre.api.playground">
+        <field name="name">Get User Info</field>
+        <field name="endpoint">/users/me</field>
+        <field name="method">GET</field>
+        <field name="notes">Obtiene información del usuario autenticado</field>
+    </record>
+    <record id="playground_template_search_items" model="mercadolibre.api.playground">
+        <field name="name">Search Items</field>
+        <field name="endpoint">/sites/MLM/search</field>
+        <field name="method">GET</field>
+        <field name="request_params">{"q": "iphone", "limit": 10}</field>
+        <field name="notes">Busca publicaciones en MercadoLibre México</field>
+    </record>
 </odoo>

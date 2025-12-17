@@ -1,107 +1,113 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_mercadolibre_playground_tree" model="ir.ui.view">
+    <record id="view_mercadolibre_api_playground_tree" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.tree</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
-            <tree string="API Playground">
+            <tree string="API Playground" decoration-success="state=='success'" decoration-danger="state=='error'">
                 <field name="name"/>
                 <field name="account_id"/>
-                <field name="http_method"/>
+                <field name="method"/>
                 <field name="endpoint"/>
-                <field name="category"/>
-                <field name="status_badge"/>
-                <field name="last_executed_at"/>
-                <field name="is_favorite" widget="boolean_favorite" nolabel="1"/>
+                <field name="response_code"/>
+                <field name="execution_time"/>
+                <field name="executed_at"/>
+                <field name="state"/>
             </tree>
         </field>
     </record>
-    <record id="view_mercadolibre_playground_form" model="ir.ui.view">
+    <record id="view_mercadolibre_api_playground_form" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.form</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
             <form string="API Playground">
                 <header>
-                    <button name="action_execute" string="Ejecutar Request" type="object" class="oe_highlight"/>
-                    <button name="action_duplicate" string="Duplicar" type="object"/>
-                    <button name="action_toggle_favorite" string="⭐ Favorito" type="object" class="btn-link"/>
+                    <button name="action_execute" type="object" string="Ejecutar" class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_reset" type="object" string="Resetear" attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button name="action_duplicate" type="object" string="Duplicar"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,success"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <label for="name"/>
+                        <label for="name" class="oe_edit_only"/>
                         <h1>
-                            <field name="name" placeholder="ej: Obtener info de usuario"/>
+                            <field name="name" placeholder="Nombre del request"/>
                         </h1>
                     </div>
                     <group>
                         <group>
-                            <field name="account_id"/>
-                            <field name="category"/>
-                            <field name="auto_auth"/>
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
-                            <field name="last_status_code" readonly="1"/>
-                            <field name="execution_time" readonly="1" widget="float_time"/>
-                            <field name="last_executed_at" readonly="1"/>
-                        </group>
-                    </group>
-                    <group string="Request Configuration">
-                        <group>
-                            <label for="http_method"/>
-                            <div class="o_row">
-                                <field name="http_method" widget="radio" options="{'horizontal': true}"/>
-                            </div>
+                            <field name="method"/>
                             <field name="endpoint" placeholder="/users/me"/>
-                            <field name="full_url" readonly="1"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Body">
-                            <field name="body" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;key&quot;: &quot;value&quot;}"/>
-                        </page>
-                        <page string="Headers">
-                            <field name="headers" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;X-Custom-Header&quot;: &quot;value&quot;}"/>
-                        </page>
-                        <page string="Query Params">
-                            <field name="query_params" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;limit&quot;: 50, &quot;offset&quot;: 0}"/>
-                        </page>
-                        <page string="Response" attrs="{'invisible': [('last_response', '=', False)]}">
+                        <page string="Request" name="request">
                             <group>
-                                <field name="last_response" widget="ace" options="{'mode': 'json', 'readOnly': true}" nolabel="1"/>
+                                <field name="request_params" widget="ace" options="{'mode': 'json'}" placeholder='{"q": "iphone", "limit": 10}'/>
+                                <field name="request_body" widget="ace" options="{'mode': 'json'}" placeholder='{"title": "Mi producto", "price": 100}' attrs="{'invisible': [('method', 'not in', ['POST', 'PUT'])]}"/>
+                                <field name="custom_headers" widget="ace" options="{'mode': 'json'}" placeholder='{"X-Custom-Header": "value"}'/>
                             </group>
                         </page>
-                        <page string="Notas">
-                            <field name="notes" placeholder="Notas sobre este endpoint..." nolabel="1"/>
+                        <page string="Response" name="response" attrs="{'invisible': [('state', '=', 'draft')]}">
+                            <group>
+                                <group>
+                                    <field name="response_code"/>
+                                    <field name="execution_time"/>
+                                    <field name="executed_at"/>
+                                </group>
+                            </group>
+                            <group string="Response Body" attrs="{'invisible': [('response_body', '=', False)]}">
+                                <field name="response_body" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                            </group>
+                            <group string="Response Headers" attrs="{'invisible': [('response_headers', '=', False)]}">
+                                <field name="response_headers" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                            </group>
+                            <group string="Error" attrs="{'invisible': [('error_message', '=', False)]}">
+                                <field name="error_message" nolabel="1"/>
+                            </group>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" nolabel="1" placeholder="Documentación o notas sobre este request..."/>
                         </page>
                     </notebook>
                 </sheet>
             </form>
         </field>
     </record>
-    <record id="view_mercadolibre_playground_search" model="ir.ui.view">
+    <record id="view_mercadolibre_api_playground_search" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.search</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
-            <search>
+            <search string="API Playground">
                 <field name="name"/>
-                <field name="endpoint"/>
                 <field name="account_id"/>
-                <filter name="favorites" string="Favoritos" domain="[('is_favorite', '=', True)]"/>
-                <separator/>
-                <filter name="get" string="GET" domain="[('http_method', '=', 'GET')]"/>
-                <filter name="post" string="POST" domain="[('http_method', '=', 'POST')]"/>
-                <separator/>
-                <group expand="0" string="Agrupar Por">
-                    <filter name="group_category" string="Categoría" context="{'group_by': 'category'}"/>
-                    <filter name="group_account" string="Cuenta" context="{'group_by': 'account_id'}"/>
-                    <filter name="group_method" string="Método" context="{'group_by': 'http_method'}"/>
+                <field name="endpoint"/>
+                <filter string="Borradores" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Exitosos" name="success" domain="[('state', '=', 'success')]"/>
+                <filter string="Con Errores" name="error" domain="[('state', '=', 'error')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Método" name="method" context="{'group_by': 'method'}"/>
+                    <filter string="Estado" name="state" context="{'group_by': 'state'}"/>
                 </group>
             </search>
         </field>
     </record>
-    <record id="action_mercadolibre_playground" model="ir.actions.act_window">
+    <record id="action_mercadolibre_api_playground" model="ir.actions.act_window">
         <field name="name">API Playground</field>
         <field name="res_model">mercadolibre.api.playground</field>
         <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un nuevo request API
+            </p>
+            <p>
+                Prueba endpoints de la API de MercadoLibre con tus cuentas conectadas.
+            </p>
+        </field>
     </record>
 </odoo>

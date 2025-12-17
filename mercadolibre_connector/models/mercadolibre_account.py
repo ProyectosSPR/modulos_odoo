@@ -2,16 +2,12 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
-import logging
-
-_logger = logging.getLogger(__name__)
 
 
-class MercadoLibreAccount(models.Model):
+class MercadolibreAccount(models.Model):
     _name = 'mercadolibre.account'
-    _description = 'Cuenta de Mercado Libre'
+    _description = 'Cuenta MercadoLibre'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'company_id, nickname'
 
     name = fields.Char(
         string='Nombre',
@@ -27,75 +23,34 @@ class MercadoLibreAccount(models.Model):
     )
     company_id = fields.Many2one(
         'res.company',
-        string='Empresa',
+        string='Compañía',
         related='config_id.company_id',
         store=True,
         readonly=True
     )
     ml_user_id = fields.Char(
-        string='ID Usuario ML',
+        string='ML User ID',
         required=True,
         readonly=True,
         tracking=True,
-        help='ID de usuario en Mercado Libre'
+        help='ID de usuario de MercadoLibre'
     )
-    nickname = fields.Char(
+    ml_nickname = fields.Char(
         string='Nickname',
         readonly=True,
-        tracking=True
+        help='Nickname del usuario en MercadoLibre'
     )
-    email = fields.Char(
-        string='Email',
-        readonly=True
-    )
-    site_id = fields.Char(
-        string='Sitio',
+    ml_email = fields.Char(
+        string='Email ML',
         readonly=True,
-        help='MLM, MLA, MLB, etc'
+        help='Email del usuario en MercadoLibre'
     )
-    account_type = fields.Selection(
-        selection=[
-            ('personal', 'Personal'),
-            ('official_store', 'Tienda Oficial'),
-            ('brand', 'Marca'),
-        ],
-        string='Tipo de Cuenta',
+    ml_first_name = fields.Char(
+        string='Nombre',
         readonly=True
     )
-    points = fields.Integer(
-        string='Puntos de Reputación',
-        readonly=True
-    )
-    status = fields.Selection(
-        selection=[
-            ('active', 'Activa'),
-            ('inactive', 'Inactiva'),
-        ],
-        string='Estado en ML',
-        default='active',
-        readonly=True
-    )
-    permalink = fields.Char(
-        string='Link a Perfil',
-        readonly=True
-    )
-    thumbnail = fields.Char(
-        string='Logo URL',
-        readonly=True
-    )
-    is_authorized = fields.Boolean(
-        string='Autorizada',
-        compute='_compute_is_authorized',
-        store=True,
-        tracking=True
-    )
-    authorization_date = fields.Datetime(
-        string='Fecha de Autorización',
-        readonly=True,
-        tracking=True
-    )
-    last_sync = fields.Datetime(
-        string='Última Sincronización',
+    ml_last_name = fields.Char(
+        string='Apellido',
         readonly=True
     )
     active = fields.Boolean(
@@ -103,160 +58,104 @@ class MercadoLibreAccount(models.Model):
         default=True,
         tracking=True
     )
+    state = fields.Selection([
+        ('draft', 'Borrador'),
+        ('connected', 'Conectado'),
+        ('disconnected', 'Desconectado'),
+        ('error', 'Error')
+    ], string='Estado', default='draft', required=True, tracking=True)
 
-    # Relaciones
-    token_id = fields.One2many(
+    token_ids = fields.One2many(
         'mercadolibre.token',
         'account_id',
-        string='Token',
-        limit=1
+        string='Tokens'
     )
-    token_health = fields.Selection(
-        related='token_id.health_status',
-        string='Estado del Token',
-        store=False
+    current_token_id = fields.Many2one(
+        'mercadolibre.token',
+        string='Token Actual',
+        compute='_compute_current_token',
+        help='Token activo más reciente'
     )
-
-    # Timestamps
-    created_at = fields.Datetime(
-        string='Creado el',
-        default=fields.Datetime.now,
-        readonly=True
+    has_valid_token = fields.Boolean(
+        string='Token Válido',
+        compute='_compute_current_token'
     )
-    updated_at = fields.Datetime(
-        string='Actualizado el',
-        default=fields.Datetime.now,
-        readonly=True
+    notes = fields.Text(
+        string='Notas'
     )
 
     _sql_constraints = [
-        ('unique_company_user', 'UNIQUE(company_id, ml_user_id)',
-         'Esta cuenta de ML ya está conectada a esta empresa')
+        ('ml_user_id_config_uniq', 'unique(ml_user_id, config_id)',
+         'Esta cuenta de MercadoLibre ya está registrada en esta configuración.')
     ]
 
-    @api.depends('nickname', 'ml_user_id')
+    @api.depends('ml_nickname', 'ml_user_id')
     def _compute_name(self):
         for record in self:
-            if record.nickname:
-                record.name = f"{record.nickname} ({record.ml_user_id})"
+            if record.ml_nickname:
+                record.name = record.ml_nickname
+            elif record.ml_user_id:
+                record.name = f'ML-{record.ml_user_id}'
             else:
-                record.name = record.ml_user_id or 'Nueva Cuenta'
+                record.name = 'Nueva Cuenta'
 
-    @api.depends('token_id', 'token_id.is_expired')
-    def _compute_is_authorized(self):
+    @api.depends('token_ids', 'token_ids.active', 'token_ids.expires_at')
+    def _compute_current_token(self):
         for record in self:
-            if record.token_id:
-                token = record.token_id[0] if isinstance(record.token_id, list) else record.token_id
-                record.is_authorized = not token.is_expired
+            valid_token = record.token_ids.filtered(
+                lambda t: t.active and t.is_valid
+            ).sorted(key=lambda t: t.expires_at, reverse=True)
+
+            if valid_token:
+                record.current_token_id = valid_token[0]
+                record.has_valid_token = True
             else:
-                record.is_authorized = False
+                record.current_token_id = False
+                record.has_valid_token = False
 
-    def write(self, vals):
-        result = super(MercadoLibreAccount, self).write(vals)
-        self.updated_at = fields.Datetime.now()
-        return result
-
-    def action_authorize(self):
-        """Iniciar proceso de autorización OAuth"""
+    def get_valid_token(self):
+        """Obtiene un token válido, refrescándolo si es necesario"""
         self.ensure_one()
 
-        if not self.config_id:
-            raise ValidationError(_('Debe seleccionar una configuración antes de autorizar'))
+        if not self.current_token_id:
+            raise ValidationError(_('No hay token disponible para esta cuenta.'))
 
-        # Generar URL de autorización
-        import secrets
-        state_token = secrets.token_urlsafe(32)
+        token = self.current_token_id
 
-        # Guardar state en sesión (temporal)
-        self.env.cr.execute("""
-            INSERT INTO ir_config_parameter (key, value, create_uid, create_date, write_uid, write_date)
-            VALUES (%s, %s, %s, NOW(), %s, NOW())
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, write_date = NOW()
-        """, (f'ml_state_{state_token}', str(self.id), self.env.uid, self.env.uid))
-
-        auth_url = (
-            f"{self.config_id.auth_url}"
-            f"?response_type=code"
-            f"&client_id={self.config_id.client_id}"
-            f"&redirect_uri={self.config_id.redirect_uri}"
-            f"&state={state_token}"
-        )
-
-        return {
-            'type': 'ir.actions.act_url',
-            'url': auth_url,
-            'target': 'self',
-        }
-
-    def action_refresh_token(self):
-        """Refrescar token manualmente"""
-        self.ensure_one()
-
-        if not self.token_id:
-            raise ValidationError(_('Esta cuenta no tiene un token configurado'))
-
-        try:
-            token = self.token_id[0] if isinstance(self.token_id, list) else self.token_id
+        # Si el token está próximo a expirar (menos de 1 hora), refrescarlo
+        if token.is_expiring_soon():
             token._refresh_token()
+            token = self.current_token_id
 
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Token Refrescado'),
-                    'message': _('El token se refrescó correctamente'),
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-        except Exception as e:
-            _logger.error(f"Error refrescando token: {str(e)}")
-            raise ValidationError(_('Error al refrescar token: %s') % str(e))
+        if not token.is_valid:
+            raise ValidationError(_('No se pudo obtener un token válido.'))
 
-    def action_sync_user_info(self):
-        """Sincronizar información del usuario desde ML"""
+        return token.access_token
+
+    def action_disconnect(self):
+        """Desconecta la cuenta"""
+        for record in self:
+            record.token_ids.write({'active': False})
+            record.state = 'disconnected'
+            record.message_post(body=_('Cuenta desconectada'))
+
+    def action_reconnect(self):
+        """Genera una nueva invitación para reconectar"""
         self.ensure_one()
+        invitation = self.env['mercadolibre.invitation'].create({
+            'config_id': self.config_id.id,
+            'email': self.ml_email or '',
+            'notes': f'Reconexión de cuenta {self.name}'
+        })
+        invitation.action_send()
 
-        http = self.env['mercadolibre.http']
-        result = http._request(
-            account_id=self.id,
-            endpoint='/users/me',
-            method='GET'
-        )
-
-        if result['success']:
-            user_data = result['data']
-            self.write({
-                'nickname': user_data.get('nickname'),
-                'email': user_data.get('email'),
-                'site_id': user_data.get('site_id'),
-                'points': user_data.get('points', 0),
-                'permalink': user_data.get('permalink'),
-                'thumbnail': user_data.get('thumbnail', {}).get('picture_url') if isinstance(user_data.get('thumbnail'), dict) else user_data.get('thumbnail'),
-                'last_sync': fields.Datetime.now(),
-            })
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Sincronizado'),
-                    'message': _('Información actualizada desde Mercado Libre'),
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-        else:
-            raise ValidationError(_('Error al sincronizar: %s') % result['error'])
-
-    def action_view_logs(self):
-        """Ver logs de esta cuenta"""
-        self.ensure_one()
         return {
-            'name': _('Logs de %s') % self.name,
-            'type': 'ir.actions.act_window',
-            'res_model': 'mercadolibre.log',
-            'view_mode': 'tree,form',
-            'domain': [('account_id', '=', self.id)],
-            'context': {'default_account_id': self.id},
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Invitación Enviada'),
+                'message': _('Se ha enviado una nueva invitación de autorización.'),
+                'type': 'success',
+                'sticky': False,
+            }
         }

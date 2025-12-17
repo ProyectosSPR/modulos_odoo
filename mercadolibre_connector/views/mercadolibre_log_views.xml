@@ -1,18 +1,18 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_mercadolibre_log_tree" model="ir.ui.view">
         <field name="name">mercadolibre.log.tree</field>
         <field name="model">mercadolibre.log</field>
         <field name="arch" type="xml">
-            <tree string="Logs" create="false" edit="false">
-                <field name="created_at"/>
-                <field name="level" widget="badge" decoration-info="level == 'debug'" decoration-success="level == 'info'" decoration-warning="level == 'warning'" decoration-danger="level in ['error', 'critical']"/>
+            <tree string="Logs" decoration-success="level=='success'" decoration-danger="level=='error'" decoration-warning="level=='warning'" decoration-info="level=='info'" create="false" edit="false">
+                <field name="create_date"/>
                 <field name="log_type"/>
-                <field name="operation"/>
-                <field name="short_message"/>
+                <field name="level"/>
                 <field name="account_id"/>
-                <field name="status_code"/>
-                <field name="response_time"/>
+                <field name="message"/>
+                <field name="request_method"/>
+                <field name="response_code"/>
+                <field name="duration"/>
             </tree>
         </field>
     </record>
@@ -20,52 +20,41 @@
         <field name="name">mercadolibre.log.form</field>
         <field name="model">mercadolibre.log</field>
         <field name="arch" type="xml">
-            <form string="Log" create="false" edit="false">
+            <form string="Log MercadoLibre" create="false" edit="false" delete="false">
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_view_details" type="object" class="oe_stat_button" icon="fa-info-circle">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Ver</span>
-                                <span class="o_stat_text">Detalles</span>
-                            </div>
-                        </button>
-                    </div>
                     <group>
                         <group>
-                            <field name="created_at"/>
-                            <field name="level" widget="badge"/>
+                            <field name="create_date"/>
                             <field name="log_type"/>
-                            <field name="operation"/>
+                            <field name="level"/>
                             <field name="account_id"/>
-                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
-                            <field name="endpoint"/>
-                            <field name="http_method"/>
-                            <field name="status_code"/>
-                            <field name="response_time"/>
-                            <field name="ip_address"/>
+                            <field name="request_method"/>
+                            <field name="request_url" widget="url"/>
+                            <field name="response_code"/>
+                            <field name="duration"/>
                         </group>
                     </group>
                     <group string="Mensaje">
                         <field name="message" nolabel="1"/>
                     </group>
                     <notebook>
-                        <page string="Request">
+                        <page string="Request" name="request">
                             <group>
-                                <field name="request_headers" widget="text"/>
-                                <field name="request_body" widget="text"/>
+                                <field name="request_headers" nolabel="1"/>
+                                <field name="request_body" nolabel="1"/>
                             </group>
                         </page>
-                        <page string="Response">
-                            <field name="response_body" widget="text"/>
-                        </page>
-                        <page string="Error" attrs="{'invisible': [('level', 'not in', ['error', 'critical'])]}">
+                        <page string="Response" name="response">
                             <group>
-                                <field name="error_code"/>
-                                <field name="error_message" widget="text"/>
-                                <field name="stack_trace" widget="text"/>
+                                <field name="response_headers" nolabel="1"/>
+                                <field name="response_body" nolabel="1"/>
                             </group>
+                        </page>
+                        <page string="Error" name="error" attrs="{'invisible': [('error_details', '=', False)]}">
+                            <field name="error_details" nolabel="1"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -76,22 +65,20 @@
         <field name="name">mercadolibre.log.search</field>
         <field name="model">mercadolibre.log</field>
         <field name="arch" type="xml">
-            <search>
-                <field name="operation"/>
+            <search string="Logs">
                 <field name="message"/>
                 <field name="account_id"/>
-                <filter name="today" string="Hoy" domain="[('created_at', '&gt;=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
-                <filter name="errors" string="Errores" domain="[('level', 'in', ['error', 'critical'])]"/>
-                <filter name="warnings" string="Advertencias" domain="[('level', '=', 'warning')]"/>
-                <separator/>
-                <filter name="api_requests" string="API Requests" domain="[('log_type', 'in', ['api_request', 'api_response'])]"/>
-                <filter name="token_refresh" string="Token Refresh" domain="[('log_type', '=', 'token_refresh')]"/>
-                <separator/>
-                <group expand="0" string="Agrupar Por">
-                    <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
-                    <filter name="group_type" string="Tipo" context="{'group_by': 'log_type'}"/>
-                    <filter name="group_account" string="Cuenta" context="{'group_by': 'account_id'}"/>
-                    <filter name="group_date" string="Fecha" context="{'group_by': 'created_at:day'}"/>
+                <field name="log_type"/>
+                <filter string="Hoy" name="today" domain="[('create_date', '&gt;=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
+                <filter string="Última Semana" name="week" domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Errores" name="errors" domain="[('level', '=', 'error')]"/>
+                <filter string="Warnings" name="warnings" domain="[('level', '=', 'warning')]"/>
+                <filter string="Success" name="success" domain="[('level', '=', 'success')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Tipo" name="log_type" context="{'group_by': 'log_type'}"/>
+                    <filter string="Nivel" name="level" context="{'group_by': 'level'}"/>
+                    <filter string="Cuenta" name="account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Fecha" name="date" context="{'group_by': 'create_date:day'}"/>
                 </group>
             </search>
         </field>

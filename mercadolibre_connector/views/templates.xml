@@ -1,148 +1,44 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="oauth_success" name="Conexión Exitosa">
+    <template id="oauth_success" name="MercadoLibre OAuth Success">
         <t t-call="web.layout">
             <div class="container mt-5">
                 <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-success" role="alert">
-                            <h1 class="display-4">✓ Cuenta Conectada</h1>
+                    <div class="col-md-8">
+                        <div class="alert alert-success text-center" role="alert">
+                            <h1 class="display-4">¡Conexión Exitosa!</h1>
                             <hr/>
-                            <p class="lead">
-                                    Tu cuenta de Mercado Libre 
-                                <strong t-esc="account.nickname"/>
-                                 ha sido conectada exitosamente.
-                            </p>
+                            <p class="lead">Tu cuenta de MercadoLibre ha sido conectada correctamente.</p>
                             <div class="mt-4">
-                                <table class="table table-bordered mx-auto" style="max-width: 500px;">
-                                    <tr>
-                                        <th>Nickname:</th>
-                                        <td t-esc="account.nickname"/>
-                                    </tr>
-                                    <tr>
-                                        <th>ID Usuario:</th>
-                                        <td t-esc="account.ml_user_id"/>
-                                    </tr>
-                                    <tr>
-                                        <th>Sitio:</th>
-                                        <td t-esc="account.site_id"/>
-                                    </tr>
-                                </table>
+                                <h5>Detalles de la cuenta:</h5>
+                                <ul class="list-unstyled">
+                                    <li><strong>Nickname:</strong> <t t-esc="account.ml_nickname"/></li>
+                                    <li><strong>Email:</strong> <t t-esc="account.ml_email"/></li>
+                                    <li><strong>User ID:</strong> <t t-esc="account.ml_user_id"/></li>
+                                </ul>
                             </div>
-                            <div class="mt-4">
-                                <p>Ya puedes cerrar esta ventana.</p>
-                            </div>
+                            <p class="mt-4">Puedes cerrar esta ventana.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </t>
     </template>
-    <template id="oauth_error" name="Error en la Conexión">
+    <template id="oauth_error" name="MercadoLibre OAuth Error">
         <t t-call="web.layout">
             <div class="container mt-5">
                 <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-danger" role="alert">
-                            <h1 class="display-4">✗ Error en la Conexión</h1>
+                    <div class="col-md-8">
+                        <div class="alert alert-danger text-center" role="alert">
+                            <h1 class="display-4">Error en la Conexión</h1>
                             <hr/>
-                            <p class="lead">
-                                    No se pudo conectar tu cuenta de Mercado Libre.
-                                </p>
+                            <p class="lead">Hubo un problema al conectar tu cuenta de MercadoLibre.</p>
                             <div class="mt-4">
-                                <p>
-                                    <strong>Error:</strong>
-                                    <span t-esc="error"/>
-                                </p>
-                                <p>
-                                    <small class="text-muted" t-esc="error_description"/>
-                                </p>
+                                <h5>Detalles del error:</h5>
+                                <p><strong>Código:</strong> <t t-esc="error"/></p>
+                                <p><strong>Descripción:</strong> <t t-esc="error_description"/></p>
                             </div>
-                            <div class="mt-4">
-                                <p>Por favor, contacta a tu administrador o intenta nuevamente.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </t>
-    </template>
-    <template id="invitation_not_found" name="Invitación No Encontrada">
-        <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-warning" role="alert">
-                            <h1 class="display-4">⚠ Invitación No Encontrada</h1>
-                            <hr/>
-                            <p class="lead">
-                                    El link de invitación no es válido o ha sido eliminado.
-                                </p>
-                            <div class="mt-4">
-                                <p>Por favor, solicita una nueva invitación a tu administrador.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </t>
-    </template>
-    <template id="invitation_already_used" name="Invitación Ya Utilizada">
-        <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-info" role="alert">
-                            <h1 class="display-4">ℹ Invitación Ya Utilizada</h1>
-                            <hr/>
-                            <p class="lead">
-                                    Esta invitación ya fue utilizada y la cuenta está conectada.
-                                </p>
-                            <div class="mt-4">
-                                <p>Tu cuenta ya está activa en el sistema.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </t>
-    </template>
-    <template id="invitation_expired" name="Invitación Expirada">
-        <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-warning" role="alert">
-                            <h1 class="display-4">⏱ Invitación Expirada</h1>
-                            <hr/>
-                            <p class="lead">
-                                    Esta invitación expiró el 
-                                <t t-esc="invitation.expires_at"/>
-                                .
-                            </p>
-                            <div class="mt-4">
-                                <p>Por favor, solicita una nueva invitación a tu administrador.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </t>
-    </template>
-    <template id="invitation_cancelled" name="Invitación Cancelada">
-        <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8 text-center">
-                        <div class="alert alert-secondary" role="alert">
-                            <h1 class="display-4">⊗ Invitación Cancelada</h1>
-                            <hr/>
-                            <p class="lead">
-                                    Esta invitación fue cancelada.
-                                </p>
-                            <div class="mt-4">
-                                <p>Si necesitas conectar tu cuenta, solicita una nueva invitación.</p>
-                            </div>
+                            <p class="mt-4">Por favor, contacta a tu administrador o intenta nuevamente.</p>
                         </div>
                     </div>
                 </div>

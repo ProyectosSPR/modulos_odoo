@@ -1,16 +1,17 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_mercadolibre_account_tree" model="ir.ui.view">
         <field name="name">mercadolibre.account.tree</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
-            <tree string="Cuentas ML">
-                <field name="nickname"/>
+            <tree string="Cuentas MercadoLibre" decoration-success="state=='connected'" decoration-danger="state=='error'" decoration-muted="state=='disconnected'">
+                <field name="name"/>
                 <field name="ml_user_id"/>
-                <field name="site_id"/>
+                <field name="ml_email"/>
+                <field name="config_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="is_authorized"/>
-                <field name="token_health" widget="badge" decoration-success="token_health == 'healthy'" decoration-warning="token_health == 'warning'" decoration-danger="token_health == 'critical'"/>
+                <field name="state"/>
+                <field name="has_valid_token"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -19,57 +20,53 @@
         <field name="name">mercadolibre.account.form</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
-            <form string="Cuenta ML">
+            <form string="Cuenta MercadoLibre">
                 <header>
-                    <button name="action_authorize" string="Conectar Cuenta" type="object" class="oe_highlight" attrs="{'invisible': [('is_authorized', '=', True)]}"/>
-                    <button name="action_refresh_token" string="Refrescar Token" type="object" class="btn-warning" attrs="{'invisible': [('is_authorized', '=', False)]}"/>
-                    <button name="action_sync_user_info" string="Sincronizar Info" type="object"/>
-                    <button name="action_view_logs" string="Ver Logs" type="object"/>
+                    <button name="action_reconnect" type="object" string="Reconectar" class="btn-primary" attrs="{'invisible': [('state', '=', 'connected')]}"/>
+                    <button name="action_disconnect" type="object" string="Desconectar" confirm="¿Desconectar esta cuenta?" attrs="{'invisible': [('state', 'not in', ['connected'])]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,connected"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
-                    <widget name="web_ribbon" title="No Autorizado" bg_color="bg-warning" attrs="{'invisible': [('is_authorized', '=', True)]}"/>
-                    <field name="thumbnail" widget="image" class="oe_avatar"/>
                     <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
                         <h1>
-                            <field name="nickname" readonly="1"/>
+                            <field name="name"/>
                         </h1>
-                        <h3>
-                            <field name="ml_user_id" readonly="1"/>
-                        </h3>
                     </div>
                     <group>
                         <group>
                             <field name="config_id"/>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="email" readonly="1"/>
-                            <field name="site_id" readonly="1"/>
+                            <field name="ml_user_id"/>
+                            <field name="ml_nickname"/>
                         </group>
                         <group>
-                            <field name="account_type" readonly="1"/>
-                            <field name="points" readonly="1"/>
-                            <field name="status" readonly="1"/>
-                            <field name="authorization_date" readonly="1"/>
-                            <field name="last_sync" readonly="1"/>
+                            <field name="ml_email"/>
+                            <field name="ml_first_name"/>
+                            <field name="ml_last_name"/>
                             <field name="active"/>
                         </group>
                     </group>
+                    <group string="Token Actual">
+                        <field name="current_token_id" readonly="1"/>
+                        <field name="has_valid_token"/>
+                    </group>
                     <notebook>
-                        <page string="Token" groups="mercadolibre_connector.group_mercadolibre_manager">
-                            <group>
-                                <group>
-                                    <field name="token_health" widget="badge" decoration-success="token_health == 'healthy'" decoration-warning="token_health == 'warning'" decoration-danger="token_health == 'critical'"/>
-                                </group>
-                            </group>
-                            <field name="token_id">
-                                <tree>
+                        <page string="Tokens" name="tokens">
+                            <field name="token_ids" readonly="1">
+                                <tree decoration-success="is_valid==True" decoration-muted="active==False">
+                                    <field name="create_date" string="Creado"/>
                                     <field name="expires_at"/>
-                                    <field name="minutes_to_expire"/>
-                                    <field name="is_expired"/>
-                                    <field name="health_status" widget="badge"/>
+                                    <field name="is_valid"/>
                                     <field name="refresh_count"/>
+                                    <field name="last_refresh_date"/>
+                                    <field name="active"/>
                                 </tree>
                             </field>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" placeholder="Notas adicionales..."/>
                         </page>
                     </notebook>
                 </sheet>
@@ -81,45 +78,40 @@
             </form>
         </field>
     </record>
-    <record id="view_mercadolibre_account_kanban" model="ir.ui.view">
-        <field name="name">mercadolibre.account.kanban</field>
+    <record id="view_mercadolibre_account_search" model="ir.ui.view">
+        <field name="name">mercadolibre.account.search</field>
         <field name="model">mercadolibre.account</field>
         <field name="arch" type="xml">
-            <kanban class="o_kanban_mobile">
-                <field name="nickname"/>
+            <search string="Cuentas">
+                <field name="name"/>
                 <field name="ml_user_id"/>
-                <field name="site_id"/>
-                <field name="is_authorized"/>
-                <field name="token_health"/>
-                <field name="thumbnail"/>
-                <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click">
-                            <div class="o_kanban_image">
-                                <img t-att-src="kanban_image('mercadolibre.account', 'thumbnail', record.id.raw_value)" alt="Avatar"/>
-                            </div>
-                            <div class="oe_kanban_details">
-                                <strong class="o_kanban_record_title">
-                                    <field name="nickname"/>
-                                </strong>
-                                <div class="o_kanban_record_subtitle">
-                                    <field name="ml_user_id"/>
-                                </div>
-                                <div class="oe_kanban_bottom_left">
-                                    <span class="badge badge-pill" t-att-class="record.token_health.raw_value == 'healthy' ? 'badge-success' : record.token_health.raw_value == 'warning' ? 'badge-warning' : 'badge-danger'">
-                                        <field name="token_health"/>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </t>
-                </templates>
-            </kanban>
+                <field name="ml_email"/>
+                <field name="config_id"/>
+                <filter string="Conectadas" name="connected" domain="[('state', '=', 'connected')]"/>
+                <filter string="Desconectadas" name="disconnected" domain="[('state', '=', 'disconnected')]"/>
+                <filter string="Con Errores" name="error" domain="[('state', '=', 'error')]"/>
+                <filter string="Con Token Válido" name="valid_token" domain="[('has_valid_token', '=', True)]"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Configuración" name="config" context="{'group_by': 'config_id'}"/>
+                    <filter string="Estado" name="state" context="{'group_by': 'state'}"/>
+                    <filter string="Compañía" name="company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
     <record id="action_mercadolibre_account" model="ir.actions.act_window">
-        <field name="name">Mis Cuentas ML</field>
+        <field name="name">Cuentas ML</field>
         <field name="res_model">mercadolibre.account</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1, 'search_default_connected': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay cuentas de MercadoLibre conectadas
+            </p>
+            <p>
+                Las cuentas se crean automáticamente cuando un usuario autoriza el acceso a través de una invitación.
+            </p>
+        </field>
     </record>
 </odoo>

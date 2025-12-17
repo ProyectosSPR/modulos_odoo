@@ -1,262 +1,193 @@
 # -*- coding: utf-8 -*-
 
-from odoo import http, _
-from odoo.http import request
 import requests
 import logging
+from datetime import datetime, timedelta
+from odoo import http, _
+from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 
 
-class MercadoLibreController(http.Controller):
+class MercadolibreController(http.Controller):
 
     @http.route('/mercadolibre/callback', type='http', auth='user', website=True, csrf=False)
     def oauth_callback(self, code=None, state=None, error=None, **kwargs):
         """
-        Callback de OAuth después de que el usuario autoriza en Mercado Libre.
+        Callback de OAuth de MercadoLibre.
 
-        Params:
-            code: Authorization code de ML
-            state: Token de seguridad (puede ser state o invitation_token)
-            error: Si hubo error en la autorización
+        Parámetros:
+            code: Código de autorización
+            state: Token de la invitación (opcional)
+            error: Error de OAuth (si aplica)
         """
         if error:
-            _logger.error(f"Error en OAuth callback: {error}")
+            _logger.error(f'Error en OAuth de MercadoLibre: {error}')
             return request.render('mercadolibre_connector.oauth_error', {
                 'error': error,
                 'error_description': kwargs.get('error_description', 'Error desconocido')
             })
 
-        if not code or not state:
-            _logger.error("OAuth callback sin code o state")
+        if not code:
             return request.render('mercadolibre_connector.oauth_error', {
-                'error': 'invalid_request',
-                'error_description': 'Faltan parámetros requeridos'
+                'error': 'missing_code',
+                'error_description': 'No se recibió el código de autorización'
             })
 
         try:
-            # Verificar si es una invitación
-            invitation = request.env['mercadolibre.invitation'].sudo().search([
-                ('invitation_token', '=', state),
-                ('state', 'in', ['sent', 'opened'])
-            ], limit=1)
+            # Si hay state, busca la invitación
+            invitation = None
+            config = None
 
-            if invitation:
-                # Flujo de invitación
-                return self._process_invitation_callback(invitation, code)
-            else:
-                # Flujo normal (state desde sesión)
-                return self._process_normal_callback(state, code)
+            if state:
+                invitation = request.env['mercadolibre.invitation'].sudo().search([
+                    ('token', '=', state),
+                    ('state', '=', 'sent')
+                ], limit=1)
 
-        except Exception as e:
-            _logger.error(f"Excepción en OAuth callback: {str(e)}", exc_info=True)
-            return request.render('mercadolibre_connector.oauth_error', {
-                'error': 'server_error',
-                'error_description': str(e)
-            })
+                if invitation:
+                    config = invitation.config_id
+                else:
+                    _logger.warning(f'No se encontró invitación con token {state}')
 
-    def _process_invitation_callback(self, invitation, code):
-        """Procesar callback de invitación"""
-        try:
-            # Marcar como abierta
-            invitation.mark_as_opened()
+            # Si no hay invitación o config, busca la primera configuración activa
+            if not config:
+                config = request.env['mercadolibre.config'].sudo().search([
+                    ('active', '=', True)
+                ], limit=1)
 
-            # Intercambiar code por tokens
-            tokens = self._exchange_code_for_token(invitation.config_id, code)
-            if not tokens.get('success'):
-                raise Exception(tokens.get('error', 'Error obteniendo token'))
+            if not config:
+                return request.render('mercadolibre_connector.oauth_error', {
+                    'error': 'no_config',
+                    'error_description': 'No se encontró una configuración activa de MercadoLibre'
+                })
 
-            token_data = tokens['data']
+            # Intercambia el código por tokens
+            token_url = 'https://api.mercadolibre.com/oauth/token'
 
-            # Obtener info del usuario
-            user_info = self._get_user_info(token_data['access_token'])
-            if not user_info.get('success'):
-                raise Exception(user_info.get('error', 'Error obteniendo info de usuario'))
+            payload = {
+                'grant_type': 'authorization_code',
+                'client_id': config.client_id,
+                'client_secret': config.client_secret,
+                'code': code,
+                'redirect_uri': config.redirect_uri,
+            }
 
-            user_data = user_info['data']
+            _logger.info(f'Intercambiando código por token para config {config.name}')
 
-            # Crear o actualizar cuenta
+            response = requests.post(token_url, data=payload, timeout=30)
+            response.raise_for_status()
+
+            token_data = response.json()
+
+            # Calcula la fecha de expiración
+            expires_at = datetime.now() + timedelta(seconds=token_data['expires_in'])
+
+            # Obtiene información del usuario
+            ml_user_id = str(token_data.get('user_id'))
+
+            user_info = {}
+            try:
+                user_url = f"https://api.mercadolibre.com/users/{ml_user_id}"
+                user_response = requests.get(
+                    user_url,
+                    headers={'Authorization': f"Bearer {token_data['access_token']}"},
+                    timeout=30
+                )
+                user_response.raise_for_status()
+                user_info = user_response.json()
+            except Exception as e:
+                _logger.warning(f'No se pudo obtener información del usuario: {str(e)}')
+
+            # Busca o crea la cuenta
             account = request.env['mercadolibre.account'].sudo().search([
-                ('company_id', '=', invitation.company_id.id),
-                ('ml_user_id', '=', str(user_data['id']))
+                ('ml_user_id', '=', ml_user_id),
+                ('config_id', '=', config.id)
             ], limit=1)
 
             if account:
-                # Actualizar cuenta existente
-                account.write({
-                    'config_id': invitation.config_id.id,
-                    'nickname': user_data.get('nickname'),
-                    'email': user_data.get('email'),
-                    'site_id': user_data.get('site_id'),
-                    'points': user_data.get('points', 0),
-                    'permalink': user_data.get('permalink'),
-                    'thumbnail': user_data.get('thumbnail', {}).get('picture_url') if isinstance(user_data.get('thumbnail'), dict) else user_data.get('thumbnail'),
-                    'authorization_date': http.request.env['ir.fields'].datetime.now(),
-                    'active': True,
-                })
+                _logger.info(f'Actualizando cuenta existente {account.name}')
             else:
-                # Crear nueva cuenta
+                _logger.info(f'Creando nueva cuenta para usuario ML {ml_user_id}')
                 account = request.env['mercadolibre.account'].sudo().create({
-                    'config_id': invitation.config_id.id,
-                    'ml_user_id': str(user_data['id']),
-                    'nickname': user_data.get('nickname'),
-                    'email': user_data.get('email'),
-                    'site_id': user_data.get('site_id'),
-                    'account_type': 'personal',  # TODO: Detectar tipo
-                    'points': user_data.get('points', 0),
-                    'permalink': user_data.get('permalink'),
-                    'thumbnail': user_data.get('thumbnail', {}).get('picture_url') if isinstance(user_data.get('thumbnail'), dict) else user_data.get('thumbnail'),
-                    'authorization_date': http.request.env['ir.fields'].datetime.now(),
+                    'config_id': config.id,
+                    'ml_user_id': ml_user_id,
+                    'ml_nickname': user_info.get('nickname'),
+                    'ml_email': user_info.get('email'),
+                    'ml_first_name': user_info.get('first_name'),
+                    'ml_last_name': user_info.get('last_name'),
+                    'state': 'connected',
                 })
 
-            # Crear o actualizar token
-            token = request.env['mercadolibre.token'].sudo().search([
-                ('account_id', '=', account.id)
-            ], limit=1)
+            # Actualiza información del usuario si existe
+            if user_info:
+                account.sudo().write({
+                    'ml_nickname': user_info.get('nickname', account.ml_nickname),
+                    'ml_email': user_info.get('email', account.ml_email),
+                    'ml_first_name': user_info.get('first_name', account.ml_first_name),
+                    'ml_last_name': user_info.get('last_name', account.ml_last_name),
+                    'state': 'connected',
+                })
 
-            token_vals = {
+            # Crea el token
+            request.env['mercadolibre.token'].sudo().create({
                 'account_id': account.id,
                 'access_token': token_data['access_token'],
-                'token_type': token_data.get('token_type', 'Bearer'),
                 'refresh_token': token_data['refresh_token'],
-                'scope': token_data.get('scope'),
-                'expires_in': token_data.get('expires_in', 21600),
-            }
-
-            if token:
-                token.write(token_vals)
-            else:
-                request.env['mercadolibre.token'].sudo().create(token_vals)
-
-            # Marcar invitación como completada
-            invitation.mark_as_completed(account.id)
-
-            # Log
-            request.env['mercadolibre.log'].sudo().create({
-                'account_id': account.id,
-                'log_type': 'auth',
-                'level': 'info',
-                'operation': 'oauth_success_invitation',
-                'message': f'Cuenta conectada via invitación: {account.nickname}',
-                'company_id': account.company_id.id,
+                'token_type': token_data.get('token_type', 'Bearer'),
+                'expires_in': token_data['expires_in'],
+                'expires_at': expires_at,
+                'scope': token_data.get('scope', ''),
+                'ml_user_id': ml_user_id,
             })
 
+            # Si había invitación, marca como aceptada
+            if invitation:
+                invitation.sudo().mark_as_accepted(account.id)
+
+            # Log del éxito
+            request.env['mercadolibre.log'].sudo().create({
+                'log_type': 'oauth',
+                'level': 'success',
+                'account_id': account.id,
+                'message': f'Cuenta conectada exitosamente: {account.name}',
+            })
+
+            # Envía email de confirmación
+            template = request.env.ref('mercadolibre_connector.mail_template_mercadolibre_connected', raise_if_not_found=False)
+            if template:
+                template.sudo().send_mail(account.id, force_send=True)
+
+            _logger.info(f'OAuth completado exitosamente para cuenta {account.name}')
+
+            # Renderiza la página de éxito
             return request.render('mercadolibre_connector.oauth_success', {
                 'account': account,
-                'invitation': invitation,
+                'config': config,
+            })
+
+        except requests.exceptions.RequestException as e:
+            error_msg = str(e)
+            _logger.error(f'Error en OAuth callback: {error_msg}')
+
+            # Log del error
+            request.env['mercadolibre.log'].sudo().create({
+                'log_type': 'oauth',
+                'level': 'error',
+                'message': f'Error en OAuth: {error_msg}',
+                'error_details': str(e),
+            })
+
+            return request.render('mercadolibre_connector.oauth_error', {
+                'error': 'request_error',
+                'error_description': error_msg
             })
 
         except Exception as e:
-            _logger.error(f"Error procesando invitación: {str(e)}", exc_info=True)
+            error_msg = str(e)
+            _logger.error(f'Error inesperado en OAuth callback: {error_msg}')
+
             return request.render('mercadolibre_connector.oauth_error', {
-                'error': 'invitation_error',
-                'error_description': str(e)
+                'error': 'unexpected_error',
+                'error_description': error_msg
             })
-
-    def _process_normal_callback(self, state, code):
-        """Procesar callback normal (sin invitación)"""
-        # TODO: Implementar flujo normal si se necesita
-        # Por ahora, solo soportamos invitaciones
-        _logger.warning("Callback normal no implementado aún")
-        return request.render('mercadolibre_connector.oauth_error', {
-            'error': 'not_implemented',
-            'error_description': 'Por favor use el sistema de invitaciones para conectar cuentas'
-        })
-
-    def _exchange_code_for_token(self, config, code):
-        """Intercambiar authorization code por access token"""
-        url = 'https://api.mercadolibre.com/oauth/token'
-        payload = {
-            'grant_type': 'authorization_code',
-            'client_id': config.client_id,
-            'client_secret': config.client_secret,
-            'code': code,
-            'redirect_uri': config.redirect_uri,
-        }
-
-        try:
-            response = requests.post(url, data=payload, timeout=30)
-            response.raise_for_status()
-
-            return {
-                'success': True,
-                'data': response.json()
-            }
-
-        except requests.exceptions.RequestException as e:
-            error_msg = str(e)
-            try:
-                error_data = e.response.json() if hasattr(e, 'response') and e.response else {}
-                error_msg = error_data.get('message', error_msg)
-            except:
-                pass
-
-            _logger.error(f"Error intercambiando code por token: {error_msg}")
-
-            return {
-                'success': False,
-                'error': error_msg
-            }
-
-    def _get_user_info(self, access_token):
-        """Obtener información del usuario desde ML"""
-        url = 'https://api.mercadolibre.com/users/me'
-        headers = {
-            'Authorization': f'Bearer {access_token}'
-        }
-
-        try:
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
-
-            return {
-                'success': True,
-                'data': response.json()
-            }
-
-        except requests.exceptions.RequestException as e:
-            error_msg = str(e)
-            _logger.error(f"Error obteniendo info de usuario: {error_msg}")
-
-            return {
-                'success': False,
-                'error': error_msg
-            }
-
-    @http.route('/mercadolibre/invite/<string:token>', type='http', auth='public', website=True)
-    def invitation_redirect(self, token, **kwargs):
-        """
-        Procesar link de invitación.
-        Redirige al usuario a la URL de autorización de ML.
-        """
-        invitation = request.env['mercadolibre.invitation'].sudo().search([
-            ('invitation_token', '=', token)
-        ], limit=1)
-
-        if not invitation:
-            return request.render('mercadolibre_connector.invitation_not_found')
-
-        if invitation.state == 'completed':
-            return request.render('mercadolibre_connector.invitation_already_used', {
-                'invitation': invitation
-            })
-
-        if invitation.state == 'cancelled':
-            return request.render('mercadolibre_connector.invitation_cancelled')
-
-        if invitation.state == 'expired' or invitation.expires_at < http.request.env['ir.fields'].datetime.now():
-            invitation.write({'state': 'expired'})
-            return request.render('mercadolibre_connector.invitation_expired', {
-                'invitation': invitation
-            })
-
-        # Marcar como abierta
-        invitation.mark_as_opened()
-
-        # Redirigir a ML
-        return request.redirect(invitation.authorization_url)
-
-    @http.route('/mercadolibre/test', type='http', auth='user')
-    def test_endpoint(self, **kwargs):
-        """Endpoint de prueba para verificar que el módulo está instalado"""
-        return "Mercado Libre Connector está activo ✓"

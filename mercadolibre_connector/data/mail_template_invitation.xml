@@ -1,73 +1,27 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="mail_template_invitation" model="mail.template">
-        <field name="name">ML: Invitación para Conectar Cuenta</field>
+    <record id="mail_template_mercadolibre_invitation" model="mail.template">
+        <field name="name">MercadoLibre: Invitation</field>
         <field name="model_id" ref="model_mercadolibre_invitation"/>
-        <field name="subject">Conecta tu cuenta de Mercado Libre a ${object.company_id.name}</field>
+        <field name="subject">Invitación para conectar tu cuenta de MercadoLibre</field>
         <field name="email_from">${(object.company_id.email or user.email_formatted) | safe}</field>
-        <field name="email_to">${object.email}</field>
+        <field name="email_to">${object.email | safe}</field>
         <field name="body_html" type="html">
-&lt;table border=&quot;0&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; style=&quot;padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #555; width: 100%; border-collapse:separate;&quot;&gt;
-    &lt;tr&gt;
-        &lt;td align=&quot;center&quot;&gt;
-            &lt;table border=&quot;0&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; width=&quot;600&quot; style=&quot;padding: 16px; background-color: white; border: 1px solid #e0e0e0;&quot;&gt;
-                &lt;tr&gt;
-                    &lt;td align=&quot;center&quot; style=&quot;padding: 20px 0;&quot;&gt;
-                        &lt;img src=&quot;/logo.png&quot; style=&quot;max-height: 60px;&quot; alt=&quot;${object.company_id.name}&quot;/&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td style=&quot;padding: 20px;&quot;&gt;
-                        &lt;h2 style=&quot;color: #333; margin: 0 0 10px 0;&quot;&gt;
-                            Hola% if object.recipient_name: ${object.recipient_name}% endif,
-                        &lt;/h2&gt;
-                        &lt;p style=&quot;font-size: 16px; line-height: 1.6; color: #555;&quot;&gt;
-                            &lt;strong&gt;${object.sent_by.name}&lt;/strong&gt; te invita a conectar tu cuenta de Mercado Libre
-                            a &lt;strong&gt;${object.company_id.name}&lt;/strong&gt; en Odoo.
-                        &lt;/p&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td style=&quot;padding: 0 20px 20px 20px;&quot;&gt;
-                        &lt;p style=&quot;font-size: 14px; color: #666; margin-bottom: 10px;&quot;&gt;
-                            Esta conexión te permitirá:
-                        &lt;/p&gt;
-                        &lt;ul style=&quot;font-size: 14px; color: #666; line-height: 1.8;&quot;&gt;
-                            &lt;li&gt;Sincronizar automáticamente tus órdenes de venta&lt;/li&gt;
-                            &lt;li&gt;Gestionar tu inventario desde Odoo&lt;/li&gt;
-                            &lt;li&gt;Responder preguntas de clientes&lt;/li&gt;
-                            &lt;li&gt;Generar reportes unificados&lt;/li&gt;
-                        &lt;/ul&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td align=&quot;center&quot; style=&quot;padding: 30px 20px;&quot;&gt;
-                        &lt;a href=&quot;${object.invitation_url}&quot; style=&quot;background-color: #FFE600; color: #333; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;&quot;&gt;
-                            Conectar mi cuenta de Mercado Libre
-                        &lt;/a&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td style=&quot;padding: 20px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;&quot;&gt;
-                        &lt;p style=&quot;font-size: 12px; color: #999; margin: 0;&quot;&gt;
-                            &lt;strong&gt;País/Sitio:&lt;/strong&gt; ${dict(object.config_id._fields['site_id'].selection).get(object.config_id.site_id)}&lt;br/&gt;
-                            &lt;strong&gt;Este link expira el:&lt;/strong&gt; ${format_datetime(object.expires_at, tz='America/Mexico_City', dt_format='dd/MM/yyyy HH:mm')}&lt;br/&gt;&lt;br/&gt;
-                            Si no solicitaste esta invitación, puedes ignorar este correo de forma segura.
-                        &lt;/p&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td align=&quot;center&quot; style=&quot;padding: 20px; font-size: 12px; color: #999;&quot;&gt;
-                        &lt;p style=&quot;margin: 0;&quot;&gt;
-                            Este correo fue enviado por &lt;strong&gt;${object.company_id.name}&lt;/strong&gt;&lt;br/&gt;
-                            Powered by &lt;a href=&quot;https://www.odoo.com&quot; style=&quot;color: #875A7B;&quot;&gt;Odoo&lt;/a&gt;
-                        &lt;/p&gt;
-                    &lt;/td&gt;
-                &lt;/tr&gt;
-            &lt;/table&gt;
-        &lt;/td&gt;
-    &lt;/tr&gt;
-&lt;/table&gt;
-            </field>
+            <div style="margin: 0px; padding: 0px; font-family: Arial, Helvetica, sans-serif; font-size: 14px;">
+                <p>Hola,</p>
+                <p>Has sido invitado a conectar tu cuenta de MercadoLibre con <strong>${object.company_id.name}</strong>.</p>
+                <p>Para autorizar tu cuenta, haz clic en el siguiente botón:</p>
+                <p style="text-align: center; margin: 20px 0;">
+                    <a href="${object.authorization_url}" style="padding: 10px 20px; background-color: #FFE600; color: #000000; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        Conectar con MercadoLibre
+                    </a>
+                </p>
+                <p>O copia y pega el siguiente enlace en tu navegador:</p>
+                <p><a href="${object.authorization_url}">${object.authorization_url}</a></p>
+                <p><strong>Nota:</strong> Esta invitación expirará en 7 días.</p>
+                <p>Saludos,<br/>${object.company_id.name}</p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="False"/>
     </record>
 </odoo>

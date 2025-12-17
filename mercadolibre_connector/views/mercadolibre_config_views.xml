@@ -1,14 +1,13 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_mercadolibre_config_tree" model="ir.ui.view">
         <field name="name">mercadolibre.config.tree</field>
         <field name="model">mercadolibre.config</field>
         <field name="arch" type="xml">
-            <tree string="Configuraciones ML">
+            <tree string="Configuraciones MercadoLibre">
                 <field name="name"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="site_id"/>
-                <field name="client_id"/>
+                <field name="country_id"/>
                 <field name="account_count"/>
                 <field name="active"/>
             </tree>
@@ -18,7 +17,7 @@
         <field name="name">mercadolibre.config.form</field>
         <field name="model">mercadolibre.config</field>
         <field name="arch" type="xml">
-            <form string="Configuración ML">
+            <form string="Configuración MercadoLibre">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_accounts" type="object" class="oe_stat_button" icon="fa-users">
@@ -27,41 +26,32 @@
                     </div>
                     <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
-                        <label for="name"/>
+                        <label for="name" class="oe_edit_only"/>
                         <h1>
-                            <field name="name" placeholder="ej: ML México - Producción"/>
+                            <field name="name" placeholder="Ej: MercadoLibre México"/>
                         </h1>
                     </div>
                     <group>
                         <group>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="site_id"/>
                             <field name="country_id"/>
                             <field name="active"/>
                         </group>
                         <group>
-                            <field name="auth_url" readonly="1"/>
+                            <field name="client_id" password="True"/>
+                            <field name="client_secret" password="True"/>
+                            <field name="redirect_uri"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Credenciales" groups="mercadolibre_connector.group_mercadolibre_admin">
-                            <group>
-                                <group>
-                                    <field name="client_id"/>
-                                    <field name="client_secret" password="True"/>
-                                </group>
-                                <group>
-                                    <field name="redirect_uri"/>
-                                </group>
-                            </group>
-                        </page>
-                        <page string="Cuentas Conectadas">
-                            <field name="account_ids">
+                        <page string="Cuentas" name="accounts">
+                            <field name="account_ids" readonly="1">
                                 <tree>
-                                    <field name="nickname"/>
+                                    <field name="name"/>
                                     <field name="ml_user_id"/>
-                                    <field name="is_authorized"/>
-                                    <field name="authorization_date"/>
+                                    <field name="ml_email"/>
+                                    <field name="state"/>
+                                    <field name="has_valid_token"/>
                                 </tree>
                             </field>
                         </page>
@@ -75,9 +65,34 @@
             </form>
         </field>
     </record>
+    <record id="view_mercadolibre_config_search" model="ir.ui.view">
+        <field name="name">mercadolibre.config.search</field>
+        <field name="model">mercadolibre.config</field>
+        <field name="arch" type="xml">
+            <search string="Configuraciones">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactivas" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Compañía" name="company" context="{'group_by': 'company_id'}"/>
+                    <filter string="País" name="country" context="{'group_by': 'country_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
     <record id="action_mercadolibre_config" model="ir.actions.act_window">
-        <field name="name">Configuración ML</field>
+        <field name="name">Configuraciones</field>
         <field name="res_model">mercadolibre.config</field>
         <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una nueva configuración de MercadoLibre
+            </p>
+            <p>
+                Configura las credenciales de tu aplicación MercadoLibre para comenzar a sincronizar datos.
+            </p>
+        </field>
     </record>
 </odoo>

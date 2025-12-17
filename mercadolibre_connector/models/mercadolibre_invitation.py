@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
 
+import uuid
+from datetime import datetime, timedelta
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
-from datetime import timedelta
-import secrets
-import logging
-
-_logger = logging.getLogger(__name__)
 
 
-class MercadoLibreInvitation(models.Model):
+class MercadolibreInvitation(models.Model):
     _name = 'mercadolibre.invitation'
-    _description = 'Invitación para Conectar Cuenta ML'
+    _description = 'Invitación MercadoLibre'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'sent_at desc, created_at desc'
+    _order = 'create_date desc'
 
     name = fields.Char(
-        string='Nombre',
-        compute='_compute_name',
-        store=True
+        string='Referencia',
+        required=True,
+        default=lambda self: _('Nueva Invitación'),
+        tracking=True
     )
     config_id = fields.Many2one(
         'mercadolibre.config',
@@ -29,278 +27,163 @@ class MercadoLibreInvitation(models.Model):
     )
     company_id = fields.Many2one(
         'res.company',
-        string='Empresa',
+        string='Compañía',
         related='config_id.company_id',
         store=True,
         readonly=True
     )
     email = fields.Char(
-        string='Email Destinatario',
+        string='Email',
         required=True,
-        tracking=True
+        tracking=True,
+        help='Email del destinatario de la invitación'
     )
-    recipient_name = fields.Char(
-        string='Nombre Destinatario',
-        tracking=True
-    )
-    invitation_token = fields.Char(
-        string='Token de Invitación',
+    token = fields.Char(
+        string='Token',
+        default=lambda self: str(uuid.uuid4()),
         required=True,
         readonly=True,
-        default=lambda self: secrets.token_urlsafe(32),
         copy=False,
-        index=True
+        help='Token único para identificar esta invitación'
     )
-    state = fields.Selection(
-        selection=[
-            ('draft', 'Borrador'),
-            ('sent', 'Enviada'),
-            ('opened', 'Abierta'),
-            ('completed', 'Completada'),
-            ('expired', 'Expirada'),
-            ('cancelled', 'Cancelada'),
-        ],
-        string='Estado',
-        default='draft',
-        required=True,
-        tracking=True
-    )
-    authorization_url = fields.Text(
+    authorization_url = fields.Char(
         string='URL de Autorización',
-        compute='_compute_authorization_url'
+        compute='_compute_authorization_url',
+        help='URL para autorizar la cuenta de MercadoLibre'
     )
-    invitation_url = fields.Text(
-        string='URL de Invitación',
-        compute='_compute_invitation_url',
-        help='URL que se envía por email'
-    )
+    state = fields.Selection([
+        ('draft', 'Borrador'),
+        ('sent', 'Enviada'),
+        ('accepted', 'Aceptada'),
+        ('expired', 'Expirada'),
+        ('cancelled', 'Cancelada')
+    ], string='Estado', default='draft', required=True, tracking=True)
 
-    # Fechas
-    expires_at = fields.Datetime(
-        string='Expira el',
-        default=lambda self: fields.Datetime.now() + timedelta(days=7),
-        required=True,
-        tracking=True
+    sent_date = fields.Datetime(
+        string='Fecha de Envío',
+        readonly=True
     )
-    sent_at = fields.Datetime(
-        string='Enviada el',
-        readonly=True,
-        tracking=True
+    accepted_date = fields.Datetime(
+        string='Fecha de Aceptación',
+        readonly=True
     )
-    opened_at = fields.Datetime(
-        string='Abierta el',
-        readonly=True,
-        tracking=True
+    expiry_date = fields.Datetime(
+        string='Fecha de Expiración',
+        compute='_compute_expiry_date',
+        store=True,
+        help='Las invitaciones expiran 7 días después del envío'
     )
-    completed_at = fields.Datetime(
-        string='Completada el',
-        readonly=True,
-        tracking=True
+    is_expired = fields.Boolean(
+        string='Expirada',
+        compute='_compute_is_expired'
     )
-
-    # Relaciones
     account_id = fields.Many2one(
         'mercadolibre.account',
         string='Cuenta Creada',
         readonly=True,
-        tracking=True
-    )
-    sent_by = fields.Many2one(
-        'res.users',
-        string='Enviada por',
-        readonly=True,
-        default=lambda self: self.env.user
+        help='Cuenta de MercadoLibre creada a partir de esta invitación'
     )
     notes = fields.Text(
-        string='Notas Internas'
-    )
-
-    # Timestamps
-    created_at = fields.Datetime(
-        string='Creado el',
-        default=fields.Datetime.now,
-        readonly=True
-    )
-    updated_at = fields.Datetime(
-        string='Actualizado el',
-        default=fields.Datetime.now,
-        readonly=True
+        string='Notas'
     )
 
     _sql_constraints = [
-        ('unique_token', 'UNIQUE(invitation_token)',
-         'El token de invitación debe ser único')
+        ('token_uniq', 'unique(token)',
+         'El token de invitación debe ser único.')
     ]
 
-    @api.depends('email', 'recipient_name')
-    def _compute_name(self):
-        for record in self:
-            if record.recipient_name:
-                record.name = f"{record.recipient_name} <{record.email}>"
-            else:
-                record.name = record.email
-
-    @api.depends('config_id', 'invitation_token')
+    @api.depends('config_id', 'token')
     def _compute_authorization_url(self):
         for record in self:
-            if record.config_id and record.invitation_token:
-                auth_url = record.config_id.auth_url
-                record.authorization_url = (
-                    f"{auth_url}"
-                    f"?response_type=code"
-                    f"&client_id={record.config_id.client_id}"
-                    f"&redirect_uri={record.config_id.redirect_uri}"
-                    f"&state={record.invitation_token}"
-                )
+            if record.config_id and record.token:
+                base_url = record.config_id.get_authorization_url()
+                record.authorization_url = f"{base_url}&state={record.token}"
             else:
                 record.authorization_url = False
 
-    @api.depends('invitation_token')
-    def _compute_invitation_url(self):
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+    @api.depends('sent_date')
+    def _compute_expiry_date(self):
         for record in self:
-            if record.invitation_token:
-                record.invitation_url = f"{base_url}/mercadolibre/invite/{record.invitation_token}"
+            if record.sent_date:
+                record.expiry_date = record.sent_date + timedelta(days=7)
             else:
-                record.invitation_url = False
+                record.expiry_date = False
 
-    def write(self, vals):
-        result = super(MercadoLibreInvitation, self).write(vals)
-        self.updated_at = fields.Datetime.now()
-        return result
-
-    @api.model
-    def _cron_expire_invitations(self):
-        """Marcar invitaciones expiradas"""
+    @api.depends('expiry_date', 'state')
+    def _compute_is_expired(self):
         now = fields.Datetime.now()
-        expired = self.search([
-            ('state', 'in', ['draft', 'sent', 'opened']),
-            ('expires_at', '<', now)
-        ])
+        for record in self:
+            if record.state in ['accepted', 'cancelled']:
+                record.is_expired = False
+            elif record.expiry_date:
+                record.is_expired = record.expiry_date < now
+            else:
+                record.is_expired = False
 
-        for invitation in expired:
-            invitation.write({'state': 'expired'})
-            invitation.message_post(body=_('Invitación expirada automáticamente'))
+    def action_send(self):
+        """Envía la invitación por correo"""
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_('Solo se pueden enviar invitaciones en estado borrador.'))
 
-        _logger.info(f"Cron expire: {len(expired)} invitaciones marcadas como expiradas")
+            # Obtiene la plantilla de correo
+            template = self.env.ref('mercadolibre_connector.mail_template_mercadolibre_invitation', raise_if_not_found=False)
+
+            if template:
+                template.send_mail(record.id, force_send=True)
+
+            record.write({
+                'state': 'sent',
+                'sent_date': fields.Datetime.now()
+            })
+
+            record.message_post(body=_('Invitación enviada a %s') % record.email)
 
         return True
 
-    def action_send_invitation(self):
-        """Enviar invitación por email"""
+    def action_cancel(self):
+        """Cancela la invitación"""
+        for record in self:
+            if record.state == 'accepted':
+                raise ValidationError(_('No se puede cancelar una invitación aceptada.'))
+
+            record.state = 'cancelled'
+            record.message_post(body=_('Invitación cancelada'))
+
+    def action_resend(self):
+        """Reenvía la invitación"""
+        for record in self:
+            if record.state != 'sent':
+                raise ValidationError(_('Solo se pueden reenviar invitaciones enviadas.'))
+
+            # Regenera el token
+            record.token = str(uuid.uuid4())
+
+            # Envía de nuevo
+            record.action_send()
+
+        return True
+
+    @api.model
+    def cron_expire_invitations(self):
+        """Cron: Marca como expiradas las invitaciones vencidas"""
+        now = fields.Datetime.now()
+        expired = self.search([
+            ('state', '=', 'sent'),
+            ('expiry_date', '<', now)
+        ])
+
+        if expired:
+            expired.write({'state': 'expired'})
+            _logger = logging.getLogger(__name__)
+            _logger.info(f'Marcadas {len(expired)} invitaciones como expiradas')
+
+    def mark_as_accepted(self, account_id):
+        """Marca la invitación como aceptada"""
         self.ensure_one()
-
-        if self.state not in ['draft', 'sent']:
-            raise ValidationError(_('Solo se pueden enviar invitaciones en estado Borrador o Enviada'))
-
-        # Validar que no esté expirada
-        if fields.Datetime.now() >= self.expires_at:
-            raise ValidationError(_('Esta invitación ya expiró'))
-
-        # Obtener template de email
-        template = self.env.ref('mercadolibre_connector.mail_template_invitation', raise_if_not_found=False)
-        if not template:
-            raise ValidationError(_('No se encontró la plantilla de email'))
-
-        # Enviar email
-        try:
-            template.send_mail(self.id, force_send=True)
-
-            self.write({
-                'state': 'sent',
-                'sent_at': fields.Datetime.now(),
-            })
-
-            # Log
-            self.env['mercadolibre.log'].create({
-                'log_type': 'email',
-                'level': 'info',
-                'operation': 'invitation_sent',
-                'message': f'Invitación enviada a {self.email}',
-                'company_id': self.company_id.id,
-                'user_id': self.env.user.id,
-            })
-
-            self.message_post(body=_('Invitación enviada a %s') % self.email)
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Invitación Enviada'),
-                    'message': _('La invitación fue enviada a %s') % self.email,
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-        except Exception as e:
-            _logger.error(f"Error enviando invitación: {str(e)}")
-            raise ValidationError(_('Error al enviar invitación: %s') % str(e))
-
-    def action_resend_invitation(self):
-        """Reenviar invitación"""
-        self.ensure_one()
-
-        if self.state == 'completed':
-            raise ValidationError(_('Esta invitación ya fue completada'))
-
-        if self.state == 'expired':
-            # Extender fecha de expiración
-            self.write({
-                'expires_at': fields.Datetime.now() + timedelta(days=7),
-                'state': 'draft'
-            })
-
-        return self.action_send_invitation()
-
-    def action_cancel_invitation(self):
-        """Cancelar invitación"""
-        self.ensure_one()
-
-        if self.state == 'completed':
-            raise ValidationError(_('No se puede cancelar una invitación completada'))
-
-        self.write({'state': 'cancelled'})
-        self.message_post(body=_('Invitación cancelada'))
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Invitación Cancelada'),
-                'message': _('La invitación fue cancelada'),
-                'type': 'info',
-                'sticky': False,
-            }
-        }
-
-    def mark_as_opened(self):
-        """Marcar como abierta (llamado desde controller)"""
-        self.ensure_one()
-
-        if self.state == 'sent' and not self.opened_at:
-            self.write({
-                'state': 'opened',
-                'opened_at': fields.Datetime.now()
-            })
-            self.message_post(body=_('Invitación abierta por el destinatario'))
-
-    def mark_as_completed(self, account_id):
-        """Marcar como completada (llamado desde controller)"""
-        self.ensure_one()
-
         self.write({
-            'state': 'completed',
-            'completed_at': fields.Datetime.now(),
-            'account_id': account_id
+            'state': 'accepted',
+            'accepted_date': fields.Datetime.now(),
+            'account_id': account_id,
         })
-
-        # Enviar email de confirmación
-        template = self.env.ref('mercadolibre_connector.mail_template_connected', raise_if_not_found=False)
-        if template:
-            try:
-                template.send_mail(self.id, force_send=True)
-            except Exception as e:
-                _logger.error(f"Error enviando email de confirmación: {str(e)}")
-
-        self.message_post(body=_('Cuenta conectada exitosamente: %s') % account_id.name)
+        self.message_post(body=_('Invitación aceptada'))

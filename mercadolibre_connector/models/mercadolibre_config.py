@@ -4,21 +4,20 @@ from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 
-class MercadoLibreConfig(models.Model):
+class MercadolibreConfig(models.Model):
     _name = 'mercadolibre.config'
-    _description = 'Configuración de Aplicación Mercado Libre'
+    _description = 'Configuración MercadoLibre'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'company_id, site_id'
 
     name = fields.Char(
         string='Nombre',
         required=True,
         tracking=True,
-        help='Nombre descriptivo de esta configuración'
+        help='Nombre descriptivo para esta configuración'
     )
     company_id = fields.Many2one(
         'res.company',
-        string='Empresa',
+        string='Compañía',
         required=True,
         default=lambda self: self.env.company,
         tracking=True
@@ -27,171 +26,86 @@ class MercadoLibreConfig(models.Model):
         string='Client ID',
         required=True,
         tracking=True,
-        help='App ID de Mercado Libre'
+        help='App ID de MercadoLibre'
     )
     client_secret = fields.Char(
         string='Client Secret',
         required=True,
         tracking=True,
-        help='Secret de la aplicación'
+        help='Secret Key de MercadoLibre'
     )
     redirect_uri = fields.Char(
         string='Redirect URI',
         required=True,
-        tracking=True,
-        help='URL de callback configurada en ML (ej: https://tudominio.com/mercadolibre/callback)'
+        default=lambda self: self._default_redirect_uri(),
+        help='URL de redirección para OAuth'
     )
     country_id = fields.Many2one(
         'res.country',
         string='País',
-        tracking=True,
-        help='País de Mercado Libre'
-    )
-    site_id = fields.Selection(
-        selection=[
-            ('MLA', 'Argentina'),
-            ('MLB', 'Brasil'),
-            ('MCO', 'Colombia'),
-            ('MCR', 'Costa Rica'),
-            ('MEC', 'Ecuador'),
-            ('MLC', 'Chile'),
-            ('MLM', 'México'),
-            ('MLU', 'Uruguay'),
-            ('MLV', 'Venezuela'),
-            ('MPA', 'Panamá'),
-            ('MPE', 'Perú'),
-            ('MPT', 'Portugal'),
-            ('MRD', 'República Dominicana'),
-        ],
-        string='Sitio ML',
         required=True,
-        default='MLM',
-        tracking=True,
-        help='Sitio de Mercado Libre'
+        default=lambda self: self.env.ref('base.mx'),
+        help='País de MercadoLibre (México, Argentina, etc.)'
     )
     active = fields.Boolean(
         string='Activo',
         default=True,
         tracking=True
     )
-
-    # Relaciones
     account_ids = fields.One2many(
         'mercadolibre.account',
         'config_id',
-        string='Cuentas Conectadas'
+        string='Cuentas ML',
+        help='Cuentas de MercadoLibre asociadas'
     )
     account_count = fields.Integer(
-        string='Total Cuentas',
+        string='Nro. Cuentas',
         compute='_compute_account_count'
-    )
-    invitation_ids = fields.One2many(
-        'mercadolibre.invitation',
-        'config_id',
-        string='Invitaciones'
-    )
-
-    # URLs
-    auth_url = fields.Char(
-        string='URL de Autorización',
-        compute='_compute_auth_url',
-        help='URL base para autorización OAuth'
-    )
-
-    # Timestamps
-    created_at = fields.Datetime(
-        string='Creado el',
-        default=fields.Datetime.now,
-        readonly=True
-    )
-    updated_at = fields.Datetime(
-        string='Actualizado el',
-        default=fields.Datetime.now,
-        readonly=True
     )
 
     _sql_constraints = [
-        ('unique_company_site', 'UNIQUE(company_id, site_id)',
-         'Ya existe una configuración para esta empresa y sitio de ML')
+        ('client_id_company_uniq', 'unique(client_id, company_id)',
+         'Ya existe una configuración con este Client ID para esta compañía.')
     ]
+
+    def _default_redirect_uri(self):
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        return f"{base_url}/mercadolibre/callback"
 
     @api.depends('account_ids')
     def _compute_account_count(self):
         for record in self:
             record.account_count = len(record.account_ids)
 
-    @api.depends('site_id')
-    def _compute_auth_url(self):
-        auth_urls = {
-            'MLA': 'https://auth.mercadolibre.com.ar/authorization',
-            'MLB': 'https://auth.mercadolibre.com.br/authorization',
-            'MCO': 'https://auth.mercadolibre.com.co/authorization',
-            'MCR': 'https://auth.mercadolibre.com.cr/authorization',
-            'MEC': 'https://auth.mercadolibre.com.ec/authorization',
-            'MLC': 'https://auth.mercadolibre.cl/authorization',
-            'MLM': 'https://auth.mercadolibre.com.mx/authorization',
-            'MLU': 'https://auth.mercadolibre.com.uy/authorization',
-            'MLV': 'https://auth.mercadolibre.com.ve/authorization',
-            'MPA': 'https://auth.mercadolibre.com.pa/authorization',
-            'MPE': 'https://auth.mercadolibre.com.pe/authorization',
-            'MPT': 'https://auth.mercadolibre.pt/authorization',
-            'MRD': 'https://auth.mercadolibre.com.do/authorization',
+    @api.constrains('client_id', 'client_secret')
+    def _check_credentials(self):
+        for record in self:
+            if not record.client_id or not record.client_secret:
+                raise ValidationError(_('Client ID y Client Secret son requeridos.'))
+
+    def get_authorization_url(self):
+        """Genera la URL de autorización de MercadoLibre"""
+        self.ensure_one()
+        country_code = self.country_id.code.lower() if self.country_id else 'mx'
+        base_url = f"https://auth.mercadolibre.com.{country_code}/authorization"
+
+        params = {
+            'response_type': 'code',
+            'client_id': self.client_id,
+            'redirect_uri': self.redirect_uri,
         }
-        for record in self:
-            record.auth_url = auth_urls.get(record.site_id, '')
 
-    @api.model
-    def create(self, vals):
-        result = super(MercadoLibreConfig, self).create(vals)
-        result.updated_at = fields.Datetime.now()
-
-        # Log de creación
-        self.env['mercadolibre.log'].create({
-            'log_type': 'system',
-            'level': 'info',
-            'operation': 'config_created',
-            'message': f'Configuración creada: {result.name} ({result.site_id})',
-            'company_id': result.company_id.id,
-            'user_id': self.env.user.id,
-        })
-
-        return result
-
-    def write(self, vals):
-        result = super(MercadoLibreConfig, self).write(vals)
-        self.updated_at = fields.Datetime.now()
-        return result
-
-    @api.constrains('redirect_uri')
-    def _check_redirect_uri(self):
-        for record in self:
-            if record.redirect_uri:
-                if not record.redirect_uri.startswith(('http://', 'https://')):
-                    raise ValidationError(_('La URL de redirección debe comenzar con http:// o https://'))
+        query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+        return f"{base_url}?{query_string}"
 
     def action_view_accounts(self):
-        """Acción para ver las cuentas conectadas"""
+        """Acción para ver las cuentas asociadas"""
         self.ensure_one()
         return {
-            'name': _('Cuentas de %s') % self.name,
+            'name': _('Cuentas MercadoLibre'),
             'type': 'ir.actions.act_window',
             'res_model': 'mercadolibre.account',
-            'view_mode': 'kanban,tree,form',
+            'view_mode': 'tree,form',
             'domain': [('config_id', '=', self.id)],
-            'context': {'default_config_id': self.id},
-        }
-
-    def action_test_connection(self):
-        """Probar conexión con ML"""
-        self.ensure_one()
-        # TODO: Implementar test de conexión
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Prueba de Conexión'),
-                'message': _('Funcionalidad en desarrollo'),
-                'type': 'info',
-                'sticky': False,
-            }
+            'context': {'default_config_id': self.id}
         }
