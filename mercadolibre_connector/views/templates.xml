@@ -2,44 +2,379 @@
 <odoo>
     <template id="oauth_success" name="MercadoLibre OAuth Success">
         <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <div class="alert alert-success text-center" role="alert">
-                            <h1 class="display-4">¡Conexión Exitosa!</h1>
-                            <hr/>
-                            <p class="lead">Tu cuenta de MercadoLibre ha sido conectada correctamente.</p>
-                            <div class="mt-4">
-                                <h5>Detalles de la cuenta:</h5>
-                                <ul class="list-unstyled">
-                                    <li><strong>Nickname:</strong> <t t-esc="account.ml_nickname"/></li>
-                                    <li><strong>Email:</strong> <t t-esc="account.ml_email"/></li>
-                                    <li><strong>User ID:</strong> <t t-esc="account.ml_user_id"/></li>
-                                </ul>
+            <t t-set="head">
+                <style>
+                    .ml-oauth-container {
+                        min-height: 100vh;
+                        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    }
+                    .ml-card {
+                        background: white;
+                        border-radius: 20px;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+                        max-width: 500px;
+                        width: 100%;
+                        overflow: hidden;
+                        animation: slideUp 0.5s ease-out;
+                    }
+                    @keyframes slideUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .ml-header {
+                        background: linear-gradient(135deg, #FFE600 0%, #F5D000 100%);
+                        padding: 40px 30px;
+                        text-align: center;
+                    }
+                    .ml-icon-circle {
+                        width: 100px;
+                        height: 100px;
+                        background: white;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                        animation: scaleIn 0.5s ease-out 0.2s both;
+                    }
+                    @keyframes scaleIn {
+                        from { transform: scale(0); }
+                        to { transform: scale(1); }
+                    }
+                    .ml-checkmark {
+                        width: 50px;
+                        height: 50px;
+                        stroke: #4CAF50;
+                        stroke-width: 3;
+                        fill: none;
+                        animation: drawCheck 0.5s ease-out 0.5s both;
+                    }
+                    @keyframes drawCheck {
+                        from { stroke-dashoffset: 100; }
+                        to { stroke-dashoffset: 0; }
+                    }
+                    .ml-checkmark path {
+                        stroke-dasharray: 100;
+                    }
+                    .ml-title {
+                        color: #2D3277;
+                        font-size: 28px;
+                        font-weight: 700;
+                        margin: 0;
+                    }
+                    .ml-body {
+                        padding: 30px;
+                    }
+                    .ml-subtitle {
+                        color: #666;
+                        font-size: 16px;
+                        text-align: center;
+                        margin-bottom: 25px;
+                    }
+                    .ml-info-card {
+                        background: #f8f9fa;
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin-bottom: 20px;
+                    }
+                    .ml-info-title {
+                        color: #2D3277;
+                        font-size: 14px;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        margin-bottom: 15px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    .ml-info-row {
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 10px 0;
+                        border-bottom: 1px solid #e9ecef;
+                    }
+                    .ml-info-row:last-child {
+                        border-bottom: none;
+                    }
+                    .ml-info-label {
+                        color: #888;
+                        font-size: 14px;
+                    }
+                    .ml-info-value {
+                        color: #333;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                    .ml-footer {
+                        text-align: center;
+                        padding: 20px 30px 30px;
+                    }
+                    .ml-btn {
+                        background: linear-gradient(135deg, #2D3277 0%, #1a1f4e 100%);
+                        color: white;
+                        border: none;
+                        padding: 14px 40px;
+                        border-radius: 30px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        text-decoration: none;
+                        display: inline-block;
+                    }
+                    .ml-btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 10px 30px rgba(45, 50, 119, 0.3);
+                        color: white;
+                        text-decoration: none;
+                    }
+                    .ml-note {
+                        color: #999;
+                        font-size: 13px;
+                        margin-top: 15px;
+                    }
+                    .ml-logo {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        margin-top: 20px;
+                        color: #2D3277;
+                        font-weight: 600;
+                    }
+                </style>
+            </t>
+            <div class="ml-oauth-container">
+                <div class="ml-card">
+                    <div class="ml-header">
+                        <div class="ml-icon-circle">
+                            <svg class="ml-checkmark" viewBox="0 0 52 52">
+                                <path d="M14 27l10 10 16-20"/>
+                            </svg>
+                        </div>
+                        <h1 class="ml-title">¡Conexión Exitosa!</h1>
+                    </div>
+                    <div class="ml-body">
+                        <p class="ml-subtitle">Tu cuenta de MercadoLibre ha sido vinculada correctamente con el sistema.</p>
+                        <div class="ml-info-card">
+                            <div class="ml-info-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D3277" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                                Detalles de la cuenta
                             </div>
-                            <p class="mt-4">Puedes cerrar esta ventana.</p>
+                            <div class="ml-info-row">
+                                <span class="ml-info-label">Nickname</span>
+                                <span class="ml-info-value"><t t-esc="account.ml_nickname or 'No disponible'"/></span>
+                            </div>
+                            <div class="ml-info-row">
+                                <span class="ml-info-label">Email</span>
+                                <span class="ml-info-value"><t t-esc="account.ml_email or 'No disponible'"/></span>
+                            </div>
+                            <div class="ml-info-row">
+                                <span class="ml-info-label">User ID</span>
+                                <span class="ml-info-value"><t t-esc="account.ml_user_id"/></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ml-footer">
+                        <a href="/web" class="ml-btn">Ir al Sistema</a>
+                        <p class="ml-note">Ya puedes cerrar esta ventana si lo deseas.</p>
+                        <div class="ml-logo">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFE600">
+                                <rect width="24" height="24" rx="4"/>
+                                <path d="M7 12l3 3 7-7" stroke="#2D3277" stroke-width="2" fill="none"/>
+                            </svg>
+                            MercadoLibre Connector
                         </div>
                     </div>
                 </div>
             </div>
         </t>
     </template>
+
     <template id="oauth_error" name="MercadoLibre OAuth Error">
         <t t-call="web.layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <div class="alert alert-danger text-center" role="alert">
-                            <h1 class="display-4">Error en la Conexión</h1>
-                            <hr/>
-                            <p class="lead">Hubo un problema al conectar tu cuenta de MercadoLibre.</p>
-                            <div class="mt-4">
-                                <h5>Detalles del error:</h5>
-                                <p><strong>Código:</strong> <t t-esc="error"/></p>
-                                <p><strong>Descripción:</strong> <t t-esc="error_description"/></p>
-                            </div>
-                            <p class="mt-4">Por favor, contacta a tu administrador o intenta nuevamente.</p>
+            <t t-set="head">
+                <style>
+                    .ml-oauth-container {
+                        min-height: 100vh;
+                        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    }
+                    .ml-card {
+                        background: white;
+                        border-radius: 20px;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+                        max-width: 500px;
+                        width: 100%;
+                        overflow: hidden;
+                        animation: slideUp 0.5s ease-out;
+                    }
+                    @keyframes slideUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .ml-header-error {
+                        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+                        padding: 40px 30px;
+                        text-align: center;
+                    }
+                    .ml-icon-circle {
+                        width: 100px;
+                        height: 100px;
+                        background: white;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                        animation: shake 0.5s ease-out 0.2s;
+                    }
+                    @keyframes shake {
+                        0%, 100% { transform: translateX(0); }
+                        25% { transform: translateX(-5px); }
+                        75% { transform: translateX(5px); }
+                    }
+                    .ml-error-icon {
+                        width: 50px;
+                        height: 50px;
+                        stroke: #ee5a5a;
+                        stroke-width: 3;
+                        fill: none;
+                    }
+                    .ml-title {
+                        color: white;
+                        font-size: 28px;
+                        font-weight: 700;
+                        margin: 0;
+                    }
+                    .ml-body {
+                        padding: 30px;
+                    }
+                    .ml-subtitle {
+                        color: #666;
+                        font-size: 16px;
+                        text-align: center;
+                        margin-bottom: 25px;
+                    }
+                    .ml-error-card {
+                        background: #fff5f5;
+                        border: 1px solid #ffdddd;
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin-bottom: 20px;
+                    }
+                    .ml-error-title {
+                        color: #c0392b;
+                        font-size: 14px;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        margin-bottom: 15px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    .ml-error-row {
+                        padding: 8px 0;
+                    }
+                    .ml-error-label {
+                        color: #888;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .ml-error-value {
+                        color: #333;
+                        font-size: 14px;
+                        margin-top: 4px;
+                        word-break: break-word;
+                    }
+                    .ml-footer {
+                        text-align: center;
+                        padding: 20px 30px 30px;
+                    }
+                    .ml-btn {
+                        background: linear-gradient(135deg, #2D3277 0%, #1a1f4e 100%);
+                        color: white;
+                        border: none;
+                        padding: 14px 40px;
+                        border-radius: 30px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        text-decoration: none;
+                        display: inline-block;
+                        margin: 5px;
+                    }
+                    .ml-btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 10px 30px rgba(45, 50, 119, 0.3);
+                        color: white;
+                        text-decoration: none;
+                    }
+                    .ml-btn-secondary {
+                        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+                    }
+                    .ml-note {
+                        color: #999;
+                        font-size: 13px;
+                        margin-top: 20px;
+                    }
+                </style>
+            </t>
+            <div class="ml-oauth-container">
+                <div class="ml-card">
+                    <div class="ml-header-error">
+                        <div class="ml-icon-circle">
+                            <svg class="ml-error-icon" viewBox="0 0 52 52">
+                                <circle cx="26" cy="26" r="20"/>
+                                <line x1="18" y1="18" x2="34" y2="34"/>
+                                <line x1="34" y1="18" x2="18" y2="34"/>
+                            </svg>
                         </div>
+                        <h1 class="ml-title">Error en la Conexión</h1>
+                    </div>
+                    <div class="ml-body">
+                        <p class="ml-subtitle">Hubo un problema al conectar tu cuenta de MercadoLibre.</p>
+                        <div class="ml-error-card">
+                            <div class="ml-error-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                                Detalles del error
+                            </div>
+                            <div class="ml-error-row">
+                                <div class="ml-error-label">Código de error</div>
+                                <div class="ml-error-value"><t t-esc="error"/></div>
+                            </div>
+                            <div class="ml-error-row">
+                                <div class="ml-error-label">Descripción</div>
+                                <div class="ml-error-value"><t t-esc="error_description"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ml-footer">
+                        <a href="javascript:history.back()" class="ml-btn ml-btn-secondary">Volver</a>
+                        <a href="/web" class="ml-btn">Ir al Sistema</a>
+                        <p class="ml-note">Si el problema persiste, contacta al administrador del sistema.</p>
                     </div>
                 </div>
             </div>
