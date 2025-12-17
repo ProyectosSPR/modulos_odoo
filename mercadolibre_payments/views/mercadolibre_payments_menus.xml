@@ -11,6 +11,18 @@
               action="action_mercadolibre_payment"
               sequence="10"/>
 
+    <menuitem id="menu_mercadolibre_payment_incoming"
+              name="Pagos Recibidos (Ingresos)"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_incoming"
+              sequence="15"/>
+
+    <menuitem id="menu_mercadolibre_payment_outgoing"
+              name="Pagos Realizados (Egresos)"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_outgoing"
+              sequence="16"/>
+
     <menuitem id="menu_mercadolibre_payment_released"
               name="Pagos Liberados"
               parent="menu_mercadolibre_payments_root"

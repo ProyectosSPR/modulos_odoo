@@ -33,18 +33,24 @@ class MercadolibreApiPlayground(models.Model):
         store=True,
         readonly=True
     )
+    api_type = fields.Selection([
+        ('mercadolibre', 'MercadoLibre (api.mercadolibre.com)'),
+        ('mercadopago', 'MercadoPago (api.mercadopago.com)'),
+    ], string='API', required=True, default='mercadolibre',
+       help='Selecciona la API a usar: MercadoLibre para productos/ordenes, MercadoPago para pagos')
+
     endpoint = fields.Char(
         string='Endpoint',
         required=True,
         default='/users/me',
-        help='Ejemplo: /users/me, /items/search, etc.'
+        help='Ejemplo ML: /users/me, /items/search. Ejemplo MP: /v1/payments/search'
     )
     method = fields.Selection([
         ('GET', 'GET'),
         ('POST', 'POST'),
         ('PUT', 'PUT'),
         ('DELETE', 'DELETE'),
-    ], string='Método HTTP', required=True, default='GET')
+    ], string='Metodo HTTP', required=True, default='GET')
 
     request_params = fields.Text(
         string='Query Parameters (JSON)',
@@ -195,8 +201,11 @@ class MercadolibreApiPlayground(models.Model):
             _logger.error('Error obteniendo token: %s', str(e))
             raise ValidationError(_(f'Error al obtener token: {str(e)}'))
 
-        # Construye la URL
-        base_url = 'https://api.mercadolibre.com'
+        # Construye la URL segun el tipo de API
+        if self.api_type == 'mercadopago':
+            base_url = 'https://api.mercadopago.com'
+        else:
+            base_url = 'https://api.mercadolibre.com'
         endpoint = self.endpoint if self.endpoint.startswith('/') else f'/{self.endpoint}'
         full_url = f'{base_url}{endpoint}'
 

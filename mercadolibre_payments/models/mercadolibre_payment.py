@@ -55,6 +55,32 @@ class MercadolibrePayment(models.Model):
         readonly=True,
         help='Referencia externa del pago'
     )
+    description = fields.Text(
+        string='Descripcion',
+        readonly=True,
+        help='Descripcion del pago en MercadoPago'
+    )
+
+    # Payment Direction (incoming = received, outgoing = made by us)
+    payment_direction = fields.Selection([
+        ('incoming', 'Recibido'),
+        ('outgoing', 'Realizado'),
+        ('unknown', 'Desconocido'),
+    ], string='Direccion', readonly=True, index=True, default='unknown',
+       help='Indica si el pago fue recibido (incoming) o realizado por nosotros (outgoing)')
+
+    is_incoming = fields.Boolean(
+        string='Es Ingreso',
+        compute='_compute_is_incoming',
+        store=True,
+        help='True si es un pago que recibimos'
+    )
+    is_outgoing = fields.Boolean(
+        string='Es Egreso',
+        compute='_compute_is_incoming',
+        store=True,
+        help='True si es un pago que realizamos'
+    )
 
     # Payment Status
     status = fields.Selection([
@@ -264,6 +290,12 @@ class MercadolibrePayment(models.Model):
             else:
                 record.name = 'Nuevo Pago'
 
+    @api.depends('payment_direction')
+    def _compute_is_incoming(self):
+        for record in self:
+            record.is_incoming = record.payment_direction == 'incoming'
+            record.is_outgoing = record.payment_direction == 'outgoing'
+
     @api.depends('charge_ids.amount')
     def _compute_total_charges(self):
         for record in self:
@@ -297,17 +329,31 @@ class MercadolibrePayment(models.Model):
         currency = self._get_currency(data.get('currency_id', 'MXN'))
 
         # Parse payer info
-        payer = data.get('payer', {})
+        payer = data.get('payer', {}) or {}
         payer_identification = payer.get('identification', {}) or {}
 
         # Parse fee details for charges
         fee_details = data.get('fee_details', []) or []
+
+        # Determine payment direction (incoming = we received, outgoing = we paid)
+        collector_id = str(data.get('collector_id', ''))
+        payer_id = str(payer.get('id', ''))
+        account_user_id = account.ml_user_id or ''
+
+        if collector_id and collector_id == account_user_id:
+            payment_direction = 'incoming'  # We are the collector (received money)
+        elif payer_id and payer_id == account_user_id:
+            payment_direction = 'outgoing'  # We are the payer (sent money)
+        else:
+            payment_direction = 'unknown'
 
         vals = {
             'account_id': account.id,
             'mp_payment_id': mp_payment_id,
             'mp_order_id': str(data.get('order', {}).get('id', '')) if data.get('order') else '',
             'mp_external_reference': data.get('external_reference', ''),
+            'description': data.get('description', ''),
+            'payment_direction': payment_direction,
             'status': data.get('status', ''),
             'status_detail': data.get('status_detail', ''),
             'money_release_status': data.get('money_release_status', ''),
@@ -325,12 +371,12 @@ class MercadolibrePayment(models.Model):
             'payment_method_name': data.get('payment_method', {}).get('name', '') if isinstance(data.get('payment_method'), dict) else '',
             'payment_type': self._map_payment_type(data.get('payment_type_id', '')),
             'installments': data.get('installments', 1),
-            'payer_id': str(payer.get('id', '')),
+            'payer_id': payer_id,
             'payer_email': payer.get('email', ''),
             'payer_name': f"{payer.get('first_name', '')} {payer.get('last_name', '')}".strip(),
             'payer_identification_type': payer_identification.get('type', ''),
             'payer_identification_number': payer_identification.get('number', ''),
-            'collector_id': str(data.get('collector_id', '')),
+            'collector_id': collector_id,
             'operation_type': data.get('operation_type', ''),
             'raw_data': json.dumps(data, indent=2, ensure_ascii=False),
             'last_sync_date': fields.Datetime.now(),

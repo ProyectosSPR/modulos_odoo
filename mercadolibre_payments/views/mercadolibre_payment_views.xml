@@ -12,6 +12,11 @@
                 <field name="name"/>
                 <field name="account_id"/>
                 <field name="mp_payment_id"/>
+                <field name="payment_direction" widget="badge"
+                       decoration-success="payment_direction=='incoming'"
+                       decoration-info="payment_direction=='outgoing'"
+                       decoration-muted="payment_direction=='unknown'"/>
+                <field name="description" optional="hide"/>
                 <field name="date_approved"/>
                 <field name="transaction_amount" sum="Total"/>
                 <field name="net_received_amount" sum="Total Neto"/>
@@ -70,6 +75,9 @@
                             <field name="mp_payment_id"/>
                             <field name="mp_order_id"/>
                             <field name="mp_external_reference"/>
+                            <field name="payment_direction" widget="badge"
+                                   decoration-success="payment_direction=='incoming'"
+                                   decoration-info="payment_direction=='outgoing'"/>
                             <field name="operation_type"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
@@ -82,6 +90,9 @@
                             <field name="sync_error" attrs="{'invisible': [('sync_error', '=', False)]}"/>
                             <field name="last_sync_date"/>
                         </group>
+                    </group>
+                    <group attrs="{'invisible': [('description', '=', False)]}">
+                        <field name="description" nolabel="1" colspan="2"/>
                     </group>
                     <group>
                         <group string="Montos">
@@ -182,6 +193,11 @@
                 <filter string="Rechazados" name="rejected" domain="[('status', '=', 'rejected')]"/>
                 <filter string="Reembolsados" name="refunded" domain="[('status', '=', 'refunded')]"/>
                 <separator/>
+                <filter string="Pagos Recibidos" name="incoming"
+                        domain="[('payment_direction', '=', 'incoming')]"/>
+                <filter string="Pagos Realizados" name="outgoing"
+                        domain="[('payment_direction', '=', 'outgoing')]"/>
+                <separator/>
                 <filter string="Dinero Liberado" name="released"
                         domain="[('money_release_status', '=', 'released')]"/>
                 <filter string="Dinero Pendiente" name="release_pending"
@@ -204,6 +220,7 @@
                 <separator/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Direccion" name="group_direction" context="{'group_by': 'payment_direction'}"/>
                     <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
                     <filter string="Liberacion" name="group_release" context="{'group_by': 'money_release_status'}"/>
                     <filter string="Metodo Pago" name="group_method" context="{'group_by': 'payment_type'}"/>
@@ -318,5 +335,37 @@
         <field name="res_model">mercadolibre.payment</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('sync_status', '=', 'pending')]</field>
+    </record>
+
+    <record id="action_mercadolibre_payment_incoming" model="ir.actions.act_window">
+        <field name="name">Pagos Recibidos</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="domain">[('payment_direction', '=', 'incoming')]</field>
+        <field name="context">{'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay pagos recibidos
+            </p>
+            <p>
+                Aqui se muestran los pagos que has recibido de tus clientes.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment_outgoing" model="ir.actions.act_window">
+        <field name="name">Pagos Realizados</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="domain">[('payment_direction', '=', 'outgoing')]</field>
+        <field name="context">{'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay pagos realizados
+            </p>
+            <p>
+                Aqui se muestran los pagos que has realizado (egresos).
+            </p>
+        </field>
     </record>
 </odoo>
