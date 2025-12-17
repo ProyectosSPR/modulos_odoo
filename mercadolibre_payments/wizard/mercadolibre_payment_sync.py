@@ -85,11 +85,16 @@ class MercadolibrePaymentSync(models.TransientModel):
         _logger.info('Limite: %d', self.limit)
 
         log_lines = []
-        log_lines.append(f'Cuenta: {self.account_id.name}')
-        log_lines.append(f'Periodo: {self.date_from} a {self.date_to}')
-        log_lines.append(f'Solo liberados: {"Si" if self.only_released else "No"}')
-        log_lines.append(f'Limite: {self.limit}')
-        log_lines.append('-' * 40)
+        log_lines.append('=' * 50)
+        log_lines.append('       SINCRONIZACION DE PAGOS MERCADOPAGO')
+        log_lines.append('=' * 50)
+        log_lines.append('')
+        log_lines.append(f'  Cuenta:          {self.account_id.name}')
+        log_lines.append(f'  Periodo:         {self.date_from} a {self.date_to}')
+        log_lines.append(f'  Solo liberados:  {"Si" if self.only_released else "No"}')
+        log_lines.append(f'  Solo aprobados:  {"Si" if self.only_approved else "No"}')
+        log_lines.append(f'  Limite:          {self.limit}')
+        log_lines.append('')
 
         try:
             access_token = self.account_id.get_valid_token()
@@ -156,9 +161,15 @@ class MercadolibrePaymentSync(models.TransientModel):
         paging = data.get('paging', {})
         total = paging.get('total', len(results))
 
-        log_lines.append(f'Total encontrados: {total}')
-        log_lines.append(f'Resultados en pagina: {len(results)}')
-        log_lines.append('-' * 40)
+        log_lines.append('-' * 50)
+        log_lines.append('  RESULTADOS DE BUSQUEDA')
+        log_lines.append('-' * 50)
+        log_lines.append(f'  Total en MercadoPago:  {total}')
+        log_lines.append(f'  Obtenidos:             {len(results)}')
+        log_lines.append('')
+        log_lines.append('-' * 50)
+        log_lines.append('  DETALLE DE PAGOS')
+        log_lines.append('-' * 50)
 
         _logger.info('Total encontrados: %d', total)
         _logger.info('Resultados en pagina: %d', len(results))
@@ -184,19 +195,22 @@ class MercadolibrePaymentSync(models.TransientModel):
             try:
                 PaymentModel.create_from_mp_data(payment_data, self.account_id)
                 sync_count += 1
-                log_lines.append(f'OK: Pago {mp_id} - ${amount:.2f} ({status})')
+                log_lines.append(f'  [OK]    #{mp_id}  ${amount:>12,.2f}  {status}')
                 _logger.info('Sincronizado pago %s - $%.2f', mp_id, amount)
 
             except Exception as e:
                 error_count += 1
-                log_lines.append(f'ERROR: Pago {mp_id} - {str(e)}')
+                log_lines.append(f'  [ERROR] #{mp_id}  {str(e)}')
                 _logger.error('Error procesando pago %s: %s', mp_id, str(e))
 
-        log_lines.append('-' * 40)
-        log_lines.append(f'RESUMEN:')
-        log_lines.append(f'  Sincronizados: {sync_count}')
+        log_lines.append('')
+        log_lines.append('=' * 50)
+        log_lines.append('  RESUMEN')
+        log_lines.append('=' * 50)
+        log_lines.append(f'  Sincronizados:           {sync_count}')
         log_lines.append(f'  Saltados (no liberados): {skipped_count}')
-        log_lines.append(f'  Errores: {error_count}')
+        log_lines.append(f'  Errores:                 {error_count}')
+        log_lines.append('=' * 50)
 
         _logger.info('='*60)
         _logger.info('SINCRONIZACION COMPLETADA')

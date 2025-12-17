@@ -31,106 +31,152 @@
                 </header>
                 <sheet>
                     <style>
-                        .ml-playground-request {
-                            background: #f8f9fa;
-                            border-radius: 8px;
-                            padding: 15px;
-                            margin-bottom: 15px;
+                        /* URL Bar Style */
+                        .ml-url-container {
+                            background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin-bottom: 20px;
                         }
-                        .ml-playground-url-bar {
+                        .ml-url-bar {
                             display: flex;
                             gap: 10px;
                             align-items: center;
-                            background: white;
-                            border: 2px solid #dee2e6;
+                            background: #3d3d3d;
+                            border: 2px solid #4d4d4d;
                             border-radius: 8px;
                             padding: 8px 15px;
                         }
+                        .ml-url-bar:focus-within {
+                            border-color: #61affe;
+                            box-shadow: 0 0 0 3px rgba(97, 175, 254, 0.2);
+                        }
+                        .ml-base-url {
+                            color: #888;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                            font-size: 13px;
+                            white-space: nowrap;
+                        }
+                        .ml-endpoint-input {
+                            flex: 1;
+                            background: transparent;
+                            border: none;
+                            color: #fff;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                            font-size: 13px;
+                        }
+                        .ml-endpoint-input:focus {
+                            outline: none;
+                        }
+
+                        /* Method Badges */
                         .ml-method-badge {
                             font-weight: bold;
-                            padding: 5px 12px;
-                            border-radius: 4px;
-                            font-size: 13px;
+                            padding: 6px 14px;
+                            border-radius: 6px;
+                            font-size: 12px;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
                         }
                         .ml-method-get { background: #61affe; color: white; }
                         .ml-method-post { background: #49cc90; color: white; }
                         .ml-method-put { background: #fca130; color: white; }
                         .ml-method-delete { background: #f93e3e; color: white; }
+
+                        /* Response Stats */
+                        .ml-response-stats {
+                            display: flex;
+                            gap: 15px;
+                            margin-bottom: 20px;
+                        }
+                        .ml-stat-card {
+                            background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+                            border-radius: 10px;
+                            padding: 15px 25px;
+                            text-align: center;
+                            min-width: 120px;
+                            border: 1px solid #3d3d3d;
+                        }
+                        .ml-stat-value {
+                            font-size: 24px;
+                            font-weight: bold;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                        }
+                        .ml-stat-label {
+                            color: #888;
+                            font-size: 11px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            margin-top: 5px;
+                        }
+                        .ml-stat-success .ml-stat-value { color: #49cc90; }
+                        .ml-stat-warning .ml-stat-value { color: #fca130; }
+                        .ml-stat-error .ml-stat-value { color: #f93e3e; }
+                        .ml-stat-info .ml-stat-value { color: #61affe; }
+
+                        /* Response Panel */
                         .ml-response-panel {
                             background: #1e1e1e;
-                            border-radius: 8px;
+                            border-radius: 12px;
                             overflow: hidden;
-                            margin-top: 15px;
+                            border: 1px solid #3d3d3d;
                         }
                         .ml-response-header {
-                            background: #2d2d2d;
-                            padding: 10px 15px;
+                            background: linear-gradient(135deg, #2d2d2d 0%, #252525 100%);
+                            padding: 12px 20px;
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
-                            border-bottom: 1px solid #404040;
+                            border-bottom: 1px solid #3d3d3d;
                         }
-                        .ml-status-badge {
-                            padding: 4px 12px;
-                            border-radius: 4px;
-                            font-weight: bold;
-                            font-size: 12px;
+                        .ml-response-title {
+                            color: #fff;
+                            font-weight: 600;
+                            font-size: 14px;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
                         }
-                        .ml-status-2xx { background: #49cc90; color: white; }
-                        .ml-status-3xx { background: #61affe; color: white; }
-                        .ml-status-4xx { background: #fca130; color: white; }
-                        .ml-status-5xx { background: #f93e3e; color: white; }
                         .ml-response-meta {
                             display: flex;
                             gap: 20px;
                             color: #888;
                             font-size: 12px;
                         }
-                        .ml-response-meta span {
-                            display: flex;
-                            align-items: center;
-                            gap: 5px;
+
+                        /* Status Badges */
+                        .ml-status-badge {
+                            padding: 4px 12px;
+                            border-radius: 20px;
+                            font-weight: bold;
+                            font-size: 12px;
                         }
+                        .ml-status-2xx { background: rgba(73, 204, 144, 0.2); color: #49cc90; }
+                        .ml-status-3xx { background: rgba(97, 175, 254, 0.2); color: #61affe; }
+                        .ml-status-4xx { background: rgba(252, 161, 48, 0.2); color: #fca130; }
+                        .ml-status-5xx { background: rgba(249, 62, 62, 0.2); color: #f93e3e; }
+
+                        /* JSON Viewer */
                         .ml-json-viewer {
                             background: #1e1e1e;
                             color: #d4d4d4;
-                            padding: 15px;
-                            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                            padding: 20px;
+                            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
                             font-size: 13px;
-                            line-height: 1.5;
+                            line-height: 1.6;
                             max-height: 500px;
                             overflow: auto;
                             white-space: pre-wrap;
                             word-break: break-word;
                         }
-                        .ml-json-viewer .string { color: #ce9178; }
-                        .ml-json-viewer .number { color: #b5cea8; }
-                        .ml-json-viewer .boolean { color: #569cd6; }
-                        .ml-json-viewer .null { color: #569cd6; }
-                        .ml-json-viewer .key { color: #9cdcfe; }
-                        .ml-tabs {
-                            display: flex;
-                            background: #2d2d2d;
-                            border-bottom: 1px solid #404040;
-                        }
-                        .ml-tab {
-                            padding: 10px 20px;
-                            color: #888;
-                            cursor: pointer;
-                            border-bottom: 2px solid transparent;
-                            transition: all 0.2s;
-                        }
-                        .ml-tab:hover { color: #fff; }
-                        .ml-tab.active {
-                            color: #61affe;
-                            border-bottom-color: #61affe;
-                        }
+
+                        /* Error Panel */
                         .ml-error-panel {
-                            background: #2d1f1f;
+                            background: linear-gradient(135deg, #2d1f1f 0%, #1e1515 100%);
                             border: 1px solid #f93e3e;
-                            border-radius: 8px;
-                            padding: 15px;
-                            margin-top: 15px;
+                            border-radius: 10px;
+                            padding: 20px;
+                            margin-bottom: 20px;
                         }
                         .ml-error-title {
                             color: #f93e3e;
@@ -138,16 +184,48 @@
                             margin-bottom: 10px;
                             display: flex;
                             align-items: center;
-                            gap: 8px;
+                            gap: 10px;
+                            font-size: 14px;
                         }
                         .ml-error-message {
                             color: #ff8888;
-                            font-family: monospace;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                            font-size: 13px;
+                            background: rgba(0,0,0,0.2);
+                            padding: 10px;
+                            border-radius: 6px;
+                        }
+
+                        /* Request Tabs Styling */
+                        .ml-request-section {
+                            background: #f8f9fa;
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin-bottom: 20px;
+                        }
+                        .ml-section-title {
+                            color: #2D3277;
+                            font-weight: 600;
+                            font-size: 14px;
+                            margin-bottom: 15px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+
+                        /* Full URL Display */
+                        .ml-full-url {
+                            background: #2d2d2d;
+                            color: #61affe;
+                            padding: 10px 15px;
+                            border-radius: 6px;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                            font-size: 12px;
+                            margin-top: 10px;
+                            word-break: break-all;
                         }
                     </style>
 
                     <div class="oe_title">
-                        <label for="name" class="oe_edit_only"/>
                         <h1>
                             <field name="name" placeholder="Nombre del request"/>
                         </h1>
@@ -160,7 +238,6 @@
                         </group>
                         <group>
                             <field name="executed_at" readonly="1"/>
-                            <field name="full_url" readonly="1" widget="url" attrs="{'invisible': [('full_url', '=', False)]}"/>
                         </group>
                     </group>
 
@@ -170,9 +247,20 @@
                             <field name="method" widget="radio" options="{'horizontal': true}"/>
                         </group>
                         <group>
-                            <field name="endpoint" placeholder="/users/me"/>
+                            <label for="endpoint"/>
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted mr-1">https://api.mercadolibre.com</span>
+                                <field name="endpoint" placeholder="/users/me" class="flex-grow-1"/>
+                            </div>
                         </group>
                     </group>
+
+                    <div attrs="{'invisible': [('full_url', '=', False)]}">
+                        <label string="URL Completa"/>
+                        <div class="ml-full-url">
+                            <field name="full_url" nolabel="1" readonly="1"/>
+                        </div>
+                    </div>
 
                     <notebook>
                         <page string="Params" name="params">
@@ -189,23 +277,40 @@
                         </page>
                     </notebook>
 
-                    <separator string="Response" attrs="{'invisible': [('state', '=', 'draft')]}"/>
-
                     <div attrs="{'invisible': [('state', '=', 'draft')]}">
-                        <group>
-                            <group>
-                                <field name="response_code" readonly="1"/>
-                                <field name="response_size" readonly="1"/>
-                            </group>
-                            <group>
-                                <field name="execution_time_display" string="Tiempo" readonly="1"/>
-                            </group>
-                        </group>
+                        <separator string="Response"/>
 
-                        <div attrs="{'invisible': [('error_message', '=', False)]}">
-                            <group string="Error">
-                                <field name="error_message" readonly="1" nolabel="1"/>
-                            </group>
+                        <div class="ml-response-stats">
+                            <div class="ml-stat-card ml-stat-success" attrs="{'invisible': [('response_code', '&lt;', 200), ('response_code', '&gt;=', 300)]}">
+                                <div class="ml-stat-value"><field name="response_code" nolabel="1" readonly="1"/></div>
+                                <div class="ml-stat-label">Status Code</div>
+                            </div>
+                            <div class="ml-stat-card ml-stat-warning" attrs="{'invisible': ['|', ('response_code', '&lt;', 400), ('response_code', '&gt;=', 500)]}">
+                                <div class="ml-stat-value"><field name="response_code" nolabel="1" readonly="1"/></div>
+                                <div class="ml-stat-label">Status Code</div>
+                            </div>
+                            <div class="ml-stat-card ml-stat-error" attrs="{'invisible': [('response_code', '&lt;', 500)]}">
+                                <div class="ml-stat-value"><field name="response_code" nolabel="1" readonly="1"/></div>
+                                <div class="ml-stat-label">Status Code</div>
+                            </div>
+                            <div class="ml-stat-card ml-stat-info">
+                                <div class="ml-stat-value"><field name="execution_time_display" nolabel="1" readonly="1"/></div>
+                                <div class="ml-stat-label">Tiempo</div>
+                            </div>
+                            <div class="ml-stat-card ml-stat-info">
+                                <div class="ml-stat-value"><field name="response_size" nolabel="1" readonly="1"/></div>
+                                <div class="ml-stat-label">Tamano</div>
+                            </div>
+                        </div>
+
+                        <div class="ml-error-panel" attrs="{'invisible': [('error_message', '=', False)]}">
+                            <div class="ml-error-title">
+                                <i class="fa fa-exclamation-triangle"/>
+                                Error en la solicitud
+                            </div>
+                            <div class="ml-error-message">
+                                <field name="error_message" nolabel="1" readonly="1"/>
+                            </div>
                         </div>
 
                         <notebook attrs="{'invisible': ['|', ('state', '=', 'draft'), ('response_body', '=', False)]}">
@@ -243,7 +348,7 @@
                 <filter string="DELETE" name="delete" domain="[('method', '=', 'DELETE')]"/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Cuenta" name="account" context="{'group_by': 'account_id'}"/>
-                    <filter string="Método" name="method" context="{'group_by': 'method'}"/>
+                    <filter string="Metodo" name="method" context="{'group_by': 'method'}"/>
                     <filter string="Estado" name="state" context="{'group_by': 'state'}"/>
                 </group>
             </search>
@@ -264,10 +369,10 @@
                 <b>Ejemplos de endpoints:</b>
             </p>
             <ul>
-                <li><code>/users/me</code> - Información del usuario</li>
+                <li><code>/users/me</code> - Informacion del usuario</li>
                 <li><code>/sites/MLM/search?q=iphone</code> - Buscar productos</li>
                 <li><code>/items/{ITEM_ID}</code> - Detalle de producto</li>
-                <li><code>/orders/search?seller={USER_ID}</code> - Órdenes del vendedor</li>
+                <li><code>/orders/search?seller={USER_ID}</code> - Ordenes del vendedor</li>
             </ul>
         </field>
     </record>

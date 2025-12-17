@@ -5,6 +5,55 @@
         <field name="model">mercadolibre.payment.sync</field>
         <field name="arch" type="xml">
             <form string="Sincronizar Pagos">
+                <style>
+                    .ml-sync-log {
+                        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+                        font-size: 12px;
+                        background: #1e1e1e;
+                        color: #d4d4d4;
+                        padding: 15px;
+                        border-radius: 8px;
+                        white-space: pre;
+                        overflow-x: auto;
+                        line-height: 1.6;
+                    }
+                    .ml-sync-header {
+                        background: linear-gradient(135deg, #FFE600 0%, #F5D000 100%);
+                        padding: 15px;
+                        border-radius: 8px 8px 0 0;
+                        margin: -15px -15px 15px -15px;
+                        text-align: center;
+                    }
+                    .ml-sync-header h3 {
+                        color: #2D3277;
+                        margin: 0;
+                        font-weight: bold;
+                    }
+                    .ml-sync-stats {
+                        display: flex;
+                        gap: 20px;
+                        margin-bottom: 15px;
+                    }
+                    .ml-sync-stat {
+                        background: #f8f9fa;
+                        padding: 15px 25px;
+                        border-radius: 8px;
+                        text-align: center;
+                        flex: 1;
+                    }
+                    .ml-sync-stat-value {
+                        font-size: 28px;
+                        font-weight: bold;
+                        color: #2D3277;
+                    }
+                    .ml-sync-stat-label {
+                        color: #666;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                    }
+                    .ml-sync-stat.success .ml-sync-stat-value { color: #28a745; }
+                    .ml-sync-stat.error .ml-sync-stat-value { color: #dc3545; }
+                </style>
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Configuracion">
                         <field name="account_id" options="{'no_create': True}"/>
@@ -17,15 +66,22 @@
                         <field name="limit"/>
                     </group>
                 </group>
-                <group attrs="{'invisible': [('state', '=', 'draft')]}">
-                    <group string="Resultados">
-                        <field name="sync_count"/>
-                        <field name="error_count"/>
-                    </group>
-                </group>
-                <group attrs="{'invisible': [('state', '=', 'draft')]}" string="Log de Sincronizacion">
-                    <field name="sync_log" nolabel="1" readonly="1"/>
-                </group>
+                <div attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <div class="ml-sync-stats">
+                        <div class="ml-sync-stat success">
+                            <div class="ml-sync-stat-value"><field name="sync_count" nolabel="1"/></div>
+                            <div class="ml-sync-stat-label">Sincronizados</div>
+                        </div>
+                        <div class="ml-sync-stat error">
+                            <div class="ml-sync-stat-value"><field name="error_count" nolabel="1"/></div>
+                            <div class="ml-sync-stat-label">Errores</div>
+                        </div>
+                    </div>
+                    <label for="sync_log" string="Log de Sincronizacion"/>
+                    <div class="ml-sync-log">
+                        <field name="sync_log" nolabel="1" readonly="1" widget="text"/>
+                    </div>
+                </div>
                 <field name="state" invisible="1"/>
                 <footer>
                     <button name="action_sync" type="object" string="Sincronizar"
