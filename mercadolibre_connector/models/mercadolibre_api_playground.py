@@ -290,15 +290,13 @@ class MercadolibreApiPlayground(models.Model):
             _logger.info('REQUEST COMPLETADO - Status: %s', response.status_code)
             _logger.info('=' * 60)
 
+            # Recargar la vista para mostrar los resultados
             return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Request Completado'),
-                    'message': _(f'Status: {response.status_code} - Tiempo: {self.execution_time_display}'),
-                    'type': 'success' if is_success else 'warning',
-                    'sticky': False,
-                }
+                'type': 'ir.actions.act_window',
+                'res_model': 'mercadolibre.api.playground',
+                'res_id': self.id,
+                'view_mode': 'form',
+                'target': 'current',
             }
 
         except requests.exceptions.Timeout:
@@ -345,6 +343,14 @@ class MercadolibreApiPlayground(models.Model):
             'executed_at': False,
             'full_url': False,
         })
+        # Recargar la vista
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'mercadolibre.api.playground',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
 
     def action_duplicate(self):
         """Duplica el request"""
