@@ -1,8 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" ?>
 <odoo>
-    
-        <!-- Tree View -->
-        <record id="view_mercadolibre_playground_tree" model="ir.ui.view">
+    <record id="view_mercadolibre_playground_tree" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.tree</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -17,10 +15,8 @@
                 <field name="is_favorite" widget="boolean_favorite" nolabel="1"/>
             </tree>
         </field>
-        </record>
-
-        <!-- Form View -->
-        <record id="view_mercadolibre_playground_form" model="ir.ui.view">
+    </record>
+    <record id="view_mercadolibre_playground_form" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.form</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -33,7 +29,9 @@
                 <sheet>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="ej: Obtener info de usuario"/></h1>
+                        <h1>
+                            <field name="name" placeholder="ej: Obtener info de usuario"/>
+                        </h1>
                     </div>
                     <group>
                         <group>
@@ -59,13 +57,13 @@
                     </group>
                     <notebook>
                         <page string="Body">
-                            <field name="body" widget="ace" options="{'mode': 'json'}" placeholder='{"key": "value"}'/>
+                            <field name="body" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;key&quot;: &quot;value&quot;}"/>
                         </page>
                         <page string="Headers">
-                            <field name="headers" widget="ace" options="{'mode': 'json'}" placeholder='{"X-Custom-Header": "value"}'/>
+                            <field name="headers" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;X-Custom-Header&quot;: &quot;value&quot;}"/>
                         </page>
                         <page string="Query Params">
-                            <field name="query_params" widget="ace" options="{'mode': 'json'}" placeholder='{"limit": 50, "offset": 0}'/>
+                            <field name="query_params" widget="ace" options="{'mode': 'json'}" placeholder="{&quot;limit&quot;: 50, &quot;offset&quot;: 0}"/>
                         </page>
                         <page string="Response" attrs="{'invisible': [('last_response', '=', False)]}">
                             <group>
@@ -79,10 +77,8 @@
                 </sheet>
             </form>
         </field>
-        </record>
-
-        <!-- Search View -->
-        <record id="view_mercadolibre_playground_search" model="ir.ui.view">
+    </record>
+    <record id="view_mercadolibre_playground_search" model="ir.ui.view">
         <field name="name">mercadolibre.api.playground.search</field>
         <field name="model">mercadolibre.api.playground</field>
         <field name="arch" type="xml">
@@ -102,13 +98,10 @@
                 </group>
             </search>
         </field>
-        </record>
-
-        <!-- Action -->
-        <record id="action_mercadolibre_playground" model="ir.actions.act_window">
+    </record>
+    <record id="action_mercadolibre_playground" model="ir.actions.act_window">
         <field name="name">API Playground</field>
         <field name="res_model">mercadolibre.api.playground</field>
         <field name="view_mode">tree,form</field>
-        </record>
-        
+    </record>
 </odoo>
