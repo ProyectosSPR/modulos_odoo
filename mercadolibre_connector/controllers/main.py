@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 
 class MercadolibreController(http.Controller):
 
-    @http.route('/mercadolibre/callback', type='http', auth='user', website=True, csrf=False)
+    @http.route('/mercadolibre/callback', type='http', auth='public', website=True, csrf=False)
     def oauth_callback(self, code=None, state=None, error=None, **kwargs):
         """
         Callback de OAuth de MercadoLibre.
