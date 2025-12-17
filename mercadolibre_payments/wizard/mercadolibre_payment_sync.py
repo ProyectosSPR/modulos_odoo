@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
+import time
 import logging
 from datetime import datetime, timedelta
 from odoo import models, fields, api, _
@@ -132,9 +134,33 @@ class MercadolibrePaymentSync(models.TransientModel):
         _logger.info('URL: %s', url)
         _logger.info('Params: %s', params)
 
+        # Registrar en mercadolibre.log
+        LogModel = self.env['mercadolibre.log'].sudo()
+        headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
+
+        start_time = time.time()
+
         try:
             response = requests.get(url, params=params, headers=headers, timeout=60)
+            duration = time.time() - start_time
             _logger.info('Response Code: %d', response.status_code)
+
+            # Guardar log en mercadolibre.log
+            response_body_log = response.text[:10000] if response.text else ''
+            LogModel.create({
+                'log_type': 'api_request',
+                'level': 'success' if response.status_code == 200 else 'error',
+                'account_id': self.account_id.id,
+                'message': f'Payment Sync: GET /v1/payments/search - {response.status_code}',
+                'request_url': response.url,
+                'request_method': 'GET',
+                'request_headers': json.dumps(headers_log, indent=2),
+                'request_body': json.dumps(params, indent=2),
+                'response_code': response.status_code,
+                'response_headers': json.dumps(dict(response.headers), indent=2),
+                'response_body': response_body_log,
+                'duration': duration,
+            })
 
             if response.status_code != 200:
                 error_msg = f'Error API: {response.status_code} - {response.text}'
@@ -149,7 +175,23 @@ class MercadolibrePaymentSync(models.TransientModel):
             data = response.json()
 
         except requests.exceptions.RequestException as e:
+            duration = time.time() - start_time
             _logger.error('Error de conexion: %s', str(e))
+
+            # Guardar log de error
+            LogModel.create({
+                'log_type': 'api_request',
+                'level': 'error',
+                'account_id': self.account_id.id,
+                'message': f'Payment Sync: GET /v1/payments/search - Error',
+                'request_url': url,
+                'request_method': 'GET',
+                'request_headers': json.dumps(headers_log, indent=2),
+                'request_body': json.dumps(params, indent=2),
+                'error_details': str(e),
+                'duration': duration,
+            })
+
             log_lines.append(f'ERROR de conexion: {str(e)}')
             self.write({
                 'state': 'error',
