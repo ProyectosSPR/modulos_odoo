@@ -30,7 +30,6 @@
         'data/ir_cron.xml',
         'data/mail_template_invitation.xml',
         'data/mail_template_connected.xml',
-        'data/mercadolibre_playground_templates.xml',
 
         # Views
         'views/mercadolibre_config_views.xml',
