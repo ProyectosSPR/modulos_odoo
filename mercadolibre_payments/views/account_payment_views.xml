@@ -62,6 +62,7 @@
                     <group>
                         <group string="Metodo de Pago">
                             <field name="ml_payment_method"/>
+                            <field name="ml_responsible_user_id"/>
                         </group>
                         <group string="Orden de Venta Relacionada">
                             <field name="ml_sale_order_id" readonly="1"/>

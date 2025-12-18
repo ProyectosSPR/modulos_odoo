@@ -95,8 +95,13 @@ class AccountPayment(models.Model):
         store=True
     )
 
-    # NOTA: El campo user_id ya existe en account.payment base
-    # Lo usamos directamente sin redefinirlo
+    # Usuario responsable del registro (campo propio, almacenado)
+    # NOTA: user_id de account.payment base NO se almacena (store=False)
+    ml_responsible_user_id = fields.Many2one(
+        'res.users',
+        string='Registrado por',
+        help='Usuario que registro este pago desde MercadoLibre'
+    )
 
     @api.depends('ml_payment_id')
     def _compute_is_ml_payment(self):

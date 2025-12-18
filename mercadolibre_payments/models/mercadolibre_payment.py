@@ -966,7 +966,7 @@ class MercadolibrePayment(models.Model):
 
             # Agregar usuario responsable si esta configurado
             if payment_user:
-                payment_vals['user_id'] = payment_user.id
+                payment_vals['ml_responsible_user_id'] = payment_user.id
 
             # Usar metodo extendido que construye el ref con formato correcto
             # [Orden Venta] - [pack_id o order_id] - [payment_id]
@@ -1079,7 +1079,7 @@ class MercadolibrePayment(models.Model):
 
         # Agregar usuario responsable si esta configurado
         if payment_user:
-            commission_vals['user_id'] = payment_user.id
+            commission_vals['ml_responsible_user_id'] = payment_user.id
 
         commission_payment = self.env['account.payment'].create(commission_vals)
         _logger.info('Pago comision creado: %s para ML pago %s', commission_payment.name, self.mp_payment_id)
@@ -1128,7 +1128,7 @@ class MercadolibrePayment(models.Model):
 
         # Agregar usuario responsable si esta configurado
         if payment_user:
-            bonification_vals['user_id'] = payment_user.id
+            bonification_vals['ml_responsible_user_id'] = payment_user.id
 
         bonification_payment = self.env['account.payment'].create(bonification_vals)
         _logger.info('Pago bonificacion creado: %s para ML pago %s', bonification_payment.name, self.mp_payment_id)
