@@ -6,8 +6,8 @@
         <field name="model">mercadolibre.account</field>
         <field name="inherit_id" ref="mercadolibre_connector.view_mercadolibre_account_form"/>
         <field name="arch" type="xml">
-            <!-- Agregar seccion de Usuario Odoo despues del grupo Token Actual -->
-            <xpath expr="//group[@string='Token Actual']" position="after">
+            <!-- Agregar seccion de Usuario Odoo antes del notebook -->
+            <xpath expr="//notebook" position="before">
                 <group string="Usuario Odoo" name="odoo_user">
                     <group>
                         <field name="auto_create_user"/>
