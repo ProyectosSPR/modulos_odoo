@@ -1075,6 +1075,7 @@ class MercadolibrePayment(models.Model):
             'journal_id': config.commission_journal_id.id,
             'date': payment_date,
             'ref': f'ML-COM-{self.mp_payment_id}',
+            'ml_payment_mp_id': self.mp_payment_id,
         }
 
         # Agregar usuario responsable si esta configurado
@@ -1124,6 +1125,7 @@ class MercadolibrePayment(models.Model):
             'journal_id': config.commission_journal_id.id,
             'date': payment_date,
             'ref': f'ML-BON-{self.mp_payment_id}',
+            'ml_payment_mp_id': self.mp_payment_id,
         }
 
         # Agregar usuario responsable si esta configurado
