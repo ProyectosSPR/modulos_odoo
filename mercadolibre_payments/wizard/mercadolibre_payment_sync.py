@@ -218,15 +218,10 @@ class MercadolibrePaymentSync(models.TransientModel):
         if self.only_approved:
             params['status'] = 'approved'
 
-        # Filtrar por direccion del pago usando el user_id de la cuenta
+        # Nota: MercadoPago API no soporta filtrar por collector_id ni payer_id
+        # Descargamos todos los pagos y filtramos localmente por direccion
         account_user_id = self.account_id.ml_user_id
-        if account_user_id:
-            if self.payment_direction_filter == 'incoming':
-                # Pagos recibidos: yo soy el collector (vendedor)
-                params['collector_id'] = account_user_id
-            elif self.payment_direction_filter == 'outgoing':
-                # Pagos realizados: yo soy el payer (comprador)
-                params['payer_id'] = account_user_id
+        filter_direction_locally = self.payment_direction_filter in ('incoming', 'outgoing')
 
         url = 'https://api.mercadopago.com/v1/payments/search'
         headers = {
@@ -305,12 +300,35 @@ class MercadolibrePaymentSync(models.TransientModel):
         results = data.get('results', [])
         paging = data.get('paging', {})
         total = paging.get('total', len(results))
+        total_before_filter = len(results)
+
+        # Filtrar localmente por direccion si es necesario (para pagos outgoing)
+        if filter_direction_locally and account_user_id:
+            filtered_results = []
+            for payment_data in results:
+                # Obtener payer_id del pago
+                payer = payment_data.get('payer', {}) or {}
+                payer_id = str(payer.get('id', '')) if payer.get('id') else str(payment_data.get('payer_id', ''))
+
+                # Obtener collector_id del pago
+                collector = payment_data.get('collector', {}) or {}
+                collector_id = str(payment_data.get('collector_id', '')) if payment_data.get('collector_id') else str(collector.get('id', ''))
+
+                # Filtrar segun direccion
+                if self.payment_direction_filter == 'outgoing' and payer_id == account_user_id:
+                    filtered_results.append(payment_data)
+                elif self.payment_direction_filter == 'incoming' and collector_id == account_user_id:
+                    filtered_results.append(payment_data)
+
+            results = filtered_results
 
         log_lines.append('-' * 50)
         log_lines.append('  RESULTADOS DE BUSQUEDA')
         log_lines.append('-' * 50)
         log_lines.append(f'  Total en MercadoPago:  {total}')
-        log_lines.append(f'  Obtenidos:             {len(results)}')
+        log_lines.append(f'  Obtenidos:             {total_before_filter}')
+        if filter_direction_locally:
+            log_lines.append(f'  Filtrados (direccion): {len(results)}')
         log_lines.append('')
         log_lines.append('-' * 50)
         log_lines.append('  DETALLE DE PAGOS')
