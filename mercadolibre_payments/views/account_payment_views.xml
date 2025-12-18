@@ -96,6 +96,7 @@
         <field name="inherit_id" ref="account.view_account_payment_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='state']" position="after">
+                <field name="ml_responsible_user_id" optional="hide" string="Registrado por"/>
                 <field name="ml_release_status" widget="badge" optional="hide"
                        decoration-success="ml_release_status=='released'"
                        decoration-warning="ml_release_status=='pending'"
