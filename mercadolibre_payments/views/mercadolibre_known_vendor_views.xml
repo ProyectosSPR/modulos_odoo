@@ -94,8 +94,6 @@
                 <separator/>
                 <filter string="Activos" name="active_filter" domain="[('active', '=', True)]"/>
                 <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter string="Con Pagos" name="with_payments" domain="[('payment_count', '>', 0)]"/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Proveedor Odoo" name="group_partner" context="{'group_by': 'partner_id'}"/>
                 </group>
