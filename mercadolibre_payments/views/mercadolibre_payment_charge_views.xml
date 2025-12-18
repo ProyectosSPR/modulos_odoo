@@ -6,8 +6,9 @@
         <field name="arch" type="xml">
             <tree string="Cargos de Pagos">
                 <field name="payment_id"/>
-                <field name="charge_type"/>
-                <field name="fee_payer"/>
+                <field name="charge_type_display" string="Tipo"/>
+                <field name="charge_type" string="Codigo" optional="hide"/>
+                <field name="fee_payer_display" string="Pagador"/>
                 <field name="amount" sum="Total"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
@@ -21,12 +22,14 @@
             <form string="Cargo de Pago">
                 <sheet>
                     <group>
-                        <group>
+                        <group string="Informacion">
                             <field name="payment_id"/>
-                            <field name="charge_type"/>
+                            <field name="charge_type_display" string="Tipo de Cargo"/>
+                            <field name="charge_type" string="Codigo API"/>
                         </group>
-                        <group>
-                            <field name="fee_payer"/>
+                        <group string="Monto">
+                            <field name="fee_payer_display" string="Pagado por"/>
+                            <field name="fee_payer" string="Codigo Pagador"/>
                             <field name="amount"/>
                         </group>
                     </group>
@@ -42,20 +45,35 @@
             <search string="Cargos">
                 <field name="payment_id"/>
                 <field name="charge_type"/>
+                <field name="charge_type_display"/>
                 <separator/>
-                <filter string="Comision MP" name="mp_fee"
+                <filter string="Comision MercadoLibre" name="meli_fee"
+                        domain="[('charge_type', '=', 'meli_fee')]"/>
+                <filter string="Comision MercadoPago" name="mp_fee"
                         domain="[('charge_type', '=', 'mercadopago_fee')]"/>
-                <filter string="Financiamiento" name="financing"
-                        domain="[('charge_type', '=', 'financing_fee')]"/>
+                <filter string="Fulfillment" name="fulfillment"
+                        domain="[('charge_type', '=', 'shp_fulfillment')]"/>
+                <filter string="Cross Docking" name="cross_docking"
+                        domain="[('charge_type', '=', 'shp_cross_docking')]"/>
+                <filter string="Spread Tarjetas" name="cards_spread"
+                        domain="[('charge_type', '=', 'cards_spread')]"/>
+                <separator/>
+                <filter string="Cupones" name="coupons"
+                        domain="[('charge_type', 'in', ['coupon_rebate', 'coupon_code', 'coupon_fee'])]"/>
+                <filter string="Cashback" name="cashback"
+                        domain="[('charge_type', 'ilike', 'cashback')]"/>
                 <separator/>
                 <filter string="Pagado por Vendedor" name="collector"
                         domain="[('fee_payer', '=', 'collector')]"/>
                 <filter string="Pagado por Comprador" name="payer"
                         domain="[('fee_payer', '=', 'payer')]"/>
+                <filter string="Pagado por ML" name="ml"
+                        domain="[('fee_payer', '=', 'ml')]"/>
                 <separator/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Pago" name="group_payment" context="{'group_by': 'payment_id'}"/>
                     <filter string="Tipo" name="group_type" context="{'group_by': 'charge_type'}"/>
+                    <filter string="Tipo (Display)" name="group_type_display" context="{'group_by': 'charge_type_display'}"/>
                     <filter string="Pagador" name="group_payer" context="{'group_by': 'fee_payer'}"/>
                 </group>
             </search>
@@ -67,17 +85,28 @@
         <field name="model">mercadolibre.payment.charge</field>
         <field name="arch" type="xml">
             <pivot string="Cargos por Tipo">
-                <field name="charge_type" type="row"/>
-                <field name="fee_payer" type="col"/>
+                <field name="charge_type_display" type="row"/>
+                <field name="fee_payer_display" type="col"/>
                 <field name="amount" type="measure"/>
             </pivot>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_payment_charge_graph" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.charge.graph</field>
+        <field name="model">mercadolibre.payment.charge</field>
+        <field name="arch" type="xml">
+            <graph string="Cargos por Tipo" type="bar">
+                <field name="charge_type_display"/>
+                <field name="amount" type="measure"/>
+            </graph>
         </field>
     </record>
 
     <record id="action_mercadolibre_payment_charge" model="ir.actions.act_window">
         <field name="name">Cargos/Comisiones</field>
         <field name="res_model">mercadolibre.payment.charge</field>
-        <field name="view_mode">tree,pivot,form</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No hay cargos registrados

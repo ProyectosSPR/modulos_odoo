@@ -128,9 +128,10 @@
                     <notebook>
                         <page string="Cargos/Comisiones" name="charges">
                             <field name="charge_ids">
-                                <tree editable="bottom">
-                                    <field name="charge_type"/>
-                                    <field name="fee_payer"/>
+                                <tree>
+                                    <field name="charge_type_display" string="Tipo"/>
+                                    <field name="charge_type" string="Codigo" optional="hide"/>
+                                    <field name="fee_payer_display" string="Pagador"/>
                                     <field name="amount" sum="Total"/>
                                 </tree>
                             </field>

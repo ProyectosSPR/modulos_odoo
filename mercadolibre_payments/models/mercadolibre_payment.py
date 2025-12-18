@@ -3,11 +3,15 @@
 import json
 import time
 import logging
+import pytz
 from datetime import datetime, timedelta
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
+
+# Timezone de Mexico Ciudad de Mexico
+MEXICO_TZ = pytz.timezone('America/Mexico_City')
 
 
 class MercadolibrePayment(models.Model):
@@ -563,9 +567,18 @@ class MercadolibrePayment(models.Model):
         }
 
         if date_from:
-            params['begin_date'] = date_from.strftime('%Y-%m-%dT00:00:00.000-00:00')
+            # Crear datetime al inicio del dia en Mexico City
+            dt_from = datetime.combine(date_from, datetime.min.time())
+            dt_from_mx = MEXICO_TZ.localize(dt_from)
+            begin_date = dt_from_mx.strftime('%Y-%m-%dT%H:%M:%S.000%z')
+            params['begin_date'] = begin_date[:-2] + ':' + begin_date[-2:]
+
         if date_to:
-            params['end_date'] = date_to.strftime('%Y-%m-%dT23:59:59.999-00:00')
+            # Crear datetime al final del dia en Mexico City
+            dt_to = datetime.combine(date_to, datetime.max.time().replace(microsecond=999000))
+            dt_to_mx = MEXICO_TZ.localize(dt_to)
+            end_date = dt_to_mx.strftime('%Y-%m-%dT%H:%M:%S.999%z')
+            params['end_date'] = end_date[:-2] + ':' + end_date[-2:]
 
         # Filtrar por estado aprobado
         params['status'] = 'approved'

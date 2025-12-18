@@ -3,11 +3,15 @@
 import json
 import time
 import logging
+import pytz
 from datetime import datetime, timedelta
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
+
+# Timezone de Mexico Ciudad de Mexico
+MEXICO_TZ = pytz.timezone('America/Mexico_City')
 
 
 class MercadolibrePaymentSync(models.TransientModel):
@@ -117,9 +121,24 @@ class MercadolibrePaymentSync(models.TransientModel):
         }
         date_field_label = date_field_labels.get(self.date_field, self.date_field)
 
+        # Formatear fechas en formato mexicano
+        def format_date_mx(d):
+            if not d:
+                return 'N/A'
+            meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            return f'{d.day:02d}/{meses[d.month-1]}/{d.year}'
+
+        # Obtener offset actual de Mexico City
+        now_mx = datetime.now(MEXICO_TZ)
+        tz_offset = now_mx.strftime('%z')
+        tz_offset_formatted = f'{tz_offset[:-2]}:{tz_offset[-2:]}'
+        tz_name = 'CST' if now_mx.dst() == timedelta(0) else 'CDT'
+
         log_lines.append(f'  Cuenta:          {self.account_id.name}')
         log_lines.append(f'  Filtrar por:     {date_field_label}')
-        log_lines.append(f'  Periodo:         {self.date_from} a {self.date_to}')
+        log_lines.append(f'  Periodo:         {format_date_mx(self.date_from)} a {format_date_mx(self.date_to)}')
+        log_lines.append(f'  Zona horaria:    America/Mexico_City ({tz_name} UTC{tz_offset_formatted})')
         log_lines.append(f'  Solo liberados:  {"Si" if self.only_released else "No"}')
         log_lines.append(f'  Solo aprobados:  {"Si" if self.only_approved else "No"}')
         log_lines.append(f'  Limite:          {self.limit}')
@@ -146,9 +165,20 @@ class MercadolibrePaymentSync(models.TransientModel):
         }
 
         if self.date_from:
-            params['begin_date'] = f'{self.date_from}T00:00:00.000-06:00'
+            # Crear datetime al inicio del dia en Mexico City
+            dt_from = datetime.combine(self.date_from, datetime.min.time())
+            dt_from_mx = MEXICO_TZ.localize(dt_from)
+            params['begin_date'] = dt_from_mx.strftime('%Y-%m-%dT%H:%M:%S.000%z')
+            # Insertar ':' en el offset (formato ISO 8601)
+            params['begin_date'] = params['begin_date'][:-2] + ':' + params['begin_date'][-2:]
+
         if self.date_to:
-            params['end_date'] = f'{self.date_to}T23:59:59.999-06:00'
+            # Crear datetime al final del dia en Mexico City
+            dt_to = datetime.combine(self.date_to, datetime.max.time().replace(microsecond=999000))
+            dt_to_mx = MEXICO_TZ.localize(dt_to)
+            params['end_date'] = dt_to_mx.strftime('%Y-%m-%dT%H:%M:%S.999%z')
+            # Insertar ':' en el offset (formato ISO 8601)
+            params['end_date'] = params['end_date'][:-2] + ':' + params['end_date'][-2:]
 
         if self.only_approved:
             params['status'] = 'approved'
