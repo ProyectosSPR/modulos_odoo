@@ -40,6 +40,7 @@ Dependencias:
         'views/mercadolibre_payment_charge_views.xml',
         'views/mercadolibre_payment_sync_config_views.xml',
         'views/mercadolibre_known_vendor_views.xml',
+        'views/mercadolibre_account_views.xml',
         'views/account_payment_views.xml',
         'wizard/mercadolibre_payment_sync_views.xml',
         'wizard/mercadolibre_payment_create_views.xml',

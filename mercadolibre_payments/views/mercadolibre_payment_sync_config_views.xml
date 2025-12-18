@@ -109,6 +109,8 @@
                                            attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
                                     <field name="auto_confirm_payment"
                                            attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
+                                    <field name="payment_date_source"
+                                           attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
                                 </group>
                                 <group string="Estadisticas Pagos Odoo"
                                        attrs="{'invisible': [('create_odoo_payments', '=', False)]}">

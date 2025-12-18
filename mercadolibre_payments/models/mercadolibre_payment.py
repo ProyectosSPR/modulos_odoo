@@ -820,6 +820,35 @@ class MercadolibrePayment(models.Model):
 
         return vendor
 
+    def _get_payment_date(self, config):
+        """
+        Obtiene la fecha a usar para el pago segun la configuracion.
+
+        Args:
+            config: mercadolibre.payment.sync.config con la configuracion
+
+        Returns:
+            date or datetime
+        """
+        self.ensure_one()
+
+        date_source = config.payment_date_source or 'current'
+
+        if date_source == 'current':
+            # Fecha actual (cuando se registra el pago)
+            return fields.Date.today()
+        elif date_source == 'money_release':
+            # Fecha de liberacion, con fallbacks
+            return self.money_release_date or self.date_approved or self.date_created or fields.Date.today()
+        elif date_source == 'date_approved':
+            # Fecha de aprobacion, con fallbacks
+            return self.date_approved or self.date_created or fields.Date.today()
+        elif date_source == 'date_created':
+            # Fecha de creacion del pago en MP
+            return self.date_created or fields.Date.today()
+        else:
+            return fields.Date.today()
+
     def _create_odoo_payment(self, config):
         """
         Crea el pago en Odoo (account.payment) basandose en la configuracion.
@@ -890,9 +919,8 @@ class MercadolibrePayment(models.Model):
                 })
                 return result
 
-            # Determinar fecha del pago - usar fecha de liberacion (money_release_date)
-            # ya que es cuando realmente se acredita el dinero
-            payment_date = self.money_release_date or self.date_approved or self.date_created or fields.Datetime.now()
+            # Determinar fecha del pago segun configuracion
+            payment_date = self._get_payment_date(config)
             if isinstance(payment_date, datetime):
                 payment_date = payment_date.date()
 

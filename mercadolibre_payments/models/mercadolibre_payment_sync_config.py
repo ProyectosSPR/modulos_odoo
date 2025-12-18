@@ -225,6 +225,15 @@ class MercadolibrePaymentSyncConfig(models.Model):
         help='Si esta activo, los pagos se confirmaran automaticamente (action_post) al crearse'
     )
 
+    # Fecha a usar para pagos
+    payment_date_source = fields.Selection([
+        ('current', 'Fecha Actual (cuando se registra)'),
+        ('money_release', 'Fecha de Liberacion'),
+        ('date_approved', 'Fecha de Aprobacion'),
+        ('date_created', 'Fecha de Creacion del Pago'),
+    ], string='Fecha para Pagos', default='current', required=True,
+       help='Que fecha usar al crear los pagos en Odoo')
+
     # Estadisticas de pagos Odoo
     last_odoo_payments_created = fields.Integer(
         string='Ultimos Pagos Odoo Creados',
