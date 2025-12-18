@@ -314,6 +314,37 @@
                             color: #61affe;
                         }
 
+                        /* Copy Button */
+                        .ml-copy-btn {
+                            margin-left: auto;
+                            background: #3d3d3d;
+                            border: 1px solid #4d4d4d;
+                            color: #888;
+                            padding: 6px 12px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 12px;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            transition: all 0.2s ease;
+                            text-transform: none;
+                            letter-spacing: normal;
+                        }
+                        .ml-copy-btn:hover {
+                            background: #4d4d4d;
+                            color: #61affe;
+                            border-color: #61affe;
+                        }
+                        .ml-copy-btn.copied {
+                            background: rgba(73, 204, 144, 0.2);
+                            color: #49cc90;
+                            border-color: #49cc90;
+                        }
+                        .ml-copy-btn i {
+                            color: inherit !important;
+                        }
+
                         /* Notes field in dark theme */
                         .ml-dark-notebook textarea,
                         .ml-dark-notebook .o_field_text textarea {
@@ -434,6 +465,32 @@
                         <div class="ml-dark-notebook" attrs="{'invisible': ['|', ('state', '=', 'draft'), ('response_body', '=', False)]}">
                             <div class="ml-notebook-header">
                                 <i class="fa fa-download"/> Response Data
+                                <button type="button" class="ml-copy-btn"
+                                        onclick="
+                                            var btn = this;
+                                            var notebook = btn.closest('.ml-dark-notebook');
+                                            var aceEditor = notebook.querySelector('.ace_editor');
+                                            var text = '';
+                                            if (aceEditor &amp;&amp; aceEditor.env &amp;&amp; aceEditor.env.editor) {
+                                                text = aceEditor.env.editor.getValue();
+                                            } else {
+                                                var textarea = notebook.querySelector('textarea');
+                                                if (textarea) text = textarea.value;
+                                            }
+                                            if (text) {
+                                                navigator.clipboard.writeText(text).then(function() {
+                                                    btn.classList.add('copied');
+                                                    btn.innerHTML = '&lt;i class=&quot;fa fa-check&quot;/&gt; Copiado';
+                                                    setTimeout(function() {
+                                                        btn.classList.remove('copied');
+                                                        btn.innerHTML = '&lt;i class=&quot;fa fa-copy&quot;/&gt; Copiar JSON';
+                                                    }, 2000);
+                                                });
+                                            }
+                                        "
+                                        title="Copiar respuesta al portapapeles">
+                                    <i class="fa fa-copy"/> Copiar JSON
+                                </button>
                             </div>
                             <notebook>
                                 <page string="Body" name="response_body">
