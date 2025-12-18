@@ -39,14 +39,21 @@ class MercadolibrePaymentSync(models.TransientModel):
         string='Hasta',
         default=lambda self: fields.Date.today()
     )
+    payment_direction_filter = fields.Selection([
+        ('all', 'Todos los Pagos'),
+        ('incoming', 'Solo Recibidos (Ingresos)'),
+        ('outgoing', 'Solo Realizados (Egresos)'),
+    ], string='Direccion', default='all', required=True,
+       help='Filtrar por direccion del pago: recibidos (eres el vendedor) o realizados (eres el comprador)')
+
     only_released = fields.Boolean(
         string='Solo Dinero Liberado',
-        default=True,
-        help='Sincronizar solo pagos con dinero ya liberado en MercadoPago'
+        default=False,
+        help='Sincronizar solo pagos con dinero ya liberado en MercadoPago (solo aplica a pagos recibidos)'
     )
     only_approved = fields.Boolean(
         string='Solo Aprobados',
-        default=True,
+        default=False,
         help='Sincronizar solo pagos con estado aprobado'
     )
     limit = fields.Integer(
@@ -54,6 +61,25 @@ class MercadolibrePaymentSync(models.TransientModel):
         default=100,
         help='Numero maximo de pagos a sincronizar'
     )
+
+    @api.onchange('payment_direction_filter')
+    def _onchange_payment_direction_filter(self):
+        """Ajusta valores por defecto segun la direccion seleccionada"""
+        if self.payment_direction_filter == 'incoming':
+            # Para pagos recibidos: usar fecha de liberacion, solo liberados y aprobados
+            self.date_field = 'money_release_date'
+            self.only_released = True
+            self.only_approved = True
+        elif self.payment_direction_filter == 'outgoing':
+            # Para pagos realizados: usar fecha de actualizacion, sin filtros de liberacion/aprobado
+            self.date_field = 'date_last_updated'
+            self.only_released = False
+            self.only_approved = False
+        else:
+            # Todos: usar fecha de creacion, sin filtros
+            self.date_field = 'date_created'
+            self.only_released = False
+            self.only_approved = False
 
     # Results
     sync_count = fields.Integer(
@@ -135,7 +161,16 @@ class MercadolibrePaymentSync(models.TransientModel):
         tz_offset_formatted = f'{tz_offset[:-2]}:{tz_offset[-2:]}'
         tz_name = 'CST' if now_mx.dst() == timedelta(0) else 'CDT'
 
+        # Mapeo de direccion para mostrar en el log
+        direction_labels = {
+            'all': 'Todos los Pagos',
+            'incoming': 'Solo Recibidos (Ingresos)',
+            'outgoing': 'Solo Realizados (Egresos)',
+        }
+        direction_label = direction_labels.get(self.payment_direction_filter, 'Todos')
+
         log_lines.append(f'  Cuenta:          {self.account_id.name}')
+        log_lines.append(f'  Direccion:       {direction_label}')
         log_lines.append(f'  Filtrar por:     {date_field_label}')
         log_lines.append(f'  Periodo:         {format_date_mx(self.date_from)} a {format_date_mx(self.date_to)}')
         log_lines.append(f'  Zona horaria:    America/Mexico_City ({tz_name} UTC{tz_offset_formatted})')
@@ -182,6 +217,16 @@ class MercadolibrePaymentSync(models.TransientModel):
 
         if self.only_approved:
             params['status'] = 'approved'
+
+        # Filtrar por direccion del pago usando el user_id de la cuenta
+        account_user_id = self.account_id.ml_user_id
+        if account_user_id:
+            if self.payment_direction_filter == 'incoming':
+                # Pagos recibidos: yo soy el collector (vendedor)
+                params['collector_id'] = account_user_id
+            elif self.payment_direction_filter == 'outgoing':
+                # Pagos realizados: yo soy el payer (comprador)
+                params['payer_id'] = account_user_id
 
         url = 'https://api.mercadopago.com/v1/payments/search'
         headers = {
