@@ -10,31 +10,33 @@ class MercadolibrePaymentCharge(models.Model):
 
     # Mapping of charge types to friendly labels
     CHARGE_TYPE_LABELS = {
-        # MercadoPago/MercadoLibre fees
+        # MercadoPago/MercadoLibre fees (Egresos - comisiones que pagamos)
         'mercadopago_fee': 'Comision MercadoPago',
         'meli_fee': 'Comision MercadoLibre',
         'ml_fee': 'Comision MercadoLibre',
         'application_fee': 'Comision Aplicacion',
         'financing_fee': 'Comision Financiamiento',
 
-        # Shipping fees
+        # Shipping fees (Egresos)
         'shipping_fee': 'Comision Envio',
         'shp_fulfillment': 'Fulfillment (Envio Full)',
         'shp_cross_docking': 'Cross Docking',
         'shp_colect': 'Colecta Envio',
 
-        # Cards and payments
+        # Cards and payments (Egresos)
         'cards_spread': 'Spread Tarjetas',
         'card_fee': 'Comision Tarjeta',
 
-        # Coupons and discounts
+        # Coupons and discounts (Bonificaciones - Ingresos)
         'coupon_fee': 'Comision Cupon',
-        'coupon_rebate': 'Descuento Cupon',
+        'coupon_rebate': 'Bonificacion Cupon',
         'coupon_code': 'Codigo Cupon',
         'discount_fee': 'Comision Descuento',
         'discount': 'Descuento',
+        'rebate': 'Bonificacion',
+        'promo_rebate': 'Bonificacion Promocion',
 
-        # Cashback and rewards
+        # Cashback and rewards (Bonificaciones - Ingresos)
         'cashback': 'Cashback',
         'cashback-crypto': 'Cashback Crypto',
         'loyalty': 'Puntos Lealtad',
@@ -43,6 +45,17 @@ class MercadolibrePaymentCharge(models.Model):
         'tax': 'Impuesto',
         'other': 'Otro',
     }
+
+    # Tipos que son bonificaciones (generan ingreso, no egreso)
+    BONIFICATION_TYPES = [
+        'coupon_rebate',
+        'discount',
+        'rebate',
+        'promo_rebate',
+        'cashback',
+        'cashback-crypto',
+        'loyalty',
+    ]
 
     name = fields.Char(
         string='Descripcion',
@@ -93,6 +106,25 @@ class MercadolibrePaymentCharge(models.Model):
         string='Monto',
         digits=(16, 2)
     )
+
+    is_bonification = fields.Boolean(
+        string='Es Bonificacion',
+        compute='_compute_is_bonification',
+        store=True,
+        help='Indica si este cargo es una bonificacion/descuento (genera ingreso)'
+    )
+
+    @api.depends('charge_type', 'amount')
+    def _compute_is_bonification(self):
+        """
+        Determina si el cargo es una bonificacion basado en:
+        1. El tipo de cargo esta en BONIFICATION_TYPES
+        2. El monto es negativo (credito)
+        """
+        for record in self:
+            is_bonif_type = record.charge_type in self.BONIFICATION_TYPES
+            is_negative = record.amount < 0
+            record.is_bonification = is_bonif_type or is_negative
 
     @api.depends('charge_type')
     def _compute_charge_type_display(self):

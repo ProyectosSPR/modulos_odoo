@@ -255,7 +255,15 @@ class MercadolibrePayment(models.Model):
         string='Total Cargos',
         compute='_compute_total_charges',
         store=True,
-        digits=(16, 2)
+        digits=(16, 2),
+        help='Total de comisiones/cargos (egresos)'
+    )
+    total_bonifications = fields.Float(
+        string='Total Bonificaciones',
+        compute='_compute_total_charges',
+        store=True,
+        digits=(16, 2),
+        help='Total de bonificaciones/descuentos (ingresos)'
     )
 
     # Raw Data
@@ -292,7 +300,14 @@ class MercadolibrePayment(models.Model):
         string='Pago Comision Odoo',
         readonly=True,
         tracking=True,
-        help='Pago de comision registrado en Odoo'
+        help='Pago de comision registrado en Odoo (egreso)'
+    )
+    bonification_payment_id = fields.Many2one(
+        'account.payment',
+        string='Pago Bonificacion Odoo',
+        readonly=True,
+        tracking=True,
+        help='Pago de bonificacion registrado en Odoo (ingreso)'
     )
 
     # Vendor matching para egresos
@@ -356,10 +371,18 @@ class MercadolibrePayment(models.Model):
             record.is_incoming = record.payment_direction == 'incoming'
             record.is_outgoing = record.payment_direction == 'outgoing'
 
-    @api.depends('charge_ids.amount')
+    @api.depends('charge_ids.amount', 'charge_ids.is_bonification')
     def _compute_total_charges(self):
+        """
+        Calcula el total de cargos (comisiones) y bonificaciones por separado.
+        - total_charges: suma de cargos que NO son bonificaciones (egresos)
+        - total_bonifications: suma de cargos que SI son bonificaciones (ingresos)
+        """
         for record in self:
-            record.total_charges = sum(record.charge_ids.mapped('amount'))
+            charges = record.charge_ids.filtered(lambda c: not c.is_bonification)
+            bonifications = record.charge_ids.filtered(lambda c: c.is_bonification)
+            record.total_charges = sum(charges.mapped('amount'))
+            record.total_bonifications = abs(sum(bonifications.mapped('amount')))
 
     @api.depends('odoo_payment_id', 'commission_payment_id')
     def _compute_has_odoo_payment(self):
@@ -867,8 +890,9 @@ class MercadolibrePayment(models.Model):
                 })
                 return result
 
-            # Determinar fecha del pago
-            payment_date = self.date_approved or self.date_created or fields.Datetime.now()
+            # Determinar fecha del pago - usar fecha de liberacion (money_release_date)
+            # ya que es cuando realmente se acredita el dinero
+            payment_date = self.money_release_date or self.date_approved or self.date_created or fields.Datetime.now()
             if isinstance(payment_date, datetime):
                 payment_date = payment_date.date()
 
@@ -900,7 +924,7 @@ class MercadolibrePayment(models.Model):
                     _logger.warning('Error al confirmar pago %s: %s', payment.name, str(e))
                     # No lanzar excepcion, el pago ya fue creado
 
-            # Crear pago de comision si corresponde
+            # Crear pago de comision si corresponde (EGRESO)
             commission_payment = False
             if config.create_commission_payments and self.total_charges > 0:
                 commission_payment = self._create_commission_payment(config, payment_date)
@@ -914,6 +938,20 @@ class MercadolibrePayment(models.Model):
                     except Exception as e:
                         _logger.warning('Error al confirmar comision %s: %s', commission_payment.name, str(e))
 
+            # Crear pago de bonificacion si corresponde (INGRESO)
+            bonification_payment = False
+            if config.create_commission_payments and self.total_bonifications > 0:
+                bonification_payment = self._create_bonification_payment(config, payment_date)
+                result['bonification_payment'] = bonification_payment
+
+                # Confirmar bonificacion automaticamente si esta configurado
+                if bonification_payment and config.auto_confirm_payment:
+                    try:
+                        bonification_payment.action_post()
+                        _logger.info('Bonificacion %s confirmada automaticamente', bonification_payment.name)
+                    except Exception as e:
+                        _logger.warning('Error al confirmar bonificacion %s: %s', bonification_payment.name, str(e))
+
             # Actualizar el registro ML payment
             update_vals = {
                 'odoo_payment_id': payment.id,
@@ -923,6 +961,8 @@ class MercadolibrePayment(models.Model):
             }
             if commission_payment:
                 update_vals['commission_payment_id'] = commission_payment.id
+            if bonification_payment:
+                update_vals['bonification_payment_id'] = bonification_payment.id
 
             self.write(update_vals)
 
@@ -979,6 +1019,50 @@ class MercadolibrePayment(models.Model):
         _logger.info('Pago comision creado: %s para ML pago %s', commission_payment.name, self.mp_payment_id)
 
         return commission_payment
+
+    def _create_bonification_payment(self, config, payment_date):
+        """
+        Crea el pago de bonificacion como pago de INGRESO.
+        Las bonificaciones son descuentos/cupones que MercadoLibre nos otorga.
+
+        Args:
+            config: mercadolibre.payment.sync.config con configuracion
+            payment_date: fecha del pago
+
+        Returns:
+            account.payment record
+        """
+        self.ensure_one()
+
+        # Proteccion contra duplicados: verificar si ya existe bonificacion
+        if self.bonification_payment_id:
+            _logger.info('Bonificacion ya existe para pago %s: %s',
+                        self.mp_payment_id, self.bonification_payment_id.name)
+            return self.bonification_payment_id
+
+        if not config.commission_journal_id:
+            _logger.warning('No hay diario de comisiones configurado para bonificaciones')
+            return False
+
+        if not config.commission_partner_id:
+            _logger.warning('No hay partner de comisiones configurado para bonificaciones')
+            return False
+
+        bonification_vals = {
+            'payment_type': 'inbound',  # INGRESO (nos dan dinero/descuento)
+            'partner_type': 'supplier',  # Sigue siendo proveedor (MercadoLibre)
+            'partner_id': config.commission_partner_id.id,
+            'amount': abs(self.total_bonifications),
+            'currency_id': self.currency_id.id or config.company_id.currency_id.id,
+            'journal_id': config.commission_journal_id.id,
+            'date': payment_date,
+            'ref': f'ML-BON-{self.mp_payment_id}',
+        }
+
+        bonification_payment = self.env['account.payment'].create(bonification_vals)
+        _logger.info('Pago bonificacion creado: %s para ML pago %s', bonification_payment.name, self.mp_payment_id)
+
+        return bonification_payment
 
     def action_view_odoo_payment(self):
         """Abre el pago de Odoo asociado"""
