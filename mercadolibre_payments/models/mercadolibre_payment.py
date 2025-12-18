@@ -473,32 +473,45 @@ class MercadolibrePayment(models.Model):
         return payment, is_new
 
     def _sync_charges(self, payment, fee_details, charges_details=None):
-        """Sincroniza los cargos/comisiones del pago"""
+        """
+        Sincroniza los cargos/comisiones del pago.
+
+        IMPORTANTE: La API de MercadoPago puede devolver la misma comision en
+        fee_details Y charges_details. Para evitar duplicados, usamos SOLO UNA fuente:
+        - Si charges_details tiene datos, usamos eso (mas detallado)
+        - Si no, usamos fee_details
+        """
         ChargeModel = self.env['mercadolibre.payment.charge']
 
         # Eliminar cargos existentes
         payment.charge_ids.unlink()
 
-        # Process fee_details (standard format)
-        for fee in fee_details:
-            ChargeModel.create({
-                'payment_id': payment.id,
-                'charge_type': fee.get('type', ''),
-                'fee_payer': fee.get('fee_payer', ''),
-                'amount': fee.get('amount', 0.0),
-            })
-
-        # Process charges_details (alternative format used in some payments)
+        # Usar charges_details si tiene datos (mas detallado), sino fee_details
+        # NO procesar ambos para evitar duplicados
         if charges_details:
+            # Process charges_details (formato detallado con mas info)
             for charge in charges_details:
                 amounts = charge.get('amounts', {}) or {}
                 accounts = charge.get('accounts', {}) or {}
-                ChargeModel.create({
-                    'payment_id': payment.id,
-                    'charge_type': charge.get('name', '') or charge.get('type', ''),
-                    'fee_payer': accounts.get('from', ''),
-                    'amount': amounts.get('original', 0.0),
-                })
+                amount = amounts.get('original', 0.0)
+                if amount > 0:  # Solo crear si hay monto
+                    ChargeModel.create({
+                        'payment_id': payment.id,
+                        'charge_type': charge.get('name', '') or charge.get('type', ''),
+                        'fee_payer': accounts.get('from', ''),
+                        'amount': amount,
+                    })
+        elif fee_details:
+            # Process fee_details (formato estandar, fallback)
+            for fee in fee_details:
+                amount = fee.get('amount', 0.0)
+                if amount > 0:  # Solo crear si hay monto
+                    ChargeModel.create({
+                        'payment_id': payment.id,
+                        'charge_type': fee.get('type', ''),
+                        'fee_payer': fee.get('fee_payer', ''),
+                        'amount': amount,
+                    })
 
     def _get_currency(self, currency_code):
         """Obtiene la moneda de Odoo por codigo"""
@@ -878,11 +891,28 @@ class MercadolibrePayment(models.Model):
             _logger.info('Pago Odoo creado: %s (ref: %s) para ML pago %s',
                         payment.name, payment.ref, self.mp_payment_id)
 
+            # Confirmar pago automaticamente si esta configurado
+            if config.auto_confirm_payment:
+                try:
+                    payment.action_post()
+                    _logger.info('Pago %s confirmado automaticamente', payment.name)
+                except Exception as e:
+                    _logger.warning('Error al confirmar pago %s: %s', payment.name, str(e))
+                    # No lanzar excepcion, el pago ya fue creado
+
             # Crear pago de comision si corresponde
             commission_payment = False
             if config.create_commission_payments and self.total_charges > 0:
                 commission_payment = self._create_commission_payment(config, payment_date)
                 result['commission_payment'] = commission_payment
+
+                # Confirmar comision automaticamente si esta configurado
+                if commission_payment and config.auto_confirm_payment:
+                    try:
+                        commission_payment.action_post()
+                        _logger.info('Comision %s confirmada automaticamente', commission_payment.name)
+                    except Exception as e:
+                        _logger.warning('Error al confirmar comision %s: %s', commission_payment.name, str(e))
 
             # Actualizar el registro ML payment
             update_vals = {
@@ -919,6 +949,12 @@ class MercadolibrePayment(models.Model):
             account.payment record
         """
         self.ensure_one()
+
+        # Proteccion contra duplicados: verificar si ya existe comision
+        if self.commission_payment_id:
+            _logger.info('Comision ya existe para pago %s: %s',
+                        self.mp_payment_id, self.commission_payment_id.name)
+            return self.commission_payment_id
 
         if not config.commission_journal_id:
             _logger.warning('No hay diario de comisiones configurado')

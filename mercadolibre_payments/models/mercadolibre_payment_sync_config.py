@@ -218,6 +218,13 @@ class MercadolibrePaymentSyncConfig(models.Model):
         help='Proveedor para registrar las comisiones (ej: MercadoPago/MercadoLibre)'
     )
 
+    # Confirmacion automatica
+    auto_confirm_payment = fields.Boolean(
+        string='Confirmar Pagos Automaticamente',
+        default=False,
+        help='Si esta activo, los pagos se confirmaran automaticamente (action_post) al crearse'
+    )
+
     # Estadisticas de pagos Odoo
     last_odoo_payments_created = fields.Integer(
         string='Ultimos Pagos Odoo Creados',
