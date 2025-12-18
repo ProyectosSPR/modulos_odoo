@@ -42,8 +42,12 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
     )
     total_charges = fields.Float(
         string='Comisiones',
-        related='ml_payment_id.total_charges',
+        compute='_compute_total_charges',
         readonly=True
+    )
+    has_commissions = fields.Boolean(
+        string='Tiene Comisiones',
+        compute='_compute_total_charges',
     )
 
     # Configuracion del pago Odoo
@@ -142,6 +146,21 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
             if journals:
                 self.journal_id = journals[0]
 
+    @api.depends('ml_payment_id', 'ml_payment_ids', 'mode')
+    def _compute_total_charges(self):
+        """Calcula comisiones para modo single y batch"""
+        for wizard in self:
+            if wizard.mode == 'single' and wizard.ml_payment_id:
+                wizard.total_charges = wizard.ml_payment_id.total_charges or 0.0
+                wizard.has_commissions = wizard.total_charges > 0
+            elif wizard.mode == 'batch' and wizard.ml_payment_ids:
+                # Sumar todas las comisiones de los pagos seleccionados
+                wizard.total_charges = sum(p.total_charges or 0.0 for p in wizard.ml_payment_ids)
+                wizard.has_commissions = wizard.total_charges > 0
+            else:
+                wizard.total_charges = 0.0
+                wizard.has_commissions = False
+
     def action_create_payment(self):
         """Crea el pago en Odoo"""
         self.ensure_one()
@@ -182,6 +201,7 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
             'currency_id': ml_payment.currency_id.id or self.company_id.currency_id.id,
             'journal_id': self.journal_id.id,
             'date': payment_date,
+            'ml_responsible_user_id': self.env.user.id,
         }
 
         # Usar metodo extendido que construye el ref con formato correcto
@@ -217,6 +237,11 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                 'journal_id': self.commission_journal_id.id,
                 'date': payment_date,
                 'ref': f'ML-COM-{ml_payment.mp_payment_id}',
+                # Campos ML para trazabilidad
+                'ml_payment_id': ml_payment.id,
+                'ml_payment_mp_id': ml_payment.mp_payment_id,
+                'ml_status': ml_payment.status,
+                'ml_responsible_user_id': self.env.user.id,
             }
             commission_payment = self.env['account.payment'].create(commission_vals)
             update_vals['commission_payment_id'] = commission_payment.id
@@ -284,6 +309,7 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                     'currency_id': ml_payment.currency_id.id or self.company_id.currency_id.id,
                     'journal_id': self.journal_id.id,
                     'date': payment_date,
+                    'ml_responsible_user_id': self.env.user.id,
                 }
 
                 # Usar metodo extendido que construye el ref con formato correcto
@@ -306,6 +332,11 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                         'journal_id': self.commission_journal_id.id,
                         'date': payment_date,
                         'ref': f'ML-COM-{ml_payment.mp_payment_id}',
+                        # Campos ML para trazabilidad
+                        'ml_payment_id': ml_payment.id,
+                        'ml_payment_mp_id': ml_payment.mp_payment_id,
+                        'ml_status': ml_payment.status,
+                        'ml_responsible_user_id': self.env.user.id,
                     }
                     commission_payment = self.env['account.payment'].create(commission_vals)
                     update_vals['commission_payment_id'] = commission_payment.id

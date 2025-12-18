@@ -46,7 +46,9 @@
                         <field name="mode" invisible="1"/>
                     </group>
                     <group string="Comisiones"
-                           attrs="{'invisible': [('total_charges', '=', 0)]}">
+                           attrs="{'invisible': [('has_commissions', '=', False)]}">
+                        <field name="has_commissions" invisible="1"/>
+                        <field name="total_charges" string="Total Comisiones" attrs="{'invisible': [('mode', '=', 'single')]}"/>
                         <field name="create_commission"/>
                         <field name="commission_journal_id"
                                attrs="{'invisible': [('create_commission', '=', False)],
@@ -66,6 +68,20 @@
                 <div class="alert alert-warning" role="alert"
                      attrs="{'invisible': [('payment_direction', '!=', 'outgoing')]}">
                     <strong>Pago Realizado (Egreso):</strong> Se creara un pago a proveedor en el diario seleccionado.
+                </div>
+
+                <!-- Mensaje informativo sobre comisiones -->
+                <div class="alert alert-secondary" role="alert"
+                     attrs="{'invisible': ['|', ('has_commissions', '=', False), ('create_commission', '=', False)]}">
+                    <i class="fa fa-info-circle"/> <strong>Comisiones:</strong>
+                    Se creara un pago adicional de egreso por $<field name="total_charges" nolabel="1" class="d-inline"/>
+                    hacia el proveedor de comisiones seleccionado. Este pago queda vinculado al pago principal de MercadoPago.
+                </div>
+                <div class="alert alert-light" role="alert"
+                     attrs="{'invisible': ['|', ('has_commissions', '=', False), ('create_commission', '=', True)]}">
+                    <i class="fa fa-exclamation-circle text-warning"/> <strong>Nota:</strong>
+                    Este pago tiene comisiones por $<field name="total_charges" nolabel="1" class="d-inline"/>
+                    pero no se creara pago de comision. Active "Crear Pago de Comision" si desea registrarlas.
                 </div>
 
                 <footer>
