@@ -14,16 +14,18 @@
                         <field name="odoo_user_id"/>
                     </group>
                     <group>
-                        <button name="action_create_odoo_user" type="object"
-                                string="Crear Usuario Odoo"
-                                class="btn-primary"
-                                icon="fa-user-plus"
-                                attrs="{'invisible': [('odoo_user_id', '!=', False)]}"/>
-                        <button name="action_view_odoo_user" type="object"
-                                string="Ver Usuario"
-                                class="btn-secondary"
-                                icon="fa-user"
-                                attrs="{'invisible': [('odoo_user_id', '=', False)]}"/>
+                        <div class="d-flex gap-2 mt-3">
+                            <button name="action_create_odoo_user" type="object"
+                                    string="Crear Usuario Odoo"
+                                    class="btn btn-primary oe_highlight"
+                                    icon="fa-user-plus"
+                                    attrs="{'invisible': [('odoo_user_id', '!=', False)]}"/>
+                            <button name="action_view_odoo_user" type="object"
+                                    string="Ver Usuario"
+                                    class="btn btn-secondary"
+                                    icon="fa-user"
+                                    attrs="{'invisible': [('odoo_user_id', '=', False)]}"/>
+                        </div>
                     </group>
                 </group>
             </xpath>
