@@ -539,6 +539,10 @@ class MercadolibrePaymentSyncConfig(models.Model):
             'total_payments_synced': self.total_payments_synced + sync_count,
         })
 
+        # Actualizar nextcall del cron para la proxima ejecucion
+        if self.cron_id:
+            self.cron_id.sudo().write({'nextcall': next_run})
+
         _logger.info('SYNC AUTO "%s" completada: %d sincronizados', self.name, sync_count)
 
         return True
