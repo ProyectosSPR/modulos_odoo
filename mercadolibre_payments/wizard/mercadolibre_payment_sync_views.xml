@@ -57,9 +57,9 @@
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Configuracion">
                         <field name="account_id" options="{'no_create': True}"/>
-                        <field name="payment_direction_filter" widget="radio"/>
-                        <field name="status_filter" widget="radio"/>
-                        <field name="date_field" widget="radio"/>
+                        <field name="payment_direction_filter"/>
+                        <field name="status_filter"/>
+                        <field name="date_field"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
                     </group>
