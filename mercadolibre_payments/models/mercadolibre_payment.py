@@ -906,11 +906,9 @@ class MercadolibrePayment(models.Model):
 
         try:
             # Obtener el usuario para crear el pago segun la configuracion
-            PaymentModel = self.env['account.payment']
             payment_user = self._get_payment_user(config)
             if payment_user:
-                PaymentModel = PaymentModel.with_user(payment_user)
-                _logger.info('Creando pago con usuario: %s', payment_user.name)
+                _logger.info('Creando pago con usuario responsable: %s', payment_user.name)
 
             # Detectar proveedor para egresos
             if self.payment_direction == 'outgoing' and not self.matched_vendor_id:
@@ -966,9 +964,13 @@ class MercadolibrePayment(models.Model):
                 'date': payment_date,
             }
 
+            # Agregar usuario responsable si esta configurado
+            if payment_user:
+                payment_vals['user_id'] = payment_user.id
+
             # Usar metodo extendido que construye el ref con formato correcto
             # [Orden Venta] - [pack_id o order_id] - [payment_id]
-            payment = PaymentModel.create_from_ml_payment(self, payment_vals)
+            payment = self.env['account.payment'].create_from_ml_payment(self, payment_vals)
             result['payment'] = payment
 
             _logger.info('Pago Odoo creado: %s (ref: %s) para ML pago %s',
@@ -986,7 +988,7 @@ class MercadolibrePayment(models.Model):
             # Crear pago de comision si corresponde (EGRESO)
             commission_payment = False
             if config.create_commission_payments and self.total_charges > 0:
-                commission_payment = self._create_commission_payment(config, payment_date, PaymentModel)
+                commission_payment = self._create_commission_payment(config, payment_date, payment_user)
                 result['commission_payment'] = commission_payment
 
                 # Confirmar comision automaticamente si esta configurado
@@ -1000,7 +1002,7 @@ class MercadolibrePayment(models.Model):
             # Crear pago de bonificacion si corresponde (INGRESO)
             bonification_payment = False
             if config.create_commission_payments and self.total_bonifications > 0:
-                bonification_payment = self._create_bonification_payment(config, payment_date, PaymentModel)
+                bonification_payment = self._create_bonification_payment(config, payment_date, payment_user)
                 result['bonification_payment'] = bonification_payment
 
                 # Confirmar bonificacion automaticamente si esta configurado
@@ -1036,14 +1038,14 @@ class MercadolibrePayment(models.Model):
 
         return result
 
-    def _create_commission_payment(self, config, payment_date, PaymentModel=None):
+    def _create_commission_payment(self, config, payment_date, payment_user=None):
         """
         Crea el pago de comision como pago separado.
 
         Args:
             config: mercadolibre.payment.sync.config con configuracion
             payment_date: fecha del pago
-            PaymentModel: modelo account.payment (puede incluir usuario ML)
+            payment_user: res.users record para asignar como responsable
 
         Returns:
             account.payment record
@@ -1064,10 +1066,6 @@ class MercadolibrePayment(models.Model):
             _logger.warning('No hay partner de comisiones configurado')
             return False
 
-        # Usar el modelo pasado o el default
-        if PaymentModel is None:
-            PaymentModel = self.env['account.payment']
-
         commission_vals = {
             'payment_type': 'outbound',  # Siempre es egreso (pagamos comision)
             'partner_type': 'supplier',
@@ -1079,12 +1077,16 @@ class MercadolibrePayment(models.Model):
             'ref': f'ML-COM-{self.mp_payment_id}',
         }
 
-        commission_payment = PaymentModel.create(commission_vals)
+        # Agregar usuario responsable si esta configurado
+        if payment_user:
+            commission_vals['user_id'] = payment_user.id
+
+        commission_payment = self.env['account.payment'].create(commission_vals)
         _logger.info('Pago comision creado: %s para ML pago %s', commission_payment.name, self.mp_payment_id)
 
         return commission_payment
 
-    def _create_bonification_payment(self, config, payment_date, PaymentModel=None):
+    def _create_bonification_payment(self, config, payment_date, payment_user=None):
         """
         Crea el pago de bonificacion como pago de INGRESO.
         Las bonificaciones son descuentos/cupones que MercadoLibre nos otorga.
@@ -1092,7 +1094,7 @@ class MercadolibrePayment(models.Model):
         Args:
             config: mercadolibre.payment.sync.config con configuracion
             payment_date: fecha del pago
-            PaymentModel: modelo account.payment (puede incluir usuario ML)
+            payment_user: res.users record para asignar como responsable
 
         Returns:
             account.payment record
@@ -1113,10 +1115,6 @@ class MercadolibrePayment(models.Model):
             _logger.warning('No hay partner de comisiones configurado para bonificaciones')
             return False
 
-        # Usar el modelo pasado o el default
-        if PaymentModel is None:
-            PaymentModel = self.env['account.payment']
-
         bonification_vals = {
             'payment_type': 'inbound',  # INGRESO (nos dan dinero/descuento)
             'partner_type': 'supplier',  # Sigue siendo proveedor (MercadoLibre)
@@ -1128,7 +1126,11 @@ class MercadolibrePayment(models.Model):
             'ref': f'ML-BON-{self.mp_payment_id}',
         }
 
-        bonification_payment = PaymentModel.create(bonification_vals)
+        # Agregar usuario responsable si esta configurado
+        if payment_user:
+            bonification_vals['user_id'] = payment_user.id
+
+        bonification_payment = self.env['account.payment'].create(bonification_vals)
         _logger.info('Pago bonificacion creado: %s para ML pago %s', bonification_payment.name, self.mp_payment_id)
 
         return bonification_payment

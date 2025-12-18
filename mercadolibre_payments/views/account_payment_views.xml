@@ -33,6 +33,7 @@
                 <field name="ml_payment_id" invisible="1"/>
                 <field name="ml_sale_order_id" invisible="1"/>
                 <field name="is_ml_payment" invisible="1"/>
+                <field name="user_id" invisible="1"/>
             </xpath>
 
             <!-- Agregar pestaña de MercadoPago en el notebook -->
@@ -62,6 +63,7 @@
                     <group>
                         <group string="Metodo de Pago">
                             <field name="ml_payment_method"/>
+                            <field name="user_id" string="Registrado por"/>
                         </group>
                         <group string="Orden de Venta Relacionada">
                             <field name="ml_sale_order_id" readonly="1"/>
