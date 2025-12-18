@@ -24,6 +24,18 @@ class MercadolibrePaymentSync(models.TransientModel):
         required=True,
         domain="[('state', '=', 'connected')]"
     )
+
+    # Busqueda por ID especifico
+    search_specific = fields.Boolean(
+        string='Buscar Pago Especifico',
+        default=False,
+        help='Activar para buscar un pago por su ID en lugar de usar filtros'
+    )
+    specific_payment_id = fields.Char(
+        string='ID del Pago',
+        help='ID del pago de MercadoPago a sincronizar (ej: 137624699898)'
+    )
+
     date_field = fields.Selection([
         ('date_created', 'Fecha de Creacion'),
         ('date_approved', 'Fecha de Aprobacion'),
@@ -166,6 +178,10 @@ class MercadolibrePaymentSync(models.TransientModel):
 
         if not self.account_id.has_valid_token:
             raise ValidationError(_('La cuenta no tiene un token valido.'))
+
+        # Si es busqueda especifica, usar metodo dedicado
+        if self.search_specific:
+            return self._sync_specific_payment()
 
         _logger.info('='*60)
         _logger.info('INICIANDO SINCRONIZACION DE PAGOS')
@@ -505,4 +521,179 @@ class MercadolibrePaymentSync(models.TransientModel):
             'view_mode': 'form',
             'target': 'new',
             'context': {'default_account_id': self.account_id.id},
+        }
+
+    def _sync_specific_payment(self):
+        """Sincroniza un pago especifico por su ID"""
+        self.ensure_one()
+
+        if not self.specific_payment_id:
+            raise ValidationError(_('Debe ingresar el ID del pago a buscar.'))
+
+        # Limpiar el ID (quitar espacios, etc)
+        payment_id = self.specific_payment_id.strip()
+
+        _logger.info('='*60)
+        _logger.info('BUSCANDO PAGO ESPECIFICO: %s', payment_id)
+        _logger.info('='*60)
+
+        log_lines = []
+        log_lines.append('=' * 50)
+        log_lines.append('    BUSQUEDA DE PAGO ESPECIFICO')
+        log_lines.append('=' * 50)
+        log_lines.append('')
+        log_lines.append(f'  Cuenta:     {self.account_id.name}')
+        log_lines.append(f'  ID Pago:    {payment_id}')
+        log_lines.append('')
+
+        try:
+            access_token = self.account_id.get_valid_token()
+        except Exception as e:
+            _logger.error('Error obteniendo token: %s', str(e))
+            self.write({
+                'state': 'error',
+                'sync_log': f'Error: {str(e)}',
+            })
+            raise ValidationError(_(f'Error obteniendo token: {str(e)}'))
+
+        import requests
+
+        # URL para obtener pago especifico
+        url = f'https://api.mercadopago.com/v1/payments/{payment_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        # Registrar en mercadolibre.log
+        LogModel = self.env['mercadolibre.log'].sudo()
+        headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
+
+        start_time = time.time()
+
+        try:
+            response = requests.get(url, headers=headers, timeout=60)
+            duration = time.time() - start_time
+
+            # Guardar log
+            response_body_log = response.text[:10000] if response.text else ''
+            LogModel.create({
+                'log_type': 'api_request',
+                'level': 'success' if response.status_code == 200 else 'error',
+                'account_id': self.account_id.id,
+                'message': f'Payment Sync Specific: GET /v1/payments/{payment_id} - {response.status_code}',
+                'request_url': url,
+                'request_method': 'GET',
+                'request_headers': json.dumps(headers_log, indent=2),
+                'response_code': response.status_code,
+                'response_headers': json.dumps(dict(response.headers), indent=2),
+                'response_body': response_body_log,
+                'duration': duration,
+            })
+
+            if response.status_code == 404:
+                log_lines.append(f'  ERROR: Pago {payment_id} no encontrado')
+                self.write({
+                    'state': 'error',
+                    'sync_log': '\n'.join(log_lines),
+                })
+                raise ValidationError(_(f'Pago {payment_id} no encontrado en MercadoPago.'))
+
+            if response.status_code != 200:
+                error_msg = f'Error API: {response.status_code} - {response.text}'
+                log_lines.append(f'  ERROR: {error_msg}')
+                self.write({
+                    'state': 'error',
+                    'sync_log': '\n'.join(log_lines),
+                })
+                raise ValidationError(error_msg)
+
+            payment_data = response.json()
+
+        except requests.exceptions.RequestException as e:
+            duration = time.time() - start_time
+            _logger.error('Error de conexion: %s', str(e))
+
+            LogModel.create({
+                'log_type': 'api_request',
+                'level': 'error',
+                'account_id': self.account_id.id,
+                'message': f'Payment Sync Specific: GET /v1/payments/{payment_id} - Error',
+                'request_url': url,
+                'request_method': 'GET',
+                'request_headers': json.dumps(headers_log, indent=2),
+                'error_details': str(e),
+                'duration': duration,
+            })
+
+            log_lines.append(f'  ERROR de conexion: {str(e)}')
+            self.write({
+                'state': 'error',
+                'sync_log': '\n'.join(log_lines),
+            })
+            raise ValidationError(_(f'Error de conexion: {str(e)}'))
+
+        # Mostrar informacion del pago encontrado
+        log_lines.append('-' * 50)
+        log_lines.append('  PAGO ENCONTRADO')
+        log_lines.append('-' * 50)
+        log_lines.append(f'  ID:                {payment_data.get("id")}')
+        log_lines.append(f'  Estado:            {payment_data.get("status")}')
+        log_lines.append(f'  Detalle:           {payment_data.get("status_detail")}')
+        log_lines.append(f'  Monto:             ${payment_data.get("transaction_amount", 0):,.2f}')
+        log_lines.append(f'  Moneda:            {payment_data.get("currency_id")}')
+        log_lines.append(f'  Liberacion:        {payment_data.get("money_release_status")}')
+        log_lines.append(f'  Fecha Creacion:    {payment_data.get("date_created")}')
+        log_lines.append(f'  Fecha Aprobacion:  {payment_data.get("date_approved")}')
+        log_lines.append(f'  Fecha Liberacion:  {payment_data.get("money_release_date")}')
+        log_lines.append('')
+
+        # Sincronizar el pago
+        PaymentModel = self.env['mercadolibre.payment']
+
+        try:
+            payment, is_new = PaymentModel.create_from_mp_data(payment_data, self.account_id)
+            action_label = 'NUEVO' if is_new else 'ACTUALIZADO'
+
+            log_lines.append('-' * 50)
+            log_lines.append('  RESULTADO')
+            log_lines.append('-' * 50)
+            log_lines.append(f'  Pago {action_label} exitosamente')
+            log_lines.append(f'  ID interno: {payment.id}')
+            log_lines.append('=' * 50)
+
+            self.write({
+                'state': 'done',
+                'sync_count': 1,
+                'created_count': 1 if is_new else 0,
+                'updated_count': 0 if is_new else 1,
+                'error_count': 0,
+                'sync_log': '\n'.join(log_lines),
+            })
+
+            _logger.info('Pago %s sincronizado exitosamente (%s)', payment_id, action_label)
+
+        except Exception as e:
+            log_lines.append('-' * 50)
+            log_lines.append('  ERROR AL SINCRONIZAR')
+            log_lines.append('-' * 50)
+            log_lines.append(f'  {str(e)}')
+            log_lines.append('=' * 50)
+
+            self.write({
+                'state': 'error',
+                'sync_count': 0,
+                'error_count': 1,
+                'sync_log': '\n'.join(log_lines),
+            })
+
+            _logger.error('Error sincronizando pago %s: %s', payment_id, str(e))
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Sincronizacion de Pagos'),
+            'res_model': 'mercadolibre.payment.sync',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
         }

@@ -55,8 +55,17 @@
                     .ml-sync-stat.error .ml-sync-stat-value { color: #dc3545; }
                 </style>
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
-                    <group string="Configuracion">
+                    <group string="Cuenta">
                         <field name="account_id" options="{'no_create': True}"/>
+                        <field name="search_specific"/>
+                    </group>
+                    <group string="Buscar Pago Especifico" attrs="{'invisible': [('search_specific', '=', False)]}">
+                        <field name="specific_payment_id" placeholder="Ej: 137624699898"
+                               attrs="{'required': [('search_specific', '=', True)]}"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('search_specific', '=', True)]}">
+                    <group string="Filtros de Busqueda">
                         <field name="payment_direction_filter"/>
                         <field name="status_filter"/>
                         <field name="date_field"/>
