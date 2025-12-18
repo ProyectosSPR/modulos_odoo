@@ -95,12 +95,8 @@ class AccountPayment(models.Model):
         store=True
     )
 
-    # Usuario responsable del pago (para pagos ML)
-    user_id = fields.Many2one(
-        'res.users',
-        string='Responsable',
-        help='Usuario responsable de este pago'
-    )
+    # NOTA: El campo user_id ya existe en account.payment base
+    # Lo usamos directamente sin redefinirlo
 
     @api.depends('ml_payment_id')
     def _compute_is_ml_payment(self):
