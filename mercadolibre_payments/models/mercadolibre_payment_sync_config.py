@@ -254,8 +254,10 @@ class MercadolibrePaymentSyncConfig(models.Model):
             self.cron_id = cron
 
     def _get_date_range(self):
-        """Calcula el rango de fechas segun el periodo configurado"""
-        today = fields.Date.today()
+        """Calcula el rango de fechas segun el periodo configurado (en zona horaria Mexico)"""
+        # Obtener la fecha actual en Mexico (no UTC)
+        now_mexico = datetime.now(MEXICO_TZ)
+        today = now_mexico.date()
 
         period_days = {
             'today': 0,
@@ -298,7 +300,10 @@ class MercadolibrePaymentSyncConfig(models.Model):
         log_lines.append('=' * 50)
         log_lines.append(f'  SYNC AUTO: {self.name}')
         log_lines.append('=' * 50)
-        log_lines.append(f'  Fecha: {fields.Datetime.now()}')
+
+        # Mostrar hora de Mexico para claridad
+        now_mexico = datetime.now(MEXICO_TZ)
+        log_lines.append(f'  Fecha (Mexico): {now_mexico.strftime("%d/%m/%Y %H:%M:%S")}')
         log_lines.append('')
 
         # Obtener rango de fechas
@@ -330,11 +335,15 @@ class MercadolibrePaymentSyncConfig(models.Model):
             'last_30_days': 'Ultimos 30 dias',
         }
 
+        # Formatear fechas
+        date_from_str = date_from.strftime('%d/%m/%Y') if date_from else 'N/A'
+        date_to_str = date_to.strftime('%d/%m/%Y') if date_to else 'N/A'
+
         log_lines.append(f'  Cuenta:    {self.account_id.name}')
         log_lines.append(f'  Direccion: {direction_labels.get(self.payment_direction_filter)}')
         log_lines.append(f'  Estado:    {status_labels.get(self.status_filter)}')
         log_lines.append(f'  Periodo:   {period_labels.get(self.period)}')
-        log_lines.append(f'  Fechas:    {date_from} a {date_to}')
+        log_lines.append(f'  Fechas:    {date_from_str} a {date_to_str}')
         log_lines.append('')
 
         try:
