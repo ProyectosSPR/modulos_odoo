@@ -620,15 +620,30 @@ class MercadolibrePaymentSyncConfig(models.Model):
             log_lines.append('-' * 50)
 
             for payment in synced_payments:
-                # Solo procesar pagos aprobados sin pago Odoo existente
-                if payment.status != 'approved':
-                    continue
+                # Saltar si ya tiene pago Odoo
                 if payment.odoo_payment_id:
                     continue
+
                 # Validar direccion del pago vs configuracion
                 if self.payment_direction_filter == 'incoming' and payment.payment_direction != 'incoming':
                     continue
                 if self.payment_direction_filter == 'outgoing' and payment.payment_direction != 'outgoing':
+                    continue
+
+                # Validar estado del pago:
+                # - Para ingresos (incoming): siempre requerir 'approved'
+                # - Para egresos (outgoing): respetar la configuracion only_approved
+                # - Para todos: respetar only_approved o aceptar approved
+                if payment.payment_direction == 'incoming':
+                    # Ingresos siempre requieren approved para crear pago
+                    if payment.status != 'approved':
+                        continue
+                elif payment.payment_direction == 'outgoing':
+                    # Egresos: solo filtrar si only_approved esta activo
+                    if self.only_approved and payment.status != 'approved':
+                        continue
+                else:
+                    # Direccion desconocida: saltar
                     continue
 
                 try:

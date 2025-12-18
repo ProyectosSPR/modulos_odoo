@@ -11,7 +11,6 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
     ml_payment_id = fields.Many2one(
         'mercadolibre.payment',
         string='Pago MercadoPago',
-        required=True,
         readonly=True
     )
     ml_payment_ids = fields.Many2many(
@@ -99,33 +98,46 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
 
-        # Si viene de accion individual
+        ml_payment = False
+
+        # Si viene de accion individual (formulario)
         if self.env.context.get('default_ml_payment_id'):
             ml_payment_id = self.env.context.get('default_ml_payment_id')
             ml_payment = self.env['mercadolibre.payment'].browse(ml_payment_id)
+            res['ml_payment_id'] = ml_payment_id
+            res['mode'] = 'single'
 
-            if ml_payment:
-                res['mode'] = 'single'
-                res['payment_direction'] = ml_payment.payment_direction
-                res['amount'] = ml_payment.transaction_amount
-                res['description'] = ml_payment.description
-                res['company_id'] = ml_payment.company_id.id
-
-                # Detectar proveedor para egresos
-                if ml_payment.payment_direction == 'outgoing' and ml_payment.description:
-                    KnownVendor = self.env['mercadolibre.known.vendor']
-                    vendor = KnownVendor.find_vendor_by_description(ml_payment.description)
-                    if vendor:
-                        res['detected_vendor_id'] = vendor.id
-                        res['partner_id'] = vendor.partner_id.id
-                        res['use_detected_vendor'] = True
-
-        # Si viene de accion masiva
-        if self.env.context.get('active_ids') and self.env.context.get('active_model') == 'mercadolibre.payment':
+        # Si viene de accion desde lista (active_ids)
+        elif self.env.context.get('active_ids') and self.env.context.get('active_model') == 'mercadolibre.payment':
             active_ids = self.env.context.get('active_ids', [])
-            if len(active_ids) > 1:
+            if len(active_ids) == 1:
+                # Un solo pago seleccionado - modo single
+                ml_payment = self.env['mercadolibre.payment'].browse(active_ids[0])
+                res['ml_payment_id'] = active_ids[0]
+                res['mode'] = 'single'
+            elif len(active_ids) > 1:
+                # Multiples pagos seleccionados - modo batch
                 res['mode'] = 'batch'
                 res['ml_payment_ids'] = [(6, 0, active_ids)]
+                # Obtener company del primer pago
+                first_payment = self.env['mercadolibre.payment'].browse(active_ids[0])
+                res['company_id'] = first_payment.company_id.id
+
+        # Configurar campos para modo single
+        if ml_payment and res.get('mode') == 'single':
+            res['payment_direction'] = ml_payment.payment_direction
+            res['amount'] = ml_payment.transaction_amount
+            res['description'] = ml_payment.description
+            res['company_id'] = ml_payment.company_id.id
+
+            # Detectar proveedor para egresos
+            if ml_payment.payment_direction == 'outgoing' and ml_payment.description:
+                KnownVendor = self.env['mercadolibre.known.vendor']
+                vendor = KnownVendor.find_vendor_by_description(ml_payment.description)
+                if vendor:
+                    res['detected_vendor_id'] = vendor.id
+                    res['partner_id'] = vendor.partner_id.id
+                    res['use_detected_vendor'] = True
 
         return res
 
@@ -175,6 +187,9 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
         self.ensure_one()
 
         ml_payment = self.ml_payment_id
+
+        if not ml_payment:
+            raise ValidationError(_('No se selecciono un pago de MercadoPago'))
 
         if ml_payment.odoo_payment_id:
             raise ValidationError(_('Este pago ya tiene un pago Odoo asociado: %s') % ml_payment.odoo_payment_id.name)

@@ -897,7 +897,9 @@ class MercadolibrePayment(models.Model):
             return result
 
         # Validar estado del pago ML
-        if self.status != 'approved':
+        # Para ingresos: siempre requerir approved
+        # Para egresos: permitir cualquier estado (el filtro ya se hizo en el config)
+        if self.payment_direction == 'incoming' and self.status != 'approved':
             self.write({
                 'odoo_payment_state': 'skipped',
                 'odoo_payment_error': f'Pago no aprobado (estado: {self.status})',
