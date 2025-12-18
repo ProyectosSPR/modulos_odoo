@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_mercadolibre_root" name="MercadoLibre" sequence="10" web_icon="mercadolibre_connector,static/description/icon.png"/>
-    <menuitem id="menu_mercadolibre_config" name="Configuración" parent="menu_mercadolibre_root" sequence="10" action="action_mercadolibre_config" groups="group_mercadolibre_manager"/>
+    <menuitem id="menu_mercadolibre_config" name="Registro de Apps" parent="menu_mercadolibre_root" sequence="10" action="action_mercadolibre_config" groups="group_mercadolibre_manager"/>
     <menuitem id="menu_mercadolibre_accounts" name="Cuentas" parent="menu_mercadolibre_root" sequence="20" action="action_mercadolibre_account"/>
     <menuitem id="menu_mercadolibre_invitations" name="Invitaciones" parent="menu_mercadolibre_root" sequence="30" action="action_mercadolibre_invitation"/>
     <menuitem id="menu_mercadolibre_playground" name="API Playground" parent="menu_mercadolibre_root" sequence="40" action="action_mercadolibre_api_playground"/>
