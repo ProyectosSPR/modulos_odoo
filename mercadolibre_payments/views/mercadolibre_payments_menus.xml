@@ -29,6 +29,12 @@
               action="action_mercadolibre_payment_released"
               sequence="20"/>
 
+    <menuitem id="menu_mercadolibre_payment_in_mediation"
+              name="Pagos en Mediacion"
+              parent="menu_mercadolibre_payments_root"
+              action="action_mercadolibre_payment_in_mediation"
+              sequence="25"/>
+
     <menuitem id="menu_mercadolibre_payment_pending_sync"
               name="Pendientes de Sync"
               parent="menu_mercadolibre_payments_root"

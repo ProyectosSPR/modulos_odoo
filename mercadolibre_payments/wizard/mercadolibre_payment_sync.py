@@ -46,6 +46,19 @@ class MercadolibrePaymentSync(models.TransientModel):
     ], string='Direccion', default='all', required=True,
        help='Filtrar por direccion del pago: recibidos (eres el vendedor) o realizados (eres el comprador)')
 
+    status_filter = fields.Selection([
+        ('all', 'Todos los Estados'),
+        ('approved', 'Solo Aprobados'),
+        ('in_mediation', 'En Mediacion'),
+        ('pending', 'Pendientes'),
+        ('in_process', 'En Proceso'),
+        ('rejected', 'Rechazados'),
+        ('refunded', 'Reembolsados'),
+        ('cancelled', 'Cancelados'),
+        ('charged_back', 'Contracargos'),
+    ], string='Filtrar por Estado', default='all', required=True,
+       help='Filtrar pagos por su estado en MercadoPago')
+
     only_released = fields.Boolean(
         string='Solo Dinero Liberado',
         default=False,
@@ -70,16 +83,46 @@ class MercadolibrePaymentSync(models.TransientModel):
             self.date_field = 'money_release_date'
             self.only_released = True
             self.only_approved = True
+            self.status_filter = 'approved'
         elif self.payment_direction_filter == 'outgoing':
             # Para pagos realizados: usar fecha de actualizacion, sin filtros de liberacion/aprobado
             self.date_field = 'date_last_updated'
             self.only_released = False
             self.only_approved = False
+            self.status_filter = 'all'
         else:
             # Todos: usar fecha de creacion, sin filtros
             self.date_field = 'date_created'
             self.only_released = False
             self.only_approved = False
+            self.status_filter = 'all'
+
+    @api.onchange('status_filter')
+    def _onchange_status_filter(self):
+        """Ajusta valores por defecto segun el estado seleccionado"""
+        if self.status_filter == 'in_mediation':
+            # Para pagos en mediacion: el dinero esta congelado, usar fecha de actualizacion
+            self.date_field = 'date_last_updated'
+            self.only_released = False
+            self.only_approved = False
+        elif self.status_filter == 'approved':
+            # Para pagos aprobados: usar fecha de aprobacion
+            self.date_field = 'date_approved'
+            self.only_approved = True
+        elif self.status_filter in ('pending', 'in_process'):
+            # Para pagos pendientes/en proceso: usar fecha de creacion
+            self.date_field = 'date_created'
+            self.only_released = False
+            self.only_approved = False
+        elif self.status_filter in ('rejected', 'cancelled', 'refunded', 'charged_back'):
+            # Para pagos rechazados/cancelados/reembolsados/contracargos: usar fecha de actualizacion
+            self.date_field = 'date_last_updated'
+            self.only_released = False
+            self.only_approved = False
+        elif self.status_filter == 'all':
+            # Para todos: mantener configuracion actual o usar fecha de creacion
+            if not self.date_field:
+                self.date_field = 'date_created'
 
     # Results
     sync_count = fields.Integer(
@@ -129,6 +172,7 @@ class MercadolibrePaymentSync(models.TransientModel):
         _logger.info('='*60)
         _logger.info('Cuenta: %s', self.account_id.name)
         _logger.info('Periodo: %s a %s', self.date_from, self.date_to)
+        _logger.info('Filtro estado: %s', self.status_filter)
         _logger.info('Solo liberados: %s', self.only_released)
         _logger.info('Solo aprobados: %s', self.only_approved)
         _logger.info('Limite: %d', self.limit)
@@ -169,8 +213,23 @@ class MercadolibrePaymentSync(models.TransientModel):
         }
         direction_label = direction_labels.get(self.payment_direction_filter, 'Todos')
 
+        # Mapeo de estados para mostrar en el log
+        status_labels = {
+            'all': 'Todos los Estados',
+            'approved': 'Solo Aprobados',
+            'in_mediation': 'En Mediacion',
+            'pending': 'Pendientes',
+            'in_process': 'En Proceso',
+            'rejected': 'Rechazados',
+            'refunded': 'Reembolsados',
+            'cancelled': 'Cancelados',
+            'charged_back': 'Contracargos',
+        }
+        status_label = status_labels.get(self.status_filter, 'Todos')
+
         log_lines.append(f'  Cuenta:          {self.account_id.name}')
         log_lines.append(f'  Direccion:       {direction_label}')
+        log_lines.append(f'  Estado:          {status_label}')
         log_lines.append(f'  Filtrar por:     {date_field_label}')
         log_lines.append(f'  Periodo:         {format_date_mx(self.date_from)} a {format_date_mx(self.date_to)}')
         log_lines.append(f'  Zona horaria:    America/Mexico_City ({tz_name} UTC{tz_offset_formatted})')
@@ -215,8 +274,16 @@ class MercadolibrePaymentSync(models.TransientModel):
             # Insertar ':' en el offset (formato ISO 8601)
             params['end_date'] = params['end_date'][:-2] + ':' + params['end_date'][-2:]
 
-        if self.only_approved:
+        # Filtrar por estado especifico si no es 'all'
+        # status_filter tiene prioridad sobre only_approved
+        if self.status_filter and self.status_filter != 'all':
+            params['status'] = self.status_filter
+        elif self.only_approved:
             params['status'] = 'approved'
+
+        # Flag para indicar si necesitamos filtrar localmente por estado
+        # (para estados que la API no soporta o cuando queremos filtrar adicional)
+        filter_status_locally = self.status_filter and self.status_filter != 'all'
 
         # Nota: MercadoPago API no soporta filtrar por collector_id ni payer_id
         # Descargamos todos los pagos y filtramos localmente por direccion
@@ -322,13 +389,22 @@ class MercadolibrePaymentSync(models.TransientModel):
 
             results = filtered_results
 
+        # Filtrar localmente por estado si es necesario (respaldo para asegurar precision)
+        if filter_status_locally:
+            status_filtered_results = []
+            for payment_data in results:
+                payment_status = payment_data.get('status', '')
+                if payment_status == self.status_filter:
+                    status_filtered_results.append(payment_data)
+            results = status_filtered_results
+
         log_lines.append('-' * 50)
         log_lines.append('  RESULTADOS DE BUSQUEDA')
         log_lines.append('-' * 50)
         log_lines.append(f'  Total en MercadoPago:  {total}')
         log_lines.append(f'  Obtenidos:             {total_before_filter}')
-        if filter_direction_locally:
-            log_lines.append(f'  Filtrados (direccion): {len(results)}')
+        if filter_direction_locally or filter_status_locally:
+            log_lines.append(f'  Despues de filtros:    {len(results)}')
         log_lines.append('')
         log_lines.append('-' * 50)
         log_lines.append('  DETALLE DE PAGOS')

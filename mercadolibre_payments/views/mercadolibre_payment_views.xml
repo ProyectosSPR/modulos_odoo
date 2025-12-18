@@ -8,6 +8,7 @@
                   decoration-success="status=='approved' and money_release_status=='released'"
                   decoration-warning="status=='approved' and money_release_status=='pending'"
                   decoration-danger="status in ('rejected','cancelled','charged_back')"
+                  decoration-info="status=='in_mediation'"
                   decoration-muted="status=='refunded'">
                 <field name="name"/>
                 <field name="account_id"/>
@@ -26,7 +27,8 @@
                 <field name="status" widget="badge"
                        decoration-success="status=='approved'"
                        decoration-warning="status in ('pending','in_process')"
-                       decoration-danger="status in ('rejected','cancelled','charged_back')"/>
+                       decoration-danger="status in ('rejected','cancelled','charged_back')"
+                       decoration-info="status=='in_mediation'"/>
                 <field name="money_release_status" widget="badge"
                        decoration-success="money_release_status=='released'"
                        decoration-warning="money_release_status=='pending'"
@@ -191,8 +193,10 @@
                 <separator/>
                 <filter string="Aprobados" name="approved" domain="[('status', '=', 'approved')]"/>
                 <filter string="Pendientes" name="pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="En Mediacion" name="in_mediation" domain="[('status', '=', 'in_mediation')]"/>
                 <filter string="Rechazados" name="rejected" domain="[('status', '=', 'rejected')]"/>
                 <filter string="Reembolsados" name="refunded" domain="[('status', '=', 'refunded')]"/>
+                <filter string="Contracargos" name="charged_back" domain="[('status', '=', 'charged_back')]"/>
                 <separator/>
                 <filter string="Pagos Recibidos" name="incoming"
                         domain="[('payment_direction', '=', 'incoming')]"/>
@@ -366,6 +370,22 @@
             </p>
             <p>
                 Aqui se muestran los pagos que has realizado (egresos).
+            </p>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_payment_in_mediation" model="ir.actions.act_window">
+        <field name="name">Pagos en Mediacion</field>
+        <field name="res_model">mercadolibre.payment</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="domain">[('status', '=', 'in_mediation')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay pagos en mediacion
+            </p>
+            <p>
+                Aqui se muestran los pagos que estan en proceso de mediacion/disputa.
+                El dinero de estos pagos esta congelado hasta que se resuelva la disputa.
             </p>
         </field>
     </record>

@@ -58,13 +58,14 @@
                     <group string="Configuracion">
                         <field name="account_id" options="{'no_create': True}"/>
                         <field name="payment_direction_filter" widget="radio"/>
+                        <field name="status_filter" widget="radio"/>
                         <field name="date_field" widget="radio"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
                     </group>
-                    <group string="Filtros">
-                        <field name="only_released" attrs="{'invisible': [('payment_direction_filter', '=', 'outgoing')]}"/>
-                        <field name="only_approved"/>
+                    <group string="Filtros Adicionales">
+                        <field name="only_released" attrs="{'invisible': ['|', ('payment_direction_filter', '=', 'outgoing'), ('status_filter', 'in', ['in_mediation', 'pending', 'in_process', 'rejected', 'refunded', 'cancelled', 'charged_back'])]}"/>
+                        <field name="only_approved" attrs="{'invisible': [('status_filter', '!=', 'all')]}"/>
                         <field name="limit"/>
                     </group>
                 </group>
