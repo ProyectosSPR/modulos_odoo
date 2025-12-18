@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_payment_sync_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.config.tree</field>
+        <field name="model">mercadolibre.payment.sync.config</field>
+        <field name="arch" type="xml">
+            <tree string="Sincronizaciones Automaticas"
+                  decoration-success="state=='active'"
+                  decoration-muted="state=='paused'"
+                  decoration-info="state=='draft'">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="payment_direction_filter"/>
+                <field name="status_filter"/>
+                <field name="period"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
+                <field name="last_run"/>
+                <field name="next_run"/>
+                <field name="last_sync_count"/>
+                <field name="state" widget="badge"
+                       decoration-success="state=='active'"
+                       decoration-warning="state=='paused'"
+                       decoration-info="state=='draft'"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_payment_sync_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.config.form</field>
+        <field name="model">mercadolibre.payment.sync.config</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizacion Automatica">
+                <header>
+                    <button name="action_activate" type="object" string="Activar"
+                            class="btn-primary" icon="fa-play"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_pause" type="object" string="Pausar"
+                            class="btn-warning" icon="fa-pause"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"/>
+                    <button name="action_resume" type="object" string="Reanudar"
+                            class="btn-success" icon="fa-play"
+                            attrs="{'invisible': [('state', '!=', 'paused')]}"/>
+                    <button name="action_run_now" type="object" string="Ejecutar Ahora"
+                            class="btn-secondary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_run_now"
+                                icon="fa-refresh"
+                                attrs="{'invisible': [('state', '=', 'draft')]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="total_syncs" nolabel="1"/></span>
+                                <span class="o_stat_text">Ejecuciones</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Ej: Ingresos Diarios"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Configuracion de Filtros">
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="payment_direction_filter"/>
+                            <field name="status_filter"/>
+                            <field name="date_field"/>
+                            <field name="period"/>
+                        </group>
+                        <group string="Filtros Adicionales">
+                            <field name="only_released"
+                                   attrs="{'invisible': ['|', ('payment_direction_filter', '=', 'outgoing'), ('status_filter', 'in', ['in_mediation', 'pending', 'in_process', 'rejected', 'refunded', 'cancelled', 'charged_back'])]}"/>
+                            <field name="only_approved"
+                                   attrs="{'invisible': [('status_filter', '!=', 'all')]}"/>
+                            <field name="limit"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Programacion">
+                            <label for="interval_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline"/>
+                                <field name="interval_type" class="oe_inline"/>
+                            </div>
+                            <field name="next_run"/>
+                        </group>
+                        <group string="Ultima Ejecucion">
+                            <field name="last_run"/>
+                            <field name="last_sync_count"/>
+                            <field name="last_sync_created"/>
+                            <field name="last_sync_updated"/>
+                            <field name="last_sync_errors"/>
+                            <field name="total_payments_synced"/>
+                        </group>
+                    </group>
+                    <group string="Log Ultima Ejecucion" attrs="{'invisible': [('last_sync_log', '=', False)]}">
+                        <field name="last_sync_log" nolabel="1" readonly="1"
+                               widget="text" colspan="2"
+                               style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                    </group>
+                    <field name="active" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="cron_id" invisible="1"/>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" groups="base.group_user"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_payment_sync_config_search" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.config.search</field>
+        <field name="model">mercadolibre.payment.sync.config</field>
+        <field name="arch" type="xml">
+            <search string="Sincronizaciones Automaticas">
+                <field name="name"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Activas" name="active_state" domain="[('state', '=', 'active')]"/>
+                <filter string="Pausadas" name="paused_state" domain="[('state', '=', 'paused')]"/>
+                <filter string="Borrador" name="draft_state" domain="[('state', '=', 'draft')]"/>
+                <separator/>
+                <filter string="Ingresos" name="incoming" domain="[('payment_direction_filter', '=', 'incoming')]"/>
+                <filter string="Egresos" name="outgoing" domain="[('payment_direction_filter', '=', 'outgoing')]"/>
+                <separator/>
+                <filter string="En Mediacion" name="in_mediation" domain="[('status_filter', '=', 'in_mediation')]"/>
+                <filter string="Aprobados" name="approved" domain="[('status_filter', '=', 'approved')]"/>
+                <separator/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Direccion" name="group_direction" context="{'group_by': 'payment_direction_filter'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_payment_sync_config" model="ir.actions.act_window">
+        <field name="name">Sincronizaciones Automaticas</field>
+        <field name="res_model">mercadolibre.payment.sync.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear sincronizacion automatica
+            </p>
+            <p>
+                Configure sincronizaciones automaticas para descargar pagos de MercadoPago
+                con diferentes filtros y frecuencias.
+            </p>
+            <p>
+                Ejemplos:
+                <ul>
+                    <li>Ingresos diarios cada 6 horas</li>
+                    <li>Pagos en mediacion cada 12 horas</li>
+                    <li>Contracargos cada dia</li>
+                </ul>
+            </p>
+        </field>
+    </record>
+</odoo>
