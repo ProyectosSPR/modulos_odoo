@@ -277,6 +277,62 @@ class MercadolibrePayment(models.Model):
         tracking=True
     )
 
+    # =====================================================
+    # CAMPOS PARA PAGOS ODOO (account.payment)
+    # =====================================================
+    odoo_payment_id = fields.Many2one(
+        'account.payment',
+        string='Pago Odoo',
+        readonly=True,
+        tracking=True,
+        help='Pago registrado en Odoo contabilidad'
+    )
+    commission_payment_id = fields.Many2one(
+        'account.payment',
+        string='Pago Comision Odoo',
+        readonly=True,
+        tracking=True,
+        help='Pago de comision registrado en Odoo'
+    )
+
+    # Vendor matching para egresos
+    matched_vendor_id = fields.Many2one(
+        'mercadolibre.known.vendor',
+        string='Proveedor Detectado',
+        readonly=True,
+        help='Proveedor conocido detectado por palabras clave'
+    )
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Partner Asignado',
+        tracking=True,
+        help='Partner de Odoo asignado a este pago'
+    )
+
+    # Estado de creacion de pago Odoo
+    odoo_payment_state = fields.Selection([
+        ('pending', 'Pendiente'),
+        ('created', 'Creado'),
+        ('error', 'Error'),
+        ('skipped', 'Omitido'),
+    ], string='Estado Pago Odoo', default='pending', tracking=True)
+
+    odoo_payment_error = fields.Text(
+        string='Error Pago Odoo',
+        readonly=True
+    )
+
+    has_odoo_payment = fields.Boolean(
+        string='Tiene Pago Odoo',
+        compute='_compute_has_odoo_payment',
+        store=True
+    )
+    has_commission_payment = fields.Boolean(
+        string='Tiene Pago Comision',
+        compute='_compute_has_odoo_payment',
+        store=True
+    )
+
     notes = fields.Text(
         string='Notas'
     )
@@ -304,6 +360,12 @@ class MercadolibrePayment(models.Model):
     def _compute_total_charges(self):
         for record in self:
             record.total_charges = sum(record.charge_ids.mapped('amount'))
+
+    @api.depends('odoo_payment_id', 'commission_payment_id')
+    def _compute_has_odoo_payment(self):
+        for record in self:
+            record.has_odoo_payment = bool(record.odoo_payment_id)
+            record.has_commission_payment = bool(record.commission_payment_id)
 
     @api.model
     def create_from_mp_data(self, data, account):
@@ -668,3 +730,255 @@ class MercadolibrePayment(models.Model):
         _logger.info('Sincronizados %d pagos para cuenta %s (Nuevos: %d, Actualizados: %d)',
                     synced_count, account.name, created_count, updated_count)
         return synced_count
+
+    # =====================================================
+    # METODOS PARA CREACION DE PAGOS ODOO
+    # =====================================================
+
+    def action_create_odoo_payment(self):
+        """Accion manual para crear pago en Odoo desde la vista"""
+        self.ensure_one()
+        return self._create_odoo_payment_wizard()
+
+    def _create_odoo_payment_wizard(self):
+        """Abre wizard para crear pago manualmente"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Crear Pago Odoo'),
+            'res_model': 'mercadolibre.payment.create.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_ml_payment_id': self.id,
+                'default_payment_direction': self.payment_direction,
+                'default_amount': self.transaction_amount,
+                'default_description': self.description,
+            },
+        }
+
+    def _detect_vendor(self):
+        """
+        Detecta el proveedor conocido basandose en la descripcion del pago.
+        Solo aplica para pagos de tipo egreso (outgoing).
+
+        Returns:
+            mercadolibre.known.vendor record o False
+        """
+        self.ensure_one()
+
+        if self.payment_direction != 'outgoing':
+            return False
+
+        if not self.description:
+            return False
+
+        KnownVendor = self.env['mercadolibre.known.vendor']
+        vendor = KnownVendor.find_vendor_by_description(self.description)
+
+        if vendor:
+            self.matched_vendor_id = vendor.id
+            self.partner_id = vendor.partner_id.id
+            _logger.info('Pago %s: Proveedor detectado: %s -> %s',
+                        self.mp_payment_id, vendor.name, vendor.partner_id.name)
+
+        return vendor
+
+    def _create_odoo_payment(self, config):
+        """
+        Crea el pago en Odoo (account.payment) basandose en la configuracion.
+
+        Args:
+            config: mercadolibre.payment.sync.config record con la configuracion de journals y partners
+
+        Returns:
+            dict con resultados: {'payment': account.payment, 'commission_payment': account.payment or False}
+        """
+        self.ensure_one()
+
+        result = {
+            'payment': False,
+            'commission_payment': False,
+            'error': False,
+        }
+
+        # Validar que no tenga ya un pago creado
+        if self.odoo_payment_id:
+            _logger.info('Pago %s ya tiene pago Odoo: %s', self.mp_payment_id, self.odoo_payment_id.name)
+            return result
+
+        # Validar estado del pago ML
+        if self.status != 'approved':
+            self.write({
+                'odoo_payment_state': 'skipped',
+                'odoo_payment_error': f'Pago no aprobado (estado: {self.status})',
+            })
+            return result
+
+        try:
+            # Detectar proveedor para egresos
+            if self.payment_direction == 'outgoing' and not self.matched_vendor_id:
+                self._detect_vendor()
+
+            # Determinar tipo de pago y journal
+            if self.payment_direction == 'incoming':
+                payment_type = 'inbound'
+                partner_type = 'customer'
+                journal = config.incoming_journal_id
+                partner = self.partner_id or config.default_customer_id
+
+                if not journal:
+                    raise ValidationError(_('No hay diario de ingresos configurado'))
+                if not partner:
+                    raise ValidationError(_('No hay cliente configurado para pagos entrantes'))
+
+            elif self.payment_direction == 'outgoing':
+                payment_type = 'outbound'
+                partner_type = 'supplier'
+                journal = config.outgoing_journal_id
+
+                # Usar el partner del proveedor detectado o el default
+                if self.matched_vendor_id:
+                    partner = self.matched_vendor_id.partner_id
+                else:
+                    partner = self.partner_id or config.default_vendor_id
+
+                if not journal:
+                    raise ValidationError(_('No hay diario de egresos configurado'))
+                if not partner:
+                    raise ValidationError(_('No hay proveedor configurado para pagos salientes'))
+            else:
+                self.write({
+                    'odoo_payment_state': 'skipped',
+                    'odoo_payment_error': 'Direccion de pago desconocida',
+                })
+                return result
+
+            # Determinar fecha del pago
+            payment_date = self.date_approved or self.date_created or fields.Datetime.now()
+            if isinstance(payment_date, datetime):
+                payment_date = payment_date.date()
+
+            # Crear el pago principal usando el metodo extendido
+            payment_vals = {
+                'payment_type': payment_type,
+                'partner_type': partner_type,
+                'partner_id': partner.id,
+                'amount': abs(self.transaction_amount),
+                'currency_id': self.currency_id.id or config.company_id.currency_id.id,
+                'journal_id': journal.id,
+                'date': payment_date,
+                'memo': self.description or f'Pago MercadoPago {self.mp_payment_id}',
+            }
+
+            # Usar metodo extendido que construye el ref con formato correcto
+            # [Orden Venta] - [pack_id o order_id] - [payment_id]
+            payment = self.env['account.payment'].create_from_ml_payment(self, payment_vals)
+            result['payment'] = payment
+
+            _logger.info('Pago Odoo creado: %s (ref: %s) para ML pago %s',
+                        payment.name, payment.ref, self.mp_payment_id)
+
+            # Crear pago de comision si corresponde
+            commission_payment = False
+            if config.create_commission_payments and self.total_charges > 0:
+                commission_payment = self._create_commission_payment(config, payment_date)
+                result['commission_payment'] = commission_payment
+
+            # Actualizar el registro ML payment
+            update_vals = {
+                'odoo_payment_id': payment.id,
+                'odoo_payment_state': 'created',
+                'odoo_payment_error': False,
+                'partner_id': partner.id,
+            }
+            if commission_payment:
+                update_vals['commission_payment_id'] = commission_payment.id
+
+            self.write(update_vals)
+
+        except Exception as e:
+            error_msg = str(e)
+            _logger.error('Error creando pago Odoo para %s: %s', self.mp_payment_id, error_msg)
+            self.write({
+                'odoo_payment_state': 'error',
+                'odoo_payment_error': error_msg,
+            })
+            result['error'] = error_msg
+
+        return result
+
+    def _create_commission_payment(self, config, payment_date):
+        """
+        Crea el pago de comision como pago separado.
+
+        Args:
+            config: mercadolibre.payment.sync.config con configuracion
+            payment_date: fecha del pago
+
+        Returns:
+            account.payment record
+        """
+        self.ensure_one()
+
+        if not config.commission_journal_id:
+            _logger.warning('No hay diario de comisiones configurado')
+            return False
+
+        if not config.commission_partner_id:
+            _logger.warning('No hay partner de comisiones configurado')
+            return False
+
+        commission_vals = {
+            'payment_type': 'outbound',  # Siempre es egreso (pagamos comision)
+            'partner_type': 'supplier',
+            'partner_id': config.commission_partner_id.id,
+            'amount': abs(self.total_charges),
+            'currency_id': self.currency_id.id or config.company_id.currency_id.id,
+            'journal_id': config.commission_journal_id.id,
+            'date': payment_date,
+            'ref': f'ML-COM-{self.mp_payment_id}',
+            'memo': f'Comision MercadoPago - Pago {self.mp_payment_id}',
+        }
+
+        commission_payment = self.env['account.payment'].create(commission_vals)
+        _logger.info('Pago comision creado: %s para ML pago %s', commission_payment.name, self.mp_payment_id)
+
+        return commission_payment
+
+    def action_view_odoo_payment(self):
+        """Abre el pago de Odoo asociado"""
+        self.ensure_one()
+        if not self.odoo_payment_id:
+            return False
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Pago Odoo'),
+            'res_model': 'account.payment',
+            'res_id': self.odoo_payment_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_view_commission_payment(self):
+        """Abre el pago de comision asociado"""
+        self.ensure_one()
+        if not self.commission_payment_id:
+            return False
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Pago Comision'),
+            'res_model': 'account.payment',
+            'res_id': self.commission_payment_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_retry_odoo_payment(self):
+        """Reintenta la creacion del pago Odoo"""
+        self.ensure_one()
+        self.write({
+            'odoo_payment_state': 'pending',
+            'odoo_payment_error': False,
+        })
+        return True

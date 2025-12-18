@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- EXTENSION DE ACCOUNT.PAYMENT PARA MERCADOPAGO -->
+    <!-- ============================================== -->
+
+    <!-- Herencia de la vista form de account.payment -->
+    <record id="view_account_payment_form_ml_inherit" model="ir.ui.view">
+        <field name="name">account.payment.form.mercadolibre</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar boton en button_box para ver pago ML -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_payment" type="object"
+                        class="oe_stat_button" icon="fa-shopping-cart"
+                        attrs="{'invisible': [('ml_payment_id', '=', False)]}">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Ver Pago ML</span>
+                    </div>
+                </button>
+                <button name="action_view_sale_order" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('ml_sale_order_id', '=', False)]}">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Ver Orden</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Campos invisibles necesarios -->
+            <xpath expr="//field[@name='id']" position="after">
+                <field name="ml_payment_id" invisible="1"/>
+                <field name="ml_sale_order_id" invisible="1"/>
+                <field name="is_ml_payment" invisible="1"/>
+            </xpath>
+
+            <!-- Agregar pestaña de MercadoPago en el notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Informacion MercadoPago" name="ml_info"
+                      attrs="{'invisible': [('is_ml_payment', '=', False)]}">
+                    <group>
+                        <group string="Estado del Pago">
+                            <field name="ml_status" widget="badge"
+                                   decoration-success="ml_status=='approved'"
+                                   decoration-warning="ml_status in ('pending','in_process')"
+                                   decoration-danger="ml_status in ('rejected','cancelled','charged_back')"
+                                   decoration-info="ml_status=='in_mediation'"/>
+                            <field name="ml_status_detail"/>
+                            <field name="ml_release_status" widget="badge"
+                                   decoration-success="ml_release_status=='released'"
+                                   decoration-warning="ml_release_status=='pending'"
+                                   decoration-danger="ml_release_status in ('not_released','unavailable')"/>
+                            <field name="ml_release_status_display" string="Estado Acreditacion"/>
+                        </group>
+                        <group string="Identificadores">
+                            <field name="ml_payment_mp_id" string="ID Pago"/>
+                            <field name="ml_pack_id"/>
+                            <field name="ml_order_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Metodo de Pago">
+                            <field name="ml_payment_method"/>
+                        </group>
+                        <group string="Orden de Venta Relacionada">
+                            <field name="ml_sale_order_id" readonly="1"/>
+                            <field name="ml_sale_order_name"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-success" role="alert"
+                         attrs="{'invisible': [('ml_release_status', '!=', 'released')]}">
+                        <i class="fa fa-check-circle"/> <strong>Pago Acreditado:</strong>
+                        El dinero ya fue liberado en tu cuenta de MercadoPago.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('ml_release_status', '!=', 'pending')]}">
+                        <i class="fa fa-clock-o"/> <strong>Pendiente de Acreditar:</strong>
+                        El dinero aun no ha sido liberado en tu cuenta de MercadoPago.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('ml_release_status', 'not in', ['not_released', 'unavailable'])]}">
+                        <i class="fa fa-exclamation-triangle"/> <strong>No Acreditado:</strong>
+                        El dinero no esta disponible. Verifica el estado del pago en MercadoPago.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Herencia de la vista tree de account.payment para mostrar indicador ML -->
+    <record id="view_account_payment_tree_ml_inherit" model="ir.ui.view">
+        <field name="name">account.payment.tree.mercadolibre</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="ml_release_status" widget="badge" optional="hide"
+                       decoration-success="ml_release_status=='released'"
+                       decoration-warning="ml_release_status=='pending'"
+                       decoration-danger="ml_release_status in ('not_released','unavailable')"/>
+                <field name="ml_payment_mp_id" optional="hide" string="ID Pago ML"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Herencia de la vista search de account.payment -->
+    <record id="view_account_payment_search_ml_inherit" model="ir.ui.view">
+        <field name="name">account.payment.search.mercadolibre</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Pagos MercadoPago" name="ml_payments"
+                        domain="[('ml_payment_id', '!=', False)]"/>
+                <filter string="ML Acreditados" name="ml_released"
+                        domain="[('ml_release_status', '=', 'released')]"/>
+                <filter string="ML Pendiente Acreditar" name="ml_pending"
+                        domain="[('ml_release_status', '=', 'pending')]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

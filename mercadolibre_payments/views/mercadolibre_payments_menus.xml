@@ -24,6 +24,18 @@
               action="action_mercadolibre_payment_sync_config"
               sequence="10"/>
 
+    <menuitem id="menu_mercadolibre_known_vendor"
+              name="Proveedores Conocidos"
+              parent="menu_mercadolibre_payments_config_root"
+              action="action_mercadolibre_known_vendor"
+              sequence="20"/>
+
+    <menuitem id="menu_mercadolibre_known_vendor_keyword"
+              name="Palabras Clave"
+              parent="menu_mercadolibre_payments_config_root"
+              action="action_mercadolibre_known_vendor_keyword"
+              sequence="25"/>
+
     <menuitem id="menu_mercadolibre_payment_incoming"
               name="Pagos Recibidos (Ingresos)"
               parent="menu_mercadolibre_payments_root"

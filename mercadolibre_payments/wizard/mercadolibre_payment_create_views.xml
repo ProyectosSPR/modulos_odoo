@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_mercadolibre_payment_create_wizard_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.create.wizard.form</field>
+        <field name="model">mercadolibre.payment.create.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Crear Pago Odoo">
+                <group attrs="{'invisible': [('mode', '=', 'batch')]}">
+                    <group string="Pago MercadoPago">
+                        <field name="ml_payment_id" readonly="1"/>
+                        <field name="payment_direction"/>
+                        <field name="amount"/>
+                        <field name="total_charges"/>
+                    </group>
+                    <group string="Descripcion">
+                        <field name="description" nolabel="1" readonly="1"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('mode', '=', 'single')]}">
+                    <field name="ml_payment_ids" nolabel="1" readonly="1">
+                        <tree>
+                            <field name="mp_payment_id"/>
+                            <field name="description"/>
+                            <field name="payment_direction"/>
+                            <field name="transaction_amount"/>
+                            <field name="status"/>
+                        </tree>
+                    </field>
+                </group>
+
+                <group string="Proveedor Detectado"
+                       attrs="{'invisible': ['|', ('detected_vendor_id', '=', False), ('payment_direction', '!=', 'outgoing')]}">
+                    <field name="detected_vendor_id"/>
+                    <field name="use_detected_vendor"/>
+                </group>
+
+                <group>
+                    <group string="Configuracion del Pago">
+                        <field name="journal_id" options="{'no_create': True}"/>
+                        <field name="partner_id" options="{'no_create': False}"
+                               context="{'default_customer_rank': payment_direction == 'incoming' and 1 or 0,
+                                        'default_supplier_rank': payment_direction == 'outgoing' and 1 or 0}"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="mode" invisible="1"/>
+                    </group>
+                    <group string="Comisiones"
+                           attrs="{'invisible': [('total_charges', '=', 0)]}">
+                        <field name="create_commission"/>
+                        <field name="commission_journal_id"
+                               attrs="{'invisible': [('create_commission', '=', False)],
+                                       'required': [('create_commission', '=', True)]}"
+                               options="{'no_create': True}"/>
+                        <field name="commission_partner_id"
+                               attrs="{'invisible': [('create_commission', '=', False)],
+                                       'required': [('create_commission', '=', True)]}"
+                               context="{'default_supplier_rank': 1}"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('payment_direction', '!=', 'incoming')]}">
+                    <strong>Pago Recibido (Ingreso):</strong> Se creara un pago de cliente en el diario seleccionado.
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': [('payment_direction', '!=', 'outgoing')]}">
+                    <strong>Pago Realizado (Egreso):</strong> Se creara un pago a proveedor en el diario seleccionado.
+                </div>
+
+                <footer>
+                    <button name="action_create_payment" type="object" string="Crear Pago"
+                            class="btn-primary" icon="fa-check"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para el wizard desde seleccion multiple -->
+    <record id="action_mercadolibre_payment_create_wizard" model="ir.actions.act_window">
+        <field name="name">Crear Pagos Odoo</field>
+        <field name="res_model">mercadolibre.payment.create.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_mercadolibre_payment"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

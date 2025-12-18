@@ -38,6 +38,14 @@
                        decoration-warning="sync_status=='pending'"
                        decoration-danger="sync_status=='error'"
                        decoration-muted="sync_status=='ignored'"/>
+                <field name="odoo_payment_state" widget="badge"
+                       decoration-success="odoo_payment_state=='created'"
+                       decoration-warning="odoo_payment_state=='pending'"
+                       decoration-danger="odoo_payment_state=='error'"
+                       decoration-muted="odoo_payment_state=='skipped'"
+                       optional="show"/>
+                <field name="odoo_payment_id" optional="hide"/>
+                <field name="matched_vendor_id" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
         </field>
@@ -49,18 +57,37 @@
         <field name="arch" type="xml">
             <form string="Pago MercadoPago">
                 <header>
+                    <button name="action_create_odoo_payment" type="object" string="Crear Pago Odoo"
+                            class="btn-primary" icon="fa-money"
+                            attrs="{'invisible': ['|', ('odoo_payment_id', '!=', False), ('status', '!=', 'approved')]}"/>
+                    <button name="action_retry_odoo_payment" type="object" string="Reintentar Pago Odoo"
+                            class="btn-warning"
+                            attrs="{'invisible': [('odoo_payment_state', '!=', 'error')]}"/>
                     <button name="action_mark_synced" type="object" string="Marcar Sincronizado"
-                            class="btn-primary"
                             attrs="{'invisible': [('sync_status', 'in', ['synced', 'ignored'])]}"/>
                     <button name="action_mark_ignored" type="object" string="Ignorar"
                             attrs="{'invisible': [('sync_status', '=', 'ignored')]}"/>
-                    <button name="action_retry_sync" type="object" string="Reintentar"
+                    <button name="action_retry_sync" type="object" string="Reintentar Sync"
                             attrs="{'invisible': [('sync_status', '!=', 'error')]}"/>
                     <field name="status" widget="statusbar"
                            statusbar_visible="pending,approved,rejected"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_view_odoo_payment" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                attrs="{'invisible': [('odoo_payment_id', '=', False)]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Ver Pago Odoo</span>
+                            </div>
+                        </button>
+                        <button name="action_view_commission_payment" type="object"
+                                class="oe_stat_button" icon="fa-percent"
+                                attrs="{'invisible': [('commission_payment_id', '=', False)]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Ver Comision</span>
+                            </div>
+                        </button>
                         <button name="action_view_raw_data" type="object"
                                 class="oe_stat_button" icon="fa-code">
                             <span>Ver JSON</span>
@@ -138,7 +165,43 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="Contabilidad" name="accounting">
+                        <page string="Pago Odoo" name="odoo_payment">
+                            <group>
+                                <group string="Estado Pago Odoo">
+                                    <field name="odoo_payment_state" widget="badge"
+                                           decoration-success="odoo_payment_state=='created'"
+                                           decoration-warning="odoo_payment_state=='pending'"
+                                           decoration-danger="odoo_payment_state=='error'"
+                                           decoration-muted="odoo_payment_state=='skipped'"/>
+                                    <field name="odoo_payment_id"/>
+                                    <field name="commission_payment_id"/>
+                                </group>
+                                <group string="Partner y Proveedor">
+                                    <field name="partner_id"/>
+                                    <field name="matched_vendor_id"/>
+                                </group>
+                            </group>
+                            <group attrs="{'invisible': [('odoo_payment_error', '=', False)]}">
+                                <field name="odoo_payment_error" nolabel="1" readonly="1"
+                                       style="color: red;"/>
+                            </group>
+                            <div class="alert alert-success" role="alert"
+                                 attrs="{'invisible': [('odoo_payment_state', '!=', 'created')]}">
+                                <strong>Pago creado exitosamente.</strong>
+                                Use los botones superiores para ver el pago en Odoo.
+                            </div>
+                            <div class="alert alert-warning" role="alert"
+                                 attrs="{'invisible': [('odoo_payment_state', '!=', 'pending')]}">
+                                <strong>Pago pendiente de creacion.</strong>
+                                Use el boton "Crear Pago Odoo" para generar el pago en contabilidad.
+                            </div>
+                            <div class="alert alert-danger" role="alert"
+                                 attrs="{'invisible': [('odoo_payment_state', '!=', 'error')]}">
+                                <strong>Error al crear pago.</strong>
+                                Revise el mensaje de error y use "Reintentar Pago Odoo".
+                            </div>
+                        </page>
+                        <page string="Contabilidad Antigua" name="accounting">
                             <group>
                                 <group>
                                     <field name="invoice_id"/>
@@ -215,6 +278,15 @@
                 <filter string="Con Error" name="sync_error"
                         domain="[('sync_status', '=', 'error')]"/>
                 <separator/>
+                <filter string="Pago Odoo Pendiente" name="odoo_pending"
+                        domain="[('odoo_payment_state', '=', 'pending')]"/>
+                <filter string="Pago Odoo Creado" name="odoo_created"
+                        domain="[('odoo_payment_state', '=', 'created')]"/>
+                <filter string="Sin Pago Odoo" name="no_odoo_payment"
+                        domain="[('odoo_payment_id', '=', False), ('status', '=', 'approved')]"/>
+                <filter string="Error Pago Odoo" name="odoo_error"
+                        domain="[('odoo_payment_state', '=', 'error')]"/>
+                <separator/>
                 <filter string="Hoy" name="today"
                         domain="[('date_approved', '>=', (context_today()).strftime('%Y-%m-%d')),
                                  ('date_approved', '&lt;', (context_today() + relativedelta(days=1)).strftime('%Y-%m-%d'))]"/>
@@ -231,6 +303,8 @@
                     <filter string="Metodo Pago" name="group_method" context="{'group_by': 'payment_type'}"/>
                     <filter string="Fecha Aprobacion" name="group_date" context="{'group_by': 'date_approved:month'}"/>
                     <filter string="Estado Sync" name="group_sync" context="{'group_by': 'sync_status'}"/>
+                    <filter string="Estado Pago Odoo" name="group_odoo_state" context="{'group_by': 'odoo_payment_state'}"/>
+                    <filter string="Proveedor Detectado" name="group_vendor" context="{'group_by': 'matched_vendor_id'}"/>
                 </group>
             </search>
         </field>

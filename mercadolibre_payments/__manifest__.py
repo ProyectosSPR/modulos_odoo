@@ -29,6 +29,7 @@ Dependencias:
     'depends': [
         'mercadolibre_connector',
         'account',
+        'sale',
         'mail',
     ],
     'data': [
@@ -38,7 +39,10 @@ Dependencias:
         'views/mercadolibre_payment_views.xml',
         'views/mercadolibre_payment_charge_views.xml',
         'views/mercadolibre_payment_sync_config_views.xml',
+        'views/mercadolibre_known_vendor_views.xml',
+        'views/account_payment_views.xml',
         'wizard/mercadolibre_payment_sync_views.xml',
+        'wizard/mercadolibre_payment_create_views.xml',
         'views/mercadolibre_payments_menus.xml',
         'data/mercadolibre_payments_cron.xml',
     ],

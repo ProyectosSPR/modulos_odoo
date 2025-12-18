@@ -165,6 +165,70 @@ class MercadolibrePaymentSyncConfig(models.Model):
         default=0
     )
 
+    # =====================================================
+    # CONFIGURACION DE CREACION DE PAGOS ODOO
+    # =====================================================
+    create_odoo_payments = fields.Boolean(
+        string='Crear Pagos en Odoo',
+        default=False,
+        help='Si esta activo, creara registros account.payment en Odoo automaticamente'
+    )
+
+    # Diarios
+    incoming_journal_id = fields.Many2one(
+        'account.journal',
+        string='Diario Ingresos',
+        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]",
+        help='Diario para registrar pagos recibidos (ingresos de clientes)'
+    )
+    outgoing_journal_id = fields.Many2one(
+        'account.journal',
+        string='Diario Egresos',
+        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]",
+        help='Diario para registrar pagos realizados (pagos a proveedores)'
+    )
+    commission_journal_id = fields.Many2one(
+        'account.journal',
+        string='Diario Comisiones',
+        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]",
+        help='Diario para registrar comisiones de MercadoPago'
+    )
+
+    # Partners por defecto
+    default_customer_id = fields.Many2one(
+        'res.partner',
+        string='Cliente por Defecto',
+        help='Cliente a usar cuando no se puede identificar al pagador (ingresos)'
+    )
+    default_vendor_id = fields.Many2one(
+        'res.partner',
+        string='Proveedor por Defecto',
+        help='Proveedor a usar cuando no se encuentra coincidencia con proveedores conocidos (egresos)'
+    )
+
+    # Comisiones
+    create_commission_payments = fields.Boolean(
+        string='Crear Pagos de Comisiones',
+        default=True,
+        help='Crear pagos separados para las comisiones de MercadoPago'
+    )
+    commission_partner_id = fields.Many2one(
+        'res.partner',
+        string='Proveedor Comisiones',
+        help='Proveedor para registrar las comisiones (ej: MercadoPago/MercadoLibre)'
+    )
+
+    # Estadisticas de pagos Odoo
+    last_odoo_payments_created = fields.Integer(
+        string='Ultimos Pagos Odoo Creados',
+        readonly=True
+    )
+    total_odoo_payments_created = fields.Integer(
+        string='Total Pagos Odoo Creados',
+        readonly=True,
+        default=0
+    )
+
     @api.model
     def create(self, vals):
         record = super().create(vals)
@@ -489,6 +553,14 @@ class MercadolibrePaymentSyncConfig(models.Model):
         error_count = 0
         skipped_count = 0
 
+        # Contadores para pagos Odoo
+        odoo_payments_created = 0
+        odoo_payments_errors = 0
+        odoo_commissions_created = 0
+
+        # Lista de pagos sincronizados para crear pagos Odoo despues
+        synced_payments = []
+
         for payment_data in results:
             mp_id = payment_data.get('id')
             release_status = payment_data.get('money_release_status')
@@ -504,18 +576,66 @@ class MercadolibrePaymentSyncConfig(models.Model):
                     created_count += 1
                 else:
                     updated_count += 1
+
+                # Agregar a la lista para crear pagos Odoo
+                if payment:
+                    synced_payments.append(payment)
+
             except Exception as e:
                 error_count += 1
                 _logger.error('Error procesando pago %s: %s', mp_id, str(e))
 
+        # =====================================================
+        # CREAR PAGOS EN ODOO SI ESTA CONFIGURADO
+        # =====================================================
+        if self.create_odoo_payments and synced_payments:
+            log_lines.append('')
+            log_lines.append('-' * 50)
+            log_lines.append('  CREACION DE PAGOS ODOO')
+            log_lines.append('-' * 50)
+
+            for payment in synced_payments:
+                # Solo procesar pagos aprobados sin pago Odoo existente
+                if payment.status != 'approved':
+                    continue
+                if payment.odoo_payment_id:
+                    continue
+                # Validar direccion del pago vs configuracion
+                if self.payment_direction_filter == 'incoming' and payment.payment_direction != 'incoming':
+                    continue
+                if self.payment_direction_filter == 'outgoing' and payment.payment_direction != 'outgoing':
+                    continue
+
+                try:
+                    result = payment._create_odoo_payment(self)
+                    if result.get('payment'):
+                        odoo_payments_created += 1
+                        log_lines.append(f'    [OK] Pago {payment.mp_payment_id}: {result["payment"].name}')
+                    if result.get('commission_payment'):
+                        odoo_commissions_created += 1
+                    if result.get('error'):
+                        odoo_payments_errors += 1
+                        log_lines.append(f'    [ERROR] Pago {payment.mp_payment_id}: {result["error"]}')
+                except Exception as e:
+                    odoo_payments_errors += 1
+                    _logger.error('Error creando pago Odoo para %s: %s', payment.mp_payment_id, str(e))
+                    log_lines.append(f'    [ERROR] Pago {payment.mp_payment_id}: {str(e)}')
+
+            log_lines.append(f'  Pagos Odoo creados:     {odoo_payments_created}')
+            log_lines.append(f'  Comisiones creadas:     {odoo_commissions_created}')
+            log_lines.append(f'  Errores pagos Odoo:     {odoo_payments_errors}')
+
+        log_lines.append('')
         log_lines.append('-' * 50)
-        log_lines.append('  RESUMEN')
+        log_lines.append('  RESUMEN SYNC')
         log_lines.append('-' * 50)
         log_lines.append(f'  Sincronizados: {sync_count}')
         log_lines.append(f'    Nuevos:      {created_count}')
         log_lines.append(f'    Actualizados:{updated_count}')
         log_lines.append(f'  Saltados:      {skipped_count}')
         log_lines.append(f'  Errores:       {error_count}')
+        if self.create_odoo_payments:
+            log_lines.append(f'  Pagos Odoo:    {odoo_payments_created} ({odoo_commissions_created} comisiones)')
         log_lines.append('=' * 50)
 
         # Calcular proxima ejecucion
@@ -527,7 +647,7 @@ class MercadolibrePaymentSyncConfig(models.Model):
         elif self.interval_type == 'days':
             next_run += timedelta(days=self.interval_number)
 
-        self.write({
+        update_vals = {
             'last_run': fields.Datetime.now(),
             'last_sync_count': sync_count,
             'last_sync_created': created_count,
@@ -537,7 +657,14 @@ class MercadolibrePaymentSyncConfig(models.Model):
             'next_run': next_run,
             'total_syncs': self.total_syncs + 1,
             'total_payments_synced': self.total_payments_synced + sync_count,
-        })
+        }
+
+        # Agregar estadisticas de pagos Odoo si aplica
+        if self.create_odoo_payments:
+            update_vals['last_odoo_payments_created'] = odoo_payments_created
+            update_vals['total_odoo_payments_created'] = self.total_odoo_payments_created + odoo_payments_created
+
+        self.write(update_vals)
 
         _logger.info('SYNC AUTO "%s" completada: %d sincronizados', self.name, sync_count)
 
