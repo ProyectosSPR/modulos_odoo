@@ -182,7 +182,6 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
             'currency_id': ml_payment.currency_id.id or self.company_id.currency_id.id,
             'journal_id': self.journal_id.id,
             'date': payment_date,
-            'memo': self.description or f'Pago MercadoPago {ml_payment.mp_payment_id}',
         }
 
         # Usar metodo extendido que construye el ref con formato correcto
@@ -218,7 +217,6 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                 'journal_id': self.commission_journal_id.id,
                 'date': payment_date,
                 'ref': f'ML-COM-{ml_payment.mp_payment_id}',
-                'memo': f'Comision MercadoPago - Pago {ml_payment.mp_payment_id}',
             }
             commission_payment = self.env['account.payment'].create(commission_vals)
             update_vals['commission_payment_id'] = commission_payment.id
@@ -286,7 +284,6 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                     'currency_id': ml_payment.currency_id.id or self.company_id.currency_id.id,
                     'journal_id': self.journal_id.id,
                     'date': payment_date,
-                    'memo': ml_payment.description or f'Pago MercadoPago {ml_payment.mp_payment_id}',
                 }
 
                 # Usar metodo extendido que construye el ref con formato correcto
@@ -309,7 +306,6 @@ class MercadolibrePaymentCreateWizard(models.TransientModel):
                         'journal_id': self.commission_journal_id.id,
                         'date': payment_date,
                         'ref': f'ML-COM-{ml_payment.mp_payment_id}',
-                        'memo': f'Comision MercadoPago - Pago {ml_payment.mp_payment_id}',
                     }
                     commission_payment = self.env['account.payment'].create(commission_vals)
                     update_vals['commission_payment_id'] = commission_payment.id

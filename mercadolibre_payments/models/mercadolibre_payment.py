@@ -868,7 +868,6 @@ class MercadolibrePayment(models.Model):
                 'currency_id': self.currency_id.id or config.company_id.currency_id.id,
                 'journal_id': journal.id,
                 'date': payment_date,
-                'memo': self.description or f'Pago MercadoPago {self.mp_payment_id}',
             }
 
             # Usar metodo extendido que construye el ref con formato correcto
@@ -938,7 +937,6 @@ class MercadolibrePayment(models.Model):
             'journal_id': config.commission_journal_id.id,
             'date': payment_date,
             'ref': f'ML-COM-{self.mp_payment_id}',
-            'memo': f'Comision MercadoPago - Pago {self.mp_payment_id}',
         }
 
         commission_payment = self.env['account.payment'].create(commission_vals)
