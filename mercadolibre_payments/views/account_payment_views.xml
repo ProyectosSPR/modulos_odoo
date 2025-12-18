@@ -70,17 +70,17 @@
                     </group>
                     <div class="alert alert-success" role="alert"
                          attrs="{'invisible': [('ml_release_status', '!=', 'released')]}">
-                        <i class="fa fa-check-circle"/> <strong>Pago Acreditado:</strong>
+                        <i class="fa fa-check-circle" title="Acreditado"/> <strong>Pago Acreditado:</strong>
                         El dinero ya fue liberado en tu cuenta de MercadoPago.
                     </div>
                     <div class="alert alert-warning" role="alert"
                          attrs="{'invisible': [('ml_release_status', '!=', 'pending')]}">
-                        <i class="fa fa-clock-o"/> <strong>Pendiente de Acreditar:</strong>
+                        <i class="fa fa-clock-o" title="Pendiente"/> <strong>Pendiente de Acreditar:</strong>
                         El dinero aun no ha sido liberado en tu cuenta de MercadoPago.
                     </div>
                     <div class="alert alert-danger" role="alert"
                          attrs="{'invisible': [('ml_release_status', 'not in', ['not_released', 'unavailable'])]}">
-                        <i class="fa fa-exclamation-triangle"/> <strong>No Acreditado:</strong>
+                        <i class="fa fa-exclamation-triangle" title="Alerta"/> <strong>No Acreditado:</strong>
                         El dinero no esta disponible. Verifica el estado del pago en MercadoPago.
                     </div>
                 </page>

@@ -229,11 +229,6 @@ class MercadolibrePaymentSyncConfig(models.Model):
         default=0
     )
 
-    @api.model
-    def create(self, vals):
-        record = super().create(vals)
-        return record
-
     def write(self, vals):
         result = super().write(vals)
         # Si se activa, asegurar que el cron este activo

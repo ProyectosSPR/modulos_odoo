@@ -340,9 +340,9 @@
                                 </div>
                             </div>
                             <div class="o_kanban_record_body">
-                                <div><i class="fa fa-user mr-1"/> <field name="payer_email"/></div>
-                                <div><i class="fa fa-credit-card mr-1"/> <field name="payment_method_name"/></div>
-                                <div><i class="fa fa-calendar mr-1"/> <field name="date_approved"/></div>
+                                <div><i class="fa fa-user mr-1" title="Email"/> <field name="payer_email"/></div>
+                                <div><i class="fa fa-credit-card mr-1" title="Metodo de Pago"/> <field name="payment_method_name"/></div>
+                                <div><i class="fa fa-calendar mr-1" title="Fecha"/> <field name="date_approved"/></div>
                             </div>
                             <div class="o_kanban_record_bottom">
                                 <div class="oe_kanban_bottom_left">
