@@ -113,24 +113,114 @@ class MercadolibreAccount(models.Model):
                 record.current_token_id = False
                 record.has_valid_token = False
 
-    def get_valid_token(self):
-        """Obtiene un token válido, refrescándolo si es necesario"""
+    def get_valid_token(self, force_refresh=False):
+        """
+        Obtiene un token válido, refrescándolo si es necesario.
+
+        Args:
+            force_refresh: Forzar refresh aunque el token sea válido
+
+        Returns:
+            access_token string
+
+        Raises:
+            ValidationError si no hay token o no se puede refrescar
+        """
+        self.ensure_one()
+
+        # Buscar token activo (incluso si expiró, para intentar refresh)
+        token = self.token_ids.filtered(lambda t: t.active).sorted(
+            key=lambda t: t.expires_at, reverse=True
+        )
+        token = token[0] if token else None
+
+        if not token:
+            raise ValidationError(_(
+                'No hay token disponible para la cuenta %s. '
+                'Por favor reconecte la cuenta.'
+            ) % self.name)
+
+        # Si el token expiró o está próximo a expirar, intentar refrescar
+        if force_refresh or not token.is_valid or token.is_expiring_soon():
+            try:
+                new_token = token._refresh_token()
+                if new_token:
+                    token = new_token
+            except Exception as e:
+                # Si falla el refresh, verificar si el token aún es válido
+                if not token.is_valid:
+                    # Marcar cuenta con error
+                    self.write({'state': 'error'})
+                    raise ValidationError(_(
+                        'El token de la cuenta %s ha expirado y no se pudo refrescar. '
+                        'Por favor reconecte la cuenta. Error: %s'
+                    ) % (self.name, str(e)))
+
+        if not token.is_valid:
+            self.write({'state': 'error'})
+            raise ValidationError(_(
+                'El token de la cuenta %s no es válido. '
+                'Por favor reconecte la cuenta.'
+            ) % self.name)
+
+        return token.access_token
+
+    def get_valid_token_with_retry(self, max_retries=2):
+        """
+        Obtiene token con reintentos automáticos.
+        Útil para llamadas desde crons o procesos automáticos.
+
+        Args:
+            max_retries: Número máximo de reintentos
+
+        Returns:
+            access_token string o False si falla
+        """
+        self.ensure_one()
+
+        for attempt in range(max_retries + 1):
+            try:
+                return self.get_valid_token(force_refresh=(attempt > 0))
+            except ValidationError as e:
+                if attempt < max_retries:
+                    # Log del reintento
+                    self.env['mercadolibre.log'].sudo().create({
+                        'log_type': 'token_refresh',
+                        'level': 'warning',
+                        'account_id': self.id,
+                        'message': f'Reintentando obtener token (intento {attempt + 2}/{max_retries + 1})',
+                    })
+                    continue
+                else:
+                    # Log del error final
+                    self.env['mercadolibre.log'].sudo().create({
+                        'log_type': 'token_refresh',
+                        'level': 'error',
+                        'account_id': self.id,
+                        'message': f'No se pudo obtener token después de {max_retries + 1} intentos: {str(e)}',
+                    })
+                    return False
+        return False
+
+    def action_refresh_token(self):
+        """Refresca el token manualmente"""
         self.ensure_one()
 
         if not self.current_token_id:
-            raise ValidationError(_('No hay token disponible para esta cuenta.'))
+            raise ValidationError(_('No hay token disponible para refrescar.'))
 
-        token = self.current_token_id
+        self.current_token_id._refresh_token()
 
-        # Si el token está próximo a expirar (menos de 1 hora), refrescarlo
-        if token.is_expiring_soon():
-            token._refresh_token()
-            token = self.current_token_id
-
-        if not token.is_valid:
-            raise ValidationError(_('No se pudo obtener un token válido.'))
-
-        return token.access_token
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Token Refrescado'),
+                'message': _('El token se ha refrescado correctamente.'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
     def action_disconnect(self):
         """Desconecta la cuenta"""

@@ -22,11 +22,13 @@
         <field name="arch" type="xml">
             <form string="Cuenta MercadoLibre">
                 <header>
-                    <button name="action_reconnect" type="object" string="Reconectar" class="btn-primary" attrs="{'invisible': [('state', '=', 'connected')]}"/>
+                    <button name="action_refresh_token" type="object" string="Refrescar Token" class="btn-success" icon="fa-refresh" attrs="{'invisible': [('has_valid_token', '=', False)]}"/>
+                    <button name="action_reconnect" type="object" string="Reconectar" class="btn-warning" icon="fa-link" attrs="{'invisible': ['&amp;', ('state', '=', 'connected'), ('has_valid_token', '=', True)]}"/>
                     <button name="action_disconnect" type="object" string="Desconectar" confirm="¿Desconectar esta cuenta?" attrs="{'invisible': [('state', 'not in', ['connected'])]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,connected"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Token Expirado" bg_color="bg-warning" attrs="{'invisible': ['|', ('has_valid_token', '=', True), ('state', '!=', 'connected')]}"/>
                     <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only"/>

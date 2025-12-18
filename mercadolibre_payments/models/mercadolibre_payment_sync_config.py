@@ -346,11 +346,12 @@ class MercadolibrePaymentSyncConfig(models.Model):
         log_lines.append(f'  Fechas:    {date_from_str} a {date_to_str}')
         log_lines.append('')
 
-        try:
-            access_token = self.account_id.get_valid_token()
-        except Exception as e:
-            _logger.error('Error obteniendo token: %s', str(e))
-            log_lines.append(f'ERROR: {str(e)}')
+        # Obtener token con reintentos automáticos
+        access_token = self.account_id.get_valid_token_with_retry(max_retries=2)
+        if not access_token:
+            _logger.error('No se pudo obtener token válido')
+            log_lines.append('ERROR: No se pudo obtener token válido.')
+            log_lines.append('Por favor reconecte la cuenta desde MercadoLibre > Cuentas')
             self.write({
                 'last_run': fields.Datetime.now(),
                 'last_sync_log': '\n'.join(log_lines),
@@ -392,52 +393,62 @@ class MercadolibrePaymentSyncConfig(models.Model):
         filter_direction_locally = self.payment_direction_filter in ('incoming', 'outgoing')
 
         url = 'https://api.mercadopago.com/v1/payments/search'
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json',
-        }
-
-        # Log en mercadolibre.log
         LogModel = self.env['mercadolibre.log'].sudo()
-        headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
-        start_time = time.time()
 
-        try:
-            response = requests.get(url, params=params, headers=headers, timeout=60)
-            duration = time.time() - start_time
+        # Función para hacer la llamada con retry en caso de 401
+        def make_api_call(token, retry_count=0):
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+            }
+            headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
+            start_time = time.time()
 
-            response_body_log = response.text[:10000] if response.text else ''
-            LogModel.create({
-                'log_type': 'api_request',
-                'level': 'success' if response.status_code == 200 else 'error',
-                'account_id': self.account_id.id,
-                'message': f'Auto Sync "{self.name}": GET /v1/payments/search - {response.status_code}',
-                'request_url': response.url,
-                'request_method': 'GET',
-                'request_headers': json.dumps(headers_log, indent=2),
-                'request_body': json.dumps(params, indent=2),
-                'response_code': response.status_code,
-                'response_headers': json.dumps(dict(response.headers), indent=2),
-                'response_body': response_body_log,
-                'duration': duration,
-            })
+            try:
+                response = requests.get(url, params=params, headers=headers, timeout=60)
+                duration = time.time() - start_time
 
-            if response.status_code != 200:
-                error_msg = f'Error API: {response.status_code}'
-                _logger.error(error_msg)
-                log_lines.append(f'ERROR: {error_msg}')
-                self.write({
-                    'last_run': fields.Datetime.now(),
-                    'last_sync_log': '\n'.join(log_lines),
-                    'last_sync_errors': 1,
+                response_body_log = response.text[:10000] if response.text else ''
+                LogModel.create({
+                    'log_type': 'api_request',
+                    'level': 'success' if response.status_code == 200 else 'error',
+                    'account_id': self.account_id.id,
+                    'message': f'Auto Sync "{self.name}": GET /v1/payments/search - {response.status_code}',
+                    'request_url': response.url,
+                    'request_method': 'GET',
+                    'request_headers': json.dumps(headers_log, indent=2),
+                    'request_body': json.dumps(params, indent=2),
+                    'response_code': response.status_code,
+                    'response_headers': json.dumps(dict(response.headers), indent=2),
+                    'response_body': response_body_log,
+                    'duration': duration,
                 })
-                return False
 
-            data = response.json()
+                # Si es error 401, intentar refrescar token y reintentar
+                if response.status_code == 401 and retry_count < 2:
+                    _logger.warning('Token expirado (401), intentando refrescar...')
+                    log_lines.append(f'  Token expirado, refrescando... (intento {retry_count + 1})')
 
-        except requests.exceptions.RequestException as e:
-            _logger.error('Error de conexion: %s', str(e))
-            log_lines.append(f'ERROR: {str(e)}')
+                    new_token = self.account_id.get_valid_token_with_retry(max_retries=1)
+                    if new_token:
+                        return make_api_call(new_token, retry_count + 1)
+                    else:
+                        return None, 'No se pudo refrescar el token'
+
+                if response.status_code != 200:
+                    return None, f'Error API: {response.status_code}'
+
+                return response.json(), None
+
+            except requests.exceptions.RequestException as e:
+                _logger.error('Error de conexion: %s', str(e))
+                return None, str(e)
+
+        # Ejecutar llamada con retry automático
+        data, error = make_api_call(access_token)
+
+        if error:
+            log_lines.append(f'ERROR: {error}')
             self.write({
                 'last_run': fields.Datetime.now(),
                 'last_sync_log': '\n'.join(log_lines),
