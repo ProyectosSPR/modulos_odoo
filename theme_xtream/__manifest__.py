@@ -36,7 +36,7 @@
         'views/contact_us.xml',
         'views/footer.xml',
         'views/header.xml',
-        'views/layout.xml',
+        'views/assets.xml',
         'views/price_filter.xml',
         'views/shop1.xml',
         'views/snippets/amazing.xml',
