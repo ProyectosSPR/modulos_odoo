@@ -96,15 +96,17 @@ class MercadolibreToken(models.Model):
         threshold = fields.Datetime.now() + timedelta(minutes=minutes)
         return self.expires_at <= threshold
 
-    @api.model
-    def create(self, vals):
-        """Al crear un nuevo token, desactiva los anteriores de la misma cuenta"""
-        if 'account_id' in vals:
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Al crear nuevos tokens, desactiva los anteriores de las mismas cuentas"""
+        # Obtener todos los account_ids de los registros a crear
+        account_ids = [vals['account_id'] for vals in vals_list if 'account_id' in vals]
+        if account_ids:
             self.search([
-                ('account_id', '=', vals['account_id']),
+                ('account_id', 'in', account_ids),
                 ('active', '=', True)
             ]).write({'active': False})
-        return super().create(vals)
+        return super().create(vals_list)
 
     def _refresh_token(self):
         """Refresca el token usando el refresh_token"""
