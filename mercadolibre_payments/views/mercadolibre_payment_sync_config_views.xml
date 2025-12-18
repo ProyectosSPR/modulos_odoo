@@ -111,6 +111,11 @@
                                            attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
                                     <field name="payment_date_source"
                                            attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
+                                    <field name="payment_user_source"
+                                           attrs="{'invisible': [('create_odoo_payments', '=', False)]}"/>
+                                    <field name="payment_user_id"
+                                           attrs="{'invisible': ['|', ('create_odoo_payments', '=', False), ('payment_user_source', '!=', 'specific')],
+                                                   'required': [('create_odoo_payments', '=', True), ('payment_user_source', '=', 'specific')]}"/>
                                 </group>
                                 <group string="Estadisticas Pagos Odoo"
                                        attrs="{'invisible': [('create_odoo_payments', '=', False)]}">
@@ -147,6 +152,7 @@
                                     <li><strong>Egresos:</strong> Se crean como pagos a proveedor (supplier payment) en el diario de egresos</li>
                                     <li><strong>Comisiones:</strong> Se crean como pagos separados al proveedor de comisiones</li>
                                     <li><strong>Proveedores Conocidos:</strong> Configure en Configuracion > Proveedores Conocidos para asignar proveedores automaticamente por palabras clave</li>
+                                    <li><strong>Usuario para Pagos:</strong> Determina quien aparece como creador del pago en el historial/chatter</li>
                                 </ul>
                             </div>
                         </page>

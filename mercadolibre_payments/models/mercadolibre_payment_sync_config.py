@@ -234,6 +234,20 @@ class MercadolibrePaymentSyncConfig(models.Model):
     ], string='Fecha para Pagos', default='current', required=True,
        help='Que fecha usar al crear los pagos en Odoo')
 
+    # Usuario que registra los pagos
+    payment_user_source = fields.Selection([
+        ('ml_account', 'Usuario de la Cuenta ML'),
+        ('system', 'Usuario del Sistema (Cron)'),
+        ('specific', 'Usuario Especifico'),
+    ], string='Usuario para Pagos', default='ml_account', required=True,
+       help='Que usuario usar como creador de los pagos en Odoo')
+
+    payment_user_id = fields.Many2one(
+        'res.users',
+        string='Usuario Especifico',
+        help='Usuario a usar cuando se selecciona "Usuario Especifico"'
+    )
+
     # Estadisticas de pagos Odoo
     last_odoo_payments_created = fields.Integer(
         string='Ultimos Pagos Odoo Creados',
