@@ -63,7 +63,9 @@
                 <filter string="Full" name="ml_full" domain="[('ml_logistic_type', '=', 'fulfillment')]"/>
                 <filter string="Agencia" name="ml_agencia" domain="[('ml_logistic_type', '=', 'xd_drop_off')]"/>
                 <separator/>
-                <field name="ml_order_id"/>
+                <!-- Campo combinado que busca en order_id y pack_id -->
+                <field name="ml_order_id" string="ID ML (Order/Pack)"
+                       filter_domain="['|', ('ml_order_id', 'ilike', self), ('ml_pack_id', 'ilike', self)]"/>
                 <field name="ml_pack_id"/>
             </xpath>
         </field>
