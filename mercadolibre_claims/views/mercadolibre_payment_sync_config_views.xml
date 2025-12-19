@@ -53,13 +53,13 @@
                         <group>
                             <field name="create_mediation_activity"/>
                             <field name="mediation_activity_user_id"
-                                   attrs="{'invisible': [('create_mediation_activity', '=', False)],
-                                           'required': [('create_mediation_activity', '=', True)]}"/>
+                                   attrs="{'invisible': ['|', ('sync_claims', '=', False), ('create_mediation_activity', '=', False)],
+                                           'required': [('sync_claims', '=', True), ('create_mediation_activity', '=', True)]}"/>
                         </group>
                     </group>
 
                     <group string="Notificaciones"
-                           attrs="{'invisible': [('auto_process_mediation', '=', False)]}">
+                           attrs="{'invisible': ['|', ('sync_claims', '=', False), ('auto_process_mediation', '=', False)]}">
                         <field name="mediation_notify_user_ids" widget="many2many_tags" nolabel="1"/>
                     </group>
 
