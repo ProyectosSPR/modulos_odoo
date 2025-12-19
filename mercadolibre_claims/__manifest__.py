@@ -36,6 +36,7 @@
         'views/mercadolibre_claim_message_views.xml',
         'views/mercadolibre_claim_config_views.xml',
         'views/mercadolibre_payment_views.xml',
+        'views/mercadolibre_payment_sync_config_views.xml',
         'views/menus.xml',
         # Wizards
         'wizard/mercadolibre_claim_sync_views.xml',

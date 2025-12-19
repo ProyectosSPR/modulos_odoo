@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- EXTENSION VISTA SYNC CONFIG PAGOS -->
+    <!-- ============================================= -->
+
+    <!-- Extend Payment Sync Config Form -->
+    <record id="view_mercadolibre_payment_sync_config_form_claims" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.config.form.claims</field>
+        <field name="model">mercadolibre.payment.sync.config</field>
+        <field name="inherit_id" ref="mercadolibre_payments.view_mercadolibre_payment_sync_config_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar boton para sincronizar claims manualmente -->
+            <xpath expr="//button[@name='action_run_now']" position="after">
+                <button name="action_sync_claims_now" type="object"
+                        string="Sync Reclamos" class="btn-secondary"
+                        icon="fa-exclamation-triangle"
+                        attrs="{'invisible': ['|', ('state', '=', 'draft'), ('sync_claims', '=', False)]}"/>
+            </xpath>
+
+            <!-- Agregar página de Claims en el notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Reclamos/Claims" name="claims">
+                    <group>
+                        <group string="Sincronización de Reclamos">
+                            <field name="sync_claims"/>
+                            <field name="claims_status_filter"
+                                   attrs="{'invisible': [('sync_claims', '=', False)]}"/>
+                            <field name="claims_type_filter"
+                                   attrs="{'invisible': [('sync_claims', '=', False)]}"/>
+                            <field name="claims_limit"
+                                   attrs="{'invisible': [('sync_claims', '=', False)]}"/>
+                            <field name="sync_claim_messages"
+                                   attrs="{'invisible': [('sync_claims', '=', False)]}"/>
+                        </group>
+                        <group string="Estadísticas Claims"
+                               attrs="{'invisible': [('sync_claims', '=', False)]}">
+                            <field name="last_claims_synced" readonly="1"/>
+                            <field name="last_claims_created" readonly="1"/>
+                            <field name="last_claims_updated" readonly="1"/>
+                            <field name="total_claims_synced" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Acciones Automáticas en Mediación"
+                           attrs="{'invisible': [('sync_claims', '=', False)]}">
+                        <group>
+                            <field name="auto_process_mediation"/>
+                            <field name="mediation_action"
+                                   attrs="{'invisible': [('auto_process_mediation', '=', False)]}"/>
+                        </group>
+                        <group>
+                            <field name="create_mediation_activity"/>
+                            <field name="mediation_activity_user_id"
+                                   attrs="{'invisible': [('create_mediation_activity', '=', False)],
+                                           'required': [('create_mediation_activity', '=', True)]}"/>
+                        </group>
+                    </group>
+
+                    <group string="Notificaciones"
+                           attrs="{'invisible': [('auto_process_mediation', '=', False)]}">
+                        <field name="mediation_notify_user_ids" widget="many2many_tags" nolabel="1"/>
+                    </group>
+
+                    <div class="alert alert-info" role="alert"
+                         attrs="{'invisible': [('sync_claims', '=', False)]}">
+                        <strong>Información:</strong>
+                        <ul>
+                            <li>Los reclamos se sincronizarán automáticamente junto con los pagos.</li>
+                            <li>La API de Claims usa el endpoint <code>/post-purchase/v1/claims/search</code></li>
+                            <li>Se vincularán automáticamente con los pagos existentes cuando sea posible.</li>
+                        </ul>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend Payment Sync Config Tree -->
+    <record id="view_mercadolibre_payment_sync_config_tree_claims" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.sync.config.tree.claims</field>
+        <field name="model">mercadolibre.payment.sync.config</field>
+        <field name="inherit_id" ref="mercadolibre_payments.view_mercadolibre_payment_sync_config_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='last_run']" position="after">
+                <field name="sync_claims" string="Claims"/>
+                <field name="last_claims_synced" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
