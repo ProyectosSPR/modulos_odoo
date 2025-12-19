@@ -51,14 +51,15 @@
                     <group>
                         <group string="Direccion">
                             <field name="street"/>
+                            <field name="street_number"/>
                             <field name="city"/>
                             <field name="state"/>
                             <field name="zip_code"/>
-                            <field name="country"/>
+                            <field name="country_code"/>
                         </group>
-                        <group string="Identificacion">
-                            <field name="doc_type"/>
-                            <field name="doc_number"/>
+                        <group string="Estadisticas">
+                            <field name="order_count"/>
+                            <field name="total_purchases"/>
                         </group>
                     </group>
                     <group>
