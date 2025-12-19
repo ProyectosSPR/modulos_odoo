@@ -946,17 +946,30 @@ class MercadolibreOrder(models.Model):
             elif config.default_warehouse_id:
                 warehouse = config.default_warehouse_id
 
-            # Determinar pricelist
-            pricelist = config.default_pricelist_id or self.env['product.pricelist'].search([
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
+            # Determinar pricelist (requerido en sale.order)
+            pricelist = config.default_pricelist_id
+            if not pricelist:
+                # Buscar tarifa de la compania
+                pricelist = self.env['product.pricelist'].search([
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            if not pricelist:
+                # Buscar tarifa sin compania (global)
+                pricelist = self.env['product.pricelist'].search([
+                    ('company_id', '=', False)
+                ], limit=1)
+            if not pricelist:
+                # Buscar cualquier tarifa disponible
+                pricelist = self.env['product.pricelist'].search([], limit=1)
+            if not pricelist:
+                raise ValidationError(_('No se encontro ninguna tarifa de precios. Configure una tarifa por defecto en la configuracion de sincronizacion.'))
 
             # Preparar valores de la orden
             order_vals = {
                 'partner_id': partner.id,
                 'company_id': self.company_id.id,
                 'date_order': self.date_closed or fields.Datetime.now(),
-                'pricelist_id': pricelist.id if pricelist else False,
+                'pricelist_id': pricelist.id,
                 'warehouse_id': warehouse.id if warehouse else False,
                 # Campos ML
                 'ml_order_id': self.ml_order_id,
