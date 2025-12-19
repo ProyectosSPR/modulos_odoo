@@ -45,7 +45,7 @@
                     <group>
                         <group string="Comisiones">
                             <field name="sale_fee"/>
-                            <field name="listing_type"/>
+                            <field name="listing_type_id"/>
                         </group>
                         <group string="Integracion Odoo">
                             <field name="product_id"/>
