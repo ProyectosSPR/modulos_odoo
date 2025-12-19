@@ -17,7 +17,8 @@ class MercadolibrePayment(models.Model):
     )
     claim_count = fields.Integer(
         string='Num. Reclamos',
-        compute='_compute_claim_count'
+        compute='_compute_claim_count',
+        store=True
     )
     has_active_claim = fields.Boolean(
         string='Tiene Reclamo Activo',
