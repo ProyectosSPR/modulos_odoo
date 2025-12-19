@@ -7,6 +7,13 @@
         <field name="model">mercadolibre.shipment</field>
         <field name="arch" type="xml">
             <form string="Envio MercadoLibre">
+                <!-- Campos invisibles para attrs -->
+                <field name="order_id" invisible="1"/>
+                <field name="sale_order_id" invisible="1"/>
+                <field name="latitude" invisible="1"/>
+                <field name="longitude" invisible="1"/>
+                <field name="substatus" invisible="1"/>
+                <field name="comments" invisible="1"/>
                 <header>
                     <button name="action_sync_from_api" type="object"
                             string="Sincronizar" icon="fa-refresh"
@@ -15,8 +22,7 @@
                             string="Descargar Etiqueta" icon="fa-print"
                             attrs="{'invisible': [('status', 'in', ['cancelled', 'delivered'])]}"/>
                     <button name="action_open_tracking_url" type="object"
-                            string="Ver Tracking" icon="fa-truck"
-                            attrs="{'invisible': [('tracking_number', '=', False)]}"/>
+                            string="Ver Tracking" icon="fa-truck"/>
                     <field name="status" widget="statusbar"
                            statusbar_visible="pending,ready_to_ship,shipped,in_transit,delivered"/>
                 </header>
@@ -50,7 +56,7 @@
                             <field name="ml_order_id"/>
                             <field name="logistic_type"/>
                             <field name="shipping_mode"/>
-                            <field name="substatus" attrs="{'invisible': [('substatus', '=', False)]}"/>
+                            <field name="substatus"/>
                         </group>
                         <group string="Tracking">
                             <field name="tracking_number"/>
