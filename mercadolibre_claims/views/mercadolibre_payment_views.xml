@@ -65,14 +65,17 @@
         <field name="inherit_id" ref="mercadolibre_payments.view_mercadolibre_payment_search"/>
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='filter_approved']" position="after">
+                <separator/>
                 <filter name="filter_in_mediation" string="En Mediacion"
                         domain="[('status', '=', 'in_mediation')]"/>
                 <filter name="filter_has_claim" string="Con Reclamos"
                         domain="[('claim_count', '>', 0)]"/>
             </xpath>
-            <xpath expr="//group[@string='Agrupar por']" position="inside">
-                <filter name="group_mediation_status" string="Estado Mediacion"
-                        context="{'group_by': 'mediation_status'}"/>
+            <xpath expr="//search" position="inside">
+                <group expand="0" string="Agrupar por Mediacion">
+                    <filter name="group_mediation_status" string="Estado Mediacion"
+                            context="{'group_by': 'mediation_status'}"/>
+                </group>
             </xpath>
         </field>
     </record>
