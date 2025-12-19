@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- CLAIM - VISTAS -->
+    <!-- ============================================= -->
+
+    <!-- Tree View -->
+    <record id="view_mercadolibre_claim_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.tree</field>
+        <field name="model">mercadolibre.claim</field>
+        <field name="arch" type="xml">
+            <tree string="Reclamos" decoration-danger="status == 'opened' and stage == 'dispute'"
+                  decoration-warning="status == 'opened' and stage == 'claim'"
+                  decoration-muted="status == 'closed'">
+                <field name="name"/>
+                <field name="ml_claim_id"/>
+                <field name="account_id"/>
+                <field name="type" optional="show"/>
+                <field name="reason_type" optional="show"/>
+                <field name="status"/>
+                <field name="stage"/>
+                <field name="date_created"/>
+                <field name="due_date" optional="show"/>
+                <field name="action_responsible" optional="show"/>
+                <field name="ml_payment_id" optional="hide"/>
+                <field name="odoo_process_status" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_claim_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.form</field>
+        <field name="model">mercadolibre.claim</field>
+        <field name="arch" type="xml">
+            <form string="Reclamo">
+                <header>
+                    <button name="action_sync_claim" type="object"
+                            string="Sincronizar" icon="fa-refresh"
+                            class="btn-secondary"/>
+                    <button name="action_send_message" type="object"
+                            string="Enviar Mensaje" icon="fa-envelope"
+                            class="btn-primary"
+                            attrs="{'invisible': [('can_send_message', '=', False)]}"/>
+                    <button name="action_open_dispute" type="object"
+                            string="Abrir Disputa" icon="fa-gavel"
+                            class="btn-warning"
+                            confirm="Esta seguro de escalar a mediacion con MercadoLibre?"
+                            attrs="{'invisible': [('can_open_dispute', '=', False)]}"/>
+                    <button name="action_refund" type="object"
+                            string="Reembolsar" icon="fa-money"
+                            class="btn-danger"
+                            confirm="Esta seguro de realizar el reembolso total?"
+                            attrs="{'invisible': [('can_refund', '=', False)]}"/>
+                    <button name="action_allow_return" type="object"
+                            string="Permitir Devolucion" icon="fa-undo"
+                            confirm="Esta seguro de permitir la devolucion?"
+                            attrs="{'invisible': [('can_allow_return', '=', False)]}"/>
+                    <field name="status" widget="statusbar" statusbar_visible="opened,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_messages" type="object"
+                                class="oe_stat_button" icon="fa-comments">
+                            <field name="message_count" widget="statinfo" string="Mensajes"/>
+                        </button>
+                        <button name="action_view_payment" type="object"
+                                class="oe_stat_button" icon="fa-credit-card"
+                                attrs="{'invisible': [('ml_payment_id', '=', False)]}">
+                            <span class="o_stat_text">Ver Pago</span>
+                        </button>
+                        <button name="action_view_raw_data" type="object"
+                                class="oe_stat_button" icon="fa-code">
+                            <span class="o_stat_text">Datos JSON</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion General">
+                            <field name="ml_claim_id"/>
+                            <field name="account_id"/>
+                            <field name="type"/>
+                            <field name="stage"/>
+                            <field name="reason_id"/>
+                            <field name="reason_type"/>
+                        </group>
+                        <group string="Fechas y Responsable">
+                            <field name="date_created"/>
+                            <field name="date_last_updated"/>
+                            <field name="due_date"/>
+                            <field name="action_responsible"/>
+                            <field name="last_sync_date"/>
+                        </group>
+                    </group>
+
+                    <group string="Detalle del Reclamo" attrs="{'invisible': [('title', '=', False), ('problem_description', '=', False)]}">
+                        <field name="title" readonly="1"/>
+                        <field name="description" readonly="1"/>
+                        <field name="problem_description" readonly="1"/>
+                    </group>
+
+                    <group>
+                        <group string="Recurso Asociado">
+                            <field name="resource"/>
+                            <field name="resource_id"/>
+                            <field name="ml_order_id"/>
+                            <field name="ml_payment_id"/>
+                            <field name="fulfilled"/>
+                            <field name="quantity_type"/>
+                        </group>
+                        <group string="Procesamiento Odoo">
+                            <field name="odoo_process_status"/>
+                            <field name="odoo_process_log" readonly="1"
+                                   attrs="{'invisible': [('odoo_process_log', '=', False)]}"/>
+                        </group>
+                    </group>
+
+                    <group string="Participantes">
+                        <group>
+                            <field name="complainant_user_id" string="Comprador ID"/>
+                            <field name="complainant_type"/>
+                        </group>
+                        <group>
+                            <field name="respondent_user_id" string="Vendedor ID"/>
+                            <field name="respondent_type"/>
+                            <field name="mediator_user_id"
+                                   attrs="{'invisible': [('mediator_user_id', '=', False)]}"/>
+                        </group>
+                    </group>
+
+                    <group string="Resolucion" attrs="{'invisible': [('status', '!=', 'closed')]}">
+                        <group>
+                            <field name="resolution_reason"/>
+                            <field name="resolution_benefited"/>
+                        </group>
+                        <group>
+                            <field name="resolution_closed_by"/>
+                            <field name="resolution_date"/>
+                            <field name="applied_coverage"/>
+                        </group>
+                    </group>
+
+                    <group string="Acciones Disponibles" attrs="{'invisible': [('status', '=', 'closed')]}">
+                        <group>
+                            <field name="can_send_message" readonly="1"/>
+                            <field name="can_open_dispute" readonly="1"/>
+                            <field name="can_refund" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="can_allow_return" readonly="1"/>
+                            <field name="can_partial_refund" readonly="1"/>
+                            <field name="can_add_evidence" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Mensajes" name="messages">
+                            <field name="message_ids" readonly="1">
+                                <tree decoration-info="is_from_us == True"
+                                      decoration-warning="is_unread == True"
+                                      decoration-muted="status == 'moderated'"
+                                      default_order="message_date asc">
+                                    <field name="message_date"/>
+                                    <field name="sender_label"/>
+                                    <field name="receiver_label"/>
+                                    <field name="message"/>
+                                    <field name="stage"/>
+                                    <field name="status"/>
+                                    <field name="attachment_count"/>
+                                    <field name="is_from_us" invisible="1"/>
+                                    <field name="is_unread" invisible="1"/>
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <button name="action_sync_messages" type="object"
+                                        string="Actualizar Mensajes" icon="fa-refresh"
+                                        class="btn-secondary btn-sm"/>
+                            </div>
+                        </page>
+
+                        <page string="Evidencias" name="evidences">
+                            <field name="evidence_ids" readonly="1">
+                                <tree>
+                                    <field name="evidence_type"/>
+                                    <field name="shipping_method"/>
+                                    <field name="shipping_company_name"/>
+                                    <field name="tracking_number"/>
+                                    <field name="date_shipped"/>
+                                    <field name="date_delivered"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Resoluciones Esperadas" name="resolutions">
+                            <field name="resolution_ids" readonly="1">
+                                <tree>
+                                    <field name="player_role"/>
+                                    <field name="expected_resolution"/>
+                                    <field name="status"/>
+                                    <field name="percentage"/>
+                                    <field name="date_created"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Historial de Acciones" name="action_log">
+                            <field name="action_log_ids" readonly="1">
+                                <tree>
+                                    <field name="date_created"/>
+                                    <field name="action_label"/>
+                                    <field name="player_role"/>
+                                    <field name="claim_stage"/>
+                                    <field name="detail"/>
+                                    <field name="source"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Informacion Adicional" name="extra">
+                            <group>
+                                <group>
+                                    <field name="site_id"/>
+                                    <field name="claim_version"/>
+                                    <field name="claimed_quantity"/>
+                                </group>
+                                <group>
+                                    <field name="has_return"/>
+                                    <field name="return_id" attrs="{'invisible': [('has_return', '=', False)]}"/>
+                                    <field name="affects_reputation"/>
+                                    <field name="parent_id_ml" attrs="{'invisible': [('parent_id_ml', '=', False)]}"/>
+                                </group>
+                            </group>
+                            <group string="Notas">
+                                <field name="notes" nolabel="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Form View - Raw Data -->
+    <record id="view_mercadolibre_claim_raw_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.raw.form</field>
+        <field name="model">mercadolibre.claim</field>
+        <field name="arch" type="xml">
+            <form string="Datos Crudos">
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="ml_claim_id" readonly="1"/>
+                    </group>
+                    <group string="JSON Completo">
+                        <field name="raw_data" readonly="1" nolabel="1" widget="text"/>
+                    </group>
+                    <group string="Acciones Disponibles (JSON)">
+                        <field name="available_actions" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_claim_search" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.search</field>
+        <field name="model">mercadolibre.claim</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Reclamos">
+                <field name="name"/>
+                <field name="ml_claim_id"/>
+                <field name="ml_order_id"/>
+                <field name="account_id"/>
+                <field name="reason_id"/>
+                <separator/>
+                <filter name="filter_opened" string="Abiertos"
+                        domain="[('status', '=', 'opened')]"/>
+                <filter name="filter_closed" string="Cerrados"
+                        domain="[('status', '=', 'closed')]"/>
+                <separator/>
+                <filter name="filter_claim" string="En Reclamo"
+                        domain="[('stage', '=', 'claim')]"/>
+                <filter name="filter_dispute" string="En Mediacion"
+                        domain="[('stage', '=', 'dispute')]"/>
+                <separator/>
+                <filter name="filter_mediations" string="Mediaciones"
+                        domain="[('type', '=', 'mediations')]"/>
+                <filter name="filter_returns" string="Devoluciones"
+                        domain="[('type', '=', 'returns')]"/>
+                <separator/>
+                <filter name="filter_pnr" string="Producto No Recibido"
+                        domain="[('reason_type', '=', 'PNR')]"/>
+                <filter name="filter_pdd" string="Producto Defectuoso"
+                        domain="[('reason_type', '=', 'PDD')]"/>
+                <separator/>
+                <filter name="filter_has_payment" string="Con Pago Asociado"
+                        domain="[('ml_payment_id', '!=', False)]"/>
+                <filter name="filter_pending_action" string="Requiere Accion"
+                        domain="[('odoo_process_status', 'in', ['pending', 'manual'])]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_status" string="Estado"
+                            context="{'group_by': 'status'}"/>
+                    <filter name="group_stage" string="Etapa"
+                            context="{'group_by': 'stage'}"/>
+                    <filter name="group_type" string="Tipo"
+                            context="{'group_by': 'type'}"/>
+                    <filter name="group_account" string="Cuenta"
+                            context="{'group_by': 'account_id'}"/>
+                    <filter name="group_reason_type" string="Tipo Motivo"
+                            context="{'group_by': 'reason_type'}"/>
+                    <filter name="group_date" string="Fecha Creacion"
+                            context="{'group_by': 'date_created:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_claim" model="ir.actions.act_window">
+        <field name="name">Reclamos</field>
+        <field name="res_model">mercadolibre.claim</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_claim_search"/>
+        <field name="context">{'search_default_filter_opened': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay reclamos registrados
+            </p>
+            <p>
+                Los reclamos se sincronizaran automaticamente desde MercadoLibre
+                cuando configure una sincronizacion activa.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action - Reclamos Abiertos -->
+    <record id="action_mercadolibre_claim_opened" model="ir.actions.act_window">
+        <field name="name">Reclamos Abiertos</field>
+        <field name="res_model">mercadolibre.claim</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('status', '=', 'opened')]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Action - En Mediacion -->
+    <record id="action_mercadolibre_claim_dispute" model="ir.actions.act_window">
+        <field name="name">En Mediacion</field>
+        <field name="res_model">mercadolibre.claim</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('stage', '=', 'dispute'), ('status', '=', 'opened')]</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

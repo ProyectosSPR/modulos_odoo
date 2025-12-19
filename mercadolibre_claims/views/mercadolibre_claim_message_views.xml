@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- CLAIM MESSAGE - VISTAS -->
+    <!-- ============================================= -->
+
+    <!-- Tree View -->
+    <record id="view_mercadolibre_claim_message_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.message.tree</field>
+        <field name="model">mercadolibre.claim.message</field>
+        <field name="arch" type="xml">
+            <tree string="Mensajes" decoration-info="is_from_us == True"
+                  decoration-warning="is_unread == True"
+                  decoration-muted="status == 'moderated'"
+                  default_order="message_date asc">
+                <field name="claim_id"/>
+                <field name="message_date"/>
+                <field name="sender_label"/>
+                <field name="receiver_label"/>
+                <field name="message"/>
+                <field name="stage"/>
+                <field name="status"/>
+                <field name="attachment_count"/>
+                <field name="is_from_us" invisible="1"/>
+                <field name="is_unread" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_claim_message_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.message.form</field>
+        <field name="model">mercadolibre.claim.message</field>
+        <field name="arch" type="xml">
+            <form string="Mensaje">
+                <sheet>
+                    <group>
+                        <group string="Informacion">
+                            <field name="claim_id" readonly="1"/>
+                            <field name="message_date" readonly="1"/>
+                            <field name="stage" readonly="1"/>
+                            <field name="status" readonly="1"/>
+                        </group>
+                        <group string="Participantes">
+                            <field name="sender_role" readonly="1"/>
+                            <field name="receiver_role" readonly="1"/>
+                            <field name="date_read" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Mensaje">
+                        <field name="message" readonly="1" nolabel="1"/>
+                    </group>
+                    <group string="Mensaje Traducido"
+                           attrs="{'invisible': [('translated_message', '=', False)]}">
+                        <field name="translated_message" readonly="1" nolabel="1"/>
+                    </group>
+                    <group string="Moderacion"
+                           attrs="{'invisible': [('moderation_status', 'in', [False, 'clean', 'non_moderated'])]}">
+                        <field name="moderation_status" readonly="1"/>
+                        <field name="moderation_reason" readonly="1"/>
+                    </group>
+                    <group string="Adjuntos" attrs="{'invisible': [('attachment_count', '=', 0)]}">
+                        <field name="attachment_ids" readonly="1" nolabel="1">
+                            <tree>
+                                <field name="original_filename"/>
+                                <field name="file_type"/>
+                                <field name="file_size"/>
+                                <field name="is_downloaded"/>
+                                <button name="action_download" type="object"
+                                        string="Descargar" icon="fa-download"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_claim_message_search" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.message.search</field>
+        <field name="model">mercadolibre.claim.message</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Mensajes">
+                <field name="claim_id"/>
+                <field name="message"/>
+                <field name="sender_role"/>
+                <separator/>
+                <filter name="filter_unread" string="Sin Leer"
+                        domain="[('is_unread', '=', True)]"/>
+                <filter name="filter_from_us" string="Nuestros"
+                        domain="[('is_from_us', '=', True)]"/>
+                <filter name="filter_from_buyer" string="Del Comprador"
+                        domain="[('sender_role', '=', 'complainant')]"/>
+                <filter name="filter_from_mediator" string="Del Mediador"
+                        domain="[('sender_role', '=', 'mediator')]"/>
+                <separator/>
+                <filter name="filter_with_attachments" string="Con Adjuntos"
+                        domain="[('attachment_count', '>', 0)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_claim" string="Reclamo"
+                            context="{'group_by': 'claim_id'}"/>
+                    <filter name="group_sender" string="Remitente"
+                            context="{'group_by': 'sender_role'}"/>
+                    <filter name="group_stage" string="Etapa"
+                            context="{'group_by': 'stage'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_claim_message" model="ir.actions.act_window">
+        <field name="name">Mensajes de Reclamos</field>
+        <field name="res_model">mercadolibre.claim.message</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_claim_message_search"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- MENUS -->
+    <!-- ============================================= -->
+
+    <!-- Menu Principal - Claims (bajo MercadoLibre) -->
+    <menuitem id="menu_mercadolibre_claims_root"
+              name="Reclamos"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="30"/>
+
+    <!-- Submenu - Reclamos -->
+    <menuitem id="menu_mercadolibre_claims"
+              name="Todos los Reclamos"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_claim"
+              sequence="10"/>
+
+    <menuitem id="menu_mercadolibre_claims_opened"
+              name="Reclamos Abiertos"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_claim_opened"
+              sequence="20"/>
+
+    <menuitem id="menu_mercadolibre_claims_dispute"
+              name="En Mediacion"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_claim_dispute"
+              sequence="30"/>
+
+    <!-- Submenu - Pagos en Mediacion -->
+    <menuitem id="menu_mercadolibre_payments_mediation"
+              name="Pagos en Mediacion"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_payment_in_mediation"
+              sequence="40"/>
+
+    <!-- Submenu - Mensajes -->
+    <menuitem id="menu_mercadolibre_claim_messages"
+              name="Mensajes"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_claim_message"
+              sequence="50"/>
+
+    <!-- Configuracion -->
+    <menuitem id="menu_mercadolibre_claims_config"
+              name="Configuracion Claims"
+              parent="mercadolibre_connector.menu_mercadolibre_config"
+              action="action_mercadolibre_claim_config"
+              sequence="30"/>
+
+</odoo>

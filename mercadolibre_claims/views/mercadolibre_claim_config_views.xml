@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- CLAIM CONFIG - VISTAS -->
+    <!-- ============================================= -->
+
+    <!-- Tree View -->
+    <record id="view_mercadolibre_claim_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.config.tree</field>
+        <field name="model">mercadolibre.claim.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuraciones de Reclamos">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="sync_claims"/>
+                <field name="auto_process_mediation"/>
+                <field name="mediation_action"/>
+                <field name="state"/>
+                <field name="last_sync"/>
+                <field name="next_sync"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_claim_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.config.form</field>
+        <field name="model">mercadolibre.claim.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuracion de Reclamos">
+                <header>
+                    <button name="action_activate" type="object"
+                            string="Activar" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_pause" type="object"
+                            string="Pausar"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"/>
+                    <button name="action_resume" type="object"
+                            string="Reanudar" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'paused')]}"/>
+                    <button name="action_run_now" type="object"
+                            string="Ejecutar Ahora" class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre de la configuracion"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="General">
+                            <field name="account_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="active"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Estadisticas">
+                            <field name="last_sync" readonly="1"/>
+                            <field name="next_sync" readonly="1"/>
+                            <field name="last_sync_count" readonly="1"/>
+                            <field name="total_syncs" readonly="1"/>
+                            <field name="total_claims_synced" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Sincronizacion" name="sync">
+                            <group>
+                                <group string="Configuracion de Sincronizacion">
+                                    <field name="sync_claims"/>
+                                    <label for="sync_interval_number" string="Intervalo"/>
+                                    <div class="o_row">
+                                        <field name="sync_interval_number" class="oe_inline"/>
+                                        <field name="sync_interval_type" class="oe_inline"/>
+                                    </div>
+                                </group>
+                                <group string="Filtros">
+                                    <field name="sync_status_filter"/>
+                                    <field name="sync_type_filter"/>
+                                </group>
+                            </group>
+                            <group string="Log Ultima Sincronizacion"
+                                   attrs="{'invisible': [('last_sync_log', '=', False)]}">
+                                <field name="last_sync_log" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Acciones Automaticas" name="actions">
+                            <group string="Pagos en Mediacion">
+                                <field name="auto_process_mediation"/>
+                                <field name="mediation_action"
+                                       attrs="{'invisible': [('auto_process_mediation', '=', False)]}"/>
+                            </group>
+                            <group string="Acciones por Resolucion">
+                                <field name="resolution_buyer_action"/>
+                                <field name="resolution_seller_action"/>
+                            </group>
+                            <group string="Diarios Contables"
+                                   attrs="{'invisible': [('mediation_action', 'not in', ['reverse_payment', 'create_cancelled'])]}">
+                                <field name="reversal_journal_id"/>
+                                <field name="default_customer_id"/>
+                            </group>
+                        </page>
+
+                        <page string="Notificaciones" name="notifications">
+                            <group>
+                                <group string="Eventos a Notificar">
+                                    <field name="notify_new_claim"/>
+                                    <field name="notify_stage_change"/>
+                                    <field name="notify_resolution"/>
+                                </group>
+                                <group string="Destinatarios">
+                                    <field name="notify_user_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                            <group string="Actividades">
+                                <field name="create_activity"/>
+                                <field name="activity_user_id"
+                                       attrs="{'invisible': [('create_activity', '=', False)],
+                                               'required': [('create_activity', '=', True)]}"/>
+                            </group>
+                        </page>
+
+                        <page string="Tecnico" name="technical">
+                            <group>
+                                <field name="cron_id" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_claim_config_search" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.config.search</field>
+        <field name="model">mercadolibre.claim.config</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Configuraciones">
+                <field name="name"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter name="filter_active" string="Activos"
+                        domain="[('state', '=', 'active')]"/>
+                <filter name="filter_paused" string="Pausados"
+                        domain="[('state', '=', 'paused')]"/>
+                <separator/>
+                <filter name="filter_auto_mediation" string="Auto Mediacion"
+                        domain="[('auto_process_mediation', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_claim_config" model="ir.actions.act_window">
+        <field name="name">Configuracion de Reclamos</field>
+        <field name="res_model">mercadolibre.claim.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_claim_config_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una configuracion de reclamos
+            </p>
+            <p>
+                Configure la sincronizacion automatica de reclamos y las acciones
+                a ejecutar cuando un pago entre en mediacion.
+            </p>
+        </field>
+    </record>
+
+</odoo>

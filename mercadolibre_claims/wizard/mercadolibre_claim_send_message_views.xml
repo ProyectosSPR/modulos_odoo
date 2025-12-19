@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- WIZARD ENVIAR MENSAJE - VISTAS -->
+    <!-- ============================================= -->
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_claim_send_message_wizard_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.send.message.wizard.form</field>
+        <field name="model">mercadolibre.claim.send.message.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Enviar Mensaje">
+                <field name="info_message" nolabel="1" readonly="1"/>
+
+                <group>
+                    <field name="claim_id" invisible="1"/>
+                    <field name="claim_stage" invisible="1"/>
+                    <field name="claim_status" invisible="1"/>
+
+                    <field name="receiver_role"
+                           attrs="{'readonly': [('claim_stage', '=', 'dispute')]}"/>
+                </group>
+
+                <group>
+                    <field name="message" placeholder="Escriba su mensaje aqui..."
+                           widget="text"/>
+                </group>
+
+                <group string="Adjuntos (opcional)">
+                    <field name="attachment_ids" widget="many2many_binary"
+                           string="Archivos"/>
+                    <div class="text-muted small">
+                        Maximo 5MB por archivo. Formatos permitidos: JPG, PNG, PDF
+                    </div>
+                </group>
+
+                <footer>
+                    <button name="action_send" type="object"
+                            string="Enviar Mensaje" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_claim_send_message_wizard" model="ir.actions.act_window">
+        <field name="name">Enviar Mensaje</field>
+        <field name="res_model">mercadolibre.claim.send.message.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

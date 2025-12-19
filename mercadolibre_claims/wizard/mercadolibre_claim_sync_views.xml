@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- WIZARD SINCRONIZACION - VISTAS -->
+    <!-- ============================================= -->
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_claim_sync_wizard_form" model="ir.ui.view">
+        <field name="name">mercadolibre.claim.sync.wizard.form</field>
+        <field name="model">mercadolibre.claim.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Reclamos">
+                <group attrs="{'invisible': [('state', '=', 'done')]}">
+                    <group string="Cuenta">
+                        <field name="account_id"/>
+                    </group>
+                    <group string="Filtros">
+                        <field name="status_filter"/>
+                        <field name="type_filter"/>
+                        <field name="limit"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <group string="Resultados">
+                        <field name="synced_count"/>
+                        <field name="created_count"/>
+                        <field name="updated_count"/>
+                        <field name="error_count"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <field name="sync_result" nolabel="1" readonly="1"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_sync" type="object"
+                            string="Sincronizar" class="btn-primary"
+                            attrs="{'invisible': [('state', '=', 'done')]}"/>
+                    <button name="action_view_claims" type="object"
+                            string="Ver Reclamos" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'done')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_claim_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronizar Reclamos</field>
+        <field name="res_model">mercadolibre.claim.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
