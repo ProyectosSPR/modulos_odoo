@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Record Rules -->
+
+        <!-- Rule: Users can see orders from their assigned accounts -->
+        <record id="rule_mercadolibre_order_user" model="ir.rule">
+            <field name="name">MercadoLibre Order: User Rule</field>
+            <field name="model_id" ref="model_mercadolibre_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_user'))]"/>
+        </record>
+
+        <!-- Rule: Users can see items from their visible orders -->
+        <record id="rule_mercadolibre_order_item_user" model="ir.rule">
+            <field name="name">MercadoLibre Order Item: User Rule</field>
+            <field name="model_id" ref="model_mercadolibre_order_item"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_user'))]"/>
+        </record>
+
+        <!-- Rule: Users can see discounts from their visible orders -->
+        <record id="rule_mercadolibre_order_discount_user" model="ir.rule">
+            <field name="name">MercadoLibre Order Discount: User Rule</field>
+            <field name="model_id" ref="model_mercadolibre_order_discount"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_user'))]"/>
+        </record>
+
+        <!-- Rule: Users can see buyers -->
+        <record id="rule_mercadolibre_buyer_user" model="ir.rule">
+            <field name="name">MercadoLibre Buyer: User Rule</field>
+            <field name="model_id" ref="model_mercadolibre_buyer"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_user'))]"/>
+        </record>
+
+        <!-- Rule: Only managers can modify logistic types -->
+        <record id="rule_mercadolibre_logistic_type_manager" model="ir.rule">
+            <field name="name">MercadoLibre Logistic Type: Manager Rule</field>
+            <field name="model_id" ref="model_mercadolibre_logistic_type"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_manager'))]"/>
+        </record>
+
+        <!-- Rule: Only managers can modify sync configs -->
+        <record id="rule_mercadolibre_order_sync_config_manager" model="ir.rule">
+            <field name="name">MercadoLibre Order Sync Config: Manager Rule</field>
+            <field name="model_id" ref="model_mercadolibre_order_sync_config"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('mercadolibre_connector.group_mercadolibre_manager'))]"/>
+        </record>
+    </data>
+</odoo>

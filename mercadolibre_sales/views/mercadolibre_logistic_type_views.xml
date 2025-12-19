@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_logistic_type_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.logistic.type.tree</field>
+        <field name="model">mercadolibre.logistic.type</field>
+        <field name="arch" type="xml">
+            <tree string="Tipos Logisticos">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="auto_confirm_order"/>
+                <field name="auto_confirm_picking"/>
+                <field name="warehouse_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_logistic_type_form" model="ir.ui.view">
+        <field name="name">mercadolibre.logistic.type.form</field>
+        <field name="model">mercadolibre.logistic.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo Logistico">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Configuracion">
+                            <field name="code"/>
+                            <field name="active"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Automatizacion">
+                            <field name="auto_confirm_order"/>
+                            <field name="auto_confirm_picking"/>
+                            <field name="warehouse_id"/>
+                        </group>
+                    </group>
+                    <group string="Descripcion">
+                        <field name="description" nolabel="1" placeholder="Descripcion del tipo logistico..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_logistic_type" model="ir.actions.act_window">
+        <field name="name">Tipos Logisticos</field>
+        <field name="res_model">mercadolibre.logistic.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay tipos logisticos configurados
+            </p>
+            <p>
+                Configure los tipos logisticos de MercadoLibre para automatizar la confirmacion de ordenes y pickings.
+            </p>
+        </field>
+    </record>
+</odoo>

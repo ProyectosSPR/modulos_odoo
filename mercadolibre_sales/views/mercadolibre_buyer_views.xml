@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_buyer_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.buyer.tree</field>
+        <field name="model">mercadolibre.buyer</field>
+        <field name="arch" type="xml">
+            <tree string="Compradores MercadoLibre">
+                <field name="ml_buyer_id" string="ID ML"/>
+                <field name="nickname" string="Usuario"/>
+                <field name="first_name"/>
+                <field name="last_name"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="partner_id" string="Contacto Odoo"/>
+                <field name="account_id" string="Cuenta"/>
+                <field name="order_count" string="Ordenes"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_buyer_form" model="ir.ui.view">
+        <field name="name">mercadolibre.buyer.form</field>
+        <field name="model">mercadolibre.buyer</field>
+        <field name="arch" type="xml">
+            <form string="Comprador MercadoLibre">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="order_count" widget="statinfo" string="Ordenes"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="nickname" placeholder="Usuario"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion MercadoLibre">
+                            <field name="ml_buyer_id"/>
+                            <field name="account_id"/>
+                        </group>
+                        <group string="Datos Personales">
+                            <field name="first_name"/>
+                            <field name="last_name"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Direccion">
+                            <field name="street"/>
+                            <field name="city"/>
+                            <field name="state"/>
+                            <field name="zip_code"/>
+                            <field name="country"/>
+                        </group>
+                        <group string="Identificacion">
+                            <field name="doc_type"/>
+                            <field name="doc_number"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Integracion Odoo">
+                            <field name="partner_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_buyer_search" model="ir.ui.view">
+        <field name="name">mercadolibre.buyer.search</field>
+        <field name="model">mercadolibre.buyer</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Compradores">
+                <field name="ml_buyer_id"/>
+                <field name="nickname"/>
+                <field name="first_name"/>
+                <field name="last_name"/>
+                <field name="email"/>
+                <field name="doc_number"/>
+                <separator/>
+                <filter string="Con Contacto" name="with_partner" domain="[('partner_id', '!=', False)]"/>
+                <filter string="Sin Contacto" name="without_partner" domain="[('partner_id', '=', False)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Ciudad" name="group_city" context="{'group_by': 'city'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_buyer" model="ir.actions.act_window">
+        <field name="name">Compradores</field>
+        <field name="res_model">mercadolibre.buyer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_buyer_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay compradores registrados
+            </p>
+            <p>
+                Los compradores se crean automaticamente al sincronizar ordenes.
+            </p>
+        </field>
+    </record>
+</odoo>

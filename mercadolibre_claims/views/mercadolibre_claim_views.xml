@@ -63,7 +63,7 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_messages" type="object"
                                 class="oe_stat_button" icon="fa-comments">
-                            <field name="message_count" widget="statinfo" string="Mensajes"/>
+                            <field name="claim_message_count" widget="statinfo" string="Mensajes"/>
                         </button>
                         <button name="action_view_payment" type="object"
                                 class="oe_stat_button" icon="fa-credit-card"
@@ -160,7 +160,7 @@
 
                     <notebook>
                         <page string="Mensajes" name="messages">
-                            <field name="message_ids" readonly="1">
+                            <field name="claim_message_ids" readonly="1">
                                 <tree decoration-info="is_from_us == True"
                                       decoration-warning="is_unread == True"
                                       decoration-muted="status == 'moderated'"

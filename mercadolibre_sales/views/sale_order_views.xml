@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Sale Order Form View -->
+    <record id="view_sale_order_form_ml" model="ir.ui.view">
+        <field name="name">sale.order.form.ml</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add ML button in button_box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_orders" type="object"
+                        class="oe_stat_button" icon="fa-shopping-bag"
+                        attrs="{'invisible': [('is_ml_order', '=', False)]}">
+                    <span>Ordenes ML</span>
+                </button>
+            </xpath>
+
+            <!-- Add MercadoLibre tab in notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="MercadoLibre" name="mercadolibre"
+                      attrs="{'invisible': [('is_ml_order', '=', False)]}">
+                    <group>
+                        <group string="Identificadores ML">
+                            <field name="ml_order_id"/>
+                            <field name="ml_pack_id"/>
+                            <field name="ml_shipment_id"/>
+                        </group>
+                        <group string="Informacion ML">
+                            <field name="ml_account_id"/>
+                            <field name="ml_logistic_type"/>
+                            <field name="ml_channel"/>
+                            <field name="ml_sync_date"/>
+                        </group>
+                    </group>
+                    <field name="is_ml_order" invisible="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit Sale Order Tree View -->
+    <record id="view_sale_order_tree_ml" model="ir.ui.view">
+        <field name="name">sale.order.tree.ml</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="ml_order_id" string="Order ML" optional="hide"/>
+                <field name="ml_pack_id" string="Pack ML" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit Sale Order Search View -->
+    <record id="view_sale_order_search_ml" model="ir.ui.view">
+        <field name="name">sale.order.search.ml</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_view_search_inherit_quotation"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Ordenes MercadoLibre" name="ml_orders" domain="[('is_ml_order', '=', True)]"/>
+                <filter string="Full" name="ml_full" domain="[('ml_logistic_type', '=', 'fulfillment')]"/>
+                <filter string="Agencia" name="ml_agencia" domain="[('ml_logistic_type', '=', 'xd_drop_off')]"/>
+                <separator/>
+                <field name="ml_order_id"/>
+                <field name="ml_pack_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action for ML Orders -->
+    <record id="action_sale_order_ml" model="ir.actions.act_window">
+        <field name="name">Ordenes de Venta ML</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_ml_order', '=', True)]</field>
+        <field name="context">{'search_default_ml_orders': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay ordenes de venta de MercadoLibre
+            </p>
+            <p>
+                Las ordenes de venta se crean automaticamente al sincronizar ordenes de MercadoLibre.
+            </p>
+        </field>
+    </record>
+</odoo>

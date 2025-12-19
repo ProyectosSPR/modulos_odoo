@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_mercadolibre_order_sync_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.sync.form</field>
+        <field name="model">mercadolibre.order.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Ordenes MercadoLibre">
+                <group>
+                    <group>
+                        <field name="account_id"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="status_filter" widget="many2many_tags"/>
+                        <field name="limit"/>
+                        <field name="auto_create_sale_order"/>
+                    </group>
+                </group>
+                <group string="Resultado" attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <field name="state" invisible="1"/>
+                    <field name="orders_synced"/>
+                    <field name="orders_created"/>
+                    <field name="orders_updated"/>
+                    <field name="errors" attrs="{'invisible': [('errors', '=', False)]}"
+                           readonly="1" nolabel="1"/>
+                </group>
+                <footer>
+                    <button name="action_sync" type="object" string="Sincronizar"
+                            class="btn-primary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_create_sale_orders" type="object"
+                            string="Crear Ordenes de Venta"
+                            class="btn-primary" icon="fa-shopping-cart"
+                            attrs="{'invisible': ['|', ('state', '!=', 'done'), ('auto_create_sale_order', '=', True)]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_order_sync" model="ir.actions.act_window">
+        <field name="name">Sincronizar Ordenes</field>
+        <field name="res_model">mercadolibre.order.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

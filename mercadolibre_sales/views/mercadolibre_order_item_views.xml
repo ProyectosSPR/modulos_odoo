@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View (standalone) -->
+    <record id="view_mercadolibre_order_item_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.order.item.tree</field>
+        <field name="model">mercadolibre.order.item</field>
+        <field name="arch" type="xml">
+            <tree string="Items de Orden">
+                <field name="order_id"/>
+                <field name="ml_item_id"/>
+                <field name="title"/>
+                <field name="seller_sku"/>
+                <field name="quantity"/>
+                <field name="unit_price"/>
+                <field name="full_unit_price"/>
+                <field name="subtotal" sum="Total"/>
+                <field name="sale_fee" sum="Comisiones"/>
+                <field name="product_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_order_item_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.item.form</field>
+        <field name="model">mercadolibre.order.item</field>
+        <field name="arch" type="xml">
+            <form string="Item de Orden">
+                <sheet>
+                    <group>
+                        <group string="Informacion del Item">
+                            <field name="order_id"/>
+                            <field name="ml_item_id"/>
+                            <field name="title"/>
+                            <field name="seller_sku"/>
+                            <field name="variation_id"/>
+                        </group>
+                        <group string="Cantidades y Precios">
+                            <field name="quantity"/>
+                            <field name="unit_price"/>
+                            <field name="full_unit_price"/>
+                            <field name="subtotal"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Comisiones">
+                            <field name="sale_fee"/>
+                            <field name="listing_type"/>
+                        </group>
+                        <group string="Integracion Odoo">
+                            <field name="product_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_order_item_search" model="ir.ui.view">
+        <field name="name">mercadolibre.order.item.search</field>
+        <field name="model">mercadolibre.order.item</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Items">
+                <field name="ml_item_id"/>
+                <field name="title"/>
+                <field name="seller_sku"/>
+                <field name="order_id"/>
+                <separator/>
+                <filter string="Sin Producto Odoo" name="no_product" domain="[('product_id', '=', False)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Orden" name="group_order" context="{'group_by': 'order_id'}"/>
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="SKU" name="group_sku" context="{'group_by': 'seller_sku'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_order_item" model="ir.actions.act_window">
+        <field name="name">Items de Ordenes</field>
+        <field name="res_model">mercadolibre.order.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_item_search"/>
+    </record>
+</odoo>

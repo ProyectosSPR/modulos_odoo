@@ -239,14 +239,14 @@ class MercadolibreClaim(models.Model):
     )
 
     # === RELACIONES ===
-    message_ids = fields.One2many(
+    claim_message_ids = fields.One2many(
         'mercadolibre.claim.message',
         'claim_id',
-        string='Mensajes'
+        string='Mensajes del Reclamo'
     )
-    message_count = fields.Integer(
+    claim_message_count = fields.Integer(
         string='Num. Mensajes',
-        compute='_compute_message_count'
+        compute='_compute_claim_message_count'
     )
     evidence_ids = fields.One2many(
         'mercadolibre.claim.evidence',
@@ -395,10 +395,10 @@ class MercadolibreClaim(models.Model):
             record.can_allow_return = 'allow_return' in actions or 'allow_return_label' in actions
             record.can_partial_refund = 'allow_partial_refund' in actions
 
-    @api.depends('message_ids')
-    def _compute_message_count(self):
+    @api.depends('claim_message_ids')
+    def _compute_claim_message_count(self):
         for record in self:
-            record.message_count = len(record.message_ids)
+            record.claim_message_count = len(record.claim_message_ids)
 
     # =====================================================
     # METODOS DE CREACION/ACTUALIZACION

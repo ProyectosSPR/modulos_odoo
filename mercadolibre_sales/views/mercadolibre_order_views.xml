@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_order_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.order.tree</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="arch" type="xml">
+            <tree string="Ordenes MercadoLibre" default_order="date_closed desc">
+                <field name="ml_order_id" string="Order ID"/>
+                <field name="ml_pack_id" string="Pack ID" optional="show"/>
+                <field name="date_closed" string="Fecha"/>
+                <field name="buyer_nickname" string="Comprador"/>
+                <field name="total_amount" string="Monto" sum="Total"/>
+                <field name="status" string="Estado ML"
+                       decoration-success="status == 'paid'"
+                       decoration-warning="status in ('confirmed', 'payment_in_process')"
+                       decoration-danger="status == 'cancelled'"
+                       widget="badge"/>
+                <field name="logistic_type" string="Tipo Envio" optional="show"/>
+                <field name="channel" optional="hide"/>
+                <field name="sale_order_id" string="Orden Odoo"/>
+                <field name="odoo_order_state" string="Estado Odoo"
+                       decoration-success="odoo_order_state == 'created'"
+                       decoration-warning="odoo_order_state == 'pending'"
+                       decoration-danger="odoo_order_state == 'error'"
+                       widget="badge"/>
+                <field name="account_id" string="Cuenta"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_order_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.form</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="arch" type="xml">
+            <form string="Orden MercadoLibre">
+                <header>
+                    <button name="action_sync_discounts" type="object" string="Sincronizar Descuentos"
+                            class="btn-secondary" icon="fa-refresh"/>
+                    <button name="action_create_sale_order" type="object" string="Crear Orden Venta"
+                            class="btn-primary" icon="fa-shopping-cart"
+                            attrs="{'invisible': [('has_sale_order', '=', True)]}"/>
+                    <button name="action_view_sale_order" type="object" string="Ver Orden Venta"
+                            class="btn-secondary" icon="fa-external-link"
+                            attrs="{'invisible': [('has_sale_order', '=', False)]}"/>
+                    <field name="status" widget="statusbar"
+                           statusbar_visible="confirmed,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_raw_data" type="object" class="oe_stat_button" icon="fa-code">
+                            <span>Datos Crudos</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion MercadoLibre">
+                            <field name="ml_order_id"/>
+                            <field name="ml_pack_id"/>
+                            <field name="ml_shipment_id"/>
+                            <field name="account_id"/>
+                            <field name="channel"/>
+                            <field name="logistic_type"/>
+                        </group>
+                        <group string="Montos">
+                            <field name="total_amount"/>
+                            <field name="paid_amount"/>
+                            <field name="shipping_cost"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Comprador">
+                            <field name="buyer_id"/>
+                            <field name="ml_buyer_id"/>
+                            <field name="buyer_nickname"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group string="Fechas">
+                            <field name="date_created"/>
+                            <field name="date_closed"/>
+                            <field name="date_last_updated"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Productos" name="items">
+                            <field name="item_ids" nolabel="1">
+                                <tree string="Items" editable="bottom">
+                                    <field name="ml_item_id"/>
+                                    <field name="title"/>
+                                    <field name="seller_sku"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_price"/>
+                                    <field name="full_unit_price"/>
+                                    <field name="subtotal"/>
+                                    <field name="sale_fee"/>
+                                    <field name="product_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Descuentos" name="discounts">
+                            <group>
+                                <group>
+                                    <field name="total_discount"/>
+                                    <field name="seller_discount"/>
+                                    <field name="meli_discount"/>
+                                </group>
+                            </group>
+                            <field name="discount_ids" nolabel="1">
+                                <tree string="Descuentos">
+                                    <field name="discount_type"/>
+                                    <field name="ml_item_id"/>
+                                    <field name="total_amount" sum="Total"/>
+                                    <field name="seller_amount" sum="Vendedor"/>
+                                    <field name="meli_amount" sum="MercadoLibre"/>
+                                    <field name="seller_percentage"/>
+                                    <field name="meli_percentage"/>
+                                    <field name="meli_campaign"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Integracion Odoo" name="odoo">
+                            <group>
+                                <group string="Orden de Venta">
+                                    <field name="sale_order_id"/>
+                                    <field name="odoo_order_state"/>
+                                    <field name="odoo_order_error" attrs="{'invisible': [('odoo_order_state', '!=', 'error')]}"/>
+                                </group>
+                                <group string="Sincronizacion">
+                                    <field name="sync_status"/>
+                                    <field name="last_sync_date"/>
+                                    <field name="sync_error" attrs="{'invisible': [('sync_status', '!=', 'error')]}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Tags y Notas" name="tags">
+                            <group>
+                                <field name="ml_tags"/>
+                                <field name="notes"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Raw Data Form View -->
+    <record id="view_mercadolibre_order_raw_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.raw.form</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="arch" type="xml">
+            <form string="Datos Crudos">
+                <sheet>
+                    <group>
+                        <field name="raw_data" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_order_search" model="ir.ui.view">
+        <field name="name">mercadolibre.order.search</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Ordenes">
+                <field name="ml_order_id"/>
+                <field name="ml_pack_id"/>
+                <field name="buyer_nickname"/>
+                <field name="ml_buyer_id"/>
+                <separator/>
+                <filter string="Pagadas" name="paid" domain="[('status', '=', 'paid')]"/>
+                <filter string="Canceladas" name="cancelled" domain="[('status', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Full" name="fulfillment" domain="[('logistic_type', '=', 'fulfillment')]"/>
+                <filter string="Agencia" name="xd_drop_off" domain="[('logistic_type', '=', 'xd_drop_off')]"/>
+                <filter string="Propio" name="custom" domain="[('logistic_type', '=', 'custom')]"/>
+                <separator/>
+                <filter string="Con Descuento" name="has_discount" domain="[('has_discount', '=', True)]"/>
+                <filter string="Sin Orden Odoo" name="no_sale_order" domain="[('has_sale_order', '=', False)]"/>
+                <filter string="Pendientes Sync" name="pending_sync" domain="[('sync_status', '=', 'pending')]"/>
+                <separator/>
+                <filter string="Hoy" name="today" domain="[('date_closed', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Esta Semana" name="this_week" domain="[('date_closed', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Tipo Logistico" name="group_logistic" context="{'group_by': 'logistic_type'}"/>
+                    <filter string="Canal" name="group_channel" context="{'group_by': 'channel'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'date_closed:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_order" model="ir.actions.act_window">
+        <field name="name">Ordenes</field>
+        <field name="res_model">mercadolibre.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_search"/>
+        <field name="context">{'search_default_paid': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay ordenes sincronizadas
+            </p>
+            <p>
+                Use el wizard de sincronizacion para importar ordenes desde MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action Pagadas -->
+    <record id="action_mercadolibre_order_paid" model="ir.actions.act_window">
+        <field name="name">Ordenes Pagadas</field>
+        <field name="res_model">mercadolibre.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_search"/>
+        <field name="domain">[('status', '=', 'paid')]</field>
+    </record>
+
+    <!-- Action Sin Orden Odoo -->
+    <record id="action_mercadolibre_order_pending" model="ir.actions.act_window">
+        <field name="name">Pendientes de Procesar</field>
+        <field name="res_model">mercadolibre.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_search"/>
+        <field name="domain">[('status', '=', 'paid'), ('has_sale_order', '=', False)]</field>
+    </record>
+
+    <!-- Action Con Descuentos -->
+    <record id="action_mercadolibre_order_discounts" model="ir.actions.act_window">
+        <field name="name">Ordenes con Descuento</field>
+        <field name="res_model">mercadolibre.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_search"/>
+        <field name="domain">[('has_discount', '=', True)]</field>
+    </record>
+</odoo>

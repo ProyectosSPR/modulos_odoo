@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View (standalone) -->
+    <record id="view_mercadolibre_order_discount_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.order.discount.tree</field>
+        <field name="model">mercadolibre.order.discount</field>
+        <field name="arch" type="xml">
+            <tree string="Descuentos">
+                <field name="order_id"/>
+                <field name="discount_type"/>
+                <field name="ml_item_id"/>
+                <field name="total_amount" sum="Total"/>
+                <field name="seller_amount" sum="Vendedor"/>
+                <field name="meli_amount" sum="MercadoLibre"/>
+                <field name="seller_percentage"/>
+                <field name="meli_percentage"/>
+                <field name="meli_campaign"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_order_discount_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.discount.form</field>
+        <field name="model">mercadolibre.order.discount</field>
+        <field name="arch" type="xml">
+            <form string="Descuento">
+                <sheet>
+                    <group>
+                        <group string="Informacion">
+                            <field name="order_id"/>
+                            <field name="discount_type"/>
+                            <field name="ml_item_id"/>
+                            <field name="meli_campaign"/>
+                        </group>
+                        <group string="Montos">
+                            <field name="total_amount"/>
+                            <field name="seller_amount"/>
+                            <field name="meli_amount"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Porcentajes Co-Fondeo">
+                            <field name="seller_percentage"/>
+                            <field name="meli_percentage"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_order_discount_search" model="ir.ui.view">
+        <field name="name">mercadolibre.order.discount.search</field>
+        <field name="model">mercadolibre.order.discount</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Descuentos">
+                <field name="order_id"/>
+                <field name="discount_type"/>
+                <field name="meli_campaign"/>
+                <separator/>
+                <filter string="Solo Vendedor" name="seller_only" domain="[('meli_amount', '=', 0)]"/>
+                <filter string="Co-Fondeo" name="cofunding" domain="[('meli_amount', '>', 0)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Orden" name="group_order" context="{'group_by': 'order_id'}"/>
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'discount_type'}"/>
+                    <filter string="Campana" name="group_campaign" context="{'group_by': 'meli_campaign'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_order_discount" model="ir.actions.act_window">
+        <field name="name">Descuentos</field>
+        <field name="res_model">mercadolibre.order.discount</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_order_discount_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay descuentos registrados
+            </p>
+            <p>
+                Los descuentos se sincronizan automaticamente junto con las ordenes.
+            </p>
+        </field>
+    </record>
+</odoo>

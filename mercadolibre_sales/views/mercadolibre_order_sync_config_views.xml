@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_order_sync_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.order.sync.config.tree</field>
+        <field name="model">mercadolibre.order.sync.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuraciones de Sincronizacion">
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
+                <field name="sync_orders_from"/>
+                <field name="last_sync_date"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_order_sync_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.order.sync.config.form</field>
+        <field name="model">mercadolibre.order.sync.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuracion de Sincronizacion">
+                <header>
+                    <button name="action_sync_now" type="object" string="Sincronizar Ahora"
+                            class="btn-primary" icon="fa-refresh"/>
+                    <button name="action_toggle_cron" type="object"
+                            string="Activar Cron"
+                            attrs="{'invisible': [('cron_id', '!=', False)]}"
+                            class="btn-secondary"/>
+                    <button name="action_toggle_cron" type="object"
+                            string="Desactivar Cron"
+                            attrs="{'invisible': [('cron_id', '=', False)]}"
+                            class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre de configuracion"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Cuenta">
+                            <field name="account_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Intervalo de Sincronizacion">
+                            <label for="interval_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline"/>
+                                <field name="interval_type" class="oe_inline"/>
+                            </div>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Filtros">
+                            <field name="sync_orders_from"/>
+                            <field name="sync_status_filter" widget="many2many_tags"/>
+                            <field name="auto_create_sale_order"/>
+                        </group>
+                        <group string="Estado">
+                            <field name="last_sync_date"/>
+                            <field name="last_sync_count"/>
+                            <field name="cron_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Ultima Sincronizacion">
+                        <field name="last_sync_error" attrs="{'invisible': [('last_sync_error', '=', False)]}"
+                               readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_order_sync_config" model="ir.actions.act_window">
+        <field name="name">Configuracion Sync</field>
+        <field name="res_model">mercadolibre.order.sync.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure la sincronizacion automatica de ordenes
+            </p>
+            <p>
+                Cree configuraciones de sincronizacion para cada cuenta de MercadoLibre.
+                Puede configurar el intervalo de sincronizacion por minutos, horas o dias.
+            </p>
+        </field>
+    </record>
+</odoo>
