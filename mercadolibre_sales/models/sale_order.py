@@ -93,6 +93,49 @@ class SaleOrder(models.Model):
             'domain': domain,
         }
 
+    def action_download_shipping_label(self):
+        """Descarga la etiqueta de envio desde la orden ML asociada"""
+        self.ensure_one()
+        ml_order = self._get_ml_order()
+        if not ml_order:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Orden ML',
+                    'message': 'No hay orden de MercadoLibre asociada.',
+                    'type': 'warning',
+                }
+            }
+        return ml_order.action_download_shipping_label()
+
+    def action_print_shipping_label(self):
+        """Imprime la etiqueta de envio desde la orden ML asociada"""
+        self.ensure_one()
+        ml_order = self._get_ml_order()
+        if not ml_order:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Orden ML',
+                    'message': 'No hay orden de MercadoLibre asociada.',
+                    'type': 'warning',
+                }
+            }
+        return ml_order.action_print_shipping_label()
+
+    def _get_ml_order(self):
+        """Obtiene la orden ML principal asociada"""
+        self.ensure_one()
+        if self.ml_order_ids:
+            return self.ml_order_ids[0]
+        if self.ml_order_id:
+            return self.env['mercadolibre.order'].search([
+                ('ml_order_id', '=', self.ml_order_id)
+            ], limit=1)
+        return False
+
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'

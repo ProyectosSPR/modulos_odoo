@@ -82,9 +82,22 @@
                                 </group>
                                 <group string="Etiquetas de Envio ML">
                                     <field name="download_shipping_label"/>
+                                    <field name="label_format"
+                                           attrs="{'invisible': [('download_shipping_label', '=', False)]}"/>
                                     <field name="auto_print_label"
                                            attrs="{'invisible': [('download_shipping_label', '=', False)]}"/>
                                 </group>
+                            </group>
+                            <group attrs="{'invisible': [('auto_print_label', '=', False)]}">
+                                <group string="Configuracion Impresora HTTP">
+                                    <field name="printer_url"/>
+                                    <field name="printer_name"/>
+                                    <field name="printer_copies"/>
+                                </group>
+                                <div class="alert alert-info col-12" role="alert">
+                                    <strong>Impresion HTTP:</strong> La etiqueta se enviara al endpoint configurado
+                                    usando multipart/form-data con los campos: file (archivo), printer (nombre) y copies (copias).
+                                </div>
                             </group>
                             <group attrs="{'invisible': [('auto_confirm_picking', '=', False)]}">
                                 <group string="Politica de Stock">

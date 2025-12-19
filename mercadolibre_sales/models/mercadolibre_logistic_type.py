@@ -98,13 +98,34 @@ class MercadolibreLogisticType(models.Model):
     download_shipping_label = fields.Boolean(
         string='Descargar Etiqueta ML',
         default=False,
-        help='Descargar automaticamente la etiqueta de envio de MercadoLibre'
+        help='Descargar automaticamente la etiqueta de envio de MercadoLibre y guardarla como adjunto'
     )
     auto_print_label = fields.Boolean(
         string='Imprimir Etiqueta Auto',
         default=False,
-        help='Enviar etiqueta a impresion automaticamente'
+        help='Enviar etiqueta a impresora HTTP automaticamente despues de descargarla'
     )
+    # Configuracion de impresora HTTP
+    printer_url = fields.Char(
+        string='URL Impresora',
+        default='https://ticketsmagic.automateai.com.mx/api/print',
+        help='URL del endpoint HTTP para enviar la etiqueta a imprimir'
+    )
+    printer_name = fields.Char(
+        string='Nombre Impresora',
+        default='Beeprt BY-426BT',
+        help='Nombre de la impresora configurada en el servidor de impresion'
+    )
+    printer_copies = fields.Integer(
+        string='Copias',
+        default=1,
+        help='Numero de copias a imprimir'
+    )
+    label_format = fields.Selection([
+        ('pdf', 'PDF'),
+        ('zpl2', 'ZPL2 (Zebra)'),
+    ], string='Formato Etiqueta', default='pdf',
+       help='Formato de etiqueta a descargar de MercadoLibre')
 
     # =========================================================================
     # ALMACEN Y OPERACIONES

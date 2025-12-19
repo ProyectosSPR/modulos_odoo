@@ -1160,6 +1160,22 @@ class MercadolibreOrder(models.Model):
                 except Exception as e:
                     _logger.warning('Error al confirmar orden %s: %s', sale_order.name, str(e))
 
+            # =========================================================
+            # PROCESAR ETIQUETA DE ENVIO (descarga e impresion)
+            # =========================================================
+            if logistic_config and (logistic_config.download_shipping_label or logistic_config.auto_print_label):
+                try:
+                    label_result = self._process_shipping_label(logistic_config, sale_order)
+                    if label_result.get('downloaded'):
+                        _logger.info('Etiqueta descargada para orden %s', sale_order.name)
+                    if label_result.get('printed'):
+                        _logger.info('Etiqueta enviada a impresora para orden %s', sale_order.name)
+                    if label_result.get('errors'):
+                        for error in label_result['errors']:
+                            _logger.warning('Error etiqueta %s: %s', sale_order.name, error)
+                except Exception as e:
+                    _logger.warning('Error procesando etiqueta para %s: %s', sale_order.name, str(e))
+
             # Actualizar registro ML
             self.write({
                 'sale_order_id': sale_order.id,
@@ -1817,3 +1833,403 @@ class MercadolibreOrder(models.Model):
             )
 
         return '\n'.join(lines)
+
+    # =========================================================================
+    # DESCARGA E IMPRESION DE ETIQUETAS DE ENVIO
+    # =========================================================================
+
+    def action_download_shipping_label(self):
+        """
+        Accion manual para descargar la etiqueta de envio de MercadoLibre.
+        Descarga la etiqueta y la guarda como adjunto en la orden de venta.
+        """
+        self.ensure_one()
+        if not self.ml_shipment_id:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Envio',
+                    'message': 'Esta orden no tiene ID de envio de MercadoLibre.',
+                    'type': 'warning',
+                }
+            }
+
+        result = self._download_and_save_shipping_label()
+        if result.get('success'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Etiqueta Descargada',
+                    'message': f'Etiqueta guardada como adjunto: {result.get("filename")}',
+                    'type': 'success',
+                }
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error',
+                    'message': result.get('error', 'Error desconocido'),
+                    'type': 'danger',
+                }
+            }
+
+    def action_print_shipping_label(self):
+        """
+        Accion manual para imprimir la etiqueta de envio.
+        Primero descarga si no existe, luego envia a la impresora HTTP.
+        """
+        self.ensure_one()
+        if not self.ml_shipment_id:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Envio',
+                    'message': 'Esta orden no tiene ID de envio de MercadoLibre.',
+                    'type': 'warning',
+                }
+            }
+
+        # Obtener configuracion del tipo logistico
+        logistic_config = self._get_logistic_type_config()
+        if not logistic_config:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Configuracion',
+                    'message': 'No hay configuracion de tipo logistico para esta orden.',
+                    'type': 'warning',
+                }
+            }
+
+        # Descargar etiqueta si no existe
+        result = self._download_and_save_shipping_label(logistic_config)
+        if not result.get('success'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error Descarga',
+                    'message': result.get('error', 'Error descargando etiqueta'),
+                    'type': 'danger',
+                }
+            }
+
+        # Enviar a impresora
+        print_result = self._send_label_to_printer(
+            result['attachment'],
+            logistic_config
+        )
+
+        if print_result.get('success'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Etiqueta Enviada',
+                    'message': f'Etiqueta enviada a impresora: {logistic_config.printer_name}',
+                    'type': 'success',
+                }
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error Impresion',
+                    'message': print_result.get('error', 'Error enviando a impresora'),
+                    'type': 'danger',
+                }
+            }
+
+    def _download_and_save_shipping_label(self, logistic_config=None):
+        """
+        Descarga la etiqueta de envio desde la API de MercadoLibre
+        y la guarda como adjunto en la orden de venta.
+
+        Args:
+            logistic_config: Configuracion del tipo logistico (opcional)
+
+        Returns:
+            dict con 'success', 'attachment', 'filename' o 'error'
+        """
+        import requests
+        import base64
+        self.ensure_one()
+
+        if not self.ml_shipment_id:
+            return {'success': False, 'error': 'Sin ID de envio'}
+
+        if not self.sale_order_id:
+            return {'success': False, 'error': 'Sin orden de venta asociada'}
+
+        # Verificar si ya existe la etiqueta
+        existing = self.env['ir.attachment'].search([
+            ('res_model', '=', 'sale.order'),
+            ('res_id', '=', self.sale_order_id.id),
+            ('name', 'ilike', f'etiqueta_ml_{self.ml_shipment_id}')
+        ], limit=1)
+
+        if existing:
+            _logger.info('Etiqueta ya existe para shipment %s', self.ml_shipment_id)
+            return {
+                'success': True,
+                'attachment': existing,
+                'filename': existing.name,
+                'already_exists': True
+            }
+
+        # Obtener token de acceso
+        try:
+            access_token = self.account_id.get_valid_token()
+        except Exception as e:
+            _logger.error('Error obteniendo token: %s', str(e))
+            return {'success': False, 'error': f'Error de autenticacion: {str(e)}'}
+
+        # Determinar formato de etiqueta
+        label_format = 'pdf'
+        if logistic_config and logistic_config.label_format:
+            label_format = logistic_config.label_format
+
+        # URL para descargar etiqueta
+        # Primero intentamos con el endpoint de labels
+        url = f'https://api.mercadolibre.com/shipment_labels'
+        params = {
+            'shipment_ids': self.ml_shipment_id,
+            'response_type': label_format,
+        }
+
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+        }
+
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=60)
+
+            if response.status_code == 200:
+                # Determinar extension
+                content_type = response.headers.get('Content-Type', '')
+                if 'pdf' in content_type or label_format == 'pdf':
+                    extension = 'pdf'
+                    mimetype = 'application/pdf'
+                else:
+                    extension = 'zpl'
+                    mimetype = 'text/plain'
+
+                filename = f'etiqueta_ml_{self.ml_shipment_id}.{extension}'
+
+                # Crear adjunto
+                attachment = self.env['ir.attachment'].create({
+                    'name': filename,
+                    'type': 'binary',
+                    'datas': base64.b64encode(response.content),
+                    'res_model': 'sale.order',
+                    'res_id': self.sale_order_id.id,
+                    'mimetype': mimetype,
+                })
+
+                _logger.info('Etiqueta descargada y guardada: %s', filename)
+
+                # Registrar en el chatter
+                self.sale_order_id.message_post(
+                    body=f'Etiqueta de envio MercadoLibre descargada: {filename}',
+                    attachment_ids=[attachment.id]
+                )
+
+                return {
+                    'success': True,
+                    'attachment': attachment,
+                    'filename': filename,
+                }
+
+            elif response.status_code == 404:
+                # Intentar con endpoint alternativo
+                return self._download_label_alternative(access_token, label_format)
+
+            else:
+                error_msg = f'Error API ML ({response.status_code}): {response.text[:200]}'
+                _logger.error('Error descargando etiqueta: %s', error_msg)
+                return {'success': False, 'error': error_msg}
+
+        except requests.Timeout:
+            return {'success': False, 'error': 'Timeout al conectar con MercadoLibre'}
+        except Exception as e:
+            _logger.error('Error descargando etiqueta: %s', str(e))
+            return {'success': False, 'error': str(e)}
+
+    def _download_label_alternative(self, access_token, label_format='pdf'):
+        """
+        Metodo alternativo para descargar etiqueta usando el endpoint de shipments.
+
+        Args:
+            access_token: Token de acceso
+            label_format: Formato de etiqueta (pdf o zpl2)
+
+        Returns:
+            dict con resultado
+        """
+        import requests
+        import base64
+
+        url = f'https://api.mercadolibre.com/shipments/{self.ml_shipment_id}/label'
+        params = {'response_type': label_format}
+        headers = {'Authorization': f'Bearer {access_token}'}
+
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=60)
+
+            if response.status_code == 200:
+                content_type = response.headers.get('Content-Type', '')
+                if 'pdf' in content_type:
+                    extension = 'pdf'
+                    mimetype = 'application/pdf'
+                else:
+                    extension = 'zpl'
+                    mimetype = 'text/plain'
+
+                filename = f'etiqueta_ml_{self.ml_shipment_id}.{extension}'
+
+                attachment = self.env['ir.attachment'].create({
+                    'name': filename,
+                    'type': 'binary',
+                    'datas': base64.b64encode(response.content),
+                    'res_model': 'sale.order',
+                    'res_id': self.sale_order_id.id,
+                    'mimetype': mimetype,
+                })
+
+                _logger.info('Etiqueta descargada (alt): %s', filename)
+
+                self.sale_order_id.message_post(
+                    body=f'Etiqueta de envio MercadoLibre descargada: {filename}',
+                    attachment_ids=[attachment.id]
+                )
+
+                return {
+                    'success': True,
+                    'attachment': attachment,
+                    'filename': filename,
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'Error endpoint alternativo ({response.status_code})'
+                }
+
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def _send_label_to_printer(self, attachment, logistic_config):
+        """
+        Envia la etiqueta a una impresora HTTP.
+
+        Args:
+            attachment: ir.attachment con la etiqueta
+            logistic_config: mercadolibre.logistic.type con la configuracion
+
+        Returns:
+            dict con 'success' o 'error'
+        """
+        import requests
+        import base64
+
+        if not logistic_config.printer_url:
+            return {'success': False, 'error': 'URL de impresora no configurada'}
+
+        if not logistic_config.printer_name:
+            return {'success': False, 'error': 'Nombre de impresora no configurado'}
+
+        try:
+            # Decodificar el archivo
+            file_content = base64.b64decode(attachment.datas)
+
+            # Preparar el request multipart/form-data
+            files = {
+                'file': (attachment.name, file_content, attachment.mimetype or 'application/pdf')
+            }
+            data = {
+                'printer': logistic_config.printer_name,
+                'copies': str(logistic_config.printer_copies or 1),
+            }
+
+            response = requests.post(
+                logistic_config.printer_url,
+                files=files,
+                data=data,
+                timeout=30
+            )
+
+            if response.status_code in (200, 201, 202):
+                _logger.info('Etiqueta enviada a impresora %s', logistic_config.printer_name)
+
+                # Registrar en el chatter
+                if self.sale_order_id:
+                    self.sale_order_id.message_post(
+                        body=f'Etiqueta enviada a impresora: {logistic_config.printer_name} '
+                             f'({logistic_config.printer_copies} copia(s))'
+                    )
+
+                return {'success': True}
+            else:
+                error_msg = f'Error impresora ({response.status_code}): {response.text[:200]}'
+                _logger.error('Error enviando a impresora: %s', error_msg)
+                return {'success': False, 'error': error_msg}
+
+        except requests.Timeout:
+            return {'success': False, 'error': 'Timeout al conectar con impresora'}
+        except Exception as e:
+            _logger.error('Error enviando a impresora: %s', str(e))
+            return {'success': False, 'error': str(e)}
+
+    def _process_shipping_label(self, logistic_config, sale_order):
+        """
+        Procesa la etiqueta de envio segun la configuracion del tipo logistico.
+        Se llama automaticamente despues de crear la orden de venta.
+
+        Args:
+            logistic_config: mercadolibre.logistic.type
+            sale_order: sale.order creada
+
+        Returns:
+            dict con resultados
+        """
+        result = {
+            'downloaded': False,
+            'printed': False,
+            'errors': []
+        }
+
+        if not logistic_config:
+            return result
+
+        # Descargar etiqueta si esta configurado
+        if logistic_config.download_shipping_label and self.ml_shipment_id:
+            download_result = self._download_and_save_shipping_label(logistic_config)
+
+            if download_result.get('success'):
+                result['downloaded'] = True
+                result['attachment'] = download_result.get('attachment')
+
+                # Imprimir si esta configurado
+                if logistic_config.auto_print_label:
+                    print_result = self._send_label_to_printer(
+                        download_result['attachment'],
+                        logistic_config
+                    )
+                    if print_result.get('success'):
+                        result['printed'] = True
+                    else:
+                        result['errors'].append(
+                            f"Error impresion: {print_result.get('error')}"
+                        )
+            else:
+                result['errors'].append(
+                    f"Error descarga: {download_result.get('error')}"
+                )
+
+        return result

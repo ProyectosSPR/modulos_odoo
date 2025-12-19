@@ -52,6 +52,12 @@
                     <button name="action_view_sale_order" type="object" string="Ver Orden Venta"
                             class="btn-secondary" icon="fa-external-link"
                             attrs="{'invisible': [('has_sale_order', '=', False)]}"/>
+                    <button name="action_download_shipping_label" type="object" string="Descargar Etiqueta"
+                            class="btn-secondary" icon="fa-download"
+                            attrs="{'invisible': ['|', ('ml_shipment_id', '=', False), ('has_sale_order', '=', False)]}"/>
+                    <button name="action_print_shipping_label" type="object" string="Imprimir Etiqueta"
+                            class="btn-secondary" icon="fa-print"
+                            attrs="{'invisible': ['|', ('ml_shipment_id', '=', False), ('has_sale_order', '=', False)]}"/>
                     <field name="status" widget="statusbar"
                            statusbar_visible="confirmed,paid"/>
                 </header>

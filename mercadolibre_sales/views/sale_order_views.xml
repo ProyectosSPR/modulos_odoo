@@ -13,6 +13,16 @@
                         attrs="{'invisible': [('is_ml_order', '=', False)]}">
                     <span>Ordenes ML</span>
                 </button>
+                <button name="action_download_shipping_label" type="object"
+                        class="oe_stat_button" icon="fa-download"
+                        attrs="{'invisible': ['|', ('is_ml_order', '=', False), ('ml_shipment_id', '=', False)]}">
+                    <span>Etiqueta</span>
+                </button>
+                <button name="action_print_shipping_label" type="object"
+                        class="oe_stat_button" icon="fa-print"
+                        attrs="{'invisible': ['|', ('is_ml_order', '=', False), ('ml_shipment_id', '=', False)]}">
+                    <span>Imprimir</span>
+                </button>
             </xpath>
 
             <!-- Add MercadoLibre tab in notebook -->
