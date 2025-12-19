@@ -159,6 +159,27 @@
                     </group>
 
                     <notebook>
+                        <page string="Productos" name="items">
+                            <field name="item_ids" readonly="1" nolabel="1">
+                                <tree>
+                                    <field name="ml_item_id"/>
+                                    <field name="title"/>
+                                    <field name="variation_name"/>
+                                    <field name="seller_sku"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_price"/>
+                                    <field name="currency_id_ml"/>
+                                    <field name="total_amount" sum="Total"/>
+                                    <field name="condition"/>
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <button name="action_sync_items" type="object"
+                                        string="Sincronizar Productos" icon="fa-refresh"
+                                        class="btn-secondary btn-sm"/>
+                            </div>
+                        </page>
+
                         <page string="Mensajes" name="messages">
                             <field name="claim_message_ids" readonly="1">
                                 <tree decoration-info="is_from_us == True"

@@ -189,6 +189,8 @@ class MercadolibreClaim(models.Model):
         ('seller', 'Vendedor'),
         ('buyer', 'Comprador'),
         ('mediator', 'Mediador'),
+        ('complainant', 'Demandante'),
+        ('respondent', 'Demandado'),
     ], string='Responsable Accion', readonly=True)
 
     # === DETALLES ADICIONALES ===
@@ -262,6 +264,15 @@ class MercadolibreClaim(models.Model):
         'mercadolibre.claim.action.log',
         'claim_id',
         string='Historial de Acciones'
+    )
+    item_ids = fields.One2many(
+        'mercadolibre.claim.item',
+        'claim_id',
+        string='Productos Reclamados'
+    )
+    item_count = fields.Integer(
+        string='Num. Items',
+        compute='_compute_item_count'
     )
 
     # === ENTIDADES RELACIONADAS ===
@@ -399,6 +410,11 @@ class MercadolibreClaim(models.Model):
     def _compute_claim_message_count(self):
         for record in self:
             record.claim_message_count = len(record.claim_message_ids)
+
+    @api.depends('item_ids')
+    def _compute_item_count(self):
+        for record in self:
+            record.item_count = len(record.item_ids)
 
     # =====================================================
     # METODOS DE CREACION/ACTUALIZACION
@@ -609,6 +625,7 @@ class MercadolibreClaim(models.Model):
             # Sincronizar datos relacionados
             self._sync_messages()
             self._sync_detail()
+            self._sync_order_items()
 
             return True
 
@@ -752,6 +769,119 @@ class MercadolibreClaim(models.Model):
         except requests.exceptions.RequestException as e:
             _logger.error('Error sincronizando detalle: %s', str(e))
             return False
+
+    def _sync_order_items(self):
+        """Sincroniza los items/productos de la orden asociada al reclamo"""
+        self.ensure_one()
+
+        if not self.ml_order_id:
+            _logger.info('Claim %s no tiene order_id para sincronizar items', self.ml_claim_id)
+            return False
+
+        access_token = self.account_id.get_valid_token_with_retry()
+        if not access_token:
+            return False
+
+        # Obtener la orden para ver los items
+        url = f'https://api.mercadolibre.com/orders/{self.ml_order_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                _logger.error('Error obteniendo orden %s: %s', self.ml_order_id, response.text)
+                return False
+
+            order_data = response.json()
+            order_items = order_data.get('order_items', [])
+
+            ItemModel = self.env['mercadolibre.claim.item']
+
+            for item_data in order_items:
+                item_info = item_data.get('item', {})
+                ml_item_id = item_info.get('id')
+
+                if not ml_item_id:
+                    continue
+
+                # Buscar si ya existe
+                existing = ItemModel.search([
+                    ('claim_id', '=', self.id),
+                    ('ml_item_id', '=', ml_item_id),
+                ], limit=1)
+
+                # Construir variación
+                variation_attrs = item_info.get('variation_attributes', []) or []
+                variation_name = ', '.join([
+                    f"{attr.get('name', '')}: {attr.get('value_name', '')}"
+                    for attr in variation_attrs
+                ]) if variation_attrs else ''
+
+                vals = {
+                    'claim_id': self.id,
+                    'ml_item_id': ml_item_id,
+                    'variation_id': str(item_info.get('variation_id', '')) if item_info.get('variation_id') else '',
+                    'title': item_info.get('title', ''),
+                    'category_id': item_info.get('category_id', ''),
+                    'variation_name': variation_name,
+                    'seller_sku': item_info.get('seller_sku', ''),
+                    'quantity': item_data.get('quantity', 0),
+                    'claimed_quantity': item_data.get('quantity', 0),  # Por defecto toda la cantidad
+                    'unit_price': item_data.get('unit_price', 0),
+                    'currency_id_ml': item_data.get('currency_id', ''),
+                    'condition': item_info.get('condition', ''),
+                    'warranty': item_info.get('warranty', ''),
+                }
+
+                # Intentar obtener imagen del item
+                if ml_item_id:
+                    self._fetch_item_image(vals, ml_item_id, access_token)
+
+                if existing:
+                    existing.write(vals)
+                else:
+                    ItemModel.create(vals)
+
+            _logger.info('Sincronizados %d items para claim %s', len(order_items), self.ml_claim_id)
+            return True
+
+        except requests.exceptions.RequestException as e:
+            _logger.error('Error sincronizando items de orden: %s', str(e))
+            return False
+
+    def _fetch_item_image(self, vals, ml_item_id, access_token):
+        """Obtiene la imagen del item"""
+        try:
+            url = f'https://api.mercadolibre.com/items/{ml_item_id}'
+            headers = {'Authorization': f'Bearer {access_token}'}
+            response = requests.get(url, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                item_data = response.json()
+                pictures = item_data.get('pictures', [])
+                if pictures:
+                    vals['picture_url'] = pictures[0].get('url', '')
+                    vals['thumbnail'] = pictures[0].get('secure_url', '') or pictures[0].get('url', '')
+        except Exception as e:
+            _logger.warning('No se pudo obtener imagen del item %s: %s', ml_item_id, str(e))
+
+    def action_sync_items(self):
+        """Acción para sincronizar items manualmente"""
+        self.ensure_one()
+        self._sync_order_items()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': _('Items sincronizados correctamente'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
     def action_sync_messages(self):
         """Accion para sincronizar mensajes manualmente"""
