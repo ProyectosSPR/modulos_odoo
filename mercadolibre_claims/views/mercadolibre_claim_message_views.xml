@@ -34,6 +34,7 @@
         <field name="model">mercadolibre.claim.message</field>
         <field name="arch" type="xml">
             <form string="Mensaje">
+                <field name="attachment_count" invisible="1"/>
                 <sheet>
                     <group>
                         <group string="Informacion">
