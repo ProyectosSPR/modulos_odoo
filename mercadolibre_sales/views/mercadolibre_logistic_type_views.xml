@@ -179,21 +179,18 @@
         <field name="name">mercadolibre.payment.status.config.tree</field>
         <field name="model">mercadolibre.payment.status.config</field>
         <field name="arch" type="xml">
-            <tree string="Config. Etiquetas por Estado de Pago" editable="bottom">
+            <tree string="Config. Etiquetas por Estado de Pago">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
-                <field name="status_pending"/>
-                <field name="status_approved"/>
-                <field name="status_authorized"/>
-                <field name="status_in_process"/>
-                <field name="status_in_mediation"/>
-                <field name="status_rejected"/>
-                <field name="status_cancelled"/>
-                <field name="status_refunded"/>
-                <field name="status_charged_back"/>
                 <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="status_pending" string="Pend"/>
+                <field name="status_approved" string="Aprob"/>
+                <field name="status_in_process" string="Proc" optional="hide"/>
+                <field name="status_rejected" string="Rech" optional="hide"/>
+                <field name="status_cancelled" string="Canc" optional="hide"/>
+                <field name="status_refunded" string="Reemb" optional="hide"/>
                 <field name="account_id" optional="hide"/>
-                <field name="active"/>
+                <field name="active" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -205,45 +202,64 @@
         <field name="arch" type="xml">
             <form string="Config. Etiquetas por Estado de Pago">
                 <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre de la configuracion (ej: Pendiente de Pago)"/>
+                        </h1>
+                    </div>
                     <group>
-                        <group string="Identificacion">
-                            <field name="name"/>
-                            <field name="sequence"/>
-                            <field name="active"/>
+                        <group string="Etiquetas a Asignar">
+                            <field name="tag_ids" widget="many2many_tags"
+                                   options="{'color_field': 'color', 'no_create_edit': False}"
+                                   placeholder="Seleccione o cree etiquetas..."/>
                         </group>
                         <group string="Alcance">
-                            <field name="account_id"/>
+                            <field name="account_id" placeholder="Todas las cuentas"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <group string="Estados de Pago">
-                        <div class="alert alert-info" role="alert">
-                            Seleccione los estados de pago que activaran estas etiquetas.
-                            Puede seleccionar multiples estados para que compartan las mismas etiquetas.
-                        </div>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="status_pending"/>
-                            <field name="status_approved"/>
-                            <field name="status_authorized"/>
-                            <field name="status_in_process"/>
-                            <field name="status_in_mediation"/>
-                        </group>
-                        <group>
-                            <field name="status_rejected"/>
-                            <field name="status_cancelled"/>
-                            <field name="status_refunded"/>
-                            <field name="status_charged_back"/>
-                        </group>
-                    </group>
-                    <group string="Etiquetas a Asignar">
-                        <field name="tag_ids" widget="many2many_tags"
-                               options="{'color_field': 'color'}" nolabel="1"/>
-                    </group>
-                    <group string="Notas">
-                        <field name="description" nolabel="1" placeholder="Notas..."/>
-                    </group>
+                    <notebook>
+                        <page string="Estados de Pago" name="payment_status">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Seleccione los estados de pago</strong> que activaran las etiquetas configuradas arriba.
+                                Puede seleccionar multiples estados para que compartan las mismas etiquetas.
+                            </div>
+                            <group>
+                                <group string="Estados Positivos">
+                                    <field name="status_approved"/>
+                                    <field name="status_authorized"/>
+                                </group>
+                                <group string="Estados Pendientes">
+                                    <field name="status_pending"/>
+                                    <field name="status_in_process"/>
+                                    <field name="status_in_mediation"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Estados Negativos">
+                                    <field name="status_rejected"/>
+                                    <field name="status_cancelled"/>
+                                </group>
+                                <group string="Devoluciones">
+                                    <field name="status_refunded"/>
+                                    <field name="status_charged_back"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Configuracion" name="config">
+                            <group>
+                                <group>
+                                    <field name="sequence"/>
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                            <group string="Notas">
+                                <field name="description" nolabel="1" placeholder="Notas o descripcion..."/>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -278,14 +294,12 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="logistic_type_id"/>
-                <field name="status_pending"/>
-                <field name="status_handling"/>
-                <field name="status_ready_to_ship"/>
-                <field name="status_shipped"/>
-                <field name="status_in_transit"/>
-                <field name="status_delivered"/>
                 <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
-                <field name="active"/>
+                <field name="status_handling" string="Prep"/>
+                <field name="status_ready_to_ship" string="Listo"/>
+                <field name="status_shipped" string="Enviado"/>
+                <field name="status_delivered" string="Entreg"/>
+                <field name="active" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -297,43 +311,64 @@
         <field name="arch" type="xml">
             <form string="Config. Etiquetas por Estado de Envio">
                 <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre (ej: En Preparacion, En Transito)"/>
+                        </h1>
+                    </div>
                     <group>
-                        <group string="Identificacion">
-                            <field name="name"/>
-                            <field name="logistic_type_id"/>
-                            <field name="sequence"/>
-                            <field name="active"/>
-                        </group>
                         <group string="Etiquetas a Asignar">
                             <field name="tag_ids" widget="many2many_tags"
-                                   options="{'color_field': 'color'}" nolabel="1"/>
+                                   options="{'color_field': 'color', 'no_create_edit': False}"
+                                   placeholder="Seleccione o cree etiquetas..."/>
+                        </group>
+                        <group string="Tipo Logistico">
+                            <field name="logistic_type_id"/>
                         </group>
                     </group>
-                    <group string="Estados de Envio">
-                        <div class="alert alert-info" role="alert">
-                            Seleccione los estados de envio que activaran estas etiquetas.
-                            Puede agrupar varios estados para que compartan las mismas etiquetas.
-                        </div>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="status_pending"/>
-                            <field name="status_handling"/>
-                            <field name="status_ready_to_ship"/>
-                            <field name="status_shipped"/>
-                            <field name="status_in_transit"/>
-                        </group>
-                        <group>
-                            <field name="status_out_for_delivery"/>
-                            <field name="status_delivered"/>
-                            <field name="status_not_delivered"/>
-                            <field name="status_returned"/>
-                            <field name="status_cancelled"/>
-                        </group>
-                    </group>
-                    <group string="Notas">
-                        <field name="description" nolabel="1" placeholder="Notas..."/>
-                    </group>
+                    <notebook>
+                        <page string="Estados de Envio" name="shipment_status">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Seleccione los estados de envio</strong> que activaran las etiquetas configuradas.
+                                Puede agrupar varios estados para que compartan las mismas etiquetas.
+                            </div>
+                            <group>
+                                <group string="Preparacion">
+                                    <field name="status_pending"/>
+                                    <field name="status_handling"/>
+                                    <field name="status_ready_to_ship"/>
+                                </group>
+                                <group string="En Camino">
+                                    <field name="status_shipped"/>
+                                    <field name="status_in_transit"/>
+                                    <field name="status_out_for_delivery"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Finalizados">
+                                    <field name="status_delivered"/>
+                                    <field name="status_not_delivered"/>
+                                </group>
+                                <group string="Cancelados/Devueltos">
+                                    <field name="status_returned"/>
+                                    <field name="status_cancelled"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Configuracion" name="config">
+                            <group>
+                                <group>
+                                    <field name="sequence"/>
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                            <group string="Notas">
+                                <field name="description" nolabel="1" placeholder="Notas o descripcion..."/>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

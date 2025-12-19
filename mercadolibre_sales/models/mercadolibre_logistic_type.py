@@ -281,7 +281,6 @@ class MercadolibreShipmentStatusConfig(models.Model):
         'mercadolibre_shipment_status_config_tag_rel',
         'config_id', 'tag_id',
         string='Etiquetas',
-        required=True,
         help='Etiquetas a asignar a la orden cuando el envio tenga alguno de los estados seleccionados'
     )
 
@@ -378,7 +377,6 @@ class MercadolibrePaymentStatusConfig(models.Model):
         'mercadolibre_payment_status_config_tag_rel',
         'config_id', 'tag_id',
         string='Etiquetas',
-        required=True,
         help='Etiquetas a asignar a la orden cuando el pago tenga alguno de los estados seleccionados'
     )
 
