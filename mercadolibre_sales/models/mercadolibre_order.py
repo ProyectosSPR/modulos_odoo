@@ -431,20 +431,57 @@ class MercadolibreOrder(models.Model):
         return order, is_new
 
     def _get_logistic_type_from_data(self, data):
-        """Obtiene el tipo logistico de los datos de la orden"""
-        # Primero intentar desde shipping.logistic
+        """
+        Obtiene el tipo logistico de los datos de la orden.
+
+        El logistic_type puede venir de:
+        1. shipping.logistic_type directamente en la orden
+        2. Los tags de la orden (como backup)
+        3. Consultando el shipment (si no viene en la orden)
+        """
+        # Mapeo de valores de ML a nuestro selection
+        logistic_map = {
+            'fulfillment': 'fulfillment',
+            'xd_drop_off': 'xd_drop_off',
+            'cross_docking': 'cross_docking',
+            'drop_off': 'drop_off',
+            'self_service': 'self_service',
+            'custom': 'custom',
+            'not_specified': 'not_specified',
+            'default': 'custom',  # me1 default = envio propio
+        }
+
+        # 1. Intentar desde shipping.logistic_type (viene en la orden)
         shipping = data.get('shipping', {}) or {}
+        logistic_type = shipping.get('logistic_type', '')
 
-        # El logistic_type puede venir directamente o necesitar consulta a shipment
-        # Por ahora, lo obtendremos cuando sincronizemos el shipment
-        # Aqui solo ponemos un valor por defecto basado en tags
+        if logistic_type and logistic_type in logistic_map:
+            return logistic_map[logistic_type]
 
+        # 2. Intentar desde los tags de la orden
         tags = data.get('tags', []) or []
+        tags_str = str(tags).lower()
 
-        if 'fulfillment' in str(tags).lower():
+        if 'fulfillment' in tags_str:
             return 'fulfillment'
+        if 'self_service' in tags_str:
+            return 'self_service'
+        if 'drop_off' in tags_str:
+            return 'drop_off'
+        if 'cross_docking' in tags_str:
+            return 'cross_docking'
 
-        return False  # Se actualizara cuando se sincronice el shipment
+        # 3. Inferir del modo de envio
+        shipping_mode = shipping.get('mode', '')
+        if shipping_mode == 'me1':
+            return 'custom'  # me1 generalmente es envio propio
+        elif shipping_mode == 'custom':
+            return 'custom'
+        elif shipping_mode == 'not_specified':
+            return 'not_specified'
+
+        # Si no se puede determinar, retornar False para que se actualice despues
+        return False
 
     def _sync_items(self, order, items_data):
         """Sincroniza los items de la orden"""
@@ -527,6 +564,132 @@ class MercadolibreOrder(models.Model):
             return datetime.strptime(dt_string, '%Y-%m-%d')
         except (ValueError, TypeError) as e:
             _logger.warning('Error parseando fecha %s: %s', dt_string, str(e))
+            return False
+
+    def action_sync_logistic_type(self):
+        """
+        Sincroniza el logistic_type desde el shipment de MercadoLibre.
+        Util cuando el logistic_type no viene en la orden directamente.
+        """
+        self.ensure_one()
+        import requests
+
+        if not self.ml_shipment_id:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sin Envio'),
+                    'message': _('Esta orden no tiene ID de envio'),
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+
+        logistic_type = self._fetch_logistic_type_from_shipment()
+
+        if logistic_type:
+            self.write({'logistic_type': logistic_type})
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Tipo Logistico Actualizado'),
+                    'message': _('Tipo logistico: %s') % dict(self._fields['logistic_type'].selection).get(logistic_type, logistic_type),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Error'),
+                    'message': _('No se pudo obtener el tipo logistico'),
+                    'type': 'danger',
+                    'sticky': False,
+                }
+            }
+
+    def _fetch_logistic_type_from_shipment(self):
+        """
+        Obtiene el logistic_type consultando el endpoint /shipments/{id}.
+        Retorna el logistic_type mapeado o False.
+        """
+        self.ensure_one()
+        import requests
+
+        if not self.ml_shipment_id:
+            return False
+
+        try:
+            access_token = self.account_id.get_valid_token()
+        except Exception as e:
+            _logger.error('Error obteniendo token: %s', str(e))
+            return False
+
+        url = f'https://api.mercadolibre.com/shipments/{self.ml_shipment_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Mapeo de valores de ML a nuestro selection
+                logistic_map = {
+                    'fulfillment': 'fulfillment',
+                    'xd_drop_off': 'xd_drop_off',
+                    'cross_docking': 'cross_docking',
+                    'drop_off': 'drop_off',
+                    'self_service': 'self_service',
+                    'custom': 'custom',
+                    'not_specified': 'not_specified',
+                    'default': 'custom',
+                }
+
+                # El logistic_type puede venir directamente o en logistic.type
+                logistic_type = data.get('logistic_type', '')
+
+                if not logistic_type:
+                    logistic = data.get('logistic', {}) or {}
+                    logistic_type = logistic.get('type', '')
+
+                if logistic_type and logistic_type in logistic_map:
+                    _logger.info('Logistic type obtenido para shipment %s: %s',
+                               self.ml_shipment_id, logistic_type)
+                    return logistic_map[logistic_type]
+
+                # Intentar inferir del modo
+                mode = data.get('mode', '')
+                if not mode:
+                    logistic = data.get('logistic', {}) or {}
+                    mode = logistic.get('mode', '')
+
+                if mode == 'me1':
+                    return 'custom'
+                elif mode == 'me2':
+                    # me2 sin tipo especifico, buscar en tags
+                    tags = data.get('tags', []) or []
+                    if 'fulfillment' in str(tags).lower():
+                        return 'fulfillment'
+                    return 'xd_drop_off'  # Por defecto para me2
+
+                return False
+
+            else:
+                _logger.error('Error obteniendo shipment %s: %s',
+                            self.ml_shipment_id, response.text)
+                return False
+
+        except Exception as e:
+            _logger.error('Error en request de shipment %s: %s',
+                        self.ml_shipment_id, str(e))
             return False
 
     def action_view_raw_data(self):

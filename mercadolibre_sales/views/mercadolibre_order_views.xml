@@ -39,6 +39,8 @@
                 <header>
                     <button name="action_sync_discounts" type="object" string="Sincronizar Descuentos"
                             class="btn-secondary" icon="fa-refresh"/>
+                    <button name="action_sync_logistic_type" type="object" string="Sync Tipo Envio"
+                            class="btn-secondary" icon="fa-truck"/>
                     <button name="action_create_sale_order" type="object" string="Crear Orden Venta"
                             class="btn-primary" icon="fa-shopping-cart"
                             attrs="{'invisible': [('has_sale_order', '=', True)]}"/>

@@ -62,6 +62,13 @@ class MercadolibreOrderSync(models.TransientModel):
         help='Obtener informacion detallada de descuentos'
     )
 
+    # Sync logistic type
+    sync_logistic_type = fields.Boolean(
+        string='Sincronizar Tipo Envio',
+        default=True,
+        help='Obtener tipo logistico desde el shipment cuando no viene en la orden'
+    )
+
     # Results
     sync_count = fields.Integer(
         string='Ordenes Sincronizadas',
@@ -259,8 +266,23 @@ class MercadolibreOrderSync(models.TransientModel):
                 if self.sync_discounts and order:
                     order._sync_discounts_from_api()
 
+                # Sincronizar tipo logistico si no vino en la orden
+                logistic_info = ''
+                if self.sync_logistic_type and order:
+                    if not order.logistic_type and order.ml_shipment_id:
+                        try:
+                            logistic_type = order._fetch_logistic_type_from_shipment()
+                            if logistic_type:
+                                order.write({'logistic_type': logistic_type})
+                                logistic_info = f' [{logistic_type}]'
+                        except Exception as e:
+                            _logger.warning('Error obteniendo logistic_type para %s: %s',
+                                          order.ml_order_id, str(e))
+                    elif order.logistic_type:
+                        logistic_info = f' [{order.logistic_type}]'
+
                 pack_info = f' Pack:{pack_id}' if pack_id else ''
-                log_lines.append(f'  [{action_label:^11}]  #{ml_id}  ${amount:>12,.2f}  {status}{pack_info}')
+                log_lines.append(f'  [{action_label:^11}]  #{ml_id}  ${amount:>12,.2f}  {status}{pack_info}{logistic_info}')
 
             except Exception as e:
                 error_count += 1
@@ -400,6 +422,19 @@ class MercadolibreOrderSync(models.TransientModel):
             if self.sync_discounts and order:
                 order._sync_discounts_from_api()
                 log_lines.append(f'  Descuentos sincronizados: {len(order.discount_ids)}')
+
+            # Sincronizar tipo logistico
+            if self.sync_logistic_type and order:
+                if not order.logistic_type and order.ml_shipment_id:
+                    try:
+                        logistic_type = order._fetch_logistic_type_from_shipment()
+                        if logistic_type:
+                            order.write({'logistic_type': logistic_type})
+                            log_lines.append(f'  Tipo logistico sincronizado: {logistic_type}')
+                    except Exception as e:
+                        log_lines.append(f'  Error sincronizando tipo logistico: {str(e)}')
+                elif order.logistic_type:
+                    log_lines.append(f'  Tipo logistico: {order.logistic_type}')
 
             log_lines.append('-' * 50)
             log_lines.append('  RESULTADO')

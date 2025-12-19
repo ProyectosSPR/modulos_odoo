@@ -17,6 +17,7 @@
                         <field name="status_filter"/>
                         <field name="limit"/>
                         <field name="sync_discounts"/>
+                        <field name="sync_logistic_type"/>
                     </group>
                 </group>
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">

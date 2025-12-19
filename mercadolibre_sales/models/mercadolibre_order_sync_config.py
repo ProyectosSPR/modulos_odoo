@@ -489,6 +489,18 @@ class MercadolibreOrderSyncConfig(models.Model):
                     if self.sync_discounts:
                         order._sync_discounts_from_api()
 
+                    # Sincronizar logistic_type desde shipment si no vino en la orden
+                    if not order.logistic_type and order.ml_shipment_id:
+                        try:
+                            logistic_type = order._fetch_logistic_type_from_shipment()
+                            if logistic_type:
+                                order.write({'logistic_type': logistic_type})
+                                _logger.info('Logistic type actualizado para orden %s: %s',
+                                           order.ml_order_id, logistic_type)
+                        except Exception as e:
+                            _logger.warning('Error obteniendo logistic_type para %s: %s',
+                                          order.ml_order_id, str(e))
+
             except Exception as e:
                 error_count += 1
                 _logger.error('Error procesando orden %s: %s', ml_id, str(e))
