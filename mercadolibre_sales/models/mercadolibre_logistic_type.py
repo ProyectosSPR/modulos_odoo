@@ -69,10 +69,27 @@ class MercadolibreLogisticType(models.Model):
         default=False,
         help='Confirmar/validar el picking automaticamente (solo si auto_confirm_order esta activo)'
     )
-    auto_validate_stock_move = fields.Boolean(
-        string='Validar Movimiento Stock',
-        default=False,
-        help='Validar automaticamente los movimientos de stock'
+    stock_validation_policy = fields.Selection([
+        ('strict', 'Estricto - Solo si hay stock completo'),
+        ('partial', 'Parcial - Validar lo disponible, notificar faltantes'),
+        ('force', 'Forzar - Validar aunque no haya stock (puede generar negativos)'),
+    ], string='Politica de Validacion de Stock',
+       default='strict',
+       help='Define como manejar la validacion cuando no hay stock suficiente:\n'
+            '- Estricto: No valida si falta stock, notifica el error\n'
+            '- Parcial: Valida lo disponible y crea backorder para el resto\n'
+            '- Forzar: Valida todo aunque genere stock negativo (no recomendado)'
+    )
+    notify_stock_issues = fields.Boolean(
+        string='Notificar Problemas de Stock',
+        default=True,
+        help='Crear actividad/notificacion cuando hay problemas de stock'
+    )
+    stock_issue_user_id = fields.Many2one(
+        'res.users',
+        string='Usuario a Notificar',
+        help='Usuario que recibira las notificaciones de problemas de stock. '
+             'Si no se especifica, se notifica al responsable del almacen.'
     )
 
     # =========================================================================

@@ -262,6 +262,21 @@ class MercadolibreOrder(models.Model):
         readonly=True
     )
 
+    # Stock validation tracking
+    stock_validation_status = fields.Selection([
+        ('pending', 'Pendiente'),
+        ('ok', 'Completo'),
+        ('partial', 'Parcial'),
+        ('failed', 'Sin Stock'),
+        ('forced', 'Forzado'),
+    ], string='Estado Validacion Stock', default='pending', tracking=True)
+
+    stock_validation_notes = fields.Text(
+        string='Notas de Stock',
+        readonly=True,
+        help='Detalle de productos con problemas de stock'
+    )
+
     has_sale_order = fields.Boolean(
         string='Tiene Orden Odoo',
         compute='_compute_has_sale_order',
@@ -1052,7 +1067,7 @@ class MercadolibreOrder(models.Model):
 
                     # Confirmar picking si esta configurado en el tipo logistico
                     if logistic_config and logistic_config.auto_confirm_picking:
-                        self._auto_confirm_picking(sale_order)
+                        self._auto_confirm_picking(sale_order, logistic_config)
 
                 except Exception as e:
                     _logger.warning('Error al confirmar orden %s: %s', sale_order.name, str(e))
@@ -1268,16 +1283,399 @@ class MercadolibreOrder(models.Model):
 
         return False
 
-    def _auto_confirm_picking(self, sale_order):
-        """Confirma automaticamente los pickings de la orden"""
-        for picking in sale_order.picking_ids:
-            if picking.state == 'assigned':
-                try:
-                    # Validar cantidades
-                    for move in picking.move_ids:
-                        move.quantity_done = move.product_uom_qty
+    def _auto_confirm_picking(self, sale_order, logistic_config=None):
+        """
+        Confirma automaticamente los pickings de la orden.
 
-                    picking.button_validate()
-                    _logger.info('Picking %s validado automaticamente', picking.name)
-                except Exception as e:
-                    _logger.warning('Error validando picking %s: %s', picking.name, str(e))
+        Proceso:
+        1. Busca pickings de la orden
+        2. Verifica disponibilidad de stock
+        3. Segun la politica de stock:
+           - strict: Solo valida si hay stock completo
+           - partial: Valida lo disponible, crea backorder
+           - force: Valida todo aunque no haya stock
+        4. Notifica problemas de stock si esta configurado
+
+        Args:
+            sale_order: Orden de venta
+            logistic_config: Configuracion del tipo logistico (opcional)
+
+        Returns:
+            dict con resultado de la validacion:
+            {
+                'success': bool,
+                'validated_pickings': list,
+                'stock_issues': list of dicts con productos sin stock
+            }
+        """
+        result = {
+            'success': True,
+            'validated_pickings': [],
+            'stock_issues': [],
+        }
+
+        # Obtener politica de stock
+        policy = 'strict'
+        notify_issues = True
+        notify_user = None
+
+        if logistic_config:
+            policy = logistic_config.stock_validation_policy or 'strict'
+            notify_issues = logistic_config.notify_stock_issues
+            notify_user = logistic_config.stock_issue_user_id
+
+        for picking in sale_order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel')):
+            try:
+                _logger.info('Procesando picking %s (estado: %s, politica: %s)',
+                           picking.name, picking.state, policy)
+
+                # Si el picking esta en borrador, confirmarlo
+                if picking.state == 'draft':
+                    picking.action_confirm()
+                    _logger.debug('Picking %s confirmado (draft -> waiting/confirmed)', picking.name)
+
+                # Si el picking esta esperando o confirmado, intentar asignar stock
+                if picking.state in ('waiting', 'confirmed'):
+                    picking.action_assign()
+                    _logger.debug('Picking %s: intento de asignacion de stock', picking.name)
+
+                # Verificar disponibilidad de stock
+                stock_check = self._check_picking_stock_availability(picking)
+
+                if stock_check['fully_available']:
+                    # Stock completo, validar normalmente
+                    self._set_picking_quantities_done(picking, use_reserved=True)
+                    self._validate_picking(picking, create_backorder=False)
+                    result['validated_pickings'].append(picking.name)
+                    self.write({
+                        'stock_validation_status': 'ok',
+                        'stock_validation_notes': False,
+                    })
+
+                elif stock_check['partially_available']:
+                    # Stock parcial
+                    result['stock_issues'].extend(stock_check['missing_products'])
+
+                    if policy == 'strict':
+                        # No validar, solo notificar
+                        self._notify_stock_issues(
+                            sale_order, picking, stock_check['missing_products'],
+                            notify_issues, notify_user
+                        )
+                        self.write({
+                            'stock_validation_status': 'failed',
+                            'stock_validation_notes': self._format_stock_issues(stock_check['missing_products']),
+                        })
+                        result['success'] = False
+                        _logger.warning('Picking %s: stock insuficiente (politica estricta)', picking.name)
+
+                    elif policy == 'partial':
+                        # Validar lo disponible, crear backorder
+                        self._set_picking_quantities_done(picking, use_reserved=True)
+                        self._validate_picking(picking, create_backorder=True)
+                        result['validated_pickings'].append(picking.name)
+                        self._notify_stock_issues(
+                            sale_order, picking, stock_check['missing_products'],
+                            notify_issues, notify_user, is_backorder=True
+                        )
+                        self.write({
+                            'stock_validation_status': 'partial',
+                            'stock_validation_notes': self._format_stock_issues(
+                                stock_check['missing_products'], backorder=True
+                            ),
+                        })
+                        _logger.info('Picking %s: validacion parcial con backorder', picking.name)
+
+                    elif policy == 'force':
+                        # Forzar validacion aunque no haya stock
+                        self._set_picking_quantities_done(picking, use_reserved=False, force_all=True)
+                        self._validate_picking(picking, create_backorder=False)
+                        result['validated_pickings'].append(picking.name)
+                        self._notify_stock_issues(
+                            sale_order, picking, stock_check['missing_products'],
+                            notify_issues, notify_user, is_forced=True
+                        )
+                        self.write({
+                            'stock_validation_status': 'forced',
+                            'stock_validation_notes': self._format_stock_issues(
+                                stock_check['missing_products'], forced=True
+                            ),
+                        })
+                        _logger.warning('Picking %s: validacion forzada sin stock completo', picking.name)
+
+                else:
+                    # Sin stock disponible
+                    result['stock_issues'].extend(stock_check['missing_products'])
+
+                    if policy == 'force':
+                        # Forzar incluso sin nada de stock
+                        self._set_picking_quantities_done(picking, use_reserved=False, force_all=True)
+                        self._validate_picking(picking, create_backorder=False)
+                        result['validated_pickings'].append(picking.name)
+                        self._notify_stock_issues(
+                            sale_order, picking, stock_check['missing_products'],
+                            notify_issues, notify_user, is_forced=True
+                        )
+                        self.write({
+                            'stock_validation_status': 'forced',
+                            'stock_validation_notes': self._format_stock_issues(
+                                stock_check['missing_products'], forced=True
+                            ),
+                        })
+                    else:
+                        # No hay stock, notificar error
+                        self._notify_stock_issues(
+                            sale_order, picking, stock_check['missing_products'],
+                            notify_issues, notify_user
+                        )
+                        self.write({
+                            'stock_validation_status': 'failed',
+                            'stock_validation_notes': self._format_stock_issues(stock_check['missing_products']),
+                        })
+                        result['success'] = False
+                        _logger.warning('Picking %s: sin stock disponible', picking.name)
+
+            except Exception as e:
+                _logger.error('Error validando picking %s: %s', picking.name, str(e))
+                result['success'] = False
+                self.write({
+                    'stock_validation_status': 'failed',
+                    'stock_validation_notes': f'Error: {str(e)}',
+                })
+
+        return result
+
+    def _check_picking_stock_availability(self, picking):
+        """
+        Verifica la disponibilidad de stock para un picking.
+
+        Returns:
+            dict: {
+                'fully_available': bool,
+                'partially_available': bool,
+                'missing_products': list of dicts
+            }
+        """
+        missing_products = []
+        total_demanded = 0
+        total_reserved = 0
+
+        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            demanded = move.product_uom_qty
+            reserved = move.reserved_availability or 0
+
+            total_demanded += demanded
+            total_reserved += reserved
+
+            if reserved < demanded:
+                missing_products.append({
+                    'product_id': move.product_id.id,
+                    'product_name': move.product_id.display_name,
+                    'product_code': move.product_id.default_code or '',
+                    'demanded': demanded,
+                    'reserved': reserved,
+                    'missing': demanded - reserved,
+                    'uom': move.product_uom.name,
+                })
+
+        return {
+            'fully_available': len(missing_products) == 0,
+            'partially_available': total_reserved > 0 and len(missing_products) > 0,
+            'missing_products': missing_products,
+        }
+
+    def _set_picking_quantities_done(self, picking, use_reserved=True, force_all=False):
+        """
+        Establece las cantidades hechas en las lineas de movimiento del picking.
+
+        Args:
+            picking: stock.picking a procesar
+            use_reserved: Si True, usa la cantidad reservada. Si False, usa la demandada.
+            force_all: Si True, fuerza todas las cantidades demandadas aunque no haya stock.
+        """
+        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            if force_all:
+                # Forzar cantidad demandada completa
+                qty_to_do = move.product_uom_qty
+            elif use_reserved:
+                # Usar solo lo reservado
+                qty_to_do = move.reserved_availability or 0
+            else:
+                qty_to_do = move.product_uom_qty
+
+            move.quantity_done = qty_to_do
+
+            # Actualizar move_line_ids si existen
+            if move.move_line_ids:
+                for move_line in move.move_line_ids:
+                    if force_all:
+                        move_line.quantity = move_line.quantity_reserved or move.product_uom_qty
+                    elif move_line.quantity == 0:
+                        move_line.quantity = move_line.quantity_reserved
+            elif force_all and move.quantity_done > 0:
+                # Crear move_lines si es forzado y no existen
+                try:
+                    move._action_assign()
+                    for move_line in move.move_line_ids:
+                        move_line.quantity = move_line.quantity_reserved or move.product_uom_qty
+                except Exception:
+                    # Si falla la asignacion, crear linea manual
+                    self.env['stock.move.line'].create({
+                        'move_id': move.id,
+                        'picking_id': picking.id,
+                        'product_id': move.product_id.id,
+                        'product_uom_id': move.product_uom.id,
+                        'location_id': move.location_id.id,
+                        'location_dest_id': move.location_dest_id.id,
+                        'quantity': move.product_uom_qty,
+                    })
+
+            _logger.debug(
+                'Move %s: producto=%s, demandado=%.2f, reservado=%.2f, hecho=%.2f',
+                move.id, move.product_id.name, move.product_uom_qty,
+                move.reserved_availability or 0, move.quantity_done
+            )
+
+    def _validate_picking(self, picking, create_backorder=False):
+        """
+        Valida un picking manejando los wizards automaticamente.
+
+        Args:
+            picking: stock.picking a validar
+            create_backorder: Si True, crea backorder para cantidades pendientes
+        """
+        result = picking.with_context(
+            skip_sms=True,
+            skip_immediate=True
+        ).button_validate()
+
+        # Si retorna un wizard, procesarlo
+        if isinstance(result, dict) and result.get('res_model'):
+            wizard_model = result.get('res_model')
+            wizard_context = result.get('context', {})
+
+            if wizard_model == 'stock.backorder.confirmation':
+                wizard = self.env[wizard_model].with_context(wizard_context).create({})
+                if create_backorder:
+                    wizard.process()
+                    _logger.info('Backorder creado para picking %s', picking.name)
+                else:
+                    wizard.process_cancel_backorder()
+                    _logger.debug('Backorder cancelado para picking %s', picking.name)
+
+            elif wizard_model == 'stock.immediate.transfer':
+                wizard = self.env[wizard_model].with_context(wizard_context).create({})
+                wizard.process()
+                _logger.debug('Transferencia inmediata procesada para picking %s', picking.name)
+
+        _logger.info('Picking %s validado', picking.name)
+
+    def _notify_stock_issues(self, sale_order, picking, missing_products,
+                            notify=True, notify_user=None,
+                            is_backorder=False, is_forced=False):
+        """
+        Notifica problemas de stock creando una actividad en la orden de venta.
+
+        Args:
+            sale_order: Orden de venta
+            picking: Picking con problemas
+            missing_products: Lista de productos con stock faltante
+            notify: Si debe crear notificacion
+            notify_user: Usuario a notificar
+            is_backorder: Si se creo un backorder
+            is_forced: Si se forzo la validacion
+        """
+        if not notify or not missing_products:
+            return
+
+        # Determinar usuario a notificar
+        user = notify_user
+        if not user:
+            # Intentar obtener responsable del almacen
+            if picking.picking_type_id.warehouse_id.user_id:
+                user = picking.picking_type_id.warehouse_id.user_id
+            else:
+                user = self.env.user
+
+        # Construir mensaje
+        if is_forced:
+            title = f'Stock forzado en {picking.name}'
+            note_type = 'ADVERTENCIA: Se forzo la validacion sin stock completo'
+        elif is_backorder:
+            title = f'Backorder creado para {picking.name}'
+            note_type = 'Se creo un backorder para los productos faltantes'
+        else:
+            title = f'Stock insuficiente en {picking.name}'
+            note_type = 'No se pudo validar el picking por falta de stock'
+
+        products_list = '\n'.join([
+            f"- {p['product_name']} [{p['product_code']}]: "
+            f"Faltante {p['missing']:.2f} {p['uom']} "
+            f"(Demandado: {p['demanded']:.2f}, Reservado: {p['reserved']:.2f})"
+            for p in missing_products
+        ])
+
+        note = f"""
+<p><strong>{note_type}</strong></p>
+<p>Orden ML: {self.ml_order_id}</p>
+<p>Orden Odoo: {sale_order.name}</p>
+<p>Picking: {picking.name}</p>
+<p><strong>Productos con problemas:</strong></p>
+<pre>{products_list}</pre>
+"""
+
+        # Crear actividad
+        try:
+            activity_type = self.env.ref('mail.mail_activity_data_warning', raise_if_not_found=False)
+            if not activity_type:
+                activity_type = self.env['mail.activity.type'].search([
+                    ('name', 'ilike', 'warning')
+                ], limit=1)
+            if not activity_type:
+                activity_type = self.env['mail.activity.type'].search([], limit=1)
+
+            self.env['mail.activity'].create({
+                'activity_type_id': activity_type.id if activity_type else False,
+                'summary': title,
+                'note': note,
+                'res_model_id': self.env['ir.model']._get('sale.order').id,
+                'res_id': sale_order.id,
+                'user_id': user.id,
+                'date_deadline': fields.Date.today(),
+            })
+            _logger.info('Actividad creada para orden %s: %s', sale_order.name, title)
+
+        except Exception as e:
+            _logger.warning('Error creando actividad de stock: %s', str(e))
+            # Si falla la actividad, al menos registrar en el chatter
+            try:
+                sale_order.message_post(
+                    body=note,
+                    subject=title,
+                    message_type='notification',
+                )
+            except Exception:
+                pass
+
+    def _format_stock_issues(self, missing_products, backorder=False, forced=False):
+        """Formatea los problemas de stock para guardar en notas."""
+        if not missing_products:
+            return False
+
+        lines = []
+        if forced:
+            lines.append('** VALIDACION FORZADA - PUEDE HABER STOCK NEGATIVO **')
+        elif backorder:
+            lines.append('** BACKORDER CREADO PARA PRODUCTOS FALTANTES **')
+        else:
+            lines.append('** NO SE PUDO VALIDAR POR FALTA DE STOCK **')
+
+        lines.append('')
+        lines.append('Productos con problemas:')
+        for p in missing_products:
+            lines.append(
+                f"- {p['product_name']} [{p['product_code']}]: "
+                f"Faltante {p['missing']:.2f} {p['uom']}"
+            )
+
+        return '\n'.join(lines)

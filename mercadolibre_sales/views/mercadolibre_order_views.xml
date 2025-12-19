@@ -24,6 +24,11 @@
                        decoration-warning="odoo_order_state == 'pending'"
                        decoration-danger="odoo_order_state == 'error'"
                        widget="badge"/>
+                <field name="stock_validation_status" string="Stock" optional="show"
+                       decoration-success="stock_validation_status == 'ok'"
+                       decoration-warning="stock_validation_status in ('partial', 'forced')"
+                       decoration-danger="stock_validation_status == 'failed'"
+                       widget="badge"/>
                 <field name="account_id" string="Cuenta"/>
             </tree>
         </field>
@@ -138,6 +143,17 @@
                                     <field name="sync_status"/>
                                     <field name="last_sync_date"/>
                                     <field name="sync_error" attrs="{'invisible': [('sync_status', '!=', 'error')]}"/>
+                                </group>
+                            </group>
+                            <group string="Validacion de Stock" attrs="{'invisible': [('stock_validation_status', '=', 'pending')]}">
+                                <group>
+                                    <field name="stock_validation_status" widget="badge"
+                                           decoration-success="stock_validation_status == 'ok'"
+                                           decoration-warning="stock_validation_status in ('partial', 'forced')"
+                                           decoration-danger="stock_validation_status == 'failed'"/>
+                                </group>
+                                <group attrs="{'invisible': [('stock_validation_notes', '=', False)]}">
+                                    <field name="stock_validation_notes" readonly="1"/>
                                 </group>
                             </group>
                         </page>

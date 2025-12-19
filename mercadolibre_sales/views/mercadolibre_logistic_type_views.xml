@@ -79,13 +79,26 @@
                                     <field name="auto_confirm_order"/>
                                     <field name="auto_confirm_picking"
                                            attrs="{'invisible': [('auto_confirm_order', '=', False)]}"/>
-                                    <field name="auto_validate_stock_move"
-                                           attrs="{'invisible': [('auto_confirm_picking', '=', False)]}"/>
                                 </group>
                                 <group string="Etiquetas de Envio ML">
                                     <field name="download_shipping_label"/>
                                     <field name="auto_print_label"
                                            attrs="{'invisible': [('download_shipping_label', '=', False)]}"/>
+                                </group>
+                            </group>
+                            <group attrs="{'invisible': [('auto_confirm_picking', '=', False)]}">
+                                <group string="Politica de Stock">
+                                    <field name="stock_validation_policy"/>
+                                    <div class="alert alert-warning" role="alert"
+                                         attrs="{'invisible': [('stock_validation_policy', '!=', 'force')]}">
+                                        <strong>Advertencia:</strong> La politica "Forzar" puede generar stock negativo
+                                        y descuadres de inventario. Use con precaucion.
+                                    </div>
+                                </group>
+                                <group string="Notificaciones de Stock">
+                                    <field name="notify_stock_issues"/>
+                                    <field name="stock_issue_user_id"
+                                           attrs="{'invisible': [('notify_stock_issues', '=', False)]}"/>
                                 </group>
                             </group>
                         </page>
