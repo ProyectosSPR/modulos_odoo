@@ -7,8 +7,13 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_form_ml"/>
         <field name="arch" type="xml">
-            <!-- Agregar boton para ver envio ML -->
-            <xpath expr="//div[@name='button_box']" position="inside">
+            <!-- Agregar campo invisible para attrs del boton -->
+            <xpath expr="//page[@name='mercadolibre']" position="before">
+                <field name="ml_shipment_id_rel" invisible="1"/>
+            </xpath>
+
+            <!-- Agregar boton para ver envio ML en button_box -->
+            <xpath expr="//button[@name='action_view_ml_orders']" position="after">
                 <button name="action_view_ml_shipment" type="object"
                         class="oe_stat_button" icon="fa-truck"
                         attrs="{'invisible': [('ml_shipment_id_rel', '=', False)]}">
@@ -21,17 +26,15 @@
                 </button>
             </xpath>
 
-            <!-- Agregar campos de envio en la pestaña ML -->
-            <xpath expr="//page[@name='ml_info']//group" position="after">
+            <!-- Agregar campos de envio dentro de la pestaña MercadoLibre -->
+            <xpath expr="//page[@name='mercadolibre']/group" position="after">
                 <group string="Informacion de Envio ML"
                        attrs="{'invisible': [('ml_shipment_id', 'in', [False, ''])]}">
                     <group>
-                        <field name="ml_shipment_id_rel" readonly="1" string="Envio"/>
-                        <field name="ml_shipment_status" readonly="1"/>
                         <field name="ml_tracking_number" readonly="1"/>
+                        <field name="ml_carrier_name" readonly="1"/>
                     </group>
                     <group>
-                        <field name="ml_carrier_name" readonly="1"/>
                         <field name="ml_estimated_delivery" readonly="1"/>
                         <field name="ml_delivery_address" readonly="1"/>
                     </group>
@@ -51,7 +54,7 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_tree_ml"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='ml_logistic_type']" position="after">
+            <xpath expr="//field[@name='ml_pack_id']" position="after">
                 <field name="ml_shipment_status" widget="badge" optional="show"
                        decoration-success="ml_shipment_status == 'delivered'"
                        decoration-info="ml_shipment_status in ('shipped', 'in_transit', 'out_for_delivery')"
