@@ -128,6 +128,11 @@ class MercadolibreClaim(models.Model):
         readonly=True,
         help='ID del usuario que reclama (comprador)'
     )
+    complainant_name = fields.Char(
+        string='Nombre Comprador',
+        readonly=True,
+        help='Nombre del comprador'
+    )
     complainant_type = fields.Char(
         string='Tipo Comprador',
         readonly=True
@@ -136,6 +141,11 @@ class MercadolibreClaim(models.Model):
         string='ID Vendedor',
         readonly=True,
         help='ID del usuario respondiente (vendedor - nosotros)'
+    )
+    respondent_name = fields.Char(
+        string='Nombre Vendedor',
+        readonly=True,
+        help='Nombre del vendedor'
     )
     respondent_type = fields.Char(
         string='Tipo Vendedor',
@@ -421,6 +431,54 @@ class MercadolibreClaim(models.Model):
     # =====================================================
 
     @api.model
+    def _get_user_name(self, user_id, account):
+        """
+        Obtiene el nombre de un usuario de MercadoLibre.
+
+        Args:
+            user_id: ID del usuario de ML
+            account: mercadolibre.account record
+
+        Returns:
+            str: Nombre del usuario o cadena vacía si no se pudo obtener
+        """
+        if not user_id:
+            return ''
+
+        try:
+            access_token = account.get_valid_token_with_retry()
+            if not access_token:
+                return ''
+
+            url = f'https://api.mercadolibre.com/users/{user_id}'
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
+
+            response = requests.get(url, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                user_data = response.json()
+                # Intentar obtener nombre completo
+                first_name = user_data.get('first_name', '')
+                last_name = user_data.get('last_name', '')
+                nickname = user_data.get('nickname', '')
+
+                if first_name and last_name:
+                    return f'{first_name} {last_name}'
+                elif first_name:
+                    return first_name
+                elif nickname:
+                    return nickname
+
+            return ''
+
+        except Exception as e:
+            _logger.warning('Error obteniendo nombre de usuario %s: %s', user_id, str(e))
+            return ''
+
+    @api.model
     def create_from_ml_data(self, data, account):
         """
         Crea o actualiza un claim desde los datos de MercadoLibre API.
@@ -478,8 +536,10 @@ class MercadolibreClaim(models.Model):
             'parent_id_ml': str(data.get('parent_id', '')) if data.get('parent_id') else '',
             # Players
             'complainant_user_id': str(complainant.get('user_id', '')),
+            'complainant_name': self._get_user_name(complainant.get('user_id'), account) if complainant.get('user_id') else '',
             'complainant_type': complainant.get('type', ''),
             'respondent_user_id': str(respondent.get('user_id', '')),
+            'respondent_name': self._get_user_name(respondent.get('user_id'), account) if respondent.get('user_id') else '',
             'respondent_type': respondent.get('type', ''),
             'mediator_user_id': str(mediator.get('user_id', '')) if mediator else '',
             # Acciones disponibles

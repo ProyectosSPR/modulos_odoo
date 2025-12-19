@@ -122,11 +122,13 @@
 
                     <group string="Participantes">
                         <group>
-                            <field name="complainant_user_id" string="Comprador ID"/>
+                            <field name="complainant_name" string="Comprador"/>
+                            <field name="complainant_user_id" string="ID Comprador"/>
                             <field name="complainant_type"/>
                         </group>
                         <group>
-                            <field name="respondent_user_id" string="Vendedor ID"/>
+                            <field name="respondent_name" string="Vendedor"/>
+                            <field name="respondent_user_id" string="ID Vendedor"/>
                             <field name="respondent_type"/>
                             <field name="mediator_user_id"
                                    attrs="{'invisible': [('mediator_user_id', '=', False)]}"/>
