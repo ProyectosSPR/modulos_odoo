@@ -102,7 +102,8 @@ class MercadolibreClaimMessage(models.Model):
     )
     attachment_count = fields.Integer(
         string='Num. Adjuntos',
-        compute='_compute_attachment_count'
+        compute='_compute_attachment_count',
+        store=True
     )
 
     # === IDENTIFICADOR UNICO ===
