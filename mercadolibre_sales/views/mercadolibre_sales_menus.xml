@@ -8,49 +8,49 @@
               parent="mercadolibre_connector.menu_mercadolibre_root"
               sequence="15"/>
 
-    <!-- Submenu: Todas las Ordenes -->
+    <!-- Ordenes ML -->
     <menuitem id="menu_mercadolibre_orders"
               name="Ordenes ML"
               parent="menu_mercadolibre_sales"
               action="action_mercadolibre_order"
               sequence="10"/>
 
-    <!-- Submenu: Ordenes Pagadas -->
+    <!-- Ordenes Pagadas -->
     <menuitem id="menu_mercadolibre_orders_paid"
               name="Pagadas"
               parent="menu_mercadolibre_sales"
               action="action_mercadolibre_order_paid"
               sequence="20"/>
 
-    <!-- Submenu: Pendientes de Procesar -->
+    <!-- Pendientes de Procesar -->
     <menuitem id="menu_mercadolibre_orders_pending"
               name="Pendientes"
               parent="menu_mercadolibre_sales"
               action="action_mercadolibre_order_pending"
               sequence="30"/>
 
-    <!-- Submenu: Con Descuentos -->
+    <!-- Con Descuentos -->
     <menuitem id="menu_mercadolibre_orders_discounts"
               name="Con Descuento"
               parent="menu_mercadolibre_sales"
               action="action_mercadolibre_order_discounts"
               sequence="40"/>
 
-    <!-- Submenu: Ordenes de Venta Odoo -->
+    <!-- Ordenes de Venta Odoo -->
     <menuitem id="menu_mercadolibre_sale_orders"
               name="Ordenes Venta"
               parent="menu_mercadolibre_sales"
               action="action_sale_order_ml"
               sequence="50"/>
 
-    <!-- Submenu: Compradores -->
+    <!-- Compradores -->
     <menuitem id="menu_mercadolibre_buyers"
               name="Compradores"
               parent="menu_mercadolibre_sales"
               action="action_mercadolibre_buyer"
               sequence="60"/>
 
-    <!-- Submenu: Sincronizar Ordenes (Manual) -->
+    <!-- Sincronizar Ordenes (Manual) -->
     <menuitem id="menu_mercadolibre_order_sync"
               name="Sincronizar Ordenes"
               parent="menu_mercadolibre_sales"
@@ -58,24 +58,20 @@
               sequence="70"/>
 
     <!-- ============================================== -->
-    <!-- MENU CONFIGURACION VENTAS                      -->
+    <!-- CONFIGURACION (dentro de Ventas)               -->
     <!-- ============================================== -->
-    <menuitem id="menu_mercadolibre_sales_config"
-              name="Config. Ventas"
-              parent="mercadolibre_connector.menu_mercadolibre_root"
-              sequence="75"/>
 
-    <!-- Config: Sincronizaciones Automaticas -->
+    <!-- Sincronizaciones Automaticas -->
     <menuitem id="menu_mercadolibre_order_sync_config"
               name="Sincronizaciones Automaticas"
-              parent="menu_mercadolibre_sales_config"
+              parent="menu_mercadolibre_sales"
               action="action_mercadolibre_order_sync_config"
-              sequence="10"/>
+              sequence="80"/>
 
-    <!-- Config: Tipos Logisticos -->
+    <!-- Tipos Logisticos -->
     <menuitem id="menu_mercadolibre_logistic_type"
               name="Tipos Logisticos"
-              parent="menu_mercadolibre_sales_config"
+              parent="menu_mercadolibre_sales"
               action="action_mercadolibre_logistic_type"
-              sequence="20"/>
+              sequence="90"/>
 </odoo>
