@@ -266,10 +266,19 @@ class MercadolibreOrderSyncConfig(models.Model):
         Si sync_all_logistic_types es True, retorna None (todos permitidos).
         """
         self.ensure_one()
+        _logger.info(
+            'get_allowed_logistic_types: sync_all=%s, logistic_type_ids=%s',
+            self.sync_all_logistic_types,
+            self.logistic_type_ids.mapped('code') if self.logistic_type_ids else []
+        )
         if self.sync_all_logistic_types:
+            _logger.info('Retornando None (todos los tipos permitidos)')
             return None
         if self.logistic_type_ids:
-            return self.logistic_type_ids.mapped('code')
+            codes = self.logistic_type_ids.mapped('code')
+            _logger.info('Retornando tipos permitidos: %s', codes)
+            return codes
+        _logger.info('Retornando lista vacia (ningun tipo permitido)')
         return []
 
     def write(self, vals):
@@ -558,12 +567,22 @@ class MercadolibreOrderSyncConfig(models.Model):
             log_lines.append('  CREACION DE ORDENES DE VENTA')
             log_lines.append('-' * 50)
 
+            # Log detallado de configuracion
+            _logger.info('='*60)
+            _logger.info('INICIO CREACION ORDENES VENTA - Config: %s', self.name)
+            _logger.info('sync_all_logistic_types: %s', self.sync_all_logistic_types)
+            _logger.info('logistic_type_ids: %s', self.logistic_type_ids.mapped(lambda x: (x.id, x.name, x.code)))
+            _logger.info('='*60)
+
             # Obtener tipos logisticos permitidos
             allowed_logistic_types = self.get_allowed_logistic_types()
             if allowed_logistic_types is not None:
-                log_lines.append(f'  Tipos logisticos: {", ".join(allowed_logistic_types) or "Ninguno"}')
+                log_lines.append(f'  Tipos logisticos permitidos: {", ".join(allowed_logistic_types) or "Ninguno"}')
+                log_lines.append(f'  sync_all_logistic_types: {self.sync_all_logistic_types}')
+                _logger.info('FILTRO ACTIVO: allowed_logistic_types=%s', allowed_logistic_types)
             else:
-                log_lines.append('  Tipos logisticos: Todos')
+                log_lines.append('  Tipos logisticos: Todos (sin filtro)')
+                _logger.info('SIN FILTRO: Todos los tipos logisticos permitidos')
 
             # Agrupar por pack_id si esta configurado
             if self.group_by_pack:
@@ -573,6 +592,7 @@ class MercadolibreOrderSyncConfig(models.Model):
 
             # Contadores adicionales para filtrado por tipo logistico
             skipped_logistic_type = 0
+            skipped_no_logistic = 0
 
             for order in orders_to_process:
                 if order.sale_order_id:
@@ -583,10 +603,34 @@ class MercadolibreOrderSyncConfig(models.Model):
 
                 # Filtrar por tipo logistico si esta configurado
                 if allowed_logistic_types is not None:
-                    if not order.logistic_type or order.logistic_type not in allowed_logistic_types:
+                    order_logistic = order.logistic_type
+                    _logger.info('Orden %s: logistic_type=%s, permitidos=%s',
+                               order.ml_order_id, order_logistic, allowed_logistic_types)
+
+                    if not order_logistic:
+                        # Si no tiene logistic_type, intentar obtenerlo del shipment
+                        if order.ml_shipment_id:
+                            try:
+                                fetched_type = order._fetch_logistic_type_from_shipment()
+                                if fetched_type:
+                                    order.write({'logistic_type': fetched_type})
+                                    order_logistic = fetched_type
+                                    _logger.info('Orden %s: logistic_type obtenido del shipment: %s',
+                                               order.ml_order_id, fetched_type)
+                            except Exception as e:
+                                _logger.warning('Error obteniendo logistic_type para filtro: %s', str(e))
+
+                    if not order_logistic:
+                        skipped_no_logistic += 1
+                        log_lines.append(f'    [SKIP] {order.ml_order_id}: sin tipo logistico')
+                        _logger.info('Orden %s omitida: sin tipo logistico', order.ml_order_id)
+                        continue
+
+                    if order_logistic not in allowed_logistic_types:
                         skipped_logistic_type += 1
-                        _logger.debug('Orden %s omitida: tipo logistico %s no permitido',
-                                    order.ml_order_id, order.logistic_type or 'desconocido')
+                        log_lines.append(f'    [SKIP] {order.ml_order_id}: tipo {order_logistic} no permitido')
+                        _logger.info('Orden %s omitida: tipo logistico %s no esta en %s',
+                                   order.ml_order_id, order_logistic, allowed_logistic_types)
                         continue
 
                 try:
@@ -600,7 +644,9 @@ class MercadolibreOrderSyncConfig(models.Model):
 
             log_lines.append(f'  Ordenes creadas: {sale_orders_created}')
             if skipped_logistic_type:
-                log_lines.append(f'  Omitidas (tipo logistico): {skipped_logistic_type}')
+                log_lines.append(f'  Omitidas (tipo no permitido): {skipped_logistic_type}')
+            if skipped_no_logistic:
+                log_lines.append(f'  Omitidas (sin tipo): {skipped_no_logistic}')
             log_lines.append(f'  Errores:         {sale_orders_errors}')
 
         log_lines.append('')

@@ -668,6 +668,16 @@ class MercadolibreOrder(models.Model):
                     'default': 'custom',
                 }
 
+                # Log completo de datos recibidos para debug
+                _logger.info(
+                    'Shipment %s data: logistic_type=%s, logistic=%s, mode=%s, tags=%s',
+                    self.ml_shipment_id,
+                    data.get('logistic_type'),
+                    data.get('logistic'),
+                    data.get('mode'),
+                    data.get('tags')
+                )
+
                 # El logistic_type puede venir directamente o en logistic.type
                 logistic_type = data.get('logistic_type', '')
 
@@ -676,8 +686,8 @@ class MercadolibreOrder(models.Model):
                     logistic_type = logistic.get('type', '')
 
                 if logistic_type and logistic_type in logistic_map:
-                    _logger.info('Logistic type obtenido para shipment %s: %s',
-                               self.ml_shipment_id, logistic_type)
+                    _logger.info('Logistic type obtenido para shipment %s: %s -> %s',
+                               self.ml_shipment_id, logistic_type, logistic_map[logistic_type])
                     return logistic_map[logistic_type]
 
                 # Intentar inferir del modo
@@ -687,14 +697,18 @@ class MercadolibreOrder(models.Model):
                     mode = logistic.get('mode', '')
 
                 if mode == 'me1':
+                    _logger.info('Shipment %s: modo me1 -> custom', self.ml_shipment_id)
                     return 'custom'
                 elif mode == 'me2':
                     # me2 sin tipo especifico, buscar en tags
                     tags = data.get('tags', []) or []
                     if 'fulfillment' in str(tags).lower():
+                        _logger.info('Shipment %s: modo me2 con tag fulfillment -> fulfillment', self.ml_shipment_id)
                         return 'fulfillment'
+                    _logger.info('Shipment %s: modo me2 sin fulfillment -> xd_drop_off', self.ml_shipment_id)
                     return 'xd_drop_off'  # Por defecto para me2
 
+                _logger.warning('Shipment %s: no se pudo determinar logistic_type', self.ml_shipment_id)
                 return False
 
             else:
