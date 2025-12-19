@@ -6,34 +6,48 @@
         <field name="model">mercadolibre.order.sync</field>
         <field name="arch" type="xml">
             <form string="Sincronizar Ordenes MercadoLibre">
-                <group>
-                    <group>
+                <field name="state" invisible="1"/>
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Cuenta y Periodo">
                         <field name="account_id"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
                     </group>
-                    <group>
-                        <field name="status_filter" widget="many2many_tags"/>
+                    <group string="Filtros">
+                        <field name="status_filter"/>
                         <field name="limit"/>
-                        <field name="auto_create_sale_order"/>
+                        <field name="sync_discounts"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Busqueda Especifica">
+                        <field name="search_specific"/>
+                        <field name="specific_order_id" attrs="{'invisible': [('search_specific', '=', False)], 'required': [('search_specific', '=', True)]}"/>
                     </group>
                 </group>
                 <group string="Resultado" attrs="{'invisible': [('state', '=', 'draft')]}">
-                    <field name="state" invisible="1"/>
-                    <field name="orders_synced"/>
-                    <field name="orders_created"/>
-                    <field name="orders_updated"/>
-                    <field name="errors" attrs="{'invisible': [('errors', '=', False)]}"
-                           readonly="1" nolabel="1"/>
+                    <group>
+                        <field name="sync_count"/>
+                        <field name="created_count"/>
+                        <field name="updated_count"/>
+                        <field name="error_count"/>
+                    </group>
+                </group>
+                <group string="Log de Sincronizacion" attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <field name="sync_log" readonly="1" nolabel="1"/>
                 </group>
                 <footer>
                     <button name="action_sync" type="object" string="Sincronizar"
                             class="btn-primary" icon="fa-refresh"
                             attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_create_sale_orders" type="object"
-                            string="Crear Ordenes de Venta"
-                            class="btn-primary" icon="fa-shopping-cart"
-                            attrs="{'invisible': ['|', ('state', '!=', 'done'), ('auto_create_sale_order', '=', True)]}"/>
+                    <button name="action_view_orders" type="object"
+                            string="Ver Ordenes"
+                            class="btn-secondary" icon="fa-list"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button name="action_new_sync" type="object"
+                            string="Nueva Sincronizacion"
+                            class="btn-secondary" icon="fa-plus"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
                     <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

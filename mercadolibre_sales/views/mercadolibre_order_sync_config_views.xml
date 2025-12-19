@@ -10,8 +10,9 @@
                 <field name="account_id"/>
                 <field name="interval_number"/>
                 <field name="interval_type"/>
-                <field name="sync_orders_from"/>
-                <field name="last_sync_date"/>
+                <field name="period"/>
+                <field name="last_run"/>
+                <field name="state"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -23,17 +24,19 @@
         <field name="model">mercadolibre.order.sync.config</field>
         <field name="arch" type="xml">
             <form string="Configuracion de Sincronizacion">
+                <field name="cron_id" invisible="1"/>
                 <header>
-                    <button name="action_sync_now" type="object" string="Sincronizar Ahora"
+                    <button name="action_run_now" type="object" string="Sincronizar Ahora"
                             class="btn-primary" icon="fa-refresh"/>
-                    <button name="action_toggle_cron" type="object"
-                            string="Activar Cron"
-                            attrs="{'invisible': [('cron_id', '!=', False)]}"
+                    <button name="action_activate" type="object"
+                            string="Activar"
+                            attrs="{'invisible': [('state', '=', 'active')]}"
                             class="btn-secondary"/>
-                    <button name="action_toggle_cron" type="object"
-                            string="Desactivar Cron"
-                            attrs="{'invisible': [('cron_id', '=', False)]}"
+                    <button name="action_pause" type="object"
+                            string="Pausar"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"
                             class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -56,19 +59,36 @@
                     </group>
                     <group>
                         <group string="Filtros">
-                            <field name="sync_orders_from"/>
-                            <field name="sync_status_filter" widget="many2many_tags"/>
-                            <field name="auto_create_sale_order"/>
+                            <field name="period"/>
+                            <field name="status_filter"/>
+                            <field name="limit"/>
+                            <field name="create_sale_orders"/>
                         </group>
                         <group string="Estado">
-                            <field name="last_sync_date"/>
+                            <field name="last_run"/>
                             <field name="last_sync_count"/>
-                            <field name="cron_id" readonly="1"/>
+                            <field name="next_run"/>
                         </group>
                     </group>
+                    <group string="Configuracion de Ordenes Odoo" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
+                        <group>
+                            <field name="auto_confirm_order"/>
+                            <field name="group_by_pack"/>
+                            <field name="sync_discounts"/>
+                        </group>
+                        <group>
+                            <field name="default_warehouse_id"/>
+                            <field name="default_pricelist_id"/>
+                            <field name="default_team_id"/>
+                        </group>
+                    </group>
+                    <group string="Productos por Defecto" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
+                        <field name="default_customer_id"/>
+                        <field name="default_product_id"/>
+                        <field name="discount_product_id"/>
+                    </group>
                     <group string="Ultima Sincronizacion">
-                        <field name="last_sync_error" attrs="{'invisible': [('last_sync_error', '=', False)]}"
-                               readonly="1" nolabel="1"/>
+                        <field name="last_sync_log" readonly="1" nolabel="1"/>
                     </group>
                 </sheet>
             </form>
