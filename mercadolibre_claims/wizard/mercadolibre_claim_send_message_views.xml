@@ -17,7 +17,18 @@
                     <field name="claim_id" invisible="1"/>
                     <field name="claim_stage" invisible="1"/>
                     <field name="claim_status" invisible="1"/>
+                </group>
 
+                <group string="Participantes">
+                    <group>
+                        <field name="complainant_name" string="Comprador"/>
+                    </group>
+                    <group>
+                        <field name="respondent_name" string="Vendedor"/>
+                    </group>
+                </group>
+
+                <group>
                     <field name="receiver_role"
                            attrs="{'readonly': [('claim_stage', '=', 'dispute')]}"/>
                 </group>
