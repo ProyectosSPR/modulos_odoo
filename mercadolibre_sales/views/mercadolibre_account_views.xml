@@ -6,20 +6,22 @@
         <field name="model">mercadolibre.account</field>
         <field name="inherit_id" ref="mercadolibre_connector.view_mercadolibre_account_form"/>
         <field name="arch" type="xml">
-            <!-- Add buttons in button_box -->
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_view_orders" type="object"
-                        class="oe_stat_button" icon="fa-shopping-cart">
-                    <field name="order_count" widget="statinfo" string="Ordenes"/>
-                </button>
-                <button name="action_view_buyers" type="object"
-                        class="oe_stat_button" icon="fa-users">
-                    <field name="buyer_count" widget="statinfo" string="Compradores"/>
-                </button>
+            <!-- Add button_box with stat buttons before oe_title -->
+            <xpath expr="//sheet/div[@class='oe_title']" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_view_orders" type="object"
+                            class="oe_stat_button" icon="fa-shopping-cart">
+                        <field name="order_count" widget="statinfo" string="Ordenes"/>
+                    </button>
+                    <button name="action_view_buyers" type="object"
+                            class="oe_stat_button" icon="fa-users">
+                        <field name="buyer_count" widget="statinfo" string="Compradores"/>
+                    </button>
+                </div>
             </xpath>
 
             <!-- Add Sync Orders button in header -->
-            <xpath expr="//header" position="inside">
+            <xpath expr="//header/button[@name='action_refresh_token']" position="after">
                 <button name="action_sync_orders" type="object"
                         string="Sincronizar Ordenes" class="btn-secondary"
                         icon="fa-refresh"/>
