@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- ================================================================== -->
+    <!-- CONFIGURACION DE TIPO LOGISTICO                                    -->
+    <!-- ================================================================== -->
+
     <!-- Tree View -->
     <record id="view_mercadolibre_logistic_type_tree" model="ir.ui.view">
         <field name="name">mercadolibre.logistic.type.tree</field>
         <field name="model">mercadolibre.logistic.type</field>
         <field name="arch" type="xml">
-            <tree string="Tipos Logisticos">
+            <tree string="Configuracion de Tipos Logisticos">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
+                <field name="default_tag_ids" widget="many2many_tags"/>
+                <field name="warehouse_id"/>
                 <field name="auto_confirm_order"/>
                 <field name="auto_confirm_picking"/>
-                <field name="warehouse_id"/>
+                <field name="order_count" string="Ordenes"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -22,28 +28,98 @@
         <field name="name">mercadolibre.logistic.type.form</field>
         <field name="model">mercadolibre.logistic.type</field>
         <field name="arch" type="xml">
-            <form string="Tipo Logistico">
+            <form string="Configuracion de Tipo Logistico">
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_orders" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="order_count" widget="statinfo" string="Ordenes"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <h1>
-                            <field name="name" placeholder="Nombre"/>
+                            <field name="name" placeholder="Nombre de la configuracion"/>
                         </h1>
                     </div>
                     <group>
-                        <group string="Configuracion">
+                        <group string="Identificacion">
                             <field name="code"/>
-                            <field name="active"/>
+                            <field name="account_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="sequence"/>
+                            <field name="active"/>
                         </group>
-                        <group string="Automatizacion">
-                            <field name="auto_confirm_order"/>
-                            <field name="auto_confirm_picking"/>
-                            <field name="warehouse_id"/>
+                        <group string="Etiquetas por Defecto">
+                            <field name="default_tag_ids" widget="many2many_tags"
+                                   options="{'color_field': 'color'}" nolabel="1"
+                                   placeholder="Etiquetas para todas las ordenes de este tipo..."/>
                         </group>
                     </group>
-                    <group string="Descripcion">
-                        <field name="description" nolabel="1" placeholder="Descripcion del tipo logistico..."/>
-                    </group>
+
+                    <notebook>
+                        <page string="Almacen y Operaciones" name="warehouse">
+                            <group>
+                                <group string="Almacen">
+                                    <field name="warehouse_id"/>
+                                    <field name="picking_type_id"/>
+                                    <field name="pricelist_id"/>
+                                </group>
+                                <group string="Equipo y Transportista">
+                                    <field name="team_id"/>
+                                    <field name="carrier_id"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Automatizacion" name="automation">
+                            <group>
+                                <group string="Confirmacion Automatica">
+                                    <field name="auto_confirm_order"/>
+                                    <field name="auto_confirm_picking"
+                                           attrs="{'invisible': [('auto_confirm_order', '=', False)]}"/>
+                                    <field name="auto_validate_stock_move"
+                                           attrs="{'invisible': [('auto_confirm_picking', '=', False)]}"/>
+                                </group>
+                                <group string="Etiquetas de Envio ML">
+                                    <field name="download_shipping_label"/>
+                                    <field name="auto_print_label"
+                                           attrs="{'invisible': [('download_shipping_label', '=', False)]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Etiquetas por Estado de Envio" name="shipment_tags">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Configuracion de Etiquetas por Estado de Envio</strong><br/>
+                                Configure que etiquetas asignar a las ordenes segun el estado del envio.
+                                Puede agrupar varios estados de envio en una misma configuracion para que compartan etiquetas.
+                            </div>
+                            <field name="shipment_status_config_ids" nolabel="1">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="status_pending"/>
+                                    <field name="status_handling"/>
+                                    <field name="status_ready_to_ship"/>
+                                    <field name="status_shipped"/>
+                                    <field name="status_in_transit"/>
+                                    <field name="status_out_for_delivery"/>
+                                    <field name="status_delivered"/>
+                                    <field name="status_not_delivered"/>
+                                    <field name="status_returned"/>
+                                    <field name="status_cancelled"/>
+                                    <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Notas" name="notes">
+                            <field name="description" placeholder="Notas y descripcion de esta configuracion..."/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -51,16 +127,206 @@
 
     <!-- Action -->
     <record id="action_mercadolibre_logistic_type" model="ir.actions.act_window">
-        <field name="name">Tipos Logisticos</field>
+        <field name="name">Config. Tipos Logisticos</field>
         <field name="res_model">mercadolibre.logistic.type</field>
         <field name="view_mode">tree,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No hay tipos logisticos configurados
+                Configure los tipos logisticos de MercadoLibre
             </p>
             <p>
-                Configure los tipos logisticos de MercadoLibre para automatizar la confirmacion de ordenes y pickings.
+                Defina como manejar cada tipo logistico (Full, Agencia, Flex, etc.):<br/>
+                - Almacen y tarifa de precios a usar<br/>
+                - Etiquetas por defecto<br/>
+                - Etiquetas segun estado del envio<br/>
+                - Automatizacion de confirmacion<br/>
             </p>
         </field>
     </record>
+
+    <!-- ================================================================== -->
+    <!-- CONFIGURACION DE ETIQUETAS POR ESTADO DE PAGO                      -->
+    <!-- ================================================================== -->
+
+    <!-- Tree View -->
+    <record id="view_mercadolibre_payment_status_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.status.config.tree</field>
+        <field name="model">mercadolibre.payment.status.config</field>
+        <field name="arch" type="xml">
+            <tree string="Config. Etiquetas por Estado de Pago" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="status_pending"/>
+                <field name="status_approved"/>
+                <field name="status_authorized"/>
+                <field name="status_in_process"/>
+                <field name="status_in_mediation"/>
+                <field name="status_rejected"/>
+                <field name="status_cancelled"/>
+                <field name="status_refunded"/>
+                <field name="status_charged_back"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="account_id" optional="hide"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_payment_status_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.status.config.form</field>
+        <field name="model">mercadolibre.payment.status.config</field>
+        <field name="arch" type="xml">
+            <form string="Config. Etiquetas por Estado de Pago">
+                <sheet>
+                    <group>
+                        <group string="Identificacion">
+                            <field name="name"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Alcance">
+                            <field name="account_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Estados de Pago">
+                        <div class="alert alert-info" role="alert">
+                            Seleccione los estados de pago que activaran estas etiquetas.
+                            Puede seleccionar multiples estados para que compartan las mismas etiquetas.
+                        </div>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="status_pending"/>
+                            <field name="status_approved"/>
+                            <field name="status_authorized"/>
+                            <field name="status_in_process"/>
+                            <field name="status_in_mediation"/>
+                        </group>
+                        <group>
+                            <field name="status_rejected"/>
+                            <field name="status_cancelled"/>
+                            <field name="status_refunded"/>
+                            <field name="status_charged_back"/>
+                        </group>
+                    </group>
+                    <group string="Etiquetas a Asignar">
+                        <field name="tag_ids" widget="many2many_tags"
+                               options="{'color_field': 'color'}" nolabel="1"/>
+                    </group>
+                    <group string="Notas">
+                        <field name="description" nolabel="1" placeholder="Notas..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_payment_status_config" model="ir.actions.act_window">
+        <field name="name">Etiquetas por Estado de Pago</field>
+        <field name="res_model">mercadolibre.payment.status.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure etiquetas segun el estado del pago
+            </p>
+            <p>
+                Defina que etiquetas asignar a las ordenes segun el estado del pago en MercadoLibre.<br/>
+                Por ejemplo: "Pagado" cuando el estado sea "approved", "Pendiente" cuando sea "pending", etc.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- CONFIGURACION DE ETIQUETAS POR ESTADO DE ENVIO (standalone)        -->
+    <!-- ================================================================== -->
+
+    <!-- Tree View -->
+    <record id="view_mercadolibre_shipment_status_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.status.config.tree</field>
+        <field name="model">mercadolibre.shipment.status.config</field>
+        <field name="arch" type="xml">
+            <tree string="Config. Etiquetas por Estado de Envio">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="logistic_type_id"/>
+                <field name="status_pending"/>
+                <field name="status_handling"/>
+                <field name="status_ready_to_ship"/>
+                <field name="status_shipped"/>
+                <field name="status_in_transit"/>
+                <field name="status_delivered"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_shipment_status_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.status.config.form</field>
+        <field name="model">mercadolibre.shipment.status.config</field>
+        <field name="arch" type="xml">
+            <form string="Config. Etiquetas por Estado de Envio">
+                <sheet>
+                    <group>
+                        <group string="Identificacion">
+                            <field name="name"/>
+                            <field name="logistic_type_id"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Etiquetas a Asignar">
+                            <field name="tag_ids" widget="many2many_tags"
+                                   options="{'color_field': 'color'}" nolabel="1"/>
+                        </group>
+                    </group>
+                    <group string="Estados de Envio">
+                        <div class="alert alert-info" role="alert">
+                            Seleccione los estados de envio que activaran estas etiquetas.
+                            Puede agrupar varios estados para que compartan las mismas etiquetas.
+                        </div>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="status_pending"/>
+                            <field name="status_handling"/>
+                            <field name="status_ready_to_ship"/>
+                            <field name="status_shipped"/>
+                            <field name="status_in_transit"/>
+                        </group>
+                        <group>
+                            <field name="status_out_for_delivery"/>
+                            <field name="status_delivered"/>
+                            <field name="status_not_delivered"/>
+                            <field name="status_returned"/>
+                            <field name="status_cancelled"/>
+                        </group>
+                    </group>
+                    <group string="Notas">
+                        <field name="description" nolabel="1" placeholder="Notas..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_shipment_status_config" model="ir.actions.act_window">
+        <field name="name">Etiquetas por Estado de Envio</field>
+        <field name="res_model">mercadolibre.shipment.status.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure etiquetas segun el estado del envio
+            </p>
+            <p>
+                Defina que etiquetas asignar a las ordenes segun el estado del envio en MercadoLibre.<br/>
+                Por ejemplo: "En Preparacion" cuando el estado sea "handling" o "ready_to_ship".
+            </p>
+        </field>
+    </record>
+
 </odoo>

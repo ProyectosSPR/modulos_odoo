@@ -939,12 +939,22 @@ class MercadolibreOrder(models.Model):
             # Obtener configuracion de tipo logistico
             logistic_config = self.logistic_type_id
 
-            # Determinar warehouse
+            # Determinar warehouse (requerido en sale.order)
             warehouse = False
             if logistic_config and logistic_config.warehouse_id:
                 warehouse = logistic_config.warehouse_id
             elif config.default_warehouse_id:
                 warehouse = config.default_warehouse_id
+            if not warehouse:
+                # Buscar almacen de la compania
+                warehouse = self.env['stock.warehouse'].search([
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            if not warehouse:
+                # Buscar cualquier almacen disponible
+                warehouse = self.env['stock.warehouse'].search([], limit=1)
+            if not warehouse:
+                raise ValidationError(_('No se encontro ningun almacen. Configure un almacen por defecto en la configuracion de sincronizacion.'))
 
             # Determinar pricelist (requerido en sale.order)
             pricelist = config.default_pricelist_id
@@ -1000,6 +1010,39 @@ class MercadolibreOrder(models.Model):
 
             # Manejar aporte de MercadoLibre (co-fondeo)
             meli_order = self._handle_meli_discount(sale_order, config)
+
+            # =========================================================
+            # ASIGNAR ETIQUETAS SEGUN CONFIGURACION
+            # =========================================================
+            tags_to_assign = self.env['crm.tag']
+
+            # 1. Etiquetas por defecto del tipo logistico
+            if logistic_config and logistic_config.default_tag_ids:
+                tags_to_assign |= logistic_config.default_tag_ids
+                _logger.debug('Etiquetas por tipo logistico: %s', logistic_config.default_tag_ids.mapped('name'))
+
+            # 2. Etiquetas por estado de pago
+            payment_tags = self.env['mercadolibre.payment.status.config'].get_tags_for_payment_status(
+                self.status,
+                account_id=self.account_id.id,
+                company_id=self.company_id.id
+            )
+            if payment_tags:
+                tags_to_assign |= payment_tags
+                _logger.debug('Etiquetas por estado de pago (%s): %s', self.status, payment_tags.mapped('name'))
+
+            # 3. Etiquetas por estado de envio (si hay shipment sincronizado)
+            if logistic_config and hasattr(self, 'shipment_id') and self.shipment_id:
+                shipment_status = self.shipment_id.status
+                shipment_tags = logistic_config.get_tags_for_shipment_status(shipment_status)
+                if shipment_tags:
+                    tags_to_assign |= shipment_tags
+                    _logger.debug('Etiquetas por estado de envio (%s): %s', shipment_status, shipment_tags.mapped('name'))
+
+            # Asignar etiquetas a la orden de venta
+            if tags_to_assign:
+                sale_order.write({'tag_ids': [(6, 0, tags_to_assign.ids)]})
+                _logger.info('Etiquetas asignadas a %s: %s', sale_order.name, tags_to_assign.mapped('name'))
 
             # Confirmar orden automaticamente si esta configurado
             if config.auto_confirm_order:

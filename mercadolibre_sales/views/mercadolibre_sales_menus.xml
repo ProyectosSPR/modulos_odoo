@@ -63,21 +63,35 @@
 
     <!-- Submenú Configuración -->
     <menuitem id="menu_mercadolibre_sales_config"
-              name="Configuración"
+              name="Configuracion"
               parent="menu_mercadolibre_sales"
               sequence="90"/>
 
     <!-- Sincronizaciones Automaticas -->
     <menuitem id="menu_mercadolibre_order_sync_config"
-              name="Sincronizaciones Automáticas"
+              name="Sincronizaciones Automaticas"
               parent="menu_mercadolibre_sales_config"
               action="action_mercadolibre_order_sync_config"
               sequence="10"/>
 
-    <!-- Tipos Logisticos -->
+    <!-- Configuracion de Tipos Logisticos -->
     <menuitem id="menu_mercadolibre_logistic_type"
-              name="Tipos Logísticos"
+              name="Tipos Logisticos"
               parent="menu_mercadolibre_sales_config"
               action="action_mercadolibre_logistic_type"
               sequence="20"/>
+
+    <!-- Etiquetas por Estado de Pago -->
+    <menuitem id="menu_mercadolibre_payment_status_config"
+              name="Etiquetas por Pago"
+              parent="menu_mercadolibre_sales_config"
+              action="action_mercadolibre_payment_status_config"
+              sequence="30"/>
+
+    <!-- Etiquetas por Estado de Envio -->
+    <menuitem id="menu_mercadolibre_shipment_status_config"
+              name="Etiquetas por Envio"
+              parent="menu_mercadolibre_sales_config"
+              action="action_mercadolibre_shipment_status_config"
+              sequence="40"/>
 </odoo>
