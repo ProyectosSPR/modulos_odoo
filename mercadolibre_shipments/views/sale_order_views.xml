@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Heredar vista form de sale.order para agregar info de envio ML -->
+    <record id="view_sale_order_form_ml_shipment" model="ir.ui.view">
+        <field name="name">sale.order.form.ml.shipment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_form_ml"/>
+        <field name="arch" type="xml">
+            <!-- Agregar boton para ver envio ML -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_shipment" type="object"
+                        class="oe_stat_button" icon="fa-truck"
+                        attrs="{'invisible': [('ml_shipment_id_rel', '=', False)]}">
+                    <field name="ml_shipment_status" widget="badge"
+                           decoration-success="ml_shipment_status == 'delivered'"
+                           decoration-info="ml_shipment_status in ('shipped', 'in_transit', 'out_for_delivery')"
+                           decoration-warning="ml_shipment_status in ('ready_to_ship', 'pending', 'handling')"
+                           decoration-danger="ml_shipment_status in ('not_delivered', 'returned', 'cancelled')"/>
+                    <span class="o_stat_text">Envio ML</span>
+                </button>
+            </xpath>
+
+            <!-- Agregar campos de envio en la pestaña ML -->
+            <xpath expr="//page[@name='ml_info']//group" position="after">
+                <group string="Informacion de Envio ML"
+                       attrs="{'invisible': [('ml_shipment_id', 'in', [False, ''])]}">
+                    <group>
+                        <field name="ml_shipment_id_rel" readonly="1" string="Envio"/>
+                        <field name="ml_shipment_status" readonly="1"/>
+                        <field name="ml_tracking_number" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="ml_carrier_name" readonly="1"/>
+                        <field name="ml_estimated_delivery" readonly="1"/>
+                        <field name="ml_delivery_address" readonly="1"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('ml_shipment_id', 'in', [False, ''])]}">
+                    <button name="action_sync_ml_shipment" type="object"
+                            string="Sincronizar Envio ML" icon="fa-refresh"
+                            class="btn-secondary"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista tree para mostrar estado de envio -->
+    <record id="view_sale_order_tree_ml_shipment" model="ir.ui.view">
+        <field name="name">sale.order.tree.ml.shipment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_tree_ml"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ml_logistic_type']" position="after">
+                <field name="ml_shipment_status" widget="badge" optional="show"
+                       decoration-success="ml_shipment_status == 'delivered'"
+                       decoration-info="ml_shipment_status in ('shipped', 'in_transit', 'out_for_delivery')"
+                       decoration-warning="ml_shipment_status in ('ready_to_ship', 'pending', 'handling')"
+                       decoration-danger="ml_shipment_status in ('not_delivered', 'returned', 'cancelled')"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

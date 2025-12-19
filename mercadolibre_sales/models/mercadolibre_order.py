@@ -623,12 +623,75 @@ class MercadolibreOrder(models.Model):
                     })
 
     def action_create_sale_order(self):
-        """Accion manual para crear orden de venta en Odoo"""
+        """
+        Accion manual para crear orden de venta en Odoo directamente.
+        Busca una configuracion existente o usa valores por defecto.
+        """
         self.ensure_one()
-        return self._create_sale_order_wizard()
 
-    def _create_sale_order_wizard(self):
-        """Abre wizard para crear orden de venta manualmente"""
+        # Si ya tiene orden, mostrarla
+        if self.sale_order_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Orden de Venta'),
+                'res_model': 'sale.order',
+                'res_id': self.sale_order_id.id,
+                'view_mode': 'form',
+            }
+
+        # Validar estado
+        if self.status not in ('paid', 'partially_paid'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('No se puede crear'),
+                    'message': _('Solo se pueden crear ordenes para ventas pagadas. Estado actual: %s') % self.status,
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+
+        # Buscar configuracion existente
+        config = self.env['mercadolibre.order.sync.config'].search([
+            ('account_id', '=', self.account_id.id),
+            ('create_sale_orders', '=', True),
+        ], limit=1)
+
+        if not config:
+            # Crear configuracion temporal con valores minimos
+            config = self.env['mercadolibre.order.sync.config'].new({
+                'account_id': self.account_id.id,
+                'name': 'Temporal',
+                'create_sale_orders': True,
+                'auto_confirm_order': False,
+            })
+
+        # Crear la orden de venta
+        sale_order = self._create_sale_order(config)
+
+        if sale_order:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Orden de Venta Creada'),
+                'res_model': 'sale.order',
+                'res_id': sale_order.id,
+                'view_mode': 'form',
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Error'),
+                    'message': self.odoo_order_error or _('No se pudo crear la orden de venta'),
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
+
+    def action_create_sale_order_wizard(self):
+        """Abre wizard para crear orden de venta con opciones"""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
@@ -759,6 +822,9 @@ class MercadolibreOrder(models.Model):
             if self.seller_discount > 0:
                 self._create_discount_lines(sale_order, config)
 
+            # Manejar aporte de MercadoLibre (co-fondeo)
+            meli_order = self._handle_meli_discount(sale_order, config)
+
             # Confirmar orden automaticamente si esta configurado
             if config.auto_confirm_order:
                 try:
@@ -887,6 +953,101 @@ class MercadolibreOrder(models.Model):
                 'price_unit': -self.seller_discount,  # Negativo porque es descuento
             }
             OrderLine.create(line_vals)
+
+    def _handle_meli_discount(self, sale_order, config):
+        """
+        Maneja el aporte de MercadoLibre en promociones co-fondeadas.
+
+        El meli_discount es la parte del descuento que MercadoLibre aporta al comprador.
+        Esto representa un ingreso adicional para el vendedor porque ML le paga esa diferencia.
+
+        Opciones de manejo:
+        - ignore: No registrar (por defecto)
+        - same_order: Agregar como linea positiva en la misma orden
+        - separate_order: Crear orden de venta separada con cliente "MercadoLibre"
+
+        Returns:
+            sale.order record si se crea orden separada, False en otro caso
+        """
+        self.ensure_one()
+
+        # Verificar si hay aporte de ML
+        if self.meli_discount <= 0:
+            return False
+
+        handling = getattr(config, 'meli_discount_handling', 'ignore')
+        if handling == 'ignore':
+            return False
+
+        meli_product = getattr(config, 'meli_discount_product_id', False)
+        if not meli_product:
+            _logger.warning('No hay producto configurado para aporte ML')
+            return False
+
+        OrderLine = self.env['sale.order.line']
+
+        if handling == 'same_order':
+            # Agregar linea positiva en la misma orden
+            line_vals = {
+                'order_id': sale_order.id,
+                'product_id': meli_product.id,
+                'name': f'Aporte MercadoLibre (Co-fondeo)',
+                'product_uom_qty': 1,
+                'price_unit': self.meli_discount,  # Positivo porque es ingreso
+            }
+            OrderLine.create(line_vals)
+            _logger.info('Aporte ML %.2f agregado a orden %s', self.meli_discount, sale_order.name)
+            return False
+
+        elif handling == 'separate_order':
+            # Crear orden de venta separada
+            meli_partner = getattr(config, 'meli_discount_partner_id', False)
+            if not meli_partner:
+                _logger.warning('No hay cliente configurado para orden de aporte ML')
+                return False
+
+            # Crear orden de venta para el aporte de ML
+            meli_order_vals = {
+                'partner_id': meli_partner.id,
+                'company_id': self.company_id.id,
+                'date_order': self.date_closed or fields.Datetime.now(),
+                'client_order_ref': f'Aporte ML - {self.ml_order_id}',
+                # Campos ML para referencia
+                'ml_order_id': f'{self.ml_order_id}-MELI',
+                'ml_pack_id': self.ml_pack_id,
+                'ml_account_id': self.account_id.id,
+                'ml_channel': 'meli_cofunding',
+                'ml_sync_date': fields.Datetime.now(),
+            }
+
+            # Agregar warehouse si esta configurado
+            if config.default_warehouse_id:
+                meli_order_vals['warehouse_id'] = config.default_warehouse_id.id
+
+            meli_order = self.env['sale.order'].create(meli_order_vals)
+
+            # Crear linea del aporte
+            OrderLine.create({
+                'order_id': meli_order.id,
+                'product_id': meli_product.id,
+                'name': f'Aporte MercadoLibre - Orden {self.ml_order_id}',
+                'product_uom_qty': 1,
+                'price_unit': self.meli_discount,
+            })
+
+            _logger.info('Orden separada %s creada para aporte ML %.2f de orden %s',
+                       meli_order.name, self.meli_discount, self.ml_order_id)
+
+            # Confirmar automaticamente si esta configurado
+            if config.auto_confirm_order:
+                try:
+                    meli_order.action_confirm()
+                except Exception as e:
+                    _logger.warning('Error confirmando orden ML %s: %s', meli_order.name, str(e))
+
+            return meli_order
+
+        return False
 
     def _auto_confirm_picking(self, sale_order):
         """Confirma automaticamente los pickings de la orden"""

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Categoria de seguridad (heredada de mercadolibre_connector) -->
+
+    <!-- Reglas de acceso por compania -->
+    <record id="mercadolibre_shipment_rule_company" model="ir.rule">
+        <field name="name">MercadoLibre Shipment: multi-company</field>
+        <field name="model_id" ref="model_mercadolibre_shipment"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="mercadolibre_shipment_status_history_rule_company" model="ir.rule">
+        <field name="name">MercadoLibre Shipment History: multi-company</field>
+        <field name="model_id" ref="model_mercadolibre_shipment_status_history"/>
+        <field name="domain_force">['|', ('shipment_id.company_id', '=', False), ('shipment_id.company_id', 'in', company_ids)]</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Form del Wizard -->
+    <record id="view_mercadolibre_shipment_sync_form" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.sync.form</field>
+        <field name="model">mercadolibre.shipment.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Envios">
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Configuracion">
+                        <field name="account_id"/>
+                        <field name="sync_type"/>
+                        <field name="specific_shipment_id"
+                               attrs="{'invisible': [('sync_type', '!=', 'specific')], 'required': [('sync_type', '=', 'specific')]}"/>
+                        <field name="status_filter"
+                               attrs="{'invisible': [('sync_type', '!=', 'by_status')]}"/>
+                    </group>
+                    <group string="Opciones">
+                        <field name="date_from"
+                               attrs="{'invisible': [('sync_type', '=', 'specific')]}"/>
+                        <field name="date_to"
+                               attrs="{'invisible': [('sync_type', '=', 'specific')]}"/>
+                        <field name="limit"
+                               attrs="{'invisible': [('sync_type', '=', 'specific')]}"/>
+                        <field name="update_logistic_type"/>
+                    </group>
+                </group>
+
+                <!-- Resultados -->
+                <group attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <group string="Resultados">
+                        <field name="sync_count"/>
+                        <field name="created_count"/>
+                        <field name="updated_count"/>
+                        <field name="error_count"/>
+                    </group>
+                    <group string="Log">
+                        <field name="sync_log" readonly="1" nolabel="1"/>
+                    </group>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_sync" type="object"
+                            string="Sincronizar" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_view_shipments" type="object"
+                            string="Ver Envios" class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button name="action_new_sync" type="object"
+                            string="Nueva Sincronizacion" class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Accion para abrir wizard -->
+    <record id="action_mercadolibre_shipment_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronizar Envios</field>
+        <field name="res_model">mercadolibre.shipment.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu para sincronizar envios -->
+    <menuitem id="menu_mercadolibre_shipment_sync"
+              name="Sincronizar Envios"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_sync_wizard"
+              sequence="100"/>
+
+</odoo>

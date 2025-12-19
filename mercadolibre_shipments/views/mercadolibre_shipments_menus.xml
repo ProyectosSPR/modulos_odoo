@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu principal de Envios bajo MercadoLibre -->
+    <menuitem id="menu_mercadolibre_shipments"
+              name="Envios"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="25"/>
+
+    <!-- Submenu: Todos los Envios -->
+    <menuitem id="menu_mercadolibre_shipment_all"
+              name="Todos los Envios"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment"
+              sequence="10"/>
+
+    <!-- Submenu: Pendientes de Envio -->
+    <record id="action_mercadolibre_shipment_pending" model="ir.actions.act_window">
+        <field name="name">Pendientes de Envio</field>
+        <field name="res_model">mercadolibre.shipment</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('status', 'in', ['pending', 'handling', 'ready_to_ship'])]</field>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <menuitem id="menu_mercadolibre_shipment_pending"
+              name="Pendientes"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_pending"
+              sequence="20"/>
+
+    <!-- Submenu: En Transito -->
+    <record id="action_mercadolibre_shipment_transit" model="ir.actions.act_window">
+        <field name="name">En Transito</field>
+        <field name="res_model">mercadolibre.shipment</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('status', 'in', ['shipped', 'in_transit', 'out_for_delivery'])]</field>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <menuitem id="menu_mercadolibre_shipment_transit"
+              name="En Transito"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_transit"
+              sequence="30"/>
+
+    <!-- Submenu: Entregados -->
+    <record id="action_mercadolibre_shipment_delivered" model="ir.actions.act_window">
+        <field name="name">Entregados</field>
+        <field name="res_model">mercadolibre.shipment</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('status', '=', 'delivered')]</field>
+    </record>
+
+    <menuitem id="menu_mercadolibre_shipment_delivered"
+              name="Entregados"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_delivered"
+              sequence="40"/>
+
+    <!-- Submenu: Problemas -->
+    <record id="action_mercadolibre_shipment_problems" model="ir.actions.act_window">
+        <field name="name">Problemas de Envio</field>
+        <field name="res_model">mercadolibre.shipment</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('status', 'in', ['not_delivered', 'returned', 'cancelled'])]</field>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <menuitem id="menu_mercadolibre_shipment_problems"
+              name="Problemas"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_problems"
+              sequence="50"/>
+
+    <!-- Submenu: Historial de Estados -->
+    <menuitem id="menu_mercadolibre_shipment_history"
+              name="Historial de Estados"
+              parent="menu_mercadolibre_shipments"
+              action="action_mercadolibre_shipment_status_history"
+              sequence="90"
+              groups="base.group_no_one"/>
+
+</odoo>

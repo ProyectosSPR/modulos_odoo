@@ -175,8 +175,30 @@ class MercadolibreOrderSyncConfig(models.Model):
     )
     discount_product_id = fields.Many2one(
         'product.product',
-        string='Producto Descuento',
-        help='Producto para registrar los descuentos del vendedor (co-fondeo)'
+        string='Producto Descuento Vendedor',
+        help='Producto para registrar los descuentos aportados por el vendedor (co-fondeo)'
+    )
+
+    # =====================================================
+    # CONFIGURACION DE MANEJO DE APORTE ML (CO-FONDEO)
+    # =====================================================
+    meli_discount_handling = fields.Selection([
+        ('ignore', 'No registrar'),
+        ('same_order', 'Linea en la misma orden'),
+        ('separate_order', 'Orden de venta separada'),
+    ], string='Manejo Aporte ML', default='ignore',
+       help='Como manejar el aporte de MercadoLibre en promociones co-fondeadas')
+
+    meli_discount_product_id = fields.Many2one(
+        'product.product',
+        string='Producto Aporte ML',
+        help='Producto a usar cuando se registra el aporte de MercadoLibre como ingreso'
+    )
+
+    meli_discount_partner_id = fields.Many2one(
+        'res.partner',
+        string='Cliente para Aporte ML',
+        help='Cliente a usar cuando se crea orden separada para aporte ML (ej: "MercadoLibre")'
     )
 
     # Sync discounts

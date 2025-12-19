@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Form del Envio -->
+    <record id="view_mercadolibre_shipment_form" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.form</field>
+        <field name="model">mercadolibre.shipment</field>
+        <field name="arch" type="xml">
+            <form string="Envio MercadoLibre">
+                <header>
+                    <button name="action_sync_from_api" type="object"
+                            string="Sincronizar" icon="fa-refresh"
+                            class="btn-primary"/>
+                    <button name="action_download_label_pdf" type="object"
+                            string="Descargar Etiqueta" icon="fa-print"
+                            attrs="{'invisible': [('status', 'in', ['cancelled', 'delivered'])]}"/>
+                    <button name="action_open_tracking_url" type="object"
+                            string="Ver Tracking" icon="fa-truck"
+                            attrs="{'invisible': [('tracking_number', '=', False)]}"/>
+                    <field name="status" widget="statusbar"
+                           statusbar_visible="pending,ready_to_ship,shipped,in_transit,delivered"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_order" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                attrs="{'invisible': [('order_id', '=', False)]}">
+                            <span class="o_stat_text">Orden ML</span>
+                        </button>
+                        <button name="action_view_sale_order" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <span class="o_stat_text">Orden Venta</span>
+                        </button>
+                        <button name="action_view_map" type="object"
+                                class="oe_stat_button" icon="fa-map-marker"
+                                attrs="{'invisible': ['|', ('latitude', '=', 0), ('longitude', '=', 0)]}">
+                            <span class="o_stat_text">Ver Mapa</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion General">
+                            <field name="account_id"/>
+                            <field name="ml_shipment_id"/>
+                            <field name="ml_order_id"/>
+                            <field name="logistic_type"/>
+                            <field name="shipping_mode"/>
+                            <field name="substatus" attrs="{'invisible': [('substatus', '=', False)]}"/>
+                        </group>
+                        <group string="Tracking">
+                            <field name="tracking_number"/>
+                            <field name="carrier_name"/>
+                            <field name="carrier_id_ml" groups="base.group_no_one"/>
+                            <field name="service_id" groups="base.group_no_one"/>
+                            <field name="label_printed"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Direccion de Entrega" name="address">
+                            <group>
+                                <group string="Receptor">
+                                    <field name="receiver_name"/>
+                                    <field name="receiver_phone"/>
+                                    <field name="delivery_preference"/>
+                                </group>
+                                <group string="Direccion">
+                                    <field name="street_name"/>
+                                    <field name="street_number"/>
+                                    <field name="floor"/>
+                                    <field name="apartment"/>
+                                    <field name="city"/>
+                                    <field name="state"/>
+                                    <field name="zip_code"/>
+                                    <field name="country"/>
+                                </group>
+                            </group>
+                            <group string="Direccion Completa">
+                                <field name="address_line" readonly="1"/>
+                            </group>
+                            <group attrs="{'invisible': [('comments', '=', False)]}">
+                                <field name="comments"/>
+                            </group>
+                            <group string="Coordenadas" groups="base.group_no_one">
+                                <field name="latitude"/>
+                                <field name="longitude"/>
+                            </group>
+                        </page>
+                        <page string="Fechas" name="dates">
+                            <group>
+                                <group string="Fechas del Proceso">
+                                    <field name="date_created"/>
+                                    <field name="date_ready_to_ship"/>
+                                    <field name="date_shipped"/>
+                                    <field name="date_delivered"/>
+                                    <field name="date_first_printed"/>
+                                </group>
+                                <group string="Estimacion de Entrega">
+                                    <field name="estimated_delivery_date"/>
+                                    <field name="estimated_delivery_time_from"/>
+                                    <field name="estimated_delivery_time_to"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Paquete y Costos" name="package">
+                            <group>
+                                <group string="Paquete">
+                                    <field name="dimensions"/>
+                                    <field name="weight"/>
+                                </group>
+                                <group string="Costos">
+                                    <field name="shipping_cost"/>
+                                    <field name="base_cost"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Historial de Estados" name="history">
+                            <field name="status_history_ids">
+                                <tree string="Historial" editable="bottom" create="false" delete="false">
+                                    <field name="date"/>
+                                    <field name="status"/>
+                                    <field name="substatus"/>
+                                    <field name="notes"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Sincronizacion" name="sync" groups="base.group_no_one">
+                            <group>
+                                <field name="last_sync_date"/>
+                                <field name="sync_error"/>
+                            </group>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" placeholder="Notas adicionales..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Form para datos crudos -->
+    <record id="view_mercadolibre_shipment_raw_form" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.raw.form</field>
+        <field name="model">mercadolibre.shipment</field>
+        <field name="arch" type="xml">
+            <form string="Datos Crudos del Envio">
+                <sheet>
+                    <group>
+                        <field name="raw_data" readonly="1" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Tree de Envios -->
+    <record id="view_mercadolibre_shipment_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.tree</field>
+        <field name="model">mercadolibre.shipment</field>
+        <field name="arch" type="xml">
+            <tree string="Envios MercadoLibre" decoration-success="status == 'delivered'"
+                  decoration-info="status in ('shipped', 'in_transit', 'out_for_delivery')"
+                  decoration-warning="status in ('ready_to_ship', 'pending', 'handling')"
+                  decoration-danger="status in ('not_delivered', 'returned', 'cancelled')">
+                <field name="name"/>
+                <field name="ml_shipment_id"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'delivered'"
+                       decoration-info="status in ('shipped', 'in_transit', 'out_for_delivery')"
+                       decoration-warning="status in ('ready_to_ship', 'pending', 'handling')"
+                       decoration-danger="status in ('not_delivered', 'returned', 'cancelled')"/>
+                <field name="logistic_type"/>
+                <field name="tracking_number"/>
+                <field name="carrier_name"/>
+                <field name="receiver_name"/>
+                <field name="city"/>
+                <field name="date_created"/>
+                <field name="date_shipped"/>
+                <field name="date_delivered"/>
+                <field name="estimated_delivery_date"/>
+                <field name="account_id" optional="hide"/>
+                <field name="order_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Search -->
+    <record id="view_mercadolibre_shipment_search" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.search</field>
+        <field name="model">mercadolibre.shipment</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Envios">
+                <field name="name"/>
+                <field name="ml_shipment_id"/>
+                <field name="tracking_number"/>
+                <field name="receiver_name"/>
+                <field name="city"/>
+                <field name="carrier_name"/>
+                <separator/>
+                <filter string="Pendiente" name="pending"
+                        domain="[('status', '=', 'pending')]"/>
+                <filter string="En Preparacion" name="handling"
+                        domain="[('status', '=', 'handling')]"/>
+                <filter string="Listo para Enviar" name="ready_to_ship"
+                        domain="[('status', '=', 'ready_to_ship')]"/>
+                <filter string="Enviado" name="shipped"
+                        domain="[('status', '=', 'shipped')]"/>
+                <filter string="En Transito" name="in_transit"
+                        domain="[('status', '=', 'in_transit')]"/>
+                <filter string="En Reparto" name="out_for_delivery"
+                        domain="[('status', '=', 'out_for_delivery')]"/>
+                <filter string="Entregado" name="delivered"
+                        domain="[('status', '=', 'delivered')]"/>
+                <filter string="No Entregado" name="not_delivered"
+                        domain="[('status', '=', 'not_delivered')]"/>
+                <filter string="Devuelto" name="returned"
+                        domain="[('status', '=', 'returned')]"/>
+                <filter string="Cancelado" name="cancelled"
+                        domain="[('status', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Full (Mercado Libre)" name="fulfillment"
+                        domain="[('logistic_type', '=', 'fulfillment')]"/>
+                <filter string="Agencia/Places" name="xd_drop_off"
+                        domain="[('logistic_type', '=', 'xd_drop_off')]"/>
+                <filter string="Colectas" name="cross_docking"
+                        domain="[('logistic_type', '=', 'cross_docking')]"/>
+                <filter string="Envio Propio" name="custom"
+                        domain="[('logistic_type', '=', 'custom')]"/>
+                <separator/>
+                <filter string="Con Tracking" name="has_tracking"
+                        domain="[('tracking_number', '!=', False)]"/>
+                <filter string="Etiqueta Impresa" name="label_printed"
+                        domain="[('label_printed', '=', True)]"/>
+                <separator/>
+                <filter string="Hoy" name="today"
+                        domain="[('date_created', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Esta Semana" name="this_week"
+                        domain="[('date_created', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Este Mes" name="this_month"
+                        domain="[('date_created', '>=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_status"
+                            context="{'group_by': 'status'}"/>
+                    <filter string="Tipo Logistico" name="group_logistic"
+                            context="{'group_by': 'logistic_type'}"/>
+                    <filter string="Transportista" name="group_carrier"
+                            context="{'group_by': 'carrier_name'}"/>
+                    <filter string="Ciudad" name="group_city"
+                            context="{'group_by': 'city'}"/>
+                    <filter string="Estado/Provincia" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Cuenta" name="group_account"
+                            context="{'group_by': 'account_id'}"/>
+                    <filter string="Fecha Creacion" name="group_date_created"
+                            context="{'group_by': 'date_created:day'}"/>
+                    <filter string="Fecha Envio" name="group_date_shipped"
+                            context="{'group_by': 'date_shipped:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vista Kanban -->
+    <record id="view_mercadolibre_shipment_kanban" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.kanban</field>
+        <field name="model">mercadolibre.shipment</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="status"/>
+                <field name="logistic_type"/>
+                <field name="tracking_number"/>
+                <field name="carrier_name"/>
+                <field name="receiver_name"/>
+                <field name="city"/>
+                <field name="date_created"/>
+                <field name="estimated_delivery_date"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </strong>
+                                <div class="o_kanban_tags_section">
+                                    <field name="logistic_type" widget="badge"/>
+                                </div>
+                                <div>
+                                    <span t-if="record.tracking_number.raw_value">
+                                        <i class="fa fa-barcode"/> <field name="tracking_number"/>
+                                    </span>
+                                </div>
+                                <div>
+                                    <i class="fa fa-truck"/> <field name="carrier_name"/>
+                                </div>
+                                <div>
+                                    <i class="fa fa-user"/> <field name="receiver_name"/>
+                                </div>
+                                <div>
+                                    <i class="fa fa-map-marker"/> <field name="city"/>
+                                </div>
+                                <div class="text-muted">
+                                    <span t-if="record.estimated_delivery_date.raw_value">
+                                        Entrega: <field name="estimated_delivery_date"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Accion -->
+    <record id="action_mercadolibre_shipment" model="ir.actions.act_window">
+        <field name="name">Envios</field>
+        <field name="res_model">mercadolibre.shipment</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_shipment_search"/>
+        <field name="context">{'search_default_group_status': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay envios sincronizados
+            </p>
+            <p>
+                Los envios se sincronizan automaticamente con las ordenes de MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+</odoo>

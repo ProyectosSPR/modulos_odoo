@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Tree del Historial de Estados -->
+    <record id="view_mercadolibre_shipment_status_history_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.status.history.tree</field>
+        <field name="model">mercadolibre.shipment.status.history</field>
+        <field name="arch" type="xml">
+            <tree string="Historial de Estados" create="false" delete="false">
+                <field name="date"/>
+                <field name="shipment_id"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'delivered'"
+                       decoration-info="status in ('shipped', 'in_transit', 'out_for_delivery')"
+                       decoration-warning="status in ('ready_to_ship', 'pending', 'handling')"
+                       decoration-danger="status in ('not_delivered', 'returned', 'cancelled')"/>
+                <field name="substatus"/>
+                <field name="notes"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form del Historial -->
+    <record id="view_mercadolibre_shipment_status_history_form" model="ir.ui.view">
+        <field name="name">mercadolibre.shipment.status.history.form</field>
+        <field name="model">mercadolibre.shipment.status.history</field>
+        <field name="arch" type="xml">
+            <form string="Historial de Estado" create="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="shipment_id"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="substatus"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Accion -->
+    <record id="action_mercadolibre_shipment_status_history" model="ir.actions.act_window">
+        <field name="name">Historial de Estados</field>
+        <field name="res_model">mercadolibre.shipment.status.history</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Heredar vista form de mercadolibre.order para agregar info de envio -->
+    <record id="view_mercadolibre_order_form_shipment" model="ir.ui.view">
+        <field name="name">mercadolibre.order.form.shipment</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar boton para ver envio -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_shipment" type="object"
+                        class="oe_stat_button" icon="fa-truck"
+                        attrs="{'invisible': [('has_shipment', '=', False)]}">
+                    <field name="shipment_status" widget="badge"
+                           decoration-success="shipment_status == 'delivered'"
+                           decoration-info="shipment_status in ('shipped', 'in_transit', 'out_for_delivery')"
+                           decoration-warning="shipment_status in ('ready_to_ship', 'pending', 'handling')"
+                           decoration-danger="shipment_status in ('not_delivered', 'returned', 'cancelled')"/>
+                    <span class="o_stat_text">Envio</span>
+                </button>
+            </xpath>
+
+            <!-- Agregar boton de sincronizar envio en header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sync_shipment" type="object"
+                        string="Sincronizar Envio" icon="fa-truck"
+                        attrs="{'invisible': [('ml_shipment_id', 'in', [False, ''])]}"/>
+                <button name="action_download_label" type="object"
+                        string="Descargar Etiqueta" icon="fa-print"
+                        attrs="{'invisible': ['|', ('ml_shipment_id', 'in', [False, '']), ('status', 'in', ['cancelled'])]}"/>
+            </xpath>
+
+            <!-- Agregar pestaña de envio -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Envio" name="shipment_info"
+                      attrs="{'invisible': [('ml_shipment_id', 'in', [False, ''])]}">
+                    <group>
+                        <group string="Informacion del Envio">
+                            <field name="has_shipment" invisible="1"/>
+                            <field name="shipment_id" readonly="1"/>
+                            <field name="shipment_status" readonly="1"/>
+                            <field name="shipment_tracking" readonly="1"/>
+                            <field name="shipment_carrier" readonly="1"/>
+                        </group>
+                        <group string="Direccion de Entrega">
+                            <field name="delivery_address" readonly="1"/>
+                            <field name="delivery_city" readonly="1"/>
+                            <field name="delivery_state" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista tree para mostrar estado de envio -->
+    <record id="view_mercadolibre_order_tree_shipment" model="ir.ui.view">
+        <field name="name">mercadolibre.order.tree.shipment</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='logistic_type']" position="after">
+                <field name="shipment_status" widget="badge" optional="show"
+                       decoration-success="shipment_status == 'delivered'"
+                       decoration-info="shipment_status in ('shipped', 'in_transit', 'out_for_delivery')"
+                       decoration-warning="shipment_status in ('ready_to_ship', 'pending', 'handling')"
+                       decoration-danger="shipment_status in ('not_delivered', 'returned', 'cancelled')"/>
+                <field name="shipment_tracking" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista search para agregar filtros de envio -->
+    <record id="view_mercadolibre_order_search_shipment" model="ir.ui.view">
+        <field name="name">mercadolibre.order.search.shipment</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Con Envio Sincronizado" name="has_shipment"
+                        domain="[('has_shipment', '=', True)]"/>
+                <filter string="Sin Envio Sincronizado" name="no_shipment"
+                        domain="[('has_shipment', '=', False), ('ml_shipment_id', '!=', False)]"/>
+                <separator/>
+                <filter string="Envio Pendiente" name="shipment_pending"
+                        domain="[('shipment_status', '=', 'pending')]"/>
+                <filter string="Envio Listo" name="shipment_ready"
+                        domain="[('shipment_status', '=', 'ready_to_ship')]"/>
+                <filter string="Enviado" name="shipment_shipped"
+                        domain="[('shipment_status', 'in', ('shipped', 'in_transit', 'out_for_delivery'))]"/>
+                <filter string="Entregado" name="shipment_delivered"
+                        domain="[('shipment_status', '=', 'delivered')]"/>
+                <filter string="Envio Problema" name="shipment_problem"
+                        domain="[('shipment_status', 'in', ('not_delivered', 'returned'))]"/>
+            </xpath>
+            <xpath expr="//group[@string='Agrupar por']" position="inside">
+                <filter string="Estado Envio" name="group_shipment_status"
+                        context="{'group_by': 'shipment_status'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
