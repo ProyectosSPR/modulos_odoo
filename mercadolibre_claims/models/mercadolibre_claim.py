@@ -683,8 +683,11 @@ class MercadolibreClaim(models.Model):
             _logger.error('Error sincronizando mensajes: %s', str(e))
             return False
 
-    def _sync_message_attachments(self, message, attachments_data):
-        """Sincroniza los adjuntos de un mensaje"""
+    def _sync_message_attachments(self, message, attachments_data, auto_download=True):
+        """
+        Sincroniza los adjuntos de un mensaje.
+        Si auto_download=True, descarga automáticamente los archivos.
+        """
         AttachmentModel = self.env['mercadolibre.claim.message.attachment']
 
         for att_data in attachments_data:
@@ -706,8 +709,16 @@ class MercadolibreClaim(models.Model):
 
             if existing:
                 existing.write(vals)
+                attachment_record = existing
             else:
-                AttachmentModel.create(vals)
+                attachment_record = AttachmentModel.create(vals)
+
+            # Descargar automáticamente si no está descargado
+            if auto_download and not attachment_record.attachment_id:
+                try:
+                    attachment_record._download_and_attach(post_to_chatter=True)
+                except Exception as e:
+                    _logger.warning('No se pudo descargar adjunto %s: %s', filename, str(e))
 
     def _sync_detail(self):
         """Sincroniza los detalles adicionales del claim"""
@@ -752,6 +763,37 @@ class MercadolibreClaim(models.Model):
             'params': {
                 'message': _('Mensajes sincronizados correctamente'),
                 'type': 'success',
+                'sticky': False,
+            }
+        }
+
+    def action_download_all_attachments(self):
+        """Descarga todos los adjuntos pendientes de este claim"""
+        self.ensure_one()
+
+        AttachmentModel = self.env['mercadolibre.claim.message.attachment']
+        pending_attachments = AttachmentModel.search([
+            ('claim_id', '=', self.id),
+            ('attachment_id', '=', False),
+        ])
+
+        downloaded = 0
+        errors = 0
+
+        for att in pending_attachments:
+            try:
+                if att._download_and_attach(post_to_chatter=True):
+                    downloaded += 1
+            except Exception as e:
+                errors += 1
+                _logger.warning('Error descargando %s: %s', att.filename, str(e))
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': _('Descargados: %d archivos. Errores: %d') % (downloaded, errors),
+                'type': 'success' if errors == 0 else 'warning',
                 'sticky': False,
             }
         }

@@ -180,6 +180,9 @@
                                 <button name="action_sync_messages" type="object"
                                         string="Actualizar Mensajes" icon="fa-refresh"
                                         class="btn-secondary btn-sm"/>
+                                <button name="action_download_all_attachments" type="object"
+                                        string="Descargar Adjuntos" icon="fa-download"
+                                        class="btn-secondary btn-sm ms-2"/>
                             </div>
                         </page>
 

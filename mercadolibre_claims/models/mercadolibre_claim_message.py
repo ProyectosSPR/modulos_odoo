@@ -270,12 +270,33 @@ class MercadolibreClaimMessageAttachment(models.Model):
                 'target': 'new',
             }
 
+        # Descargar y guardar
+        self._download_and_attach()
+
+        if self.attachment_id:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': f'/web/content/{self.attachment_id.id}?download=true',
+                'target': 'new',
+            }
+
+    def _download_and_attach(self, post_to_chatter=True):
+        """
+        Descarga el archivo desde MercadoLibre y lo guarda.
+        Si post_to_chatter=True, también lo adjunta al chatter del claim.
+        """
+        self.ensure_one()
+
+        if self.attachment_id:
+            return self.attachment_id
+
         claim = self.message_id.claim_id
         account = claim.account_id
 
         access_token = account.get_valid_token_with_retry()
         if not access_token:
-            raise UserError(_('No se pudo obtener token valido'))
+            _logger.error('No se pudo obtener token para descargar archivo')
+            return False
 
         url = f'https://api.mercadolibre.com/post-purchase/v1/claims/{claim.ml_claim_id}/attachments/{self.filename}/download'
         headers = {
@@ -286,28 +307,51 @@ class MercadolibreClaimMessageAttachment(models.Model):
             response = requests.get(url, headers=headers, timeout=60)
 
             if response.status_code != 200:
-                raise UserError(_('Error descargando archivo: %s') % response.text)
+                _logger.error('Error descargando archivo %s: %s', self.filename, response.text)
+                return False
 
-            # Crear attachment en Odoo
+            # Crear attachment en Odoo vinculado al claim para que aparezca en el chatter
             attachment = self.env['ir.attachment'].create({
                 'name': self.original_filename or self.filename,
                 'type': 'binary',
                 'datas': base64.b64encode(response.content),
                 'mimetype': self.file_type or 'application/octet-stream',
-                'res_model': self._name,
-                'res_id': self.id,
+                'res_model': 'mercadolibre.claim',
+                'res_id': claim.id,
             })
 
             self.attachment_id = attachment.id
 
-            return {
-                'type': 'ir.actions.act_url',
-                'url': f'/web/content/{attachment.id}?download=true',
-                'target': 'new',
-            }
+            # Publicar mensaje en el chatter del claim con el adjunto
+            if post_to_chatter:
+                sender_labels = {
+                    'complainant': 'Comprador',
+                    'respondent': 'Vendedor',
+                    'mediator': 'Mediador ML',
+                }
+                sender = sender_labels.get(self.message_id.sender_role, 'Usuario')
+
+                claim.message_post(
+                    body=f'<p><strong>Archivo adjunto de {sender}:</strong> {self.original_filename or self.filename}</p>',
+                    attachment_ids=[attachment.id],
+                    message_type='notification',
+                    subtype_xmlid='mail.mt_note',
+                )
+
+            _logger.info('Archivo %s descargado y adjuntado al claim %s',
+                        self.filename, claim.ml_claim_id)
+
+            return attachment
 
         except requests.exceptions.RequestException as e:
-            raise UserError(_('Error de conexion: %s') % str(e))
+            _logger.error('Error de conexion descargando archivo: %s', str(e))
+            return False
+
+    def action_download_all(self):
+        """Descarga todos los adjuntos seleccionados"""
+        for record in self:
+            if not record.attachment_id:
+                record._download_and_attach()
 
     def action_preview(self):
         """Vista previa del archivo (si es imagen)"""
