@@ -465,7 +465,7 @@
                         <div class="ml-dark-notebook" attrs="{'invisible': ['|', ('state', '=', 'draft'), ('response_body', '=', False)]}">
                             <div class="ml-notebook-header">
                                 <i class="fa fa-download"/> Response Data
-                                <a href="#" class="ml-copy-btn" title="Copiar respuesta al portapapeles"
+                                <a href="#" class="ml-copy-btn" role="button" title="Copiar respuesta al portapapeles"
                                    onclick="event.preventDefault(); var btn = this; var notebook = btn.closest('.ml-dark-notebook'); var aceEditor = notebook.querySelector('.ace_editor'); var text = ''; if (aceEditor &amp;&amp; aceEditor.env &amp;&amp; aceEditor.env.editor) { text = aceEditor.env.editor.getValue(); } else { var textarea = notebook.querySelector('textarea'); if (textarea) text = textarea.value; } if (text) { navigator.clipboard.writeText(text).then(function() { btn.classList.add('copied'); btn.innerHTML = '&lt;i class=&quot;fa fa-check&quot;/&gt; Copiado'; setTimeout(function() { btn.classList.remove('copied'); btn.innerHTML = '&lt;i class=&quot;fa fa-copy&quot;/&gt; Copiar JSON'; }, 2000); }); }">
                                     <i class="fa fa-copy"/> Copiar JSON
                                 </a>

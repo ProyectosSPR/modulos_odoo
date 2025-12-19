@@ -143,11 +143,11 @@ class MercadolibreClaimMessage(models.Model):
         store=True
     )
     sender_label = fields.Char(
-        string='Remitente',
+        string='Enviado por',
         compute='_compute_sender_label'
     )
     receiver_label = fields.Char(
-        string='Destinatario',
+        string='Recibido por',
         compute='_compute_receiver_label'
     )
 

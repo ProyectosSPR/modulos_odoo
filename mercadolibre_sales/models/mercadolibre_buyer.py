@@ -38,7 +38,7 @@ class MercadolibreBuyer(models.Model):
         index=True
     )
     first_name = fields.Char(
-        string='Nombre'
+        string='Primer Nombre'
     )
     last_name = fields.Char(
         string='Apellido'

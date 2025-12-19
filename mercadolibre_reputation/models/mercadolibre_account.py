@@ -15,7 +15,7 @@ class MercadolibreAccountReputation(models.Model):
         'mercadolibre.seller.reputation',
         string='Reputación',
         compute='_compute_reputation_id',
-        store=False
+        store=True
     )
     reputation_level = fields.Selection(
         related='reputation_id.level_id',

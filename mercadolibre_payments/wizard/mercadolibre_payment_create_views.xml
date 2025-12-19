@@ -73,13 +73,13 @@
                 <!-- Mensaje informativo sobre comisiones -->
                 <div class="alert alert-secondary" role="alert"
                      attrs="{'invisible': ['|', ('has_commissions', '=', False), ('create_commission', '=', False)]}">
-                    <i class="fa fa-info-circle"/> <strong>Comisiones:</strong>
+                    <i class="fa fa-info-circle" title="Información"/> <strong>Comisiones:</strong>
                     Se creara un pago adicional de egreso por $<field name="total_charges" nolabel="1" class="d-inline"/>
                     hacia el proveedor de comisiones seleccionado. Este pago queda vinculado al pago principal de MercadoPago.
                 </div>
                 <div class="alert alert-light" role="alert"
                      attrs="{'invisible': ['|', ('has_commissions', '=', False), ('create_commission', '=', True)]}">
-                    <i class="fa fa-exclamation-circle text-warning"/> <strong>Nota:</strong>
+                    <i class="fa fa-exclamation-circle text-warning" title="Advertencia"/> <strong>Nota:</strong>
                     Este pago tiene comisiones por $<field name="total_charges" nolabel="1" class="d-inline"/>
                     pero no se creara pago de comision. Active "Crear Pago de Comision" si desea registrarlas.
                 </div>
