@@ -49,30 +49,36 @@
                             <field name="date_read" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Mensaje">
-                        <field name="message" readonly="1" nolabel="1"/>
-                    </group>
-                    <group string="Mensaje Traducido"
+
+                    <separator string="Mensaje"/>
+                    <field name="message" readonly="1" nolabel="1"
+                           style="min-height: 150px; width: 100%;"/>
+
+                    <group string="Mensaje Traducido" col="1"
                            attrs="{'invisible': [('translated_message', '=', False)]}">
-                        <field name="translated_message" readonly="1" nolabel="1"/>
+                        <field name="translated_message" readonly="1" nolabel="1"
+                               style="min-height: 100px; width: 100%;"/>
                     </group>
-                    <group string="Moderacion"
-                           attrs="{'invisible': [('moderation_status', 'in', [False, 'clean', 'non_moderated'])]}">
-                        <field name="moderation_status" readonly="1"/>
-                        <field name="moderation_reason" readonly="1"/>
+
+                    <group attrs="{'invisible': [('moderation_status', 'in', [False, 'clean', 'non_moderated'])]}">
+                        <group string="Moderacion">
+                            <field name="moderation_status" readonly="1"/>
+                            <field name="moderation_reason" readonly="1"/>
+                        </group>
                     </group>
-                    <group string="Adjuntos" attrs="{'invisible': [('attachment_count', '=', 0)]}">
-                        <field name="attachment_ids" readonly="1" nolabel="1">
-                            <tree>
-                                <field name="original_filename"/>
-                                <field name="file_type"/>
-                                <field name="file_size"/>
-                                <field name="is_downloaded"/>
-                                <button name="action_download" type="object"
-                                        string="Descargar" icon="fa-download"/>
-                            </tree>
-                        </field>
-                    </group>
+
+                    <separator string="Adjuntos" attrs="{'invisible': [('attachment_count', '=', 0)]}"/>
+                    <field name="attachment_ids" readonly="1" nolabel="1"
+                           attrs="{'invisible': [('attachment_count', '=', 0)]}">
+                        <tree>
+                            <field name="original_filename"/>
+                            <field name="file_type"/>
+                            <field name="file_size"/>
+                            <field name="is_downloaded"/>
+                            <button name="action_download" type="object"
+                                    string="Descargar" icon="fa-download"/>
+                        </tree>
+                    </field>
                 </sheet>
             </form>
         </field>
