@@ -920,6 +920,75 @@ class MercadolibreOrder(models.Model):
             'odoo_order_error': False,
         })
 
+    @api.model
+    def _cron_create_sale_orders(self):
+        """
+        Cron para crear ordenes de venta automaticamente.
+
+        Busca ordenes ML sincronizadas que:
+        - Esten pagadas (paid o partially_paid)
+        - No tengan orden de venta creada
+        - No esten en estado de error
+
+        Usa la configuracion del tipo logistico para determinar
+        si debe confirmar automaticamente la orden y el picking.
+        """
+        _logger.info('Iniciando cron de creacion de ordenes de venta')
+
+        # Buscar ordenes pendientes de crear
+        orders = self.search([
+            ('status', 'in', ['paid', 'partially_paid']),
+            ('sale_order_id', '=', False),
+            ('odoo_order_state', 'in', ['pending', 'error']),
+        ], limit=100)  # Limitar para evitar timeouts
+
+        if not orders:
+            _logger.info('No hay ordenes pendientes de crear')
+            return
+
+        _logger.info('Procesando %d ordenes pendientes', len(orders))
+
+        created_count = 0
+        error_count = 0
+
+        for order in orders:
+            try:
+                # Buscar configuracion de sincronizacion para esta cuenta
+                config = self.env['mercadolibre.order.sync.config'].search([
+                    ('account_id', '=', order.account_id.id),
+                    ('create_sale_orders', '=', True),
+                ], limit=1)
+
+                if not config:
+                    # Crear configuracion temporal minima
+                    config = self.env['mercadolibre.order.sync.config'].new({
+                        'account_id': order.account_id.id,
+                        'name': 'Temporal',
+                        'create_sale_orders': True,
+                    })
+
+                # Crear la orden de venta
+                sale_order = order._create_sale_order(config)
+
+                if sale_order:
+                    created_count += 1
+                    _logger.info('Orden %s creada exitosamente: %s',
+                               order.ml_order_id, sale_order.name)
+                else:
+                    error_count += 1
+
+            except Exception as e:
+                error_count += 1
+                _logger.error('Error creando orden para %s: %s',
+                            order.ml_order_id, str(e))
+                order.write({
+                    'odoo_order_state': 'error',
+                    'odoo_order_error': str(e),
+                })
+
+        _logger.info('Cron finalizado: %d creadas, %d errores',
+                    created_count, error_count)
+
     def _create_sale_order(self, config):
         """
         Crea la orden de venta en Odoo basandose en la configuracion.
@@ -971,8 +1040,12 @@ class MercadolibreOrder(models.Model):
             if not warehouse:
                 raise ValidationError(_('No se encontro ningun almacen. Configure un almacen por defecto en la configuracion de sincronizacion.'))
 
-            # Determinar pricelist (requerido en sale.order)
-            pricelist = config.default_pricelist_id
+            # Determinar pricelist (prioridad: tipo logistico > sync config > compania)
+            pricelist = False
+            if logistic_config and logistic_config.pricelist_id:
+                pricelist = logistic_config.pricelist_id
+            elif config.default_pricelist_id:
+                pricelist = config.default_pricelist_id
             if not pricelist:
                 # Buscar tarifa de la compania
                 pricelist = self.env['product.pricelist'].search([
@@ -1011,6 +1084,10 @@ class MercadolibreOrder(models.Model):
                 order_vals['team_id'] = logistic_config.team_id.id
             elif config.default_team_id:
                 order_vals['team_id'] = config.default_team_id.id
+
+            # Agregar carrier si esta configurado en el tipo logistico
+            if logistic_config and logistic_config.carrier_id:
+                order_vals['carrier_id'] = logistic_config.carrier_id.id
 
             # Crear orden de venta
             sale_order = self.env['sale.order'].create(order_vals)
@@ -1059,14 +1136,25 @@ class MercadolibreOrder(models.Model):
                 sale_order.write({'tag_ids': [(6, 0, tags_to_assign.ids)]})
                 _logger.info('Etiquetas asignadas a %s: %s', sale_order.name, tags_to_assign.mapped('name'))
 
+            # Determinar si se debe confirmar automaticamente
+            # Prioridad: tipo logistico > sync config
+            should_confirm_order = False
+            should_confirm_picking = False
+
+            if logistic_config:
+                should_confirm_order = logistic_config.auto_confirm_order
+                should_confirm_picking = logistic_config.auto_confirm_picking
+            elif hasattr(config, 'auto_confirm_order'):
+                should_confirm_order = config.auto_confirm_order
+
             # Confirmar orden automaticamente si esta configurado
-            if config.auto_confirm_order:
+            if should_confirm_order:
                 try:
                     sale_order.action_confirm()
                     _logger.info('Orden %s confirmada automaticamente', sale_order.name)
 
                     # Confirmar picking si esta configurado en el tipo logistico
-                    if logistic_config and logistic_config.auto_confirm_picking:
+                    if should_confirm_picking:
                         self._auto_confirm_picking(sale_order, logistic_config)
 
                 except Exception as e:

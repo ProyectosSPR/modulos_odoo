@@ -11,8 +11,13 @@
                 <field name="interval_number"/>
                 <field name="interval_type"/>
                 <field name="period"/>
+                <field name="sync_all_logistic_types" optional="hide"/>
+                <field name="logistic_type_ids" widget="many2many_tags" optional="show"/>
                 <field name="last_run"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-warning="state == 'paused'"
+                       decoration-muted="state == 'draft'"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -70,6 +75,23 @@
                             <field name="last_sync_count"/>
                             <field name="next_run"/>
                         </group>
+                    </group>
+
+                    <group string="Filtro por Tipo Logistico" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
+                        <group>
+                            <field name="sync_all_logistic_types"/>
+                        </group>
+                        <group attrs="{'invisible': [('sync_all_logistic_types', '=', True)]}">
+                            <field name="logistic_type_ids" widget="many2many_tags"
+                                   options="{'color_field': 'active'}"
+                                   attrs="{'required': [('sync_all_logistic_types', '=', False)]}"/>
+                        </group>
+                        <div class="alert alert-info col-12" role="alert"
+                             attrs="{'invisible': [('sync_all_logistic_types', '=', True)]}">
+                            <strong>Nota:</strong> Solo se crearan ordenes de venta para los tipos logisticos seleccionados.
+                            Las ordenes de otros tipos se sincronizaran pero no se convertiran automaticamente a ordenes Odoo.
+                            La configuracion de cada tipo logistico (almacen, equipo, tarifa, etc.) tendra prioridad sobre los valores por defecto de esta configuracion.
+                        </div>
                     </group>
                     <group string="Configuracion de Ordenes Odoo" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
                         <group>
