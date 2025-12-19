@@ -15,6 +15,7 @@
                 </header>
                 <sheet>
                     <!-- Campos invisibles para attrs -->
+                    <field name="id" invisible="1"/>
                     <field name="overall_status" invisible="1"/>
                     <field name="is_protected" invisible="1"/>
 
@@ -30,7 +31,10 @@
 
                     <div class="oe_title">
                         <h1>
-                            <field name="account_id" readonly="1" options="{'no_open': True}"/>
+                            <field name="account_id"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   attrs="{'readonly': [('id', '!=', False)]}"
+                                   domain="[('state', '=', 'connected')]"/>
                         </h1>
                     </div>
 

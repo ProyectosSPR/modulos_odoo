@@ -61,17 +61,23 @@
     <!-- CONFIGURACION (dentro de Ventas)               -->
     <!-- ============================================== -->
 
+    <!-- Submenú Configuración -->
+    <menuitem id="menu_mercadolibre_sales_config"
+              name="Configuración"
+              parent="menu_mercadolibre_sales"
+              sequence="90"/>
+
     <!-- Sincronizaciones Automaticas -->
     <menuitem id="menu_mercadolibre_order_sync_config"
-              name="Sincronizaciones Automaticas"
-              parent="menu_mercadolibre_sales"
+              name="Sincronizaciones Automáticas"
+              parent="menu_mercadolibre_sales_config"
               action="action_mercadolibre_order_sync_config"
-              sequence="80"/>
+              sequence="10"/>
 
     <!-- Tipos Logisticos -->
     <menuitem id="menu_mercadolibre_logistic_type"
-              name="Tipos Logisticos"
-              parent="menu_mercadolibre_sales"
+              name="Tipos Logísticos"
+              parent="menu_mercadolibre_sales_config"
               action="action_mercadolibre_logistic_type"
-              sequence="90"/>
+              sequence="20"/>
 </odoo>

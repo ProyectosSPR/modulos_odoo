@@ -68,24 +68,30 @@
     <!-- CONFIGURACION (dentro de Pagos)                -->
     <!-- ============================================== -->
 
+    <!-- Submenú Configuración -->
+    <menuitem id="menu_mercadolibre_payments_config"
+              name="Configuración"
+              parent="menu_mercadolibre_payments_root"
+              sequence="90"/>
+
     <!-- Sincronizaciones Automaticas -->
     <menuitem id="menu_mercadolibre_payment_sync_config"
-              name="Sincronizaciones Automaticas"
-              parent="menu_mercadolibre_payments_root"
+              name="Sincronizaciones Automáticas"
+              parent="menu_mercadolibre_payments_config"
               action="action_mercadolibre_payment_sync_config"
-              sequence="60"/>
+              sequence="10"/>
 
     <!-- Proveedores Conocidos -->
     <menuitem id="menu_mercadolibre_known_vendor"
               name="Proveedores Conocidos"
-              parent="menu_mercadolibre_payments_root"
+              parent="menu_mercadolibre_payments_config"
               action="action_mercadolibre_known_vendor"
-              sequence="70"/>
+              sequence="20"/>
 
     <!-- Palabras Clave -->
     <menuitem id="menu_mercadolibre_known_vendor_keyword"
               name="Palabras Clave"
-              parent="menu_mercadolibre_payments_root"
+              parent="menu_mercadolibre_payments_config"
               action="action_mercadolibre_known_vendor_keyword"
-              sequence="75"/>
+              sequence="30"/>
 </odoo>

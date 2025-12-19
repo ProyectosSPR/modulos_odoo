@@ -44,7 +44,10 @@
 
                     <group>
                         <group string="Cuenta">
-                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="account_id"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   domain="[('state', '=', 'connected')]"
+                                   required="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="reputation_id" readonly="1"/>
                         </group>
