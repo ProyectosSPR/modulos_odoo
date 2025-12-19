@@ -25,6 +25,7 @@
         <field name="arch" type="xml">
             <form string="Configuracion de Sincronizacion">
                 <field name="cron_id" invisible="1"/>
+                <field name="company_id" invisible="1"/>
                 <header>
                     <button name="action_run_now" type="object" string="Sincronizar Ahora"
                             class="btn-primary" icon="fa-refresh"/>
