@@ -25,7 +25,7 @@
                                          alt="Item" class="o_image_64_contain"/>
                                 </t>
                                 <t t-else="">
-                                    <span class="fa fa-shopping-bag fa-3x text-muted"/>
+                                    <span class="fa fa-shopping-bag fa-3x text-muted" title="Sin imagen"/>
                                 </t>
                             </div>
                             <div class="oe_kanban_details">
