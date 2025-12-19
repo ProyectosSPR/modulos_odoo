@@ -42,6 +42,18 @@ class MercadolibreClaimMessage(models.Model):
         ('mediator', 'Mediador ML'),
     ], string='Destinatario', readonly=True)
 
+    # Nombres de participantes (desde el claim)
+    complainant_name = fields.Char(
+        string='Nombre Comprador',
+        related='claim_id.complainant_name',
+        readonly=True
+    )
+    respondent_name = fields.Char(
+        string='Nombre Vendedor',
+        related='claim_id.respondent_name',
+        readonly=True
+    )
+
     # === CONTENIDO ===
     message = fields.Text(
         string='Mensaje',

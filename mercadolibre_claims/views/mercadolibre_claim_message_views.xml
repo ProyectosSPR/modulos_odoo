@@ -44,6 +44,8 @@
                             <field name="status" readonly="1"/>
                         </group>
                         <group string="Participantes">
+                            <field name="complainant_name" string="Comprador"/>
+                            <field name="respondent_name" string="Vendedor"/>
                             <field name="sender_role" readonly="1"/>
                             <field name="receiver_role" readonly="1"/>
                             <field name="date_read" readonly="1"/>
