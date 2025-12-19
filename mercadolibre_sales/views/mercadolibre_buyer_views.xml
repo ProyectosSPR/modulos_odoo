@@ -83,7 +83,6 @@
                 <field name="first_name"/>
                 <field name="last_name"/>
                 <field name="email"/>
-                <field name="doc_number"/>
                 <separator/>
                 <filter string="Con Contacto" name="with_partner" domain="[('partner_id', '!=', False)]"/>
                 <filter string="Sin Contacto" name="without_partner" domain="[('partner_id', '=', False)]"/>
