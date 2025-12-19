@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- VISTA FORM - DASHBOARD DE REPUTACION -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_seller_reputation_form" model="ir.ui.view">
+        <field name="name">mercadolibre.seller.reputation.form</field>
+        <field name="model">mercadolibre.seller.reputation</field>
+        <field name="arch" type="xml">
+            <form string="Reputación del Vendedor">
+                <header>
+                    <button name="action_sync_reputation" type="object"
+                            string="Sincronizar" icon="fa-refresh"
+                            class="btn-primary"/>
+                </header>
+                <sheet>
+                    <!-- Alertas -->
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('overall_status', '!=', 'danger')]}">
+                        <strong>Atención:</strong> Una o más métricas superan el límite permitido.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('overall_status', '!=', 'warning')]}">
+                        <strong>Advertencia:</strong> Una o más métricas se acercan al límite.
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="account_id" readonly="1" options="{'no_open': True}"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Nivel de Reputación">
+                            <field name="level_id" widget="badge"
+                                   decoration-success="level_id in ['5_green', '4_light_green']"
+                                   decoration-warning="level_id == '3_yellow'"
+                                   decoration-danger="level_id in ['2_orange', '1_red']"/>
+                            <field name="power_seller_status" widget="badge"
+                                   decoration-info="power_seller_status != 'none'"/>
+                            <field name="site_id"/>
+                            <field name="last_sync"/>
+                        </group>
+                        <group string="Protección" attrs="{'invisible': [('is_protected', '=', False)]}">
+                            <field name="is_protected"/>
+                            <field name="real_level"/>
+                            <field name="protection_end_date"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Pestaña: Métricas de Calidad -->
+                        <page string="Métricas de Calidad" name="metrics">
+                            <group>
+                                <group string="Ventas">
+                                    <field name="metrics_period"/>
+                                    <field name="sales_completed"/>
+                                </group>
+                            </group>
+
+                            <group col="3">
+                                <!-- Reclamos -->
+                                <group string="Reclamos">
+                                    <field name="claims_rate" widget="progressbar"
+                                           options="{'max_value': 'claims_limit_green'}"/>
+                                    <field name="claims_value"/>
+                                    <field name="claims_limit_green" string="Límite Verde (%)"/>
+                                    <field name="claims_status" widget="badge"
+                                           decoration-success="claims_status == 'ok'"
+                                           decoration-warning="claims_status == 'warning'"
+                                           decoration-danger="claims_status == 'danger'"/>
+                                </group>
+
+                                <!-- Cancelaciones -->
+                                <group string="Cancelaciones">
+                                    <field name="cancellations_rate" widget="progressbar"
+                                           options="{'max_value': 'cancellations_limit_green'}"/>
+                                    <field name="cancellations_value"/>
+                                    <field name="cancellations_limit_green" string="Límite Verde (%)"/>
+                                    <field name="cancellations_status" widget="badge"
+                                           decoration-success="cancellations_status == 'ok'"
+                                           decoration-warning="cancellations_status == 'warning'"
+                                           decoration-danger="cancellations_status == 'danger'"/>
+                                </group>
+
+                                <!-- Despacho Tardío -->
+                                <group string="Despacho Tardío">
+                                    <field name="delayed_rate" widget="progressbar"
+                                           options="{'max_value': 'delayed_limit_green'}"/>
+                                    <field name="delayed_value"/>
+                                    <field name="delayed_limit_green" string="Límite Verde (%)"/>
+                                    <field name="delayed_status" widget="badge"
+                                           decoration-success="delayed_status == 'ok'"
+                                           decoration-warning="delayed_status == 'warning'"
+                                           decoration-danger="delayed_status == 'danger'"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Pestaña: Experiencia por Ítem -->
+                        <page string="Experiencia por Ítem" name="items">
+                            <group col="4">
+                                <button name="action_view_items_good" type="object"
+                                        class="btn-success oe_stat_button" icon="fa-thumbs-up">
+                                    <field name="items_good_count" string="Buena" widget="statinfo"/>
+                                </button>
+                                <button name="action_view_items_medium" type="object"
+                                        class="btn-warning oe_stat_button" icon="fa-exclamation">
+                                    <field name="items_medium_count" string="Media" widget="statinfo"/>
+                                </button>
+                                <button name="action_view_items_bad" type="object"
+                                        class="btn-danger oe_stat_button" icon="fa-thumbs-down">
+                                    <field name="items_bad_count" string="Mala" widget="statinfo"/>
+                                </button>
+                                <button name="action_view_items_no_data" type="object"
+                                        class="btn-secondary oe_stat_button" icon="fa-question">
+                                    <field name="items_no_data_count" string="Sin Datos" widget="statinfo"/>
+                                </button>
+                            </group>
+
+                            <field name="item_experience_ids" mode="tree">
+                                <tree decoration-success="color == 'green'"
+                                      decoration-warning="color == 'orange'"
+                                      decoration-danger="color == 'red'"
+                                      decoration-muted="color == 'gray'">
+                                    <field name="ml_item_id"/>
+                                    <field name="title"/>
+                                    <field name="score"/>
+                                    <field name="color" invisible="1"/>
+                                    <field name="reputation_text"/>
+                                    <field name="status"/>
+                                    <field name="problems_count"/>
+                                    <field name="last_sync"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- Pestaña: Transacciones -->
+                        <page string="Transacciones" name="transactions">
+                            <group>
+                                <group string="Totales">
+                                    <field name="transactions_period"/>
+                                    <field name="transactions_total"/>
+                                    <field name="transactions_completed"/>
+                                    <field name="transactions_canceled"/>
+                                </group>
+                                <group string="Calificaciones">
+                                    <field name="rating_positive" widget="progressbar"/>
+                                    <field name="rating_neutral" widget="progressbar"/>
+                                    <field name="rating_negative" widget="progressbar"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Pestaña: Historial -->
+                        <page string="Historial" name="history">
+                            <button name="action_view_history" type="object"
+                                    string="Ver Gráfico" class="btn-secondary mb-3"/>
+                            <field name="history_ids">
+                                <tree>
+                                    <field name="date"/>
+                                    <field name="level_id"/>
+                                    <field name="sales_completed"/>
+                                    <field name="claims_rate"/>
+                                    <field name="cancellations_rate"/>
+                                    <field name="delayed_rate"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- Pestaña: Datos Técnicos -->
+                        <page string="Datos Técnicos" name="technical">
+                            <group>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Datos Crudos">
+                                <field name="raw_data" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- VISTA TREE -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_seller_reputation_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.seller.reputation.tree</field>
+        <field name="model">mercadolibre.seller.reputation</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="overall_status == 'ok'"
+                  decoration-warning="overall_status == 'warning'"
+                  decoration-danger="overall_status == 'danger'">
+                <field name="account_id"/>
+                <field name="level_id" widget="badge"/>
+                <field name="power_seller_status"/>
+                <field name="sales_completed"/>
+                <field name="claims_rate" string="Reclamos %"/>
+                <field name="cancellations_rate" string="Cancelac. %"/>
+                <field name="delayed_rate" string="Despacho %"/>
+                <field name="overall_status" widget="badge"
+                       decoration-success="overall_status == 'ok'"
+                       decoration-warning="overall_status == 'warning'"
+                       decoration-danger="overall_status == 'danger'"/>
+                <field name="last_sync"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- ACCION -->
+    <!-- ============================================== -->
+    <record id="action_mercadolibre_seller_reputation" model="ir.actions.act_window">
+        <field name="name">Dashboard Reputación</field>
+        <field name="res_model">mercadolibre.seller.reputation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay registros de reputación
+            </p>
+            <p>
+                Configura la sincronización automática para obtener datos de reputación.
+            </p>
+        </field>
+    </record>
+</odoo>

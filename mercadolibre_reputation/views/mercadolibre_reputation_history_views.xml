@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- VISTA TREE -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_history_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.history.tree</field>
+        <field name="model">mercadolibre.reputation.history</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/>
+                <field name="account_id"/>
+                <field name="level_id" widget="badge"/>
+                <field name="sales_completed"/>
+                <field name="claims_rate"/>
+                <field name="cancellations_rate"/>
+                <field name="delayed_rate"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- VISTA GRAPH -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_history_graph" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.history.graph</field>
+        <field name="model">mercadolibre.reputation.history</field>
+        <field name="arch" type="xml">
+            <graph string="Evolución de Métricas" type="line">
+                <field name="date" type="row"/>
+                <field name="claims_rate" type="measure"/>
+                <field name="cancellations_rate" type="measure"/>
+                <field name="delayed_rate" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- VISTA PIVOT -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_history_pivot" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.history.pivot</field>
+        <field name="model">mercadolibre.reputation.history</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de Reputación">
+                <field name="date" type="row" interval="month"/>
+                <field name="account_id" type="col"/>
+                <field name="claims_rate" type="measure"/>
+                <field name="cancellations_rate" type="measure"/>
+                <field name="delayed_rate" type="measure"/>
+                <field name="sales_completed" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- FILTROS -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_history_search" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.history.search</field>
+        <field name="model">mercadolibre.reputation.history</field>
+        <field name="arch" type="xml">
+            <search string="Historial">
+                <field name="account_id"/>
+                <field name="date"/>
+                <separator/>
+                <filter string="Último mes" name="last_month"
+                        domain="[('date', '>=', (context_today() - relativedelta(months=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Últimos 3 meses" name="last_3_months"
+                        domain="[('date', '>=', (context_today() - relativedelta(months=3)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Últimos 6 meses" name="last_6_months"
+                        domain="[('date', '>=', (context_today() - relativedelta(months=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'date:month'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Nivel" name="group_level" context="{'group_by': 'level_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- ACCION -->
+    <!-- ============================================== -->
+    <record id="action_mercadolibre_reputation_history" model="ir.actions.act_window">
+        <field name="name">Historial de Reputación</field>
+        <field name="res_model">mercadolibre.reputation.history</field>
+        <field name="view_mode">graph,tree,pivot</field>
+        <field name="search_view_id" ref="view_mercadolibre_reputation_history_search"/>
+        <field name="context">{'search_default_last_3_months': 1}</field>
+    </record>
+</odoo>

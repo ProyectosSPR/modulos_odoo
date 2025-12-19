@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- EXTENSION DE VISTA FORM DE CUENTA -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_account_form_reputation" model="ir.ui.view">
+        <field name="name">mercadolibre.account.form.reputation</field>
+        <field name="model">mercadolibre.account</field>
+        <field name="inherit_id" ref="mercadolibre_connector.view_mercadolibre_account_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar smart buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_reputation" type="object"
+                        class="oe_stat_button" icon="fa-star">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="reputation_level" readonly="1"/>
+                        </span>
+                        <span class="o_stat_text">Reputación</span>
+                    </div>
+                </button>
+                <button name="action_view_item_experiences" type="object"
+                        class="oe_stat_button" icon="fa-shopping-bag"
+                        attrs="{'invisible': [('items_experience_count', '=', 0)]}">
+                    <field name="items_experience_count" string="Ítems" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <!-- Agregar botón de sincronización en header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sync_reputation" type="object"
+                        string="Sync Reputación" icon="fa-star"
+                        class="btn-secondary"
+                        attrs="{'invisible': [('state', '!=', 'connected')]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- VISTA FORM -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_sync_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.sync.config.form</field>
+        <field name="model">mercadolibre.reputation.sync.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración de Sincronización">
+                <header>
+                    <button name="action_activate" type="object" string="Activar"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_pause" type="object" string="Pausar"
+                            class="btn-warning"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"/>
+                    <button name="action_resume" type="object" string="Reanudar"
+                            class="btn-success"
+                            attrs="{'invisible': [('state', '!=', 'paused')]}"/>
+                    <button name="action_run_now" type="object" string="Ejecutar Ahora"
+                            class="btn-secondary" icon="fa-play"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object"
+                                name="action_run_now" icon="fa-refresh"
+                                attrs="{'invisible': [('state', '=', 'draft')]}">
+                            <field name="total_syncs" string="Ejecuciones" widget="statinfo"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre de la configuración"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Cuenta">
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="reputation_id" readonly="1"/>
+                        </group>
+                        <group string="Programación">
+                            <label for="interval_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline"/>
+                                <field name="interval_type" class="oe_inline"/>
+                            </div>
+                            <field name="last_run"/>
+                            <field name="next_run"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Configuración" name="config">
+                            <group>
+                                <group string="Qué Sincronizar">
+                                    <field name="sync_seller_reputation"/>
+                                    <field name="sync_item_experience"/>
+                                </group>
+                                <group string="Ítems" attrs="{'invisible': [('sync_item_experience', '=', False)]}">
+                                    <field name="item_source"/>
+                                    <field name="items_limit"/>
+                                </group>
+                            </group>
+
+                            <group string="Alertas">
+                                <group>
+                                    <field name="alert_on_danger"/>
+                                    <field name="alert_on_warning"/>
+                                </group>
+                                <group>
+                                    <field name="alert_user_id"
+                                           attrs="{'required': ['|', ('alert_on_danger', '=', True), ('alert_on_warning', '=', True)]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Última Ejecución" name="last_run">
+                            <group>
+                                <group>
+                                    <field name="last_sync_reputation_ok" widget="boolean_toggle"/>
+                                    <field name="last_sync_items_count"/>
+                                    <field name="last_sync_items_errors"/>
+                                </group>
+                            </group>
+                            <group string="Log">
+                                <field name="last_sync_log" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Técnico" name="technical">
+                            <group>
+                                <field name="sequence"/>
+                                <field name="active"/>
+                                <field name="cron_id" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- VISTA TREE -->
+    <!-- ============================================== -->
+    <record id="view_mercadolibre_reputation_sync_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.reputation.sync.config.tree</field>
+        <field name="model">mercadolibre.reputation.sync.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-warning="state == 'paused'"
+                       decoration-muted="state == 'draft'"/>
+                <field name="last_run"/>
+                <field name="next_run"/>
+                <field name="total_syncs"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================== -->
+    <!-- ACCION -->
+    <!-- ============================================== -->
+    <record id="action_mercadolibre_reputation_sync_config" model="ir.actions.act_window">
+        <field name="name">Configuración Sincronización</field>
+        <field name="res_model">mercadolibre.reputation.sync.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configura la sincronización automática de reputación
+            </p>
+            <p>
+                Crea una configuración para sincronizar periódicamente
+                la reputación del vendedor y la experiencia de compra.
+            </p>
+        </field>
+    </record>
+</odoo>

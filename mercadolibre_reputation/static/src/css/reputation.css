@@ -1,0 +1,96 @@
+/* ============================================== */
+/* ESTILOS PARA MODULO DE REPUTACION ML */
+/* ============================================== */
+
+/* Badges de estado */
+.o_field_badge[data-color="green"],
+.badge.bg-success {
+    background-color: #00a650 !important;
+}
+
+.o_field_badge[data-color="orange"],
+.badge.bg-warning {
+    background-color: #ff7733 !important;
+    color: white !important;
+}
+
+.o_field_badge[data-color="red"],
+.badge.bg-danger {
+    background-color: #f23d4f !important;
+}
+
+.o_field_badge[data-color="gray"],
+.badge.bg-secondary {
+    background-color: #999999 !important;
+}
+
+/* Kanban cards */
+.o_kanban_view .o_kanban_record .o_kanban_image {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.o_kanban_view .o_kanban_record .o_kanban_image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Stat buttons personalizados */
+.oe_stat_button.btn-success {
+    border-left-color: #00a650;
+}
+
+.oe_stat_button.btn-warning {
+    border-left-color: #ff7733;
+}
+
+.oe_stat_button.btn-danger {
+    border-left-color: #f23d4f;
+}
+
+/* Progress bars */
+.o_field_widget.o_field_progressbar .o_progress {
+    height: 20px;
+}
+
+/* Alertas personalizadas */
+.alert-reputation-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.alert-reputation-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+
+/* Termómetro de reputación */
+.reputation-thermometer {
+    width: 100%;
+    height: 30px;
+    background: linear-gradient(to right,
+        #f23d4f 0%,
+        #ff7733 25%,
+        #fff159 50%,
+        #8bc34a 75%,
+        #00a650 100%);
+    border-radius: 15px;
+    position: relative;
+}
+
+.reputation-indicator {
+    width: 20px;
+    height: 20px;
+    background: white;
+    border: 3px solid #333;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    transform: translateX(-50%);
+}

@@ -44,11 +44,11 @@
               action="action_mercadolibre_claim_message"
               sequence="50"/>
 
-    <!-- Configuracion -->
+    <!-- Configuracion - bajo el submenu de Reclamos -->
     <menuitem id="menu_mercadolibre_claims_config"
-              name="Configuracion Claims"
-              parent="mercadolibre_connector.menu_mercadolibre_config"
+              name="Configuracion"
+              parent="menu_mercadolibre_claims_root"
               action="action_mercadolibre_claim_config"
-              sequence="30"/>
+              sequence="90"/>
 
 </odoo>

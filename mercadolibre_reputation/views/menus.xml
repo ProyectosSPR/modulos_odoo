@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== -->
+    <!-- MENU PRINCIPAL (bajo MercadoLibre) -->
+    <!-- ============================================== -->
+
+    <!-- Menú Reputación -->
+    <menuitem id="menu_mercadolibre_reputation_root"
+              name="Reputación"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="30"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_mercadolibre_reputation_dashboard"
+              name="Dashboard"
+              parent="menu_mercadolibre_reputation_root"
+              action="action_mercadolibre_seller_reputation"
+              sequence="10"/>
+
+    <!-- Experiencia por Ítem -->
+    <menuitem id="menu_mercadolibre_item_experience"
+              name="Experiencia por Ítem"
+              parent="menu_mercadolibre_reputation_root"
+              action="action_mercadolibre_item_experience"
+              sequence="20"/>
+
+    <!-- Historial -->
+    <menuitem id="menu_mercadolibre_reputation_history"
+              name="Historial"
+              parent="menu_mercadolibre_reputation_root"
+              action="action_mercadolibre_reputation_history"
+              sequence="30"/>
+
+    <!-- Separador de Configuración -->
+    <menuitem id="menu_mercadolibre_reputation_config"
+              name="Configuración"
+              parent="menu_mercadolibre_reputation_root"
+              sequence="90"/>
+
+    <!-- Configuración de Sincronización -->
+    <menuitem id="menu_mercadolibre_reputation_sync_config"
+              name="Sincronización Automática"
+              parent="menu_mercadolibre_reputation_config"
+              action="action_mercadolibre_reputation_sync_config"
+              sequence="10"/>
+</odoo>
