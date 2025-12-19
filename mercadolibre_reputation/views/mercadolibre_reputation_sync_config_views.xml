@@ -9,6 +9,7 @@
         <field name="arch" type="xml">
             <form string="Configuración de Sincronización">
                 <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
                     <button name="action_activate" type="object" string="Activar"
                             class="btn-primary"
                             attrs="{'invisible': [('state', '!=', 'draft')]}"/>
@@ -21,9 +22,12 @@
                     <button name="action_run_now" type="object" string="Ejecutar Ahora"
                             class="btn-secondary" icon="fa-play"
                             attrs="{'invisible': [('state', '=', 'draft')]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
                 </header>
                 <sheet>
+                    <!-- Campos invisibles para attrs -->
+                    <field name="sync_item_experience" invisible="1"/>
+                    <field name="alert_on_danger" invisible="1"/>
+                    <field name="alert_on_warning" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" type="object"
                                 name="action_run_now" icon="fa-refresh"

@@ -100,6 +100,11 @@
                             class="btn-secondary"/>
                 </header>
                 <sheet>
+                    <!-- Campos invisibles para attrs -->
+                    <field name="color" invisible="1"/>
+                    <field name="is_frozen" invisible="1"/>
+                    <field name="problems_count" invisible="1"/>
+
                     <!-- Alerta de estado -->
                     <div class="alert alert-danger" role="alert"
                          attrs="{'invisible': [('color', '!=', 'red')]}">
@@ -118,7 +123,9 @@
                         <button name="action_view_problems" type="object"
                                 class="oe_stat_button" icon="fa-exclamation-triangle"
                                 attrs="{'invisible': [('problems_count', '=', 0)]}">
-                            <field name="problems_count" string="Problemas" widget="statinfo"/>
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Problemas</span>
+                            </div>
                         </button>
                     </div>
 

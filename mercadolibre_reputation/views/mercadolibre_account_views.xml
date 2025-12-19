@@ -8,6 +8,11 @@
         <field name="model">mercadolibre.account</field>
         <field name="inherit_id" ref="mercadolibre_connector.view_mercadolibre_account_form"/>
         <field name="arch" type="xml">
+            <!-- Campos invisibles para attrs -->
+            <xpath expr="//sheet" position="inside">
+                <field name="items_experience_count" invisible="1"/>
+            </xpath>
+
             <!-- Agregar smart buttons -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_reputation" type="object"

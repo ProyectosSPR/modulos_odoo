@@ -14,6 +14,10 @@
                             class="btn-primary"/>
                 </header>
                 <sheet>
+                    <!-- Campos invisibles para attrs -->
+                    <field name="overall_status" invisible="1"/>
+                    <field name="is_protected" invisible="1"/>
+
                     <!-- Alertas -->
                     <div class="alert alert-danger" role="alert"
                          attrs="{'invisible': [('overall_status', '!=', 'danger')]}">
@@ -42,7 +46,6 @@
                             <field name="last_sync"/>
                         </group>
                         <group string="Protección" attrs="{'invisible': [('is_protected', '=', False)]}">
-                            <field name="is_protected"/>
                             <field name="real_level"/>
                             <field name="protection_end_date"/>
                         </group>
