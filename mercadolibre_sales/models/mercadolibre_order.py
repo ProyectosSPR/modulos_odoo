@@ -1537,6 +1537,11 @@ class MercadolibreOrder(models.Model):
         """
         Verifica la disponibilidad de stock para un picking.
 
+        En Odoo 16:
+        - El estado 'assigned' indica que hay stock reservado
+        - Para cantidad reservada usamos SQL directo a reserved_uom_qty
+          ya que no esta expuesto como campo ORM
+
         Returns:
             dict: {
                 'fully_available': bool,
@@ -1550,7 +1555,19 @@ class MercadolibreOrder(models.Model):
 
         for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
             demanded = move.product_uom_qty
-            reserved = move.reserved_availability or 0
+
+            # En Odoo 16, obtener cantidad reservada desde la BD
+            # porque reserved_uom_qty no esta expuesto como campo ORM directamente
+            if move.move_line_ids:
+                self.env.cr.execute("""
+                    SELECT COALESCE(SUM(reserved_uom_qty), 0)
+                    FROM stock_move_line
+                    WHERE move_id = %s AND state NOT IN ('done', 'cancel')
+                """, (move.id,))
+                result = self.env.cr.fetchone()
+                reserved = float(result[0]) if result else 0.0
+            else:
+                reserved = 0.0
 
             total_demanded += demanded
             total_reserved += reserved
@@ -1576,36 +1593,69 @@ class MercadolibreOrder(models.Model):
         """
         Establece las cantidades hechas en las lineas de movimiento del picking.
 
+        En Odoo 16:
+        - stock.move usa 'quantity' para cantidad hecha (campo computado)
+        - stock.move.line usa 'quantity' para cantidad hecha (columna: qty_done)
+        - reserved_uom_qty se accede via SQL ya que no es campo ORM
+
         Args:
             picking: stock.picking a procesar
             use_reserved: Si True, usa la cantidad reservada. Si False, usa la demandada.
             force_all: Si True, fuerza todas las cantidades demandadas aunque no haya stock.
         """
         for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            # Obtener cantidad reservada via SQL
+            if move.move_line_ids:
+                self.env.cr.execute("""
+                    SELECT COALESCE(SUM(reserved_uom_qty), 0)
+                    FROM stock_move_line
+                    WHERE move_id = %s AND state NOT IN ('done', 'cancel')
+                """, (move.id,))
+                result = self.env.cr.fetchone()
+                reserved_qty = float(result[0]) if result else 0.0
+            else:
+                reserved_qty = 0.0
+
             if force_all:
                 # Forzar cantidad demandada completa
                 qty_to_do = move.product_uom_qty
             elif use_reserved:
                 # Usar solo lo reservado
-                qty_to_do = move.reserved_availability or 0
+                qty_to_do = reserved_qty
             else:
                 qty_to_do = move.product_uom_qty
 
-            move.quantity_done = qty_to_do
+            # En Odoo 16, usamos move.quantity (campo computado con inverse)
+            move.quantity = qty_to_do
 
             # Actualizar move_line_ids si existen
             if move.move_line_ids:
                 for move_line in move.move_line_ids:
+                    # Obtener reserved_uom_qty via SQL para esta linea
+                    self.env.cr.execute("""
+                        SELECT COALESCE(reserved_uom_qty, 0)
+                        FROM stock_move_line WHERE id = %s
+                    """, (move_line.id,))
+                    ml_reserved = float(self.env.cr.fetchone()[0] or 0)
+
                     if force_all:
-                        move_line.quantity = move_line.quantity_reserved or move.product_uom_qty
+                        # Forzar: usar reservado o demandado total
+                        move_line.quantity = ml_reserved if ml_reserved > 0 else move.product_uom_qty
                     elif move_line.quantity == 0:
-                        move_line.quantity = move_line.quantity_reserved
-            elif force_all and move.quantity_done > 0:
+                        # Usar lo reservado
+                        move_line.quantity = ml_reserved
+            elif force_all and qty_to_do > 0:
                 # Crear move_lines si es forzado y no existen
                 try:
                     move._action_assign()
+                    # Actualizar las lineas creadas
                     for move_line in move.move_line_ids:
-                        move_line.quantity = move_line.quantity_reserved or move.product_uom_qty
+                        self.env.cr.execute("""
+                            SELECT COALESCE(reserved_uom_qty, 0)
+                            FROM stock_move_line WHERE id = %s
+                        """, (move_line.id,))
+                        ml_reserved = float(self.env.cr.fetchone()[0] or 0)
+                        move_line.quantity = ml_reserved if ml_reserved > 0 else move.product_uom_qty
                 except Exception:
                     # Si falla la asignacion, crear linea manual
                     self.env['stock.move.line'].create({
@@ -1621,7 +1671,7 @@ class MercadolibreOrder(models.Model):
             _logger.debug(
                 'Move %s: producto=%s, demandado=%.2f, reservado=%.2f, hecho=%.2f',
                 move.id, move.product_id.name, move.product_uom_qty,
-                move.reserved_availability or 0, move.quantity_done
+                reserved_qty, move.quantity
             )
 
     def _validate_picking(self, picking, create_backorder=False):
