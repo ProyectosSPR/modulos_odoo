@@ -77,7 +77,8 @@
         <field name="model">mercadolibre.order</field>
         <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_search"/>
         <field name="arch" type="xml">
-            <xpath expr="//search" position="inside">
+            <!-- Agregar filtros de envio antes del grupo "Agrupar por" -->
+            <xpath expr="//filter[@name='this_week']" position="after">
                 <separator/>
                 <filter string="Con Envio Sincronizado" name="has_shipment"
                         domain="[('has_shipment', '=', True)]"/>
@@ -95,7 +96,8 @@
                 <filter string="Envio Problema" name="shipment_problem"
                         domain="[('shipment_status', 'in', ('not_delivered', 'returned'))]"/>
             </xpath>
-            <xpath expr="//group[@string='Agrupar por']" position="inside">
+            <!-- Agregar filtro de agrupacion despues del ultimo filtro del grupo -->
+            <xpath expr="//filter[@name='group_date']" position="after">
                 <filter string="Estado Envio" name="group_shipment_status"
                         context="{'group_by': 'shipment_status'}"/>
             </xpath>
