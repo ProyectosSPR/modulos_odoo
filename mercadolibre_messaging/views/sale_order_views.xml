@@ -12,14 +12,15 @@
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_ml_conversation" type="object"
                         class="oe_stat_button" icon="fa-comments"
-                        invisible="not mercadolibre_order_ids">
+                        attrs="{'invisible': [('ml_order_ids', '=', [])]}">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value">
                             <field name="ml_message_count"/>
                         </span>
                         <span class="o_stat_text">Mensajes ML</span>
                     </div>
-                    <span class="badge bg-danger" invisible="ml_unread_count == 0"
+                    <span class="badge bg-danger"
+                          attrs="{'invisible': [('ml_unread_count', '=', 0)]}"
                           style="position: absolute; top: 5px; right: 5px;">
                         <field name="ml_unread_count"/>
                     </span>
@@ -29,7 +30,7 @@
             <!-- Add ML Messaging tab in notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Mensajería ML" name="ml_messaging"
-                      invisible="not mercadolibre_order_ids">
+                      attrs="{'invisible': [('ml_order_ids', '=', [])]}">
                     <group>
                         <group string="Conversación">
                             <field name="ml_conversation_id" readonly="1"/>
@@ -46,10 +47,11 @@
                             <button name="action_mark_ml_read" type="object"
                                     string="Marcar Leídos" class="btn-secondary"
                                     icon="fa-check"
-                                    invisible="not ml_has_unread"/>
+                                    attrs="{'invisible': [('ml_has_unread', '=', False)]}"/>
                         </group>
                     </group>
-                    <group string="Último Mensaje" invisible="not ml_last_message_preview">
+                    <group string="Último Mensaje"
+                           attrs="{'invisible': [('ml_last_message_preview', '=', False)]}">
                         <field name="ml_last_message_preview" readonly="1" nolabel="1"/>
                     </group>
                 </page>

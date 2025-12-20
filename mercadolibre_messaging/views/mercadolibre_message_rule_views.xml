@@ -36,7 +36,8 @@
                             <field name="execution_count" string="Ejecuciones" widget="statinfo"/>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Desactivada" bg_color="bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Desactivada" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1>
@@ -63,10 +64,12 @@
                     </group>
 
                     <group>
-                        <group string="Condición de Orden" invisible="trigger_type == 'shipment_status'">
+                        <group string="Condición de Orden"
+                               attrs="{'invisible': [('trigger_type', '=', 'shipment_status')]}">
                             <field name="order_status"/>
                         </group>
-                        <group string="Condición de Envío" invisible="trigger_type == 'order_status'">
+                        <group string="Condición de Envío"
+                               attrs="{'invisible': [('trigger_type', '=', 'order_status')]}">
                             <field name="shipment_status"/>
                         </group>
                     </group>
@@ -82,14 +85,15 @@
                         </group>
                     </group>
 
-                    <group string="Estadísticas" invisible="execution_count == 0">
+                    <group string="Estadísticas"
+                           attrs="{'invisible': [('execution_count', '=', 0)]}">
                         <group>
                             <field name="execution_count"/>
                             <field name="last_execution"/>
                         </group>
                     </group>
 
-                    <group string="Información" invisible="1">
+                    <group string="Información" attrs="{'invisible': [('id', '!=', False)]}">
                         <field name="company_id"/>
                     </group>
                 </sheet>

@@ -45,7 +45,8 @@
                             </div>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1>

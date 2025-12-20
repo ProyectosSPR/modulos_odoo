@@ -7,7 +7,7 @@
         <field name="model">mercadolibre.message.compose</field>
         <field name="arch" type="xml">
             <form string="Enviar Mensaje MercadoLibre">
-                <group invisible="can_send">
+                <group attrs="{'invisible': [('can_send', '=', True)]}">
                     <div class="alert alert-warning" role="alert">
                         <field name="cap_warning" readonly="1"/>
                     </div>
@@ -39,11 +39,13 @@
                             <span> / 350</span>
                         </div>
                         <div class="col-6 text-end">
-                            <span class="text-danger" invisible="not char_over_limit">
-                                ⚠️ Excede el límite
+                            <span class="text-danger"
+                                  attrs="{'invisible': [('char_over_limit', '=', False)]}">
+                                Excede el límite
                             </span>
-                            <span class="text-success" invisible="char_over_limit or char_count == 0">
-                                ✓ Restantes: <field name="char_remaining" class="oe_inline"/>
+                            <span class="text-success"
+                                  attrs="{'invisible': ['|', ('char_over_limit', '=', True), ('char_count', '=', 0)]}">
+                                Restantes: <field name="char_remaining" class="oe_inline"/>
                             </span>
                         </div>
                     </div>
@@ -51,10 +53,12 @@
 
                 <group string="Programación">
                     <field name="send_now" widget="boolean_toggle"/>
-                    <field name="scheduled_time" invisible="send_now"/>
+                    <field name="scheduled_time"
+                           attrs="{'invisible': [('send_now', '=', True)]}"/>
                 </group>
 
-                <group string="Mensajes Recientes" invisible="not recent_messages">
+                <group string="Mensajes Recientes"
+                       attrs="{'invisible': [('recent_messages', '=', False)]}">
                     <field name="recent_messages" readonly="1" nolabel="1"/>
                 </group>
 
@@ -64,10 +68,10 @@
                 <footer>
                     <button name="action_send" string="Enviar" type="object"
                             class="btn-primary" icon="fa-paper-plane"
-                            invisible="not can_send or char_over_limit"/>
+                            attrs="{'invisible': ['|', ('can_send', '=', False), ('char_over_limit', '=', True)]}"/>
                     <button name="action_send" string="Enviar" type="object"
                             class="btn-secondary" disabled="1"
-                            invisible="can_send and not char_over_limit"/>
+                            attrs="{'invisible': ['&amp;', ('can_send', '=', True), ('char_over_limit', '=', False)]}"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
@@ -88,11 +92,12 @@
         <field name="model">mercadolibre.messaging.sync</field>
         <field name="arch" type="xml">
             <form string="Sincronizar Mensajería ML">
-                <group invisible="state != 'draft'">
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Cuentas">
                         <field name="all_accounts" widget="boolean_toggle"/>
-                        <field name="account_id" invisible="all_accounts"
-                               required="not all_accounts"/>
+                        <field name="account_id"
+                               attrs="{'invisible': [('all_accounts', '=', True)],
+                                       'required': [('all_accounts', '=', False)]}"/>
                     </group>
                     <group string="Opciones">
                         <field name="sync_type"/>
@@ -101,13 +106,14 @@
                     </group>
                 </group>
 
-                <group invisible="state == 'draft'">
+                <group attrs="{'invisible': [('state', '=', 'draft')]}">
                     <group string="Progreso">
                         <field name="state" widget="statusbar"/>
                     </group>
                 </group>
 
-                <group invisible="state not in ('done', 'error')" string="Resultados">
+                <group attrs="{'invisible': [('state', 'not in', ('done', 'error'))]}"
+                       string="Resultados">
                     <group>
                         <field name="conversations_synced"/>
                         <field name="messages_synced"/>
@@ -121,15 +127,15 @@
                 <footer>
                     <button name="action_sync" string="Sincronizar" type="object"
                             class="btn-primary" icon="fa-refresh"
-                            invisible="state != 'draft'"/>
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                     <button name="action_view_conversations" string="Ver Conversaciones" type="object"
                             class="btn-secondary" icon="fa-comments"
-                            invisible="state not in ('done', 'error')"/>
+                            attrs="{'invisible': [('state', 'not in', ('done', 'error'))]}"/>
                     <button name="action_close" string="Cerrar" type="object"
                             class="btn-secondary"
-                            invisible="state == 'draft'"/>
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"
-                            invisible="state != 'draft'"/>
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                 </footer>
             </form>
         </field>

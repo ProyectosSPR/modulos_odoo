@@ -31,7 +31,8 @@
                             <field name="use_count" string="Usos" widget="statinfo"/>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1>
@@ -60,17 +61,19 @@ Variables disponibles: {buyer_name}, {order_number}, {tracking_number}, {deliver
                                 <span> / 350</span>
                             </div>
                             <div class="col-6 text-end">
-                                <span class="text-danger" invisible="body_char_count &lt;= 350">
-                                    ⚠️ Excede el límite de 350 caracteres
+                                <span class="text-danger"
+                                      attrs="{'invisible': [('body_char_count', '&lt;=', 350)]}">
+                                    Excede el límite de 350 caracteres
                                 </span>
-                                <span class="text-success" invisible="body_char_count &gt; 350 or body_char_count == 0">
-                                    ✓ Dentro del límite
+                                <span class="text-success"
+                                      attrs="{'invisible': ['|', ('body_char_count', '&gt;', 350), ('body_char_count', '=', 0)]}">
+                                    Dentro del límite
                                 </span>
                             </div>
                         </div>
                     </group>
 
-                    <group string="Vista Previa" invisible="not body">
+                    <group string="Vista Previa" attrs="{'invisible': [('body', '=', False)]}">
                         <field name="body_preview" readonly="1" nolabel="1"/>
                     </group>
 
@@ -88,7 +91,8 @@ Variables disponibles: {buyer_name}, {order_number}, {tracking_number}, {deliver
                         </div>
                     </group>
 
-                    <group string="Estadísticas" invisible="use_count == 0">
+                    <group string="Estadísticas"
+                           attrs="{'invisible': [('use_count', '=', 0)]}">
                         <group>
                             <field name="use_count"/>
                             <field name="last_used"/>

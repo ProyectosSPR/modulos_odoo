@@ -6,7 +6,7 @@
         <field name="name">mercadolibre.message.tree</field>
         <field name="model">mercadolibre.message</field>
         <field name="arch" type="xml">
-            <tree string="Mensajes ML" decoration-bf="not is_read and direction == 'incoming'"
+            <tree string="Mensajes ML" decoration-bf="is_read == False and direction == 'incoming'"
                   decoration-danger="state == 'failed'" decoration-muted="state == 'draft'">
                 <field name="direction" column_invisible="1"/>
                 <field name="is_read" column_invisible="1"/>
@@ -38,12 +38,12 @@
                 <header>
                     <button name="action_send" type="object" string="Enviar"
                             class="btn-primary" icon="fa-paper-plane"
-                            invisible="state != 'draft' or direction != 'outgoing'"/>
+                            attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('direction', '!=', 'outgoing')]}"/>
                     <button name="action_retry" type="object" string="Reintentar"
                             class="btn-warning" icon="fa-refresh"
-                            invisible="state != 'failed'"/>
+                            attrs="{'invisible': [('state', '!=', 'failed')]}"/>
                     <button name="action_mark_read" type="object" string="Marcar Leído"
-                            invisible="is_read or direction != 'incoming'"/>
+                            attrs="{'invisible': ['|', ('is_read', '=', True), ('direction', '!=', 'incoming')]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,pending,sent,delivered,received,failed"/>
                 </header>
@@ -62,10 +62,11 @@
                             <field name="template_id"/>
                             <field name="rule_id"/>
                             <field name="is_read" widget="boolean_toggle"
-                                   invisible="direction != 'incoming'"/>
+                                   attrs="{'invisible': [('direction', '!=', 'incoming')]}"/>
                         </group>
                     </group>
-                    <group string="Información Técnica" invisible="not ml_message_id">
+                    <group string="Información Técnica"
+                           attrs="{'invisible': [('ml_message_id', '=', False)]}">
                         <group>
                             <field name="ml_message_id"/>
                             <field name="ml_date_created"/>
@@ -77,7 +78,8 @@
                             <field name="retry_count"/>
                         </group>
                     </group>
-                    <group string="Error" invisible="not error_message">
+                    <group string="Error"
+                           attrs="{'invisible': [('error_message', '=', False)]}">
                         <field name="error_message" readonly="1"/>
                     </group>
                 </sheet>

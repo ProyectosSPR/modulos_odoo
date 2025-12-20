@@ -29,7 +29,8 @@
         <field name="arch" type="xml">
             <form string="Horario de Atención">
                 <sheet>
-                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1>
@@ -50,92 +51,92 @@
                     <group string="Días y Horarios">
                         <!-- Lunes -->
                         <group>
-                            <label for="monday_active"/>
+                            <label for="monday_active" string="Lunes"/>
                             <div class="d-flex align-items-center">
                                 <field name="monday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="monday_start" widget="float_time" class="me-2"
-                                       invisible="not monday_active"/>
-                                <span invisible="not monday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('monday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('monday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="monday_end" widget="float_time"
-                                       invisible="not monday_active"/>
+                                       attrs="{'invisible': [('monday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Martes -->
                         <group>
-                            <label for="tuesday_active"/>
+                            <label for="tuesday_active" string="Martes"/>
                             <div class="d-flex align-items-center">
                                 <field name="tuesday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="tuesday_start" widget="float_time" class="me-2"
-                                       invisible="not tuesday_active"/>
-                                <span invisible="not tuesday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('tuesday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('tuesday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="tuesday_end" widget="float_time"
-                                       invisible="not tuesday_active"/>
+                                       attrs="{'invisible': [('tuesday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Miércoles -->
                         <group>
-                            <label for="wednesday_active"/>
+                            <label for="wednesday_active" string="Miércoles"/>
                             <div class="d-flex align-items-center">
                                 <field name="wednesday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="wednesday_start" widget="float_time" class="me-2"
-                                       invisible="not wednesday_active"/>
-                                <span invisible="not wednesday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('wednesday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('wednesday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="wednesday_end" widget="float_time"
-                                       invisible="not wednesday_active"/>
+                                       attrs="{'invisible': [('wednesday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Jueves -->
                         <group>
-                            <label for="thursday_active"/>
+                            <label for="thursday_active" string="Jueves"/>
                             <div class="d-flex align-items-center">
                                 <field name="thursday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="thursday_start" widget="float_time" class="me-2"
-                                       invisible="not thursday_active"/>
-                                <span invisible="not thursday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('thursday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('thursday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="thursday_end" widget="float_time"
-                                       invisible="not thursday_active"/>
+                                       attrs="{'invisible': [('thursday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Viernes -->
                         <group>
-                            <label for="friday_active"/>
+                            <label for="friday_active" string="Viernes"/>
                             <div class="d-flex align-items-center">
                                 <field name="friday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="friday_start" widget="float_time" class="me-2"
-                                       invisible="not friday_active"/>
-                                <span invisible="not friday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('friday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('friday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="friday_end" widget="float_time"
-                                       invisible="not friday_active"/>
+                                       attrs="{'invisible': [('friday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Sábado -->
                         <group>
-                            <label for="saturday_active"/>
+                            <label for="saturday_active" string="Sábado"/>
                             <div class="d-flex align-items-center">
                                 <field name="saturday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="saturday_start" widget="float_time" class="me-2"
-                                       invisible="not saturday_active"/>
-                                <span invisible="not saturday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('saturday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('saturday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="saturday_end" widget="float_time"
-                                       invisible="not saturday_active"/>
+                                       attrs="{'invisible': [('saturday_active', '=', False)]}"/>
                             </div>
                         </group>
 
                         <!-- Domingo -->
                         <group>
-                            <label for="sunday_active"/>
+                            <label for="sunday_active" string="Domingo"/>
                             <div class="d-flex align-items-center">
                                 <field name="sunday_active" widget="boolean_toggle" class="me-3"/>
                                 <field name="sunday_start" widget="float_time" class="me-2"
-                                       invisible="not sunday_active"/>
-                                <span invisible="not sunday_active" class="me-2">a</span>
+                                       attrs="{'invisible': [('sunday_active', '=', False)]}"/>
+                                <span attrs="{'invisible': [('sunday_active', '=', False)]}" class="me-2">a</span>
                                 <field name="sunday_end" widget="float_time"
-                                       invisible="not sunday_active"/>
+                                       attrs="{'invisible': [('sunday_active', '=', False)]}"/>
                             </div>
                         </group>
                     </group>

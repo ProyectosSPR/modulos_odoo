@@ -7,7 +7,7 @@
         <field name="model">mercadolibre.conversation</field>
         <field name="arch" type="xml">
             <tree string="Conversaciones ML" decoration-bf="is_unread" decoration-info="state == 'waiting'"
-                  decoration-danger="not cap_available">
+                  decoration-danger="cap_available == False">
                 <field name="is_unread" column_invisible="1"/>
                 <field name="cap_available" column_invisible="1"/>
                 <field name="buyer_nickname" string="Comprador"/>
@@ -52,26 +52,27 @@
                 <header>
                     <button name="action_compose_message" type="object" string="Enviar Mensaje"
                             class="btn-primary" icon="fa-paper-plane"
-                            invisible="not cap_available"/>
+                            attrs="{'invisible': [('cap_available', '=', False)]}"/>
                     <button name="action_compose_message" type="object" string="Sin Cap Disponible"
                             class="btn-secondary" disabled="1"
-                            invisible="cap_available"/>
+                            attrs="{'invisible': [('cap_available', '=', True)]}"/>
                     <button name="action_sync_messages" type="object" string="Sincronizar"
                             class="btn-secondary" icon="fa-refresh"/>
                     <button name="action_mark_read" type="object" string="Marcar Leídos"
                             class="btn-secondary" icon="fa-check"
-                            invisible="not is_unread"/>
+                            attrs="{'invisible': [('is_unread', '=', False)]}"/>
                     <button name="action_refresh_caps" type="object" string="Verificar Caps"
                             class="btn-secondary" icon="fa-signal"/>
                     <button name="action_close" type="object" string="Cerrar"
-                            invisible="state == 'closed'"/>
+                            attrs="{'invisible': [('state', '=', 'closed')]}"/>
                     <button name="action_reopen" type="object" string="Reabrir"
-                            invisible="state != 'closed'"/>
+                            attrs="{'invisible': [('state', '!=', 'closed')]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="open,waiting,answered,closed"/>
                 </header>
                 <sheet>
                     <!-- Alerta si no puede enviar mensajes -->
-                    <div class="alert alert-warning" role="alert" invisible="cap_available">
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('cap_available', '=', True)]}">
                         <strong>Sin mensajes disponibles.</strong>
                         Debes esperar respuesta del comprador antes de enviar otro mensaje.
                     </div>
@@ -82,7 +83,7 @@
                             <field name="message_count" string="Mensajes" widget="statinfo"/>
                         </button>
                         <button class="oe_stat_button" icon="fa-user"
-                                invisible="not partner_id"
+                                attrs="{'invisible': [('partner_id', '=', False)]}"
                                 type="object" name="action_view_partner">
                             <field name="partner_id" string="Cliente" widget="statinfo" options="{'label_field': 'name'}"/>
                         </button>
@@ -132,7 +133,7 @@
                     <notebook>
                         <page string="Mensajes" name="messages">
                             <field name="message_ids" mode="tree" context="{'default_conversation_id': id}">
-                                <tree string="Mensajes" create="0" decoration-bf="not is_read and direction == 'incoming'"
+                                <tree string="Mensajes" create="0" decoration-bf="is_read == False and direction == 'incoming'"
                                       decoration-info="direction == 'outgoing'" default_order="create_date desc">
                                     <field name="direction" column_invisible="1"/>
                                     <field name="is_read" column_invisible="1"/>

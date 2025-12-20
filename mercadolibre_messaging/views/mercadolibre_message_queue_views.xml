@@ -36,10 +36,10 @@
                 <header>
                     <button name="action_send_now" type="object" string="Enviar Ahora"
                             class="btn-primary" icon="fa-paper-plane"
-                            invisible="state not in ('pending', 'failed')"/>
+                            attrs="{'invisible': [('state', 'not in', ('pending', 'failed'))]}"/>
                     <button name="action_cancel" type="object" string="Cancelar"
                             class="btn-secondary"
-                            invisible="state != 'pending'"/>
+                            attrs="{'invisible': [('state', '!=', 'pending')]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="pending,processing,sent,failed,cancelled"/>
                 </header>
@@ -62,14 +62,14 @@
                         <field name="template_id"/>
                         <field name="rule_id"/>
                     </group>
-                    <group string="Resultado" invisible="state in ('pending', 'processing')">
+                    <group string="Resultado" attrs="{'invisible': [('state', 'in', ('pending', 'processing'))]}">
                         <group>
                             <field name="message_id"/>
                             <field name="processed_date"/>
                         </group>
                         <group>
                             <field name="retry_count"/>
-                            <field name="error_message" invisible="not error_message"/>
+                            <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
                         </group>
                     </group>
                 </sheet>
