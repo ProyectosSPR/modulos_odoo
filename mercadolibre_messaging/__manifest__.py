@@ -56,9 +56,9 @@ Estados de Envío (API ML):
         'security/mercadolibre_messaging_security.xml',
         'security/ir.model.access.csv',
 
-        # Data - Templates and Schedules first (referenced by rules)
-        'data/mercadolibre_messaging_schedule_data.xml',
+        # Data - Templates first (referenced by schedules and rules)
         'data/mercadolibre_message_template_data.xml',
+        'data/mercadolibre_messaging_schedule_data.xml',
         'data/mercadolibre_message_rule_data.xml',
         'data/ir_cron_data.xml',
 
