@@ -8,8 +8,8 @@
         <field name="arch" type="xml">
             <tree string="Conversaciones ML" decoration-bf="is_unread" decoration-info="state == 'waiting'"
                   decoration-danger="cap_available == False">
-                <field name="is_unread" column_invisible="1"/>
-                <field name="cap_available" column_invisible="1"/>
+                <field name="is_unread" invisible="1"/>
+                <field name="cap_available" invisible="1"/>
                 <field name="buyer_nickname" string="Comprador"/>
                 <field name="buyer_first_name" optional="show"/>
                 <field name="ml_pack_id" string="Pack"/>
@@ -135,8 +135,8 @@
                             <field name="message_ids" mode="tree" context="{'default_conversation_id': id}">
                                 <tree string="Mensajes" create="0" decoration-bf="is_read == False and direction == 'incoming'"
                                       decoration-info="direction == 'outgoing'" default_order="create_date desc">
-                                    <field name="direction" column_invisible="1"/>
-                                    <field name="is_read" column_invisible="1"/>
+                                    <field name="direction" invisible="1"/>
+                                    <field name="is_read" invisible="1"/>
                                     <field name="create_date" string="Fecha"/>
                                     <field name="direction" string="Tipo" widget="badge"
                                            decoration-info="direction == 'outgoing'"

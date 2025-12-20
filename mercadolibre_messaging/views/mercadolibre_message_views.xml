@@ -8,8 +8,8 @@
         <field name="arch" type="xml">
             <tree string="Mensajes ML" decoration-bf="is_read == False and direction == 'incoming'"
                   decoration-danger="state == 'failed'" decoration-muted="state == 'draft'">
-                <field name="direction" column_invisible="1"/>
-                <field name="is_read" column_invisible="1"/>
+                <field name="direction" invisible="1"/>
+                <field name="is_read" invisible="1"/>
                 <field name="create_date" string="Fecha"/>
                 <field name="conversation_id"/>
                 <field name="direction" string="Tipo" widget="badge"

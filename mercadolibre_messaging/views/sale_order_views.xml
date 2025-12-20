@@ -67,7 +67,7 @@
         <field name="priority">100</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
-                <field name="ml_has_unread" column_invisible="1"/>
+                <field name="ml_has_unread" invisible="1"/>
                 <field name="ml_unread_count" string="ML" optional="show"
                        decoration-danger="ml_unread_count > 0"
                        decoration-muted="ml_unread_count == 0"/>
