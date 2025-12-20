@@ -5,7 +5,7 @@
     <record id="mercadolibre_order_form_inherit_messaging" model="ir.ui.view">
         <field name="name">mercadolibre.order.form.inherit.messaging</field>
         <field name="model">mercadolibre.order</field>
-        <field name="inherit_id" ref="mercadolibre_sales.mercadolibre_order_view_form"/>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_form"/>
         <field name="priority">50</field>
         <field name="arch" type="xml">
             <!-- Add smart buttons -->
@@ -38,7 +38,7 @@
     <record id="mercadolibre_order_tree_inherit_messaging" model="ir.ui.view">
         <field name="name">mercadolibre.order.tree.inherit.messaging</field>
         <field name="model">mercadolibre.order</field>
-        <field name="inherit_id" ref="mercadolibre_sales.mercadolibre_order_view_tree"/>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_tree"/>
         <field name="priority">50</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='status']" position="after">
