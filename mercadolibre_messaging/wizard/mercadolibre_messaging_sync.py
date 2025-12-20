@@ -187,9 +187,9 @@ class MercadolibreMessagingSync(models.TransientModel):
         count = 0
         for conversation in conversations:
             try:
-                before_count = len(conversation.message_ids)
+                before_count = len(conversation.ml_message_ids)
                 conversation._sync_messages_from_ml()
-                after_count = len(conversation.message_ids)
+                after_count = len(conversation.ml_message_ids)
                 count += (after_count - before_count)
             except Exception as e:
                 _logger.error(f"Error sincronizando mensajes de conversación {conversation.id}: {e}")

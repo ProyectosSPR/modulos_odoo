@@ -193,8 +193,8 @@ class MercadolibreMessageRule(models.Model):
             conversation = self.env['mercadolibre.conversation'].search([
                 ('ml_pack_id', '=', ml_order.ml_pack_id),
             ], limit=1)
-            if conversation and conversation.message_ids:
-                outgoing_count = len(conversation.message_ids.filtered(
+            if conversation and conversation.ml_message_ids:
+                outgoing_count = len(conversation.ml_message_ids.filtered(
                     lambda m: m.direction == 'outgoing'
                 ))
                 if outgoing_count > 0:

@@ -59,8 +59,8 @@ class MercadolibreOrder(models.Model):
     def _compute_message_count(self):
         for record in self:
             if record.conversation_id:
-                record.message_count = len(record.conversation_id.message_ids)
-                record.unread_message_count = len(record.conversation_id.message_ids.filtered(
+                record.message_count = len(record.conversation_id.ml_message_ids)
+                record.unread_message_count = len(record.conversation_id.ml_message_ids.filtered(
                     lambda m: not m.is_read and m.direction == 'incoming'
                 ))
             else:
@@ -69,8 +69,8 @@ class MercadolibreOrder(models.Model):
 
     def _compute_last_message(self):
         for record in self:
-            if record.conversation_id and record.conversation_id.message_ids:
-                last_msg = record.conversation_id.message_ids.sorted('create_date', reverse=True)[:1]
+            if record.conversation_id and record.conversation_id.ml_message_ids:
+                last_msg = record.conversation_id.ml_message_ids.sorted('create_date', reverse=True)[:1]
                 if last_msg:
                     record.last_message_date = last_msg.create_date
                     record.last_message_preview = (last_msg.body or '')[:80]

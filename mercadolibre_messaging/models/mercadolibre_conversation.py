@@ -116,7 +116,7 @@ class MercadolibreConversation(models.Model):
     )
 
     # Mensajes
-    message_ids = fields.One2many(
+    ml_message_ids = fields.One2many(
         'mercadolibre.message',
         'conversation_id',
         string='Mensajes'
@@ -201,10 +201,10 @@ class MercadolibreConversation(models.Model):
                 partner = record.ml_order_id.partner_id
             record.partner_id = partner
 
-    @api.depends('message_ids', 'message_ids.is_read', 'message_ids.direction')
+    @api.depends('ml_message_ids', 'ml_message_ids.is_read', 'ml_message_ids.direction')
     def _compute_is_unread(self):
         for record in self:
-            unread = record.message_ids.filtered(
+            unread = record.ml_message_ids.filtered(
                 lambda m: not m.is_read and m.direction == 'incoming'
             )
             record.unread_count = len(unread)
@@ -212,12 +212,12 @@ class MercadolibreConversation(models.Model):
 
     def _compute_message_count(self):
         for record in self:
-            record.message_count = len(record.message_ids)
+            record.message_count = len(record.ml_message_ids)
 
-    @api.depends('message_ids', 'message_ids.create_date', 'message_ids.body')
+    @api.depends('ml_message_ids', 'ml_message_ids.create_date', 'ml_message_ids.body')
     def _compute_last_message(self):
         for record in self:
-            last_msg = record.message_ids.sorted('create_date', reverse=True)[:1]
+            last_msg = record.ml_message_ids.sorted('create_date', reverse=True)[:1]
             if last_msg:
                 record.last_message_date = last_msg.create_date
                 record.last_message_preview = (last_msg.body or '')[:100]
@@ -306,7 +306,7 @@ class MercadolibreConversation(models.Model):
     def action_mark_read(self):
         """Marca todos los mensajes como leídos."""
         self.ensure_one()
-        self.message_ids.filtered(
+        self.ml_message_ids.filtered(
             lambda m: not m.is_read and m.direction == 'incoming'
         ).write({'is_read': True})
 

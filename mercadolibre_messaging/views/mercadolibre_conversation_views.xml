@@ -135,7 +135,7 @@
                     <!-- Chat Messages Section -->
                     <notebook>
                         <page string="Mensajes" name="messages">
-                            <field name="message_ids" mode="tree" context="{'default_conversation_id': id}">
+                            <field name="ml_message_ids" mode="tree" context="{'default_conversation_id': id}">
                                 <tree string="Mensajes" create="0" decoration-bf="is_read == False and direction == 'incoming'"
                                       decoration-info="direction == 'outgoing'" default_order="create_date desc">
                                     <field name="direction" invisible="1"/>

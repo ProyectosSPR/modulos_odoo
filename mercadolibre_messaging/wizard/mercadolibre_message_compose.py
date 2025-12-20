@@ -146,7 +146,7 @@ class MercadolibreMessageCompose(models.TransientModel):
     def _compute_recent_messages(self):
         for record in self:
             if record.conversation_id:
-                messages = record.conversation_id.message_ids.sorted('create_date', reverse=True)[:5]
+                messages = record.conversation_id.ml_message_ids.sorted('create_date', reverse=True)[:5]
                 html_parts = []
                 for msg in reversed(messages):
                     direction_class = 'sent' if msg.direction == 'outgoing' else 'received'
