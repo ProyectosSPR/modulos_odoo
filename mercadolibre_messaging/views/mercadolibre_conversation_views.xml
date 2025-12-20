@@ -135,19 +135,51 @@
                     <!-- Chat Messages Section -->
                     <notebook>
                         <page string="Chat" name="chat">
-                            <!-- Vista tipo chat con burbujas -->
-                            <div class="ml-chat-wrapper">
-                                <field name="chat_messages_html" readonly="1" nolabel="1"/>
-                            </div>
-                            <!-- Botón rápido para enviar mensaje -->
-                            <div class="mt-3">
-                                <button name="action_compose_message" type="object"
-                                        string="Responder" class="btn-primary"
-                                        icon="fa-reply"
-                                        attrs="{'invisible': [('cap_available', '=', False)]}"/>
-                                <button name="action_sync_messages" type="object"
-                                        string="Actualizar Chat" class="btn-secondary ms-2"
-                                        icon="fa-refresh"/>
+                            <!-- Contenedor principal del chat con barra de herramientas -->
+                            <div class="ml-chat-main-wrapper">
+                                <!-- Barra de herramientas del chat -->
+                                <div class="ml-chat-toolbar">
+                                    <div class="ml-chat-toolbar-left">
+                                        <span class="ml-chat-toolbar-title">
+                                            <i class="fa fa-comments"/> Chat con <field name="buyer_nickname" readonly="1" class="d-inline"/>
+                                        </span>
+                                    </div>
+                                    <div class="ml-chat-toolbar-right">
+                                        <button name="action_sync_messages" type="object"
+                                                class="btn btn-sm btn-outline-secondary me-1"
+                                                title="Actualizar mensajes" icon="fa-refresh"/>
+                                        <button class="btn btn-sm btn-outline-secondary ml-chat-expand-btn"
+                                                title="Expandir chat" type="button">
+                                            <i class="fa fa-expand"/>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Vista tipo chat con burbujas -->
+                                <div class="ml-chat-wrapper">
+                                    <field name="chat_messages_html" readonly="1" nolabel="1"/>
+                                </div>
+
+                                <!-- Barra de composición estilo WhatsApp -->
+                                <div class="ml-chat-compose-bar" attrs="{'invisible': [('cap_available', '=', False)]}">
+                                    <button name="action_compose_message" type="object"
+                                            class="btn btn-outline-secondary ml-chat-template-btn"
+                                            title="Usar plantilla" icon="fa-file-text-o"/>
+                                    <field name="quick_message"
+                                           class="ml-chat-input"
+                                           placeholder="Escribe tu mensaje... (máx 350 caracteres)"
+                                           nolabel="1"/>
+                                    <button name="action_send_quick_message" type="object"
+                                            class="btn btn-primary ml-chat-send-btn"
+                                            title="Enviar mensaje">
+                                        <i class="fa fa-paper-plane"/>
+                                    </button>
+                                </div>
+
+                                <!-- Alerta si no puede enviar -->
+                                <div class="ml-chat-no-cap-alert" attrs="{'invisible': [('cap_available', '=', True)]}">
+                                    <i class="fa fa-ban"/> Sin mensajes disponibles. Espera respuesta del comprador.
+                                </div>
                             </div>
                         </page>
                         <page string="Lista de Mensajes" name="messages_list">

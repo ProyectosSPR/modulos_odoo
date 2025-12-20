@@ -147,6 +147,12 @@ class MercadolibreConversation(models.Model):
         sanitize=False
     )
 
+    # Campo para envío rápido de mensaje
+    quick_message = fields.Text(
+        string='Mensaje Rápido',
+        help='Escribe tu mensaje aquí (máx 350 caracteres)'
+    )
+
     # Capacidad de envío (API ML)
     cap_available = fields.Boolean(
         string='Puede Enviar',
@@ -235,7 +241,8 @@ class MercadolibreConversation(models.Model):
                 record.last_message_direction = False
 
     @api.depends('ml_message_ids', 'ml_message_ids.body', 'ml_message_ids.direction',
-                 'ml_message_ids.create_date', 'ml_message_ids.state', 'ml_message_ids.is_read')
+                 'ml_message_ids.ml_date_created', 'ml_message_ids.create_date',
+                 'ml_message_ids.state', 'ml_message_ids.is_read')
     def _compute_chat_messages_html(self):
         """Genera HTML tipo chat para los mensajes."""
         for record in self:
@@ -248,13 +255,18 @@ class MercadolibreConversation(models.Model):
                 '''
                 continue
 
-            messages = record.ml_message_ids.sorted('create_date', reverse=False)
+            # Ordenar por fecha de ML primero, luego por create_date como respaldo
+            messages = record.ml_message_ids.sorted(
+                key=lambda m: m.ml_date_created or m.create_date or fields.Datetime.now(),
+                reverse=False
+            )
             html_parts = ['<div class="ml-chat-container" id="ml-chat-messages">']
 
             current_date = None
             for msg in messages:
-                # Separador de fecha
-                msg_date = msg.create_date.date() if msg.create_date else None
+                # Usar fecha de ML si existe, sino fecha de creación
+                msg_datetime = msg.ml_date_created or msg.create_date
+                msg_date = msg_datetime.date() if msg_datetime else None
                 if msg_date and msg_date != current_date:
                     current_date = msg_date
                     date_str = msg_date.strftime('%d/%m/%Y')
@@ -289,8 +301,9 @@ class MercadolibreConversation(models.Model):
                 # Indicador de no leído
                 unread_class = 'ml-chat-unread' if not msg.is_read and msg.direction == 'incoming' else ''
 
-                # Hora del mensaje
-                time_str = msg.create_date.strftime('%H:%M') if msg.create_date else ''
+                # Hora del mensaje (usar fecha ML si existe)
+                msg_time = msg.ml_date_created or msg.create_date
+                time_str = msg_time.strftime('%H:%M') if msg_time else ''
 
                 # Escapar HTML en el cuerpo del mensaje
                 body_escaped = (msg.body or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
@@ -397,6 +410,74 @@ class MercadolibreConversation(models.Model):
         self.ml_message_ids.filtered(
             lambda m: not m.is_read and m.direction == 'incoming'
         ).write({'is_read': True})
+
+    def action_send_quick_message(self):
+        """Envía el mensaje rápido escrito en el campo quick_message."""
+        self.ensure_one()
+
+        if not self.quick_message or not self.quick_message.strip():
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Mensaje Vacío'),
+                    'message': _('Escribe un mensaje antes de enviar.'),
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+
+        if not self.cap_available:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sin Cap Disponible'),
+                    'message': _('Debes esperar respuesta del comprador antes de enviar otro mensaje.'),
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+
+        message_text = self.quick_message.strip()[:350]  # Límite ML
+
+        # Crear y enviar el mensaje
+        message = self.env['mercadolibre.message'].create({
+            'conversation_id': self.id,
+            'account_id': self.account_id.id,
+            'body': message_text,
+            'direction': 'outgoing',
+            'state': 'pending',
+            'ml_option_id': 'OTHER',
+        })
+
+        # Intentar enviar
+        try:
+            message._send_to_ml()
+            # Limpiar el campo de mensaje rápido
+            self.write({'quick_message': False})
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Mensaje Enviado'),
+                    'message': _('Tu mensaje ha sido enviado correctamente.'),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Error al Enviar'),
+                    'message': str(e),
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
 
     def action_refresh_caps(self):
         """
@@ -589,10 +670,20 @@ class MercadolibreConversation(models.Model):
         from_id = str(msg_data.get('from', {}).get('user_id', ''))
         direction = 'incoming' if from_id != self.account_id.ml_user_id else 'outgoing'
 
-        # Parsear fecha
-        date_created = msg_data.get('date_created')
-        if date_created:
-            date_created = datetime.fromisoformat(date_created.replace('Z', '+00:00'))
+        # Parsear fecha de ML (varios formatos posibles)
+        date_created = None
+        date_str = msg_data.get('date_created') or msg_data.get('date')
+        if date_str:
+            try:
+                # Formato ISO con Z
+                date_created = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                try:
+                    # Formato alternativo
+                    from dateutil import parser
+                    date_created = parser.parse(date_str)
+                except Exception:
+                    _logger.warning(f"No se pudo parsear fecha: {date_str}")
 
         message = self.env['mercadolibre.message'].create({
             'ml_message_id': ml_message_id,
