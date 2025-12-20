@@ -49,6 +49,9 @@
         <field name="model">mercadolibre.conversation</field>
         <field name="arch" type="xml">
             <form string="Conversación ML">
+                <!-- Hidden fields for attrs -->
+                <field name="is_unread" invisible="1"/>
+                <field name="cap_available" invisible="1"/>
                 <header>
                     <button name="action_compose_message" type="object" string="Enviar Mensaje"
                             class="btn-primary" icon="fa-paper-plane"
