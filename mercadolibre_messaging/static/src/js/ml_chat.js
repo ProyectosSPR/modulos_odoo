@@ -211,8 +211,12 @@ document.addEventListener('click', (e) => {
     if (expandBtn) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const wrapper = expandBtn.closest('.ml-chat-main-wrapper');
-        toggleChatExpand(wrapper);
+        if (wrapper) {
+            toggleChatExpand(wrapper);
+        }
+        return false;
     }
 });
 

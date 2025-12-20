@@ -148,10 +148,10 @@
                                         <button name="action_sync_messages" type="object"
                                                 class="btn btn-sm btn-outline-secondary me-1"
                                                 title="Actualizar mensajes" icon="fa-refresh"/>
-                                        <button class="btn btn-sm btn-outline-secondary ml-chat-expand-btn"
-                                                title="Expandir chat" type="button">
+                                        <a class="btn btn-sm btn-outline-secondary ml-chat-expand-btn"
+                                           title="Expandir chat" href="#">
                                             <i class="fa fa-expand"/>
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
 
