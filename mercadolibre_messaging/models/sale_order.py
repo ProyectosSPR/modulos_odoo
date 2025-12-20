@@ -42,12 +42,12 @@ class SaleOrder(models.Model):
         compute='_compute_ml_message_count'
     )
 
-    @api.depends('mercadolibre_order_ids', 'mercadolibre_order_ids.conversation_id')
+    @api.depends('ml_order_ids', 'ml_order_ids.conversation_id')
     def _compute_ml_conversation(self):
         for record in self:
-            if record.mercadolibre_order_ids:
+            if record.ml_order_ids:
                 # Tomar la conversación de la primera orden ML con conversación
-                for ml_order in record.mercadolibre_order_ids:
+                for ml_order in record.ml_order_ids:
                     if ml_order.conversation_id:
                         record.ml_conversation_id = ml_order.conversation_id
                         break
@@ -90,8 +90,8 @@ class SaleOrder(models.Model):
 
         if not self.ml_conversation_id:
             # Intentar crear conversación desde orden ML
-            if self.mercadolibre_order_ids:
-                ml_order = self.mercadolibre_order_ids[0]
+            if self.ml_order_ids:
+                ml_order = self.ml_order_ids[0]
                 conversation = self.env['mercadolibre.conversation'].get_or_create_for_order(ml_order)
                 if conversation:
                     return {
@@ -146,7 +146,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
 
         # Verificar que sea orden ML
-        if not self.mercadolibre_order_ids:
+        if not self.ml_order_ids:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
@@ -158,7 +158,7 @@ class SaleOrder(models.Model):
                 }
             }
 
-        ml_order = self.mercadolibre_order_ids[0]
+        ml_order = self.ml_order_ids[0]
 
         # Obtener o crear conversación
         if not self.ml_conversation_id:
@@ -209,8 +209,8 @@ class SaleOrder(models.Model):
                     'sticky': False,
                 }
             }
-        elif self.mercadolibre_order_ids:
-            ml_order = self.mercadolibre_order_ids[0]
+        elif self.ml_order_ids:
+            ml_order = self.ml_order_ids[0]
             conversation = self.env['mercadolibre.conversation'].get_or_create_for_order(ml_order)
             if conversation:
                 conversation._sync_messages_from_ml()
