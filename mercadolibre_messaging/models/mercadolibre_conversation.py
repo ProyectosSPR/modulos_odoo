@@ -499,7 +499,7 @@ class MercadolibreConversation(models.Model):
         self._sync_messages_from_ml()
 
     def _sync_messages_from_ml(self):
-        """Sincroniza mensajes desde la API de ML."""
+        """Sincroniza mensajes desde la API de ML con paginación completa."""
         self.ensure_one()
 
         if not self.ml_pack_id:
@@ -509,32 +509,51 @@ class MercadolibreConversation(models.Model):
         config = self.env['mercadolibre.messaging.config'].get_config_for_account(account)
 
         try:
-            # Obtener mensajes de la API
-            endpoint = f'/messages/packs/{self.ml_pack_id}/sellers/{account.ml_user_id}'
-            response = account._make_request('GET', endpoint)
+            total_synced = 0
+            offset = 0
+            limit = 100  # Máximo por request
+            has_more = True
 
-            if not response or 'messages' not in response:
-                config._log(
-                    f'Sin mensajes para pack {self.ml_pack_id}',
-                    level='debug',
-                    log_type='message_sync'
-                )
-                return
+            while has_more:
+                # Obtener mensajes de la API con paginación
+                endpoint = f'/messages/packs/{self.ml_pack_id}/sellers/{account.ml_user_id}?tag=post_sale&mark_as_read=false&limit={limit}&offset={offset}'
+                response = account._make_request('GET', endpoint)
 
-            # Actualizar cap_available
-            if 'conversation' in response:
-                conv_data = response['conversation']
-                self.write({
-                    'cap_available': conv_data.get('cap_available', True),
-                    'cap_checked_at': fields.Datetime.now(),
-                })
+                if not response:
+                    config._log(
+                        f'Sin respuesta para pack {self.ml_pack_id}',
+                        level='debug',
+                        log_type='message_sync'
+                    )
+                    break
 
-            # Procesar mensajes
-            for msg_data in response.get('messages', []):
-                self._process_message_from_api(msg_data)
+                # Actualizar cap_available (solo en primera iteración)
+                if offset == 0 and 'conversation' in response:
+                    conv_data = response['conversation']
+                    self.write({
+                        'cap_available': conv_data.get('cap_available', True),
+                        'cap_checked_at': fields.Datetime.now(),
+                    })
+
+                # Procesar mensajes
+                messages = response.get('messages', [])
+                for msg_data in messages:
+                    self._process_message_from_api(msg_data)
+
+                total_synced += len(messages)
+
+                # Verificar si hay más mensajes (paginación)
+                paging = response.get('paging', {})
+                total = paging.get('total', len(messages))
+
+                # Calcular si hay más páginas
+                offset += limit
+                has_more = offset < total and len(messages) == limit
+
+                _logger.debug(f"Pack {self.ml_pack_id}: sincronizados {total_synced}/{total} mensajes")
 
             config._log(
-                f'Sincronizados {len(response.get("messages", []))} mensajes para pack {self.ml_pack_id}',
+                f'Sincronizados {total_synced} mensajes para pack {self.ml_pack_id}',
                 level='info',
                 log_type='message_sync',
                 conversation_id=self.id

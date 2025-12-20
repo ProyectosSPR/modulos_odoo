@@ -152,27 +152,110 @@ class MercadolibreMessagingSync(models.TransientModel):
         return conversations_synced, messages_synced
 
     def _sync_conversations(self, account):
-        """Sincroniza conversaciones de una cuenta."""
+        """Sincroniza conversaciones de una cuenta desde la API de ML."""
         from datetime import datetime, timedelta
 
-        # Calcular fecha límite
-        date_from = datetime.now() - timedelta(days=self.days_back)
+        count = 0
 
-        # Obtener órdenes recientes con pack_id
+        # Método 1: Obtener packs con mensajes directamente desde la API de ML
+        try:
+            count += self._sync_conversations_from_api(account)
+        except Exception as e:
+            _logger.warning(f"Error sincronizando desde API, usando órdenes locales: {e}")
+
+        # Método 2: También sincronizar desde órdenes locales (backup)
+        date_from = datetime.now() - timedelta(days=self.days_back)
         orders = self.env['mercadolibre.order'].search([
             ('account_id', '=', account.id),
             ('ml_pack_id', '!=', False),
             ('create_date', '>=', date_from.strftime('%Y-%m-%d')),
         ])
 
-        count = 0
         for order in orders:
             try:
-                conversation = self.env['mercadolibre.conversation'].get_or_create_for_order(order)
-                if conversation:
-                    count += 1
+                # Verificar si ya existe la conversación
+                existing = self.env['mercadolibre.conversation'].search([
+                    ('ml_pack_id', '=', order.ml_pack_id),
+                    ('account_id', '=', account.id),
+                ], limit=1)
+
+                if not existing:
+                    conversation = self.env['mercadolibre.conversation'].get_or_create_for_order(order)
+                    if conversation:
+                        count += 1
             except Exception as e:
                 _logger.error(f"Error creando conversación para orden {order.ml_order_id}: {e}")
+
+        return count
+
+    def _sync_conversations_from_api(self, account):
+        """
+        Sincroniza conversaciones directamente desde la API de ML.
+        Usa el endpoint /messages/packs para obtener todos los packs con mensajes.
+        """
+        count = 0
+        offset = 0
+        limit = 100
+        has_more = True
+
+        while has_more:
+            # Obtener packs con mensajes desde la API
+            endpoint = f'/messages/packs?seller_id={account.ml_user_id}&tag=post_sale&limit={limit}&offset={offset}'
+            response = account._make_request('GET', endpoint)
+
+            if not response:
+                break
+
+            results = response.get('results', [])
+            if not results:
+                break
+
+            for pack_data in results:
+                pack_id = str(pack_data.get('pack_id') or pack_data.get('id', ''))
+                if not pack_id:
+                    continue
+
+                try:
+                    # Verificar si ya existe la conversación
+                    existing = self.env['mercadolibre.conversation'].search([
+                        ('ml_pack_id', '=', pack_id),
+                        ('account_id', '=', account.id),
+                    ], limit=1)
+
+                    if not existing:
+                        # Buscar orden asociada
+                        ml_order = self.env['mercadolibre.order'].search([
+                            ('ml_pack_id', '=', pack_id),
+                            ('account_id', '=', account.id),
+                        ], limit=1)
+
+                        if ml_order:
+                            conversation = self.env['mercadolibre.conversation'].get_or_create_for_order(ml_order)
+                            if conversation:
+                                count += 1
+                        else:
+                            # Crear conversación sin orden ML (solo con pack_id)
+                            buyer_id = pack_data.get('buyer', {}).get('id', '')
+                            buyer_nickname = pack_data.get('buyer', {}).get('nickname', '')
+
+                            self.env['mercadolibre.conversation'].create({
+                                'ml_pack_id': pack_id,
+                                'account_id': account.id,
+                                'buyer_id': str(buyer_id) if buyer_id else '',
+                                'buyer_nickname': buyer_nickname,
+                                'seller_id': account.ml_user_id,
+                            })
+                            count += 1
+                            _logger.info(f"Conversación creada para pack {pack_id} (sin orden ML)")
+
+                except Exception as e:
+                    _logger.error(f"Error procesando pack {pack_id}: {e}")
+
+            # Paginación
+            paging = response.get('paging', {})
+            total = paging.get('total', len(results))
+            offset += limit
+            has_more = offset < total and len(results) == limit
 
         return count
 
