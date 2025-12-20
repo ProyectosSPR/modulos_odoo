@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from . import mercadolibre_account
 from . import mercadolibre_log
 from . import mercadolibre_messaging_schedule
 from . import mercadolibre_messaging_config

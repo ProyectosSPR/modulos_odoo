@@ -10,6 +10,136 @@ _logger = logging.getLogger(__name__)
 
 
 class MercadolibreController(http.Controller):
+    """
+    Controller central para MercadoLibre.
+
+    Endpoints:
+    - /mercadolibre/callback: OAuth callback
+    - /mercadolibre/notifications: Webhook para notificaciones de ML
+
+    Configuración de Notificaciones en ML:
+    En tu aplicación de ML, configura la URL de callback:
+    https://tu-dominio.com/mercadolibre/notifications
+
+    Topics soportados:
+    - orders_v2: Notificaciones de órdenes
+    - shipments: Notificaciones de envíos
+    - messages: Notificaciones de mensajes
+    - items: Notificaciones de publicaciones
+    - questions: Notificaciones de preguntas
+    """
+
+    # =========================================================================
+    # WEBHOOK DE NOTIFICACIONES
+    # =========================================================================
+
+    @http.route('/mercadolibre/notifications', type='json', auth='public',
+                methods=['POST'], csrf=False)
+    def webhook_notifications(self, **kwargs):
+        """
+        Endpoint central para recibir notificaciones de MercadoLibre.
+
+        MercadoLibre envía POST con estructura:
+        {
+            "resource": "/orders/123456789",
+            "user_id": 123456789,
+            "topic": "orders_v2",
+            "application_id": 89745685555,
+            "attempts": 1,
+            "sent": "2024-01-15T10:30:00.000Z",
+            "received": "2024-01-15T10:30:01.000Z"
+        }
+
+        Topics:
+        - orders_v2: Cambios en órdenes
+        - shipments: Cambios en envíos
+        - messages: Mensajes de compradores
+        - items: Cambios en publicaciones
+        - questions: Preguntas de compradores
+
+        IMPORTANTE: Responder HTTP 200 en menos de 500ms para evitar reintentos.
+        """
+        try:
+            data = request.jsonrequest
+            topic = data.get('topic')
+            user_id = str(data.get('user_id', ''))
+            resource = data.get('resource', '')
+
+            _logger.info(f"ML Notification - Topic: {topic}, User: {user_id}, Resource: {resource}")
+
+            # Buscar cuenta ML
+            account = request.env['mercadolibre.account'].sudo().search([
+                ('ml_user_id', '=', user_id),
+                ('active', '=', True)
+            ], limit=1)
+
+            if not account:
+                _logger.warning(f"Cuenta ML no encontrada para user_id: {user_id}")
+                return {'status': 'ignored', 'reason': 'account_not_found'}
+
+            # Log de la notificación
+            request.env['mercadolibre.log'].sudo().create({
+                'log_type': 'notification',
+                'level': 'info',
+                'account_id': account.id,
+                'message': f'Notificación recibida: {topic}',
+                'request_url': resource,
+            })
+
+            # Rutear según topic
+            handler_method = f'_handle_notification_{topic}'
+            if hasattr(self, handler_method):
+                return getattr(self, handler_method)(account, data)
+
+            # Topic no manejado localmente, intentar delegación a módulos
+            return self._delegate_notification(account, data)
+
+        except Exception as e:
+            _logger.error(f"Error procesando notificación ML: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+
+    def _delegate_notification(self, account, data):
+        """
+        Delega la notificación al módulo correspondiente según el topic.
+
+        Los módulos pueden registrar handlers implementando:
+        mercadolibre.notification.handler con método process_notification(account, data)
+        """
+        topic = data.get('topic')
+
+        # Mapeo de topics a modelos que pueden manejarlos
+        topic_handlers = {
+            'messages': 'mercadolibre.conversation',
+            'orders_v2': 'mercadolibre.order',
+            'shipments': 'mercadolibre.shipment',
+        }
+
+        handler_model = topic_handlers.get(topic)
+
+        if handler_model and handler_model in request.env:
+            model = request.env[handler_model].sudo()
+            if hasattr(model, 'process_notification'):
+                try:
+                    return model.process_notification(account, data)
+                except Exception as e:
+                    _logger.error(f"Error en handler {handler_model}: {str(e)}")
+                    return {'status': 'error', 'handler': handler_model, 'message': str(e)}
+
+        _logger.debug(f"Topic '{topic}' sin handler registrado")
+        return {'status': 'ignored', 'reason': f'no_handler_for_{topic}'}
+
+    @http.route('/mercadolibre/notifications/test', type='http', auth='public',
+                methods=['GET'], csrf=False)
+    def webhook_test(self, **kwargs):
+        """
+        Endpoint de prueba para verificar que el webhook está activo.
+        ML puede usar esto para verificar la URL.
+        """
+        return 'OK'
+
+    # =========================================================================
+    # OAUTH CALLBACK
+    # =========================================================================
 
     @http.route('/mercadolibre/callback', type='http', auth='public', website=True, csrf=False)
     def oauth_callback(self, code=None, state=None, error=None, **kwargs):
