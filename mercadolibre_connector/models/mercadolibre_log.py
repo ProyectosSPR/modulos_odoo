@@ -14,10 +14,11 @@ class MercadolibreLog(models.Model):
         ('token_refresh', 'Refresco Token'),
         ('api_request', 'Request API'),
         ('api_response', 'Response API'),
+        ('notification', 'Notificación'),
         ('error', 'Error'),
         ('info', 'Info'),
         ('warning', 'Warning'),
-    ], string='Tipo', required=True, index=True)
+    ], string='Tipo', required=True, index=True, default='info')
 
     level = fields.Selection([
         ('debug', 'Debug'),

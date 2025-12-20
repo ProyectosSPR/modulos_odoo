@@ -16,15 +16,17 @@ class MercadolibreLog(models.Model):
             ('message_error', 'Error Mensajería'),
             ('schedule_check', 'Verificación Horario'),
             ('auto_message', 'Mensaje Automático'),
+            ('notification', 'Notificación'),
         ],
         ondelete={
-            'messaging': 'set default',
-            'message_sent': 'set default',
-            'message_received': 'set default',
-            'message_sync': 'set default',
-            'message_error': 'set default',
-            'schedule_check': 'set default',
-            'auto_message': 'set default',
+            'messaging': 'cascade',
+            'message_sent': 'cascade',
+            'message_received': 'cascade',
+            'message_sync': 'cascade',
+            'message_error': 'cascade',
+            'schedule_check': 'cascade',
+            'auto_message': 'cascade',
+            'notification': 'cascade',
         }
     )
 
