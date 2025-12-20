@@ -568,21 +568,24 @@ class MercadolibreOrderSyncConfig(models.Model):
             log_lines.append('-' * 50)
 
             # Log detallado de configuracion
-            _logger.info('='*60)
-            _logger.info('INICIO CREACION ORDENES VENTA - Config: %s', self.name)
-            _logger.info('sync_all_logistic_types: %s', self.sync_all_logistic_types)
-            _logger.info('logistic_type_ids: %s', self.logistic_type_ids.mapped(lambda x: (x.id, x.name, x.code)))
-            _logger.info('='*60)
+            _logger.warning('='*60)
+            _logger.warning('INICIO CREACION ORDENES VENTA - Config: %s', self.name)
+            _logger.warning('sync_all_logistic_types: %s', self.sync_all_logistic_types)
+            _logger.warning('logistic_type_ids seleccionados: %s',
+                          self.logistic_type_ids.mapped(lambda x: (x.id, x.name, x.code)) if self.logistic_type_ids else 'NINGUNO')
+            _logger.warning('='*60)
 
             # Obtener tipos logisticos permitidos
             allowed_logistic_types = self.get_allowed_logistic_types()
             if allowed_logistic_types is not None:
                 log_lines.append(f'  Tipos logisticos permitidos: {", ".join(allowed_logistic_types) or "Ninguno"}')
                 log_lines.append(f'  sync_all_logistic_types: {self.sync_all_logistic_types}')
-                _logger.info('FILTRO ACTIVO: allowed_logistic_types=%s', allowed_logistic_types)
+                _logger.warning('*** FILTRO ACTIVO ***: Solo se crearan ordenes con tipo en: %s', allowed_logistic_types)
             else:
-                log_lines.append('  Tipos logisticos: Todos (sin filtro)')
-                _logger.info('SIN FILTRO: Todos los tipos logisticos permitidos')
+                log_lines.append('  Tipos logisticos: Todos (sin filtro) - VERIFICAR CONFIGURACION')
+                log_lines.append('  NOTA: Para filtrar, desmarca "Sincronizar Todos los Tipos Logisticos"')
+                _logger.warning('*** SIN FILTRO ***: sync_all_logistic_types=True, se crearan TODAS las ordenes')
+                _logger.warning('Para activar filtrado: desmarca "Sincronizar Todos los Tipos Logisticos" en la config')
 
             # Agrupar por pack_id si esta configurado
             if self.group_by_pack:

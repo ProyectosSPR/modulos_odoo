@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Config Tree View -->
+    <record id="mercadolibre_messaging_config_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.messaging.config.tree</field>
+        <field name="model">mercadolibre.messaging.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuración de Mensajería">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="schedule_id"/>
+                <field name="auto_messages_enabled" widget="boolean_toggle"/>
+                <field name="messages_sent_today"/>
+                <field name="messages_sent_week"/>
+                <field name="last_sync_date"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Config Form View -->
+    <record id="mercadolibre_messaging_config_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.messaging.config.form</field>
+        <field name="model">mercadolibre.messaging.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración de Mensajería ML">
+                <header>
+                    <button name="action_test_connection" type="object" string="Probar Conexión"
+                            class="btn-secondary" icon="fa-plug"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-envelope">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="messages_sent_today"/></span>
+                                <span class="o_stat_text">Hoy</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-calendar">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="messages_sent_week"/></span>
+                                <span class="o_stat_text">Esta Semana</span>
+                            </div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Cuenta">
+                            <field name="account_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Horario">
+                            <field name="schedule_id"/>
+                            <field name="queue_out_of_hours" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Funcionalidades" name="features">
+                            <group>
+                                <group string="Mensajes">
+                                    <field name="auto_messages_enabled" widget="boolean_toggle"/>
+                                    <field name="manual_messages_enabled" widget="boolean_toggle"/>
+                                    <field name="sync_to_chatter" widget="boolean_toggle"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Límites" name="limits">
+                            <group>
+                                <group string="Ejecución">
+                                    <field name="messages_per_cron"/>
+                                    <field name="min_interval_minutes"/>
+                                    <field name="rate_limit_per_minute"/>
+                                </group>
+                                <group string="Reintentos">
+                                    <field name="max_retries"/>
+                                    <field name="retry_delay_minutes"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-warning" role="alert">
+                                <strong>Nota:</strong> MercadoLibre tiene un límite de 500 mensajes por minuto.
+                                Se recomienda configurar un límite menor para evitar bloqueos.
+                            </div>
+                        </page>
+
+                        <page string="Sincronización" name="sync">
+                            <group>
+                                <group string="Intervalos">
+                                    <field name="sync_conversations_interval"/>
+                                    <field name="sync_messages_interval"/>
+                                </group>
+                                <group string="Estado">
+                                    <field name="last_sync_date"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Logging" name="logging">
+                            <group>
+                                <group string="Configuración">
+                                    <field name="log_level"/>
+                                    <field name="log_to_database" widget="boolean_toggle"/>
+                                    <field name="log_api_requests" widget="boolean_toggle"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Niveles de log:</strong></p>
+                                <ul>
+                                    <li><strong>Debug:</strong> Todos los mensajes, incluyendo detalles técnicos</li>
+                                    <li><strong>Info:</strong> Operaciones normales y mensajes enviados/recibidos</li>
+                                    <li><strong>Warning:</strong> Situaciones que requieren atención</li>
+                                    <li><strong>Error:</strong> Solo errores y fallos</li>
+                                </ul>
+                                <p class="mb-0"><strong>Log API Requests:</strong> Guarda el contenido completo de las peticiones y respuestas de la API. Útil para debugging pero genera muchos datos.</p>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Config Action -->
+    <record id="action_mercadolibre_messaging_config" model="ir.actions.act_window">
+        <field name="name">Configuración</field>
+        <field name="res_model">mercadolibre.messaging.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configura la mensajería para tus cuentas de MercadoLibre
+            </p>
+            <p>
+                Cada cuenta puede tener su propia configuración de horarios, límites y preferencias.
+            </p>
+        </field>
+    </record>
+
+</odoo>

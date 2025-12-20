@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Default Business Hours Schedule -->
+        <record id="schedule_business_hours" model="mercadolibre.messaging.schedule">
+            <field name="name">Horario Comercial Estándar</field>
+            <field name="timezone">America/Mexico_City</field>
+            <field name="out_of_hours_template_id" ref="template_out_of_hours"/>
+
+            <!-- Monday to Friday 9:00 - 18:00 -->
+            <field name="monday_active">True</field>
+            <field name="monday_start">9.0</field>
+            <field name="monday_end">18.0</field>
+
+            <field name="tuesday_active">True</field>
+            <field name="tuesday_start">9.0</field>
+            <field name="tuesday_end">18.0</field>
+
+            <field name="wednesday_active">True</field>
+            <field name="wednesday_start">9.0</field>
+            <field name="wednesday_end">18.0</field>
+
+            <field name="thursday_active">True</field>
+            <field name="thursday_start">9.0</field>
+            <field name="thursday_end">18.0</field>
+
+            <field name="friday_active">True</field>
+            <field name="friday_start">9.0</field>
+            <field name="friday_end">18.0</field>
+
+            <!-- Saturday 9:00 - 14:00 -->
+            <field name="saturday_active">True</field>
+            <field name="saturday_start">9.0</field>
+            <field name="saturday_end">14.0</field>
+
+            <!-- Sunday closed -->
+            <field name="sunday_active">False</field>
+        </record>
+
+        <!-- Extended Hours Schedule -->
+        <record id="schedule_extended_hours" model="mercadolibre.messaging.schedule">
+            <field name="name">Horario Extendido</field>
+            <field name="timezone">America/Mexico_City</field>
+            <field name="out_of_hours_template_id" ref="template_out_of_hours"/>
+
+            <!-- Monday to Saturday 8:00 - 21:00 -->
+            <field name="monday_active">True</field>
+            <field name="monday_start">8.0</field>
+            <field name="monday_end">21.0</field>
+
+            <field name="tuesday_active">True</field>
+            <field name="tuesday_start">8.0</field>
+            <field name="tuesday_end">21.0</field>
+
+            <field name="wednesday_active">True</field>
+            <field name="wednesday_start">8.0</field>
+            <field name="wednesday_end">21.0</field>
+
+            <field name="thursday_active">True</field>
+            <field name="thursday_start">8.0</field>
+            <field name="thursday_end">21.0</field>
+
+            <field name="friday_active">True</field>
+            <field name="friday_start">8.0</field>
+            <field name="friday_end">21.0</field>
+
+            <field name="saturday_active">True</field>
+            <field name="saturday_start">8.0</field>
+            <field name="saturday_end">21.0</field>
+
+            <!-- Sunday 10:00 - 18:00 -->
+            <field name="sunday_active">True</field>
+            <field name="sunday_start">10.0</field>
+            <field name="sunday_end">18.0</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Schedule Tree View -->
+    <record id="mercadolibre_messaging_schedule_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.messaging.schedule.tree</field>
+        <field name="model">mercadolibre.messaging.schedule</field>
+        <field name="arch" type="xml">
+            <tree string="Horarios de Atención">
+                <field name="name"/>
+                <field name="timezone"/>
+                <field name="monday_active" string="L" widget="boolean"/>
+                <field name="tuesday_active" string="M" widget="boolean"/>
+                <field name="wednesday_active" string="X" widget="boolean"/>
+                <field name="thursday_active" string="J" widget="boolean"/>
+                <field name="friday_active" string="V" widget="boolean"/>
+                <field name="saturday_active" string="S" widget="boolean"/>
+                <field name="sunday_active" string="D" widget="boolean"/>
+                <field name="out_of_hours_template_id" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Schedule Form View -->
+    <record id="mercadolibre_messaging_schedule_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.messaging.schedule.form</field>
+        <field name="model">mercadolibre.messaging.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Horario de Atención">
+                <sheet>
+                    <widget name="web_ribbon" title="Desactivado" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Horario Comercial"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="General">
+                            <field name="timezone"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Fuera de Horario">
+                            <field name="out_of_hours_template_id"/>
+                        </group>
+                    </group>
+
+                    <group string="Días y Horarios">
+                        <!-- Lunes -->
+                        <group>
+                            <label for="monday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="monday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="monday_start" widget="float_time" class="me-2"
+                                       invisible="not monday_active"/>
+                                <span invisible="not monday_active" class="me-2">a</span>
+                                <field name="monday_end" widget="float_time"
+                                       invisible="not monday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Martes -->
+                        <group>
+                            <label for="tuesday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="tuesday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="tuesday_start" widget="float_time" class="me-2"
+                                       invisible="not tuesday_active"/>
+                                <span invisible="not tuesday_active" class="me-2">a</span>
+                                <field name="tuesday_end" widget="float_time"
+                                       invisible="not tuesday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Miércoles -->
+                        <group>
+                            <label for="wednesday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="wednesday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="wednesday_start" widget="float_time" class="me-2"
+                                       invisible="not wednesday_active"/>
+                                <span invisible="not wednesday_active" class="me-2">a</span>
+                                <field name="wednesday_end" widget="float_time"
+                                       invisible="not wednesday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Jueves -->
+                        <group>
+                            <label for="thursday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="thursday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="thursday_start" widget="float_time" class="me-2"
+                                       invisible="not thursday_active"/>
+                                <span invisible="not thursday_active" class="me-2">a</span>
+                                <field name="thursday_end" widget="float_time"
+                                       invisible="not thursday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Viernes -->
+                        <group>
+                            <label for="friday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="friday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="friday_start" widget="float_time" class="me-2"
+                                       invisible="not friday_active"/>
+                                <span invisible="not friday_active" class="me-2">a</span>
+                                <field name="friday_end" widget="float_time"
+                                       invisible="not friday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Sábado -->
+                        <group>
+                            <label for="saturday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="saturday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="saturday_start" widget="float_time" class="me-2"
+                                       invisible="not saturday_active"/>
+                                <span invisible="not saturday_active" class="me-2">a</span>
+                                <field name="saturday_end" widget="float_time"
+                                       invisible="not saturday_active"/>
+                            </div>
+                        </group>
+
+                        <!-- Domingo -->
+                        <group>
+                            <label for="sunday_active"/>
+                            <div class="d-flex align-items-center">
+                                <field name="sunday_active" widget="boolean_toggle" class="me-3"/>
+                                <field name="sunday_start" widget="float_time" class="me-2"
+                                       invisible="not sunday_active"/>
+                                <span invisible="not sunday_active" class="me-2">a</span>
+                                <field name="sunday_end" widget="float_time"
+                                       invisible="not sunday_active"/>
+                            </div>
+                        </group>
+                    </group>
+
+                    <group string="Información">
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Schedule Action -->
+    <record id="action_mercadolibre_messaging_schedule" model="ir.actions.act_window">
+        <field name="name">Horarios de Atención</field>
+        <field name="res_model">mercadolibre.messaging.schedule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configura tus horarios de atención
+            </p>
+            <p>
+                Los mensajes automáticos solo se enviarán dentro de los horarios configurados.
+                Fuera de horario, los mensajes se encolarán para envío posterior.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Queue Tree View -->
+    <record id="mercadolibre_message_queue_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.message.queue.tree</field>
+        <field name="model">mercadolibre.message.queue</field>
+        <field name="arch" type="xml">
+            <tree string="Cola de Mensajes" decoration-danger="state == 'failed'"
+                  decoration-success="state == 'sent'" decoration-muted="state == 'cancelled'">
+                <field name="scheduled_time"/>
+                <field name="conversation_id"/>
+                <field name="body"/>
+                <field name="queue_reason"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-danger="state == 'failed'"
+                       decoration-warning="state == 'processing'"
+                       decoration-info="state == 'pending'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="template_id" optional="show"/>
+                <field name="rule_id" optional="show"/>
+                <field name="account_id" optional="hide"/>
+                <field name="retry_count" optional="hide"/>
+                <field name="processed_date" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Queue Form View -->
+    <record id="mercadolibre_message_queue_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.message.queue.form</field>
+        <field name="model">mercadolibre.message.queue</field>
+        <field name="arch" type="xml">
+            <form string="Cola de Mensaje ML">
+                <header>
+                    <button name="action_send_now" type="object" string="Enviar Ahora"
+                            class="btn-primary" icon="fa-paper-plane"
+                            invisible="state not in ('pending', 'failed')"/>
+                    <button name="action_cancel" type="object" string="Cancelar"
+                            class="btn-secondary"
+                            invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,processing,sent,failed,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Programación">
+                            <field name="scheduled_time"/>
+                            <field name="priority"/>
+                            <field name="queue_reason"/>
+                        </group>
+                        <group string="Destino">
+                            <field name="conversation_id"/>
+                            <field name="account_id"/>
+                            <field name="ml_order_id"/>
+                        </group>
+                    </group>
+                    <group string="Mensaje">
+                        <field name="body"/>
+                        <field name="ml_option_id"/>
+                        <field name="template_id"/>
+                        <field name="rule_id"/>
+                    </group>
+                    <group string="Resultado" invisible="state in ('pending', 'processing')">
+                        <group>
+                            <field name="message_id"/>
+                            <field name="processed_date"/>
+                        </group>
+                        <group>
+                            <field name="retry_count"/>
+                            <field name="error_message" invisible="not error_message"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Queue Search View -->
+    <record id="mercadolibre_message_queue_view_search" model="ir.ui.view">
+        <field name="name">mercadolibre.message.queue.search</field>
+        <field name="model">mercadolibre.message.queue</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Cola">
+                <field name="conversation_id"/>
+                <field name="account_id"/>
+                <field name="body"/>
+                <separator/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Procesando" name="processing" domain="[('state', '=', 'processing')]"/>
+                <filter string="Enviados" name="sent" domain="[('state', '=', 'sent')]"/>
+                <filter string="Fallidos" name="failed" domain="[('state', '=', 'failed')]"/>
+                <filter string="Cancelados" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Programados Hoy" name="today"
+                        domain="[('scheduled_time', '&gt;=', (context_today()).strftime('%Y-%m-%d')),
+                                 ('scheduled_time', '&lt;', (context_today() + datetime.timedelta(days=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Atrasados" name="overdue"
+                        domain="[('state', '=', 'pending'), ('scheduled_time', '&lt;', context_today().strftime('%Y-%m-%d %H:%M:%S'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Motivo" name="group_reason" context="{'group_by': 'queue_reason'}"/>
+                    <filter string="Fecha Programada" name="group_scheduled" context="{'group_by': 'scheduled_time:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Queue Action -->
+    <record id="action_mercadolibre_message_queue" model="ir.actions.act_window">
+        <field name="name">Cola de Mensajes</field>
+        <field name="res_model">mercadolibre.message.queue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="mercadolibre_message_queue_view_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay mensajes en cola
+            </p>
+            <p>
+                Los mensajes se encolan automáticamente cuando están programados o fuera de horario.
+            </p>
+        </field>
+    </record>
+
+</odoo>

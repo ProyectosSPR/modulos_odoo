@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Sale Order Form - Add ML Messaging Integration -->
+    <record id="sale_order_form_inherit_ml_messaging" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.ml.messaging</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <!-- Add smart buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_conversation" type="object"
+                        class="oe_stat_button" icon="fa-comments"
+                        invisible="not mercadolibre_order_ids">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="ml_message_count"/>
+                        </span>
+                        <span class="o_stat_text">Mensajes ML</span>
+                    </div>
+                    <span class="badge bg-danger" invisible="ml_unread_count == 0"
+                          style="position: absolute; top: 5px; right: 5px;">
+                        <field name="ml_unread_count"/>
+                    </span>
+                </button>
+            </xpath>
+
+            <!-- Add ML Messaging tab in notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Mensajería ML" name="ml_messaging"
+                      invisible="not mercadolibre_order_ids">
+                    <group>
+                        <group string="Conversación">
+                            <field name="ml_conversation_id" readonly="1"/>
+                            <field name="ml_last_message_date" readonly="1"/>
+                            <field name="ml_has_unread" widget="boolean" readonly="1"/>
+                        </group>
+                        <group string="Acciones">
+                            <button name="action_send_ml_message" type="object"
+                                    string="Enviar Mensaje" class="btn-primary"
+                                    icon="fa-paper-plane"/>
+                            <button name="action_sync_ml_messages" type="object"
+                                    string="Sincronizar" class="btn-secondary"
+                                    icon="fa-refresh"/>
+                            <button name="action_mark_ml_read" type="object"
+                                    string="Marcar Leídos" class="btn-secondary"
+                                    icon="fa-check"
+                                    invisible="not ml_has_unread"/>
+                        </group>
+                    </group>
+                    <group string="Último Mensaje" invisible="not ml_last_message_preview">
+                        <field name="ml_last_message_preview" readonly="1" nolabel="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Sale Order Tree - Add unread indicator -->
+    <record id="sale_order_tree_inherit_ml_messaging" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.ml.messaging</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="ml_has_unread" column_invisible="1"/>
+                <field name="ml_unread_count" string="ML" optional="show"
+                       decoration-danger="ml_unread_count > 0"
+                       decoration-muted="ml_unread_count == 0"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

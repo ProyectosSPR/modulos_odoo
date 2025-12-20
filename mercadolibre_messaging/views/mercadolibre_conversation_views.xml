@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Conversation Tree View -->
+    <record id="mercadolibre_conversation_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.conversation.tree</field>
+        <field name="model">mercadolibre.conversation</field>
+        <field name="arch" type="xml">
+            <tree string="Conversaciones ML" decoration-bf="is_unread" decoration-info="state == 'waiting'">
+                <field name="is_unread" column_invisible="1"/>
+                <field name="buyer_nickname"/>
+                <field name="ml_pack_id"/>
+                <field name="account_id"/>
+                <field name="order_status" optional="show"/>
+                <field name="shipment_status" optional="show"/>
+                <field name="message_count"/>
+                <field name="unread_count" string="Sin Leer"/>
+                <field name="last_message_date"/>
+                <field name="last_message_preview" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'answered'"
+                       decoration-warning="state == 'waiting'"
+                       decoration-info="state == 'open'"
+                       decoration-muted="state == 'closed'"/>
+                <field name="total_amount" widget="monetary" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Conversation Form View (Chat Style) -->
+    <record id="mercadolibre_conversation_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.conversation.form</field>
+        <field name="model">mercadolibre.conversation</field>
+        <field name="arch" type="xml">
+            <form string="Conversación ML">
+                <header>
+                    <button name="action_compose_message" type="object" string="Enviar Mensaje"
+                            class="btn-primary" icon="fa-paper-plane"
+                            invisible="not cap_available"/>
+                    <button name="action_sync_messages" type="object" string="Sincronizar"
+                            class="btn-secondary" icon="fa-refresh"/>
+                    <button name="action_mark_read" type="object" string="Marcar Leídos"
+                            class="btn-secondary" icon="fa-check"
+                            invisible="not is_unread"/>
+                    <button name="action_close" type="object" string="Cerrar"
+                            invisible="state == 'closed'"/>
+                    <button name="action_reopen" type="object" string="Reabrir"
+                            invisible="state != 'closed'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,waiting,answered,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_messages" type="object"
+                                class="oe_stat_button" icon="fa-comments">
+                            <field name="message_count" string="Mensajes" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Información">
+                            <field name="buyer_nickname"/>
+                            <field name="ml_pack_id"/>
+                            <field name="account_id"/>
+                            <field name="ml_order_id"/>
+                            <field name="sale_order_id"/>
+                        </group>
+                        <group string="Estado">
+                            <field name="order_status"/>
+                            <field name="shipment_status"/>
+                            <field name="total_amount" widget="monetary"/>
+                            <field name="cap_available" widget="boolean_toggle"/>
+                            <field name="unread_count"/>
+                        </group>
+                    </group>
+
+                    <!-- Chat Messages Section -->
+                    <notebook>
+                        <page string="Mensajes" name="messages">
+                            <field name="message_ids" mode="tree" context="{'default_conversation_id': id}">
+                                <tree string="Mensajes" create="0" decoration-bf="not is_read and direction == 'incoming'">
+                                    <field name="direction" column_invisible="1"/>
+                                    <field name="is_read" column_invisible="1"/>
+                                    <field name="create_date" string="Fecha"/>
+                                    <field name="direction" string="Tipo" widget="badge"
+                                           decoration-info="direction == 'outgoing'"
+                                           decoration-success="direction == 'incoming'"/>
+                                    <field name="body"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state in ('sent', 'delivered', 'received')"
+                                           decoration-danger="state == 'failed'"
+                                           decoration-warning="state == 'pending'"
+                                           decoration-info="state == 'draft'"/>
+                                    <field name="template_id" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Información Técnica" name="technical">
+                            <group>
+                                <group>
+                                    <field name="ml_conversation_id"/>
+                                    <field name="buyer_id"/>
+                                    <field name="seller_id"/>
+                                </group>
+                                <group>
+                                    <field name="cap_checked_at"/>
+                                    <field name="last_message_date"/>
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Conversation Search View -->
+    <record id="mercadolibre_conversation_view_search" model="ir.ui.view">
+        <field name="name">mercadolibre.conversation.search</field>
+        <field name="model">mercadolibre.conversation</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Conversaciones">
+                <field name="buyer_nickname"/>
+                <field name="ml_pack_id"/>
+                <field name="account_id"/>
+                <field name="ml_order_id"/>
+                <separator/>
+                <filter string="Sin Leer" name="unread" domain="[('is_unread', '=', True)]"/>
+                <filter string="Abiertas" name="open" domain="[('state', '=', 'open')]"/>
+                <filter string="Esperando" name="waiting" domain="[('state', '=', 'waiting')]"/>
+                <filter string="Cerradas" name="closed" domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter string="Puede Enviar" name="can_send" domain="[('cap_available', '=', True)]"/>
+                <separator/>
+                <filter string="Hoy" name="today" domain="[('last_message_date', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Esta Semana" name="this_week" domain="[('last_message_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Estado Orden" name="group_order_status" context="{'group_by': 'order_status'}"/>
+                    <filter string="Estado Envío" name="group_shipment_status" context="{'group_by': 'shipment_status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Conversation Kanban View -->
+    <record id="mercadolibre_conversation_view_kanban" model="ir.ui.view">
+        <field name="name">mercadolibre.conversation.kanban</field>
+        <field name="model">mercadolibre.conversation</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="state"/>
+                <field name="is_unread"/>
+                <field name="unread_count"/>
+                <field name="cap_available"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.is_unread.raw_value ? 'oe_kanban_color_2' : ''}">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="buyer_nickname"/>
+                                        </strong>
+                                    </div>
+                                    <span t-if="record.unread_count.raw_value > 0" class="badge bg-danger">
+                                        <field name="unread_count"/>
+                                    </span>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <field name="last_message_preview"/>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="last_message_date" widget="date"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="account_id" widget="many2one_avatar"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Conversation Action -->
+    <record id="action_mercadolibre_conversation" model="ir.actions.act_window">
+        <field name="name">Conversaciones</field>
+        <field name="res_model">mercadolibre.conversation</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="mercadolibre_conversation_view_search"/>
+        <field name="context">{'search_default_unread': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay conversaciones de MercadoLibre
+            </p>
+            <p>
+                Las conversaciones se crean automáticamente al sincronizar mensajes desde MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+</odoo>

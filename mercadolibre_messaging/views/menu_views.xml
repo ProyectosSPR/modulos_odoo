@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Main Menu under MercadoLibre -->
+    <menuitem id="menu_mercadolibre_messaging_root"
+              name="Mensajería"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="25"/>
+
+    <!-- Conversations -->
+    <menuitem id="menu_mercadolibre_conversation"
+              name="Conversaciones"
+              parent="menu_mercadolibre_messaging_root"
+              action="action_mercadolibre_conversation"
+              sequence="10"/>
+
+    <!-- Messages -->
+    <menuitem id="menu_mercadolibre_message"
+              name="Mensajes"
+              parent="menu_mercadolibre_messaging_root"
+              action="action_mercadolibre_message"
+              sequence="20"/>
+
+    <!-- Queue -->
+    <menuitem id="menu_mercadolibre_message_queue"
+              name="Cola de Envío"
+              parent="menu_mercadolibre_messaging_root"
+              action="action_mercadolibre_message_queue"
+              sequence="30"/>
+
+    <!-- Configuration Submenu -->
+    <menuitem id="menu_mercadolibre_messaging_config_root"
+              name="Configuración"
+              parent="menu_mercadolibre_messaging_root"
+              sequence="100"/>
+
+    <!-- Templates -->
+    <menuitem id="menu_mercadolibre_message_template"
+              name="Plantillas"
+              parent="menu_mercadolibre_messaging_config_root"
+              action="action_mercadolibre_message_template"
+              sequence="10"/>
+
+    <!-- Rules -->
+    <menuitem id="menu_mercadolibre_message_rule"
+              name="Reglas Automáticas"
+              parent="menu_mercadolibre_messaging_config_root"
+              action="action_mercadolibre_message_rule"
+              sequence="20"/>
+
+    <!-- Schedules -->
+    <menuitem id="menu_mercadolibre_messaging_schedule"
+              name="Horarios"
+              parent="menu_mercadolibre_messaging_config_root"
+              action="action_mercadolibre_messaging_schedule"
+              sequence="30"/>
+
+    <!-- Config -->
+    <menuitem id="menu_mercadolibre_messaging_config"
+              name="Configuración General"
+              parent="menu_mercadolibre_messaging_config_root"
+              action="action_mercadolibre_messaging_config"
+              sequence="40"/>
+
+    <!-- Sync Wizard (as action in menu) -->
+    <menuitem id="menu_mercadolibre_messaging_sync"
+              name="Sincronizar Ahora"
+              parent="menu_mercadolibre_messaging_config_root"
+              action="action_mercadolibre_messaging_sync"
+              sequence="50"/>
+
+</odoo>

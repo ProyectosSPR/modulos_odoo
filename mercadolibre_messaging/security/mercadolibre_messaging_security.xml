@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Record Rules -->
+
+    <!-- Conversation: Users see only their company's conversations -->
+    <record id="rule_conversation_company" model="ir.rule">
+        <field name="name">Conversación ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_conversation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Message: Users see only their company's messages -->
+    <record id="rule_message_company" model="ir.rule">
+        <field name="name">Mensaje ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_message"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Queue: Users see only their company's queue -->
+    <record id="rule_queue_company" model="ir.rule">
+        <field name="name">Cola ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_message_queue"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Config: Users see only their company's config -->
+    <record id="rule_config_company" model="ir.rule">
+        <field name="name">Config ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_messaging_config"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Template: Users see only their company's templates -->
+    <record id="rule_template_company" model="ir.rule">
+        <field name="name">Plantilla ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_message_template"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Rule: Users see only their company's rules -->
+    <record id="rule_message_rule_company" model="ir.rule">
+        <field name="name">Regla ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_message_rule"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Schedule: Users see only their company's schedules -->
+    <record id="rule_schedule_company" model="ir.rule">
+        <field name="name">Horario ML: Multi-Compañía</field>
+        <field name="model_id" ref="model_mercadolibre_messaging_schedule"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Message Tree View -->
+    <record id="mercadolibre_message_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.message.tree</field>
+        <field name="model">mercadolibre.message</field>
+        <field name="arch" type="xml">
+            <tree string="Mensajes ML" decoration-bf="not is_read and direction == 'incoming'"
+                  decoration-danger="state == 'failed'" decoration-muted="state == 'draft'">
+                <field name="direction" column_invisible="1"/>
+                <field name="is_read" column_invisible="1"/>
+                <field name="create_date" string="Fecha"/>
+                <field name="conversation_id"/>
+                <field name="direction" string="Tipo" widget="badge"
+                       decoration-info="direction == 'outgoing'"
+                       decoration-success="direction == 'incoming'"/>
+                <field name="body"/>
+                <field name="state" widget="badge"
+                       decoration-success="state in ('sent', 'delivered', 'received')"
+                       decoration-danger="state == 'failed'"
+                       decoration-warning="state == 'pending'"
+                       decoration-info="state == 'draft'"/>
+                <field name="template_id" optional="show"/>
+                <field name="rule_id" optional="hide"/>
+                <field name="account_id" optional="hide"/>
+                <field name="retry_count" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Message Form View -->
+    <record id="mercadolibre_message_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.message.form</field>
+        <field name="model">mercadolibre.message</field>
+        <field name="arch" type="xml">
+            <form string="Mensaje ML">
+                <header>
+                    <button name="action_send" type="object" string="Enviar"
+                            class="btn-primary" icon="fa-paper-plane"
+                            invisible="state != 'draft' or direction != 'outgoing'"/>
+                    <button name="action_retry" type="object" string="Reintentar"
+                            class="btn-warning" icon="fa-refresh"
+                            invisible="state != 'failed'"/>
+                    <button name="action_mark_read" type="object" string="Marcar Leído"
+                            invisible="is_read or direction != 'incoming'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,pending,sent,delivered,received,failed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Mensaje">
+                            <field name="conversation_id"/>
+                            <field name="direction"/>
+                            <field name="body"/>
+                            <field name="body_char_count"/>
+                            <field name="ml_option_id"/>
+                        </group>
+                        <group string="Detalles">
+                            <field name="account_id"/>
+                            <field name="ml_order_id"/>
+                            <field name="template_id"/>
+                            <field name="rule_id"/>
+                            <field name="is_read" widget="boolean_toggle"
+                                   invisible="direction != 'incoming'"/>
+                        </group>
+                    </group>
+                    <group string="Información Técnica" invisible="not ml_message_id">
+                        <group>
+                            <field name="ml_message_id"/>
+                            <field name="ml_date_created"/>
+                            <field name="sent_date"/>
+                        </group>
+                        <group>
+                            <field name="sender_id"/>
+                            <field name="sender_name"/>
+                            <field name="retry_count"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="not error_message">
+                        <field name="error_message" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Message Search View -->
+    <record id="mercadolibre_message_view_search" model="ir.ui.view">
+        <field name="name">mercadolibre.message.search</field>
+        <field name="model">mercadolibre.message</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Mensajes">
+                <field name="body"/>
+                <field name="conversation_id"/>
+                <field name="account_id"/>
+                <field name="ml_order_id"/>
+                <separator/>
+                <filter string="Enviados" name="outgoing" domain="[('direction', '=', 'outgoing')]"/>
+                <filter string="Recibidos" name="incoming" domain="[('direction', '=', 'incoming')]"/>
+                <separator/>
+                <filter string="Sin Leer" name="unread" domain="[('is_read', '=', False), ('direction', '=', 'incoming')]"/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Enviados OK" name="sent" domain="[('state', 'in', ('sent', 'delivered'))]"/>
+                <filter string="Fallidos" name="failed" domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter string="Hoy" name="today" domain="[('create_date', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Conversación" name="group_conversation" context="{'group_by': 'conversation_id'}"/>
+                    <filter string="Dirección" name="group_direction" context="{'group_by': 'direction'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Plantilla" name="group_template" context="{'group_by': 'template_id'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'create_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Message Action -->
+    <record id="action_mercadolibre_message" model="ir.actions.act_window">
+        <field name="name">Mensajes</field>
+        <field name="res_model">mercadolibre.message</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="mercadolibre_message_view_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay mensajes de MercadoLibre
+            </p>
+        </field>
+    </record>
+
+</odoo>

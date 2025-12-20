@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Template: Greeting -->
+        <record id="template_greeting" model="mercadolibre.message.template">
+            <field name="name">Saludo Inicial</field>
+            <field name="template_type">greeting</field>
+            <field name="ml_option_id">OTHER</field>
+            <field name="sequence">10</field>
+            <field name="body">Hola {buyer_name}, gracias por tu compra. Tu pedido {order_number} está siendo procesado. Cualquier consulta, estamos para ayudarte.</field>
+        </record>
+
+        <!-- Template: Request Billing Info -->
+        <record id="template_billing_request" model="mercadolibre.message.template">
+            <field name="name">Solicitar Datos de Facturación</field>
+            <field name="template_type">billing_request</field>
+            <field name="ml_option_id">REQUEST_BILLING_INFO</field>
+            <field name="sequence">20</field>
+            <field name="body">Hola {buyer_name}, tu pedido ha sido entregado. Si necesitas factura, por favor envíanos tus datos fiscales: RFC, razón social, domicilio fiscal, uso de CFDI y correo.</field>
+        </record>
+
+        <!-- Template: Shipping Info -->
+        <record id="template_shipping_info" model="mercadolibre.message.template">
+            <field name="name">Información de Envío</field>
+            <field name="template_type">shipping_info</field>
+            <field name="ml_option_id">DELIVERY_PROMISE</field>
+            <field name="sequence">30</field>
+            <field name="body">Hola {buyer_name}, tu pedido {order_number} ya fue enviado. Número de seguimiento: {tracking_number}. Puedes rastrearlo desde tu compra en MercadoLibre.</field>
+        </record>
+
+        <!-- Template: Delivery Confirmation -->
+        <record id="template_delivery_confirm" model="mercadolibre.message.template">
+            <field name="name">Confirmación de Entrega</field>
+            <field name="template_type">delivery_confirm</field>
+            <field name="ml_option_id">OTHER</field>
+            <field name="sequence">40</field>
+            <field name="body">Hola {buyer_name}, confirmamos que tu pedido fue entregado el {delivery_date}. Esperamos que disfrutes tu compra. Si tienes dudas o necesitas algo más, estamos aquí.</field>
+        </record>
+
+        <!-- Template: Out of Hours -->
+        <record id="template_out_of_hours" model="mercadolibre.message.template">
+            <field name="name">Fuera de Horario</field>
+            <field name="template_type">out_of_hours</field>
+            <field name="ml_option_id">OTHER</field>
+            <field name="sequence">50</field>
+            <field name="body">Hola {buyer_name}, recibimos tu mensaje. En este momento estamos fuera de horario. Te responderemos a la brevedad en nuestro horario de atención. Gracias por tu paciencia.</field>
+        </record>
+
+        <!-- Template: Thanks -->
+        <record id="template_thanks" model="mercadolibre.message.template">
+            <field name="name">Agradecimiento</field>
+            <field name="template_type">thanks</field>
+            <field name="ml_option_id">OTHER</field>
+            <field name="sequence">60</field>
+            <field name="body">Hola {buyer_name}, gracias por tu compra y por elegirnos. Si quedaste satisfecho, te agradeceríamos mucho una calificación positiva. Vuelve pronto.</field>
+        </record>
+
+        <!-- Template: Follow Up -->
+        <record id="template_follow_up" model="mercadolibre.message.template">
+            <field name="name">Seguimiento Post-Venta</field>
+            <field name="template_type">follow_up</field>
+            <field name="ml_option_id">OTHER</field>
+            <field name="sequence">70</field>
+            <field name="body">Hola {buyer_name}, queremos saber si recibiste tu pedido correctamente y si todo está bien. Cualquier duda o problema, estamos para ayudarte.</field>
+        </record>
+
+    </data>
+</odoo>

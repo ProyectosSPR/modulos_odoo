@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ML Order Form - Add Messaging buttons -->
+    <record id="mercadolibre_order_form_inherit_messaging" model="ir.ui.view">
+        <field name="name">mercadolibre.order.form.inherit.messaging</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.mercadolibre_order_view_form"/>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <!-- Add smart buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_conversation" type="object"
+                        class="oe_stat_button" icon="fa-comments">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="message_count"/>
+                        </span>
+                        <span class="o_stat_text">Mensajes</span>
+                    </div>
+                    <span class="badge bg-danger" invisible="unread_message_count == 0"
+                          style="position: absolute; top: 5px; right: 5px;">
+                        <field name="unread_message_count"/>
+                    </span>
+                </button>
+            </xpath>
+
+            <!-- Add send message button in header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_send_message" type="object"
+                        string="Enviar Mensaje ML" class="btn-secondary"
+                        icon="fa-paper-plane"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ML Order Tree - Add message indicator -->
+    <record id="mercadolibre_order_tree_inherit_messaging" model="ir.ui.view">
+        <field name="name">mercadolibre.order.tree.inherit.messaging</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.mercadolibre_order_view_tree"/>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='status']" position="after">
+                <field name="unread_message_count" string="Msgs" optional="show"
+                       decoration-danger="unread_message_count > 0"
+                       decoration-muted="unread_message_count == 0"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

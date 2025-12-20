@@ -1020,6 +1020,36 @@ class MercadolibreOrder(models.Model):
             _logger.info('Orden %s ya tiene orden Odoo: %s', self.ml_order_id, self.sale_order_id.name)
             return self.sale_order_id
 
+        # Generar referencia de cliente (pack_id tiene prioridad sobre order_id)
+        client_order_ref = self.ml_pack_id if self.ml_pack_id else self.ml_order_id
+
+        # Validar si ya existe una orden con esta referencia (creada manualmente o por otro proceso)
+        existing_order = self.env['sale.order'].search([
+            ('client_order_ref', '=', client_order_ref),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+
+        if existing_order:
+            _logger.info('Orden con referencia %s ya existe: %s - vinculando', client_order_ref, existing_order.name)
+            # Vincular la orden existente con esta orden ML
+            self.write({
+                'sale_order_id': existing_order.id,
+                'odoo_order_state': 'created',
+                'odoo_order_error': False,
+            })
+            # Actualizar campos ML en la orden existente si no los tiene
+            if not existing_order.ml_order_id:
+                existing_order.write({
+                    'ml_order_id': self.ml_order_id,
+                    'ml_pack_id': self.ml_pack_id,
+                    'ml_shipment_id': self.ml_shipment_id,
+                    'ml_account_id': self.account_id.id,
+                    'ml_logistic_type': self.logistic_type,
+                    'ml_channel': self.channel,
+                    'ml_sync_date': fields.Datetime.now(),
+                })
+            return existing_order
+
         # Validar estado de la orden ML
         if self.status not in ('paid', 'partially_paid'):
             self.write({
@@ -1083,6 +1113,8 @@ class MercadolibreOrder(models.Model):
                 'date_order': self.date_closed or fields.Datetime.now(),
                 'pricelist_id': pricelist.id,
                 'warehouse_id': warehouse.id if warehouse else False,
+                # Referencia de cliente (pack_id tiene prioridad)
+                'client_order_ref': client_order_ref,
                 # Campos ML
                 'ml_order_id': self.ml_order_id,
                 'ml_pack_id': self.ml_pack_id,
@@ -1111,11 +1143,22 @@ class MercadolibreOrder(models.Model):
             self._create_sale_order_lines(sale_order, config)
 
             # Crear lineas de descuento si aplica
-            if self.seller_discount > 0:
+            _logger.info('Orden %s - seller_discount=%.2f, meli_discount=%.2f, total_amount=%.2f',
+                        self.ml_order_id, self.seller_discount or 0, self.meli_discount or 0, self.total_amount or 0)
+            if self.seller_discount and self.seller_discount > 0:
                 self._create_discount_lines(sale_order, config)
+                _logger.info('Linea de descuento creada para orden %s: %.2f', sale_order.name, self.seller_discount)
+            else:
+                _logger.debug('Sin descuento de vendedor para orden %s', self.ml_order_id)
 
             # Manejar aporte de MercadoLibre (co-fondeo)
-            meli_order = self._handle_meli_discount(sale_order, config)
+            if self.meli_discount and self.meli_discount > 0:
+                meli_order = self._handle_meli_discount(sale_order, config)
+                if meli_order:
+                    _logger.info('Orden de aporte ML creada: %s', meli_order.name)
+            else:
+                meli_order = False
+                _logger.debug('Sin aporte ML para orden %s', self.ml_order_id)
 
             # =========================================================
             # ASIGNAR ETIQUETAS SEGUN CONFIGURACION

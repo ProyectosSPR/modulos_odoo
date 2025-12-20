@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Template Tree View -->
+    <record id="mercadolibre_message_template_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.message.template.tree</field>
+        <field name="model">mercadolibre.message.template</field>
+        <field name="arch" type="xml">
+            <tree string="Plantillas de Mensaje">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="template_type" widget="badge"/>
+                <field name="ml_option_id"/>
+                <field name="body_char_count" string="Caracteres"/>
+                <field name="use_count"/>
+                <field name="last_used"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Template Form View -->
+    <record id="mercadolibre_message_template_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.message.template.form</field>
+        <field name="model">mercadolibre.message.template</field>
+        <field name="arch" type="xml">
+            <form string="Plantilla de Mensaje ML">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-envelope" type="object" name="action_preview">
+                            <field name="use_count" string="Usos" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Nombre de la plantilla"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Clasificación">
+                            <field name="template_type"/>
+                            <field name="ml_option_id"/>
+                            <field name="sequence"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Restricciones">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="account_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+
+                    <group string="Contenido del Mensaje">
+                        <field name="body" placeholder="Escriba el mensaje aquí... Máximo 350 caracteres.
+Variables disponibles: {buyer_name}, {order_number}, {tracking_number}, {delivery_date}, {product_name}, {seller_name}"/>
+                        <div class="row">
+                            <div class="col-6">
+                                <field name="body_char_count" string="Caracteres usados"/>
+                                <span> / 350</span>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span class="text-danger" invisible="body_char_count &lt;= 350">
+                                    ⚠️ Excede el límite de 350 caracteres
+                                </span>
+                                <span class="text-success" invisible="body_char_count &gt; 350 or body_char_count == 0">
+                                    ✓ Dentro del límite
+                                </span>
+                            </div>
+                        </div>
+                    </group>
+
+                    <group string="Vista Previa" invisible="not body">
+                        <field name="body_preview" readonly="1" nolabel="1"/>
+                    </group>
+
+                    <group string="Variables Disponibles">
+                        <div class="alert alert-info" role="alert">
+                            <p><strong>Variables que puedes usar en el mensaje:</strong></p>
+                            <ul>
+                                <li><code>{buyer_name}</code> - Nombre del comprador</li>
+                                <li><code>{order_number}</code> - Número de orden ML</li>
+                                <li><code>{tracking_number}</code> - Número de seguimiento</li>
+                                <li><code>{delivery_date}</code> - Fecha de entrega</li>
+                                <li><code>{product_name}</code> - Nombre del producto</li>
+                                <li><code>{seller_name}</code> - Nombre de tu tienda</li>
+                            </ul>
+                        </div>
+                    </group>
+
+                    <group string="Estadísticas" invisible="use_count == 0">
+                        <group>
+                            <field name="use_count"/>
+                            <field name="last_used"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Template Search View -->
+    <record id="mercadolibre_message_template_view_search" model="ir.ui.view">
+        <field name="name">mercadolibre.message.template.search</field>
+        <field name="model">mercadolibre.message.template</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Plantillas">
+                <field name="name"/>
+                <field name="body"/>
+                <field name="template_type"/>
+                <separator/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivadas" name="archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Saludo" name="greeting" domain="[('template_type', '=', 'greeting')]"/>
+                <filter string="Facturación" name="billing" domain="[('template_type', '=', 'billing_request')]"/>
+                <filter string="Envío" name="shipping" domain="[('template_type', '=', 'shipping_info')]"/>
+                <filter string="Entrega" name="delivery" domain="[('template_type', '=', 'delivery_confirm')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'template_type'}"/>
+                    <filter string="Opción ML" name="group_option" context="{'group_by': 'ml_option_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Template Action -->
+    <record id="action_mercadolibre_message_template" model="ir.actions.act_window">
+        <field name="name">Plantillas de Mensaje</field>
+        <field name="res_model">mercadolibre.message.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="mercadolibre_message_template_view_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea tu primera plantilla de mensaje
+            </p>
+            <p>
+                Las plantillas te permiten enviar mensajes predefinidos a tus clientes de MercadoLibre.
+                Recuerda que los mensajes no pueden exceder 350 caracteres.
+            </p>
+        </field>
+    </record>
+
+</odoo>

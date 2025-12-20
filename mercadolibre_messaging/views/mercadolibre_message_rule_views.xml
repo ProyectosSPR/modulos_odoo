@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Rule Tree View -->
+    <record id="mercadolibre_message_rule_view_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.message.rule.tree</field>
+        <field name="model">mercadolibre.message.rule</field>
+        <field name="arch" type="xml">
+            <tree string="Reglas de Mensaje Automático">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="trigger_type" widget="badge"/>
+                <field name="order_status"/>
+                <field name="shipment_status"/>
+                <field name="template_id"/>
+                <field name="delay_minutes"/>
+                <field name="execution_count"/>
+                <field name="last_execution"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Rule Form View -->
+    <record id="mercadolibre_message_rule_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.message.rule.form</field>
+        <field name="model">mercadolibre.message.rule</field>
+        <field name="arch" type="xml">
+            <form string="Regla de Mensaje Automático">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-bolt" name="action_test_rule" type="object">
+                            <span>Probar Regla</span>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-envelope">
+                            <field name="execution_count" string="Ejecuciones" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Desactivada" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Ej: Solicitar datos de facturación después de entrega"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Plantilla a Enviar">
+                            <field name="template_id" options="{'no_create_edit': True}"/>
+                            <field name="sequence"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Timing">
+                            <field name="delay_minutes"/>
+                            <field name="respect_schedule" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+
+                    <group string="Condiciones de Disparo">
+                        <group>
+                            <field name="trigger_type" widget="radio"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Condición de Orden" invisible="trigger_type == 'shipment_status'">
+                            <field name="order_status"/>
+                        </group>
+                        <group string="Condición de Envío" invisible="trigger_type == 'order_status'">
+                            <field name="shipment_status"/>
+                        </group>
+                    </group>
+
+                    <group string="Filtros Adicionales">
+                        <group>
+                            <field name="logistic_type"/>
+                            <field name="only_first_message" widget="boolean_toggle"/>
+                        </group>
+                        <group>
+                            <field name="max_executions_per_order"/>
+                            <field name="account_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+
+                    <group string="Estadísticas" invisible="execution_count == 0">
+                        <group>
+                            <field name="execution_count"/>
+                            <field name="last_execution"/>
+                        </group>
+                    </group>
+
+                    <group string="Información" invisible="1">
+                        <field name="company_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Rule Search View -->
+    <record id="mercadolibre_message_rule_view_search" model="ir.ui.view">
+        <field name="name">mercadolibre.message.rule.search</field>
+        <field name="model">mercadolibre.message.rule</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Reglas">
+                <field name="name"/>
+                <field name="template_id"/>
+                <field name="trigger_type"/>
+                <separator/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Desactivadas" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Por Estado Orden" name="order_trigger" domain="[('trigger_type', 'in', ('order_status', 'both'))]"/>
+                <filter string="Por Estado Envío" name="shipment_trigger" domain="[('trigger_type', 'in', ('shipment_status', 'both'))]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Tipo Disparador" name="group_trigger" context="{'group_by': 'trigger_type'}"/>
+                    <filter string="Estado Orden" name="group_order" context="{'group_by': 'order_status'}"/>
+                    <filter string="Estado Envío" name="group_shipment" context="{'group_by': 'shipment_status'}"/>
+                    <filter string="Plantilla" name="group_template" context="{'group_by': 'template_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Rule Action -->
+    <record id="action_mercadolibre_message_rule" model="ir.actions.act_window">
+        <field name="name">Reglas Automáticas</field>
+        <field name="res_model">mercadolibre.message.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="mercadolibre_message_rule_view_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea tu primera regla de mensaje automático
+            </p>
+            <p>
+                Las reglas permiten enviar mensajes automáticamente cuando una orden
+                o envío alcanza un estado específico. Por ejemplo, puedes solicitar
+                datos de facturación cuando el pedido es entregado.
+            </p>
+        </field>
+    </record>
+
+</odoo>
