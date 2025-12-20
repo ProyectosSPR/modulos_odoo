@@ -1,0 +1,405 @@
+/* ============================================
+   MercadoLibre Messaging - Chat Styles
+   ============================================ */
+
+/* Container principal del chat */
+.ml-chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    max-height: 500px;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+/* Scrollbar personalizado */
+.ml-chat-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ml-chat-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.ml-chat-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.ml-chat-container::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Estado vacío */
+.ml-chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+/* Separador de fechas */
+.ml-chat-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.ml-chat-date-separator span {
+    background: #6c757d;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Burbuja base */
+.ml-chat-bubble {
+    display: flex;
+    max-width: 75%;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ml-chat-bubble-content {
+    padding: 10px 14px;
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+/* Mensajes entrantes (comprador) - izquierda */
+.ml-chat-bubble-incoming {
+    justify-content: flex-start;
+}
+
+.ml-chat-bubble-incoming .ml-chat-bubble-content {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-bottom-left-radius: 4px;
+}
+
+.ml-chat-bubble-incoming .ml-chat-sender {
+    color: #2196F3;
+}
+
+/* Mensajes salientes (vendedor/tú) - derecha */
+.ml-chat-bubble-outgoing {
+    justify-content: flex-end;
+}
+
+.ml-chat-bubble-outgoing .ml-chat-bubble-content {
+    background: linear-gradient(135deg, #ffe600 0%, #fff159 100%);
+    border: 1px solid #e6cf00;
+    border-bottom-right-radius: 4px;
+}
+
+.ml-chat-bubble-outgoing .ml-chat-sender {
+    color: #333;
+}
+
+/* Mensajes no leídos */
+.ml-chat-unread .ml-chat-bubble-content {
+    border-left: 3px solid #2196F3;
+    background: #e3f2fd;
+}
+
+/* Header de la burbuja */
+.ml-chat-bubble-header {
+    margin-bottom: 4px;
+}
+
+.ml-chat-sender {
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ml-chat-sender i {
+    font-size: 10px;
+}
+
+/* Cuerpo del mensaje */
+.ml-chat-bubble-body {
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    color: #333;
+}
+
+/* Footer de la burbuja */
+.ml-chat-bubble-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ml-chat-time {
+    font-size: 10px;
+    color: #666;
+}
+
+.ml-chat-bubble-footer i {
+    font-size: 11px;
+}
+
+/* ============================================
+   Vista de Chat Completa (Form dedicado)
+   ============================================ */
+
+.ml-chat-view {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    min-height: 400px;
+}
+
+.ml-chat-view .ml-chat-container {
+    flex: 1;
+    max-height: none;
+}
+
+/* Header del chat */
+.ml-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+}
+
+.ml-chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ml-chat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffe600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #333;
+}
+
+.ml-chat-header-details h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ml-chat-header-details .text-muted {
+    font-size: 12px;
+}
+
+/* Zona de composición */
+.ml-chat-compose {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    background: white;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+}
+
+.ml-chat-compose textarea {
+    flex: 1;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    padding: 10px 16px;
+    resize: none;
+    max-height: 100px;
+    font-size: 14px;
+}
+
+.ml-chat-compose textarea:focus {
+    outline: none;
+    border-color: #ffe600;
+    box-shadow: 0 0 0 2px rgba(255, 230, 0, 0.2);
+}
+
+.ml-chat-compose .btn-send {
+    background: #ffe600;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ml-chat-compose .btn-send:hover {
+    background: #e6cf00;
+    transform: scale(1.05);
+}
+
+.ml-chat-compose .btn-send i {
+    color: #333;
+    font-size: 16px;
+}
+
+/* Contador de caracteres */
+.ml-chat-char-count {
+    font-size: 11px;
+    color: #666;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.ml-chat-char-count.warning {
+    color: #ffc107;
+}
+
+.ml-chat-char-count.danger {
+    color: #dc3545;
+}
+
+/* ============================================
+   Badges y estados
+   ============================================ */
+
+.ml-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.ml-status-badge.cap-available {
+    background: #d4edda;
+    color: #155724;
+}
+
+.ml-status-badge.cap-unavailable {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+    .ml-chat-bubble {
+        max-width: 90%;
+    }
+
+    .ml-chat-container {
+        max-height: 400px;
+    }
+
+    .ml-chat-compose textarea {
+        padding: 8px 12px;
+    }
+}
+
+/* ============================================
+   Integración con Odoo Form
+   ============================================ */
+
+.o_form_view .ml-chat-container {
+    margin: 0 -16px;
+}
+
+.o_form_view .ml-chat-wrapper {
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+/* Quick reply buttons */
+.ml-quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.ml-quick-reply-btn {
+    padding: 6px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 16px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ml-quick-reply-btn:hover {
+    background: #ffe600;
+    border-color: #e6cf00;
+}
+
+/* Info panel lateral */
+.ml-chat-info-panel {
+    background: white;
+    border-left: 1px solid #dee2e6;
+    padding: 16px;
+    min-width: 250px;
+}
+
+.ml-chat-info-panel h5 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.ml-chat-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.ml-chat-info-item:last-child {
+    border-bottom: none;
+}
+
+.ml-chat-info-label {
+    color: #666;
+}
+
+.ml-chat-info-value {
+    font-weight: 500;
+    color: #333;
+}

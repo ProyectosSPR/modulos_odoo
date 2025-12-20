@@ -83,6 +83,12 @@ Estados de Envío (API ML):
         # Menus (last)
         'views/menu_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'mercadolibre_messaging/static/src/css/ml_chat.css',
+            'mercadolibre_messaging/static/src/js/ml_chat.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,

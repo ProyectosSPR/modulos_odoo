@@ -140,6 +140,13 @@ class MercadolibreConversation(models.Model):
         ('outgoing', 'Enviado'),
     ], compute='_compute_last_message', store=True)
 
+    # Campo HTML para vista tipo chat
+    chat_messages_html = fields.Html(
+        string='Chat',
+        compute='_compute_chat_messages_html',
+        sanitize=False
+    )
+
     # Capacidad de envío (API ML)
     cap_available = fields.Boolean(
         string='Puede Enviar',
@@ -226,6 +233,87 @@ class MercadolibreConversation(models.Model):
                 record.last_message_date = False
                 record.last_message_preview = ''
                 record.last_message_direction = False
+
+    @api.depends('ml_message_ids', 'ml_message_ids.body', 'ml_message_ids.direction',
+                 'ml_message_ids.create_date', 'ml_message_ids.state', 'ml_message_ids.is_read')
+    def _compute_chat_messages_html(self):
+        """Genera HTML tipo chat para los mensajes."""
+        for record in self:
+            if not record.ml_message_ids:
+                record.chat_messages_html = '''
+                    <div class="ml-chat-empty">
+                        <i class="fa fa-comments-o fa-3x text-muted"></i>
+                        <p class="text-muted mt-2">No hay mensajes en esta conversación</p>
+                    </div>
+                '''
+                continue
+
+            messages = record.ml_message_ids.sorted('create_date', reverse=False)
+            html_parts = ['<div class="ml-chat-container" id="ml-chat-messages">']
+
+            current_date = None
+            for msg in messages:
+                # Separador de fecha
+                msg_date = msg.create_date.date() if msg.create_date else None
+                if msg_date and msg_date != current_date:
+                    current_date = msg_date
+                    date_str = msg_date.strftime('%d/%m/%Y')
+                    html_parts.append(f'''
+                        <div class="ml-chat-date-separator">
+                            <span>{date_str}</span>
+                        </div>
+                    ''')
+
+                # Determinar clase y estilo según dirección
+                if msg.direction == 'outgoing':
+                    bubble_class = 'ml-chat-bubble-outgoing'
+                    sender = 'Tú'
+                    icon = 'fa-arrow-up'
+                else:
+                    bubble_class = 'ml-chat-bubble-incoming'
+                    sender = record.buyer_nickname or 'Comprador'
+                    icon = 'fa-arrow-down'
+
+                # Estado del mensaje
+                state_icon = ''
+                if msg.direction == 'outgoing':
+                    if msg.state == 'sent':
+                        state_icon = '<i class="fa fa-check text-muted" title="Enviado"></i>'
+                    elif msg.state == 'delivered':
+                        state_icon = '<i class="fa fa-check-double text-success" title="Entregado"></i>'
+                    elif msg.state == 'failed':
+                        state_icon = '<i class="fa fa-exclamation-circle text-danger" title="Error"></i>'
+                    elif msg.state == 'pending':
+                        state_icon = '<i class="fa fa-clock-o text-warning" title="Pendiente"></i>'
+
+                # Indicador de no leído
+                unread_class = 'ml-chat-unread' if not msg.is_read and msg.direction == 'incoming' else ''
+
+                # Hora del mensaje
+                time_str = msg.create_date.strftime('%H:%M') if msg.create_date else ''
+
+                # Escapar HTML en el cuerpo del mensaje
+                body_escaped = (msg.body or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
+
+                html_parts.append(f'''
+                    <div class="ml-chat-bubble {bubble_class} {unread_class}">
+                        <div class="ml-chat-bubble-content">
+                            <div class="ml-chat-bubble-header">
+                                <span class="ml-chat-sender">
+                                    <i class="fa {icon}"></i> {sender}
+                                </span>
+                            </div>
+                            <div class="ml-chat-bubble-body">{body_escaped}</div>
+                            <div class="ml-chat-bubble-footer">
+                                <span class="ml-chat-time">{time_str}</span>
+                                {state_icon}
+                            </div>
+                        </div>
+                    </div>
+                ''')
+
+            html_parts.append('</div>')
+            record.chat_messages_html = ''.join(html_parts)
 
     @api.depends('ml_order_id', 'ml_order_id.status', 'ml_order_id.shipment_id.status', 'ml_order_id.total_amount')
     def _compute_order_info(self):
