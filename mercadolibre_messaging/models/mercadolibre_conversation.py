@@ -179,13 +179,13 @@ class MercadolibreConversation(models.Model):
             else:
                 record.sale_order_id = False
 
-    @api.depends('ml_order_id', 'ml_order_id.buyer_first_name', 'ml_order_id.buyer_email')
+    @api.depends('ml_order_id', 'ml_order_id.buyer_id', 'ml_order_id.buyer_id.first_name', 'ml_order_id.buyer_id.email')
     def _compute_buyer_info(self):
         """Obtiene información del comprador desde la orden ML."""
         for record in self:
-            if record.ml_order_id:
-                record.buyer_first_name = record.ml_order_id.buyer_first_name or ''
-                record.buyer_email = record.ml_order_id.buyer_email or ''
+            if record.ml_order_id and record.ml_order_id.buyer_id:
+                record.buyer_first_name = record.ml_order_id.buyer_id.first_name or ''
+                record.buyer_email = record.ml_order_id.buyer_id.email or ''
             else:
                 record.buyer_first_name = ''
                 record.buyer_email = ''
