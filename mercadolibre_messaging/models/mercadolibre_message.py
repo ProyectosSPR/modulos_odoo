@@ -13,7 +13,7 @@ ML_MESSAGE_CHAR_LIMIT = 350
 class MercadolibreMessage(models.Model):
     _name = 'mercadolibre.message'
     _description = 'Mensaje ML'
-    _order = 'create_date desc'
+    _order = 'message_date desc, id desc'
 
     # Identificadores
     ml_message_id = fields.Char(
@@ -106,6 +106,27 @@ class MercadolibreMessage(models.Model):
         string='Fecha Envío',
         readonly=True
     )
+    # Campo para ordenamiento (siempre tiene valor)
+    message_date = fields.Datetime(
+        string='Fecha Mensaje',
+        compute='_compute_message_date',
+        store=True,
+        index=True,
+        help='Fecha usada para ordenar mensajes (ML o creación)'
+    )
+
+    @api.depends('ml_date_created', 'create_date')
+    def _compute_message_date(self):
+        for record in self:
+            record.message_date = record.ml_date_created or record.create_date or fields.Datetime.now()
+
+    def init(self):
+        """Recalcula message_date para mensajes sin ese campo al actualizar módulo."""
+        self.env.cr.execute("""
+            UPDATE mercadolibre_message
+            SET message_date = COALESCE(ml_date_created, create_date, NOW())
+            WHERE message_date IS NULL
+        """)
 
     # Error info
     error_message = fields.Text(

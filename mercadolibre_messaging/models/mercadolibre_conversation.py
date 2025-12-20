@@ -241,8 +241,7 @@ class MercadolibreConversation(models.Model):
                 record.last_message_direction = False
 
     @api.depends('ml_message_ids', 'ml_message_ids.body', 'ml_message_ids.direction',
-                 'ml_message_ids.ml_date_created', 'ml_message_ids.create_date',
-                 'ml_message_ids.state', 'ml_message_ids.is_read')
+                 'ml_message_ids.message_date', 'ml_message_ids.state', 'ml_message_ids.is_read')
     def _compute_chat_messages_html(self):
         """Genera HTML tipo chat para los mensajes."""
         for record in self:
@@ -255,17 +254,15 @@ class MercadolibreConversation(models.Model):
                 '''
                 continue
 
-            # Ordenar por fecha de ML primero, luego por create_date como respaldo
-            messages = record.ml_message_ids.sorted(
-                key=lambda m: m.ml_date_created or m.create_date or fields.Datetime.now(),
-                reverse=False
-            )
+            # Ordenar por message_date (campo stored que siempre tiene valor)
+            # reverse=True para que los más nuevos estén al final (scroll down)
+            messages = record.ml_message_ids.sorted('message_date', reverse=True)
             html_parts = ['<div class="ml-chat-container" id="ml-chat-messages">']
 
             current_date = None
             for msg in messages:
-                # Usar fecha de ML si existe, sino fecha de creación
-                msg_datetime = msg.ml_date_created or msg.create_date
+                # Usar message_date (siempre tiene valor)
+                msg_datetime = msg.message_date
                 msg_date = msg_datetime.date() if msg_datetime else None
                 if msg_date and msg_date != current_date:
                     current_date = msg_date
@@ -301,9 +298,8 @@ class MercadolibreConversation(models.Model):
                 # Indicador de no leído
                 unread_class = 'ml-chat-unread' if not msg.is_read and msg.direction == 'incoming' else ''
 
-                # Hora del mensaje (usar fecha ML si existe)
-                msg_time = msg.ml_date_created or msg.create_date
-                time_str = msg_time.strftime('%H:%M') if msg_time else ''
+                # Hora del mensaje
+                time_str = msg.message_date.strftime('%H:%M') if msg.message_date else ''
 
                 # Escapar HTML en el cuerpo del mensaje
                 body_escaped = (msg.body or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
@@ -578,6 +574,23 @@ class MercadolibreConversation(models.Model):
         """Sincroniza mensajes de la conversación desde ML."""
         self.ensure_one()
         self._sync_messages_from_ml()
+        # Recalcular message_date para todos los mensajes
+        self.ml_message_ids._compute_message_date()
+
+    def action_fix_message_order(self):
+        """Recalcula las fechas de ordenamiento de los mensajes."""
+        self.ensure_one()
+        self.ml_message_ids._compute_message_date()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Orden Corregido'),
+                'message': _('Se recalcularon las fechas de %s mensajes.') % len(self.ml_message_ids),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
     def _sync_messages_from_ml(self):
         """Sincroniza mensajes desde la API de ML con paginación completa."""
