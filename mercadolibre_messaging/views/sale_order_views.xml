@@ -8,6 +8,11 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
+            <!-- Add ml_order_ids field (invisible) for attrs evaluation -->
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="ml_order_ids" invisible="1"/>
+            </xpath>
+
             <!-- Add smart buttons -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_ml_conversation" type="object"
