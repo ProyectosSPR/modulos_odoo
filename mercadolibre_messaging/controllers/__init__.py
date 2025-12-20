@@ -1,3 +1,2 @@
 # -*- coding: utf-8 -*-
-
-from . import main
+# Controllers vacío - Las notificaciones se manejan en mercadolibre_connector

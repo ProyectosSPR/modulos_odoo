@@ -2,4 +2,4 @@
 
 from . import models
 from . import wizard
-from . import controllers
+# Controllers vacío - notificaciones manejadas por mercadolibre_connector
