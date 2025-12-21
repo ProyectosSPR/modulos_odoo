@@ -162,8 +162,7 @@
                         </group>
                         <group string="Producto">
                             <field name="item_id"/>
-                            <field name="item_price" widget="monetary"/>
-                            <field name="ml_product_id"/>
+                            <field name="item_price"/>
                             <field name="account_id"/>
                         </group>
                     </group>

@@ -54,19 +54,6 @@ class MercadolibreQuestion(models.Model):
         index=True,
         readonly=True
     )
-    ml_product_id = fields.Many2one(
-        'mercadolibre.product',
-        string='Producto ML',
-        ondelete='set null',
-        compute='_compute_ml_product',
-        store=True
-    )
-    product_id = fields.Many2one(
-        'product.product',
-        string='Producto Odoo',
-        related='ml_product_id.product_id',
-        store=True
-    )
 
     # Datos del producto (para referencia rápida)
     item_title = fields.Char(
@@ -220,19 +207,6 @@ class MercadolibreQuestion(models.Model):
             if len(record.text or '') > 100:
                 text += '...'
             record.text_preview = text
-
-    @api.depends('item_id')
-    def _compute_ml_product(self):
-        """Busca el producto ML asociado al item_id."""
-        for record in self:
-            if record.item_id:
-                ml_product = self.env['mercadolibre.product'].search([
-                    ('ml_id', '=', record.item_id),
-                    ('account_id', '=', record.account_id.id),
-                ], limit=1)
-                record.ml_product_id = ml_product.id if ml_product else False
-            else:
-                record.ml_product_id = False
 
     @api.depends('status')
     def _compute_state(self):
