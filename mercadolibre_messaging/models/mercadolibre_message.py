@@ -244,8 +244,16 @@ class MercadolibreMessage(models.Model):
         conversation = self.conversation_id
         pack_id = conversation.ml_pack_id
 
+        _logger.info(f"=== INICIO ENVÍO MENSAJE ===")
+        _logger.info(f"Pack ID: {pack_id}")
+        _logger.info(f"Account: {account.name} (ML User: {account.ml_user_id})")
+        _logger.info(f"Mensaje: {self.body[:100]}...")
+
         # Verificar caps_available antes de enviar
+        _logger.info(f"Verificando caps disponibles...")
         caps_check = self._check_caps_available(account, pack_id)
+        _logger.info(f"Resultado caps: {caps_check}")
+
         if not caps_check['can_send']:
             self.write({
                 'state': 'failed',
@@ -257,6 +265,7 @@ class MercadolibreMessage(models.Model):
                 log_type='message_error',
                 conversation_id=conversation.id
             )
+            _logger.warning(f"Mensaje bloqueado por caps: {caps_check['reason']}")
             return False
 
         try:
@@ -267,8 +276,8 @@ class MercadolibreMessage(models.Model):
             # Endpoint de action_guide
             endpoint = f'/messages/action_guide/packs/{pack_id}/option?tag=post_sale'
 
-            # Log request si está habilitado
-            request_data = str(payload) if config.log_api_requests else None
+            _logger.info(f"Endpoint: POST {endpoint}")
+            _logger.info(f"Payload: {payload}")
 
             config._log(
                 f'Enviando mensaje a pack {pack_id} con opción {option_id}',
@@ -276,11 +285,13 @@ class MercadolibreMessage(models.Model):
                 log_type='messaging',
                 conversation_id=conversation.id,
                 request_url=endpoint,
-                request_data=request_data
+                request_data=str(payload)
             )
 
             # Enviar a ML
+            _logger.info(f"Ejecutando request a ML...")
             response = account._make_request('POST', endpoint, data=payload)
+            _logger.info(f"Respuesta ML: {response}")
 
             if response:
                 # Éxito
@@ -361,24 +372,33 @@ class MercadolibreMessage(models.Model):
             }
         """
         option_id = self.ml_option_id or 'OTHER'
+        _logger.info(f"=== CHECK CAPS ===")
+        _logger.info(f"Pack ID: {pack_id}, Option ID: {option_id}")
 
         try:
             endpoint = f'/messages/action_guide/packs/{pack_id}/caps_available?tag=post_sale'
+            _logger.info(f"Endpoint caps: GET {endpoint}")
             response = account._make_request('GET', endpoint)
+            _logger.info(f"Respuesta caps: {response}")
 
             if not response:
                 # Si no hay respuesta, permitir envío (puede ser orden antigua)
+                _logger.info("Sin respuesta de caps, permitiendo envío")
                 return {'can_send': True, 'remaining_cap': 1, 'caps': []}
 
             # Buscar cap para la opción seleccionada
             caps = response if isinstance(response, list) else []
+            _logger.info(f"Caps disponibles: {caps}")
+
             option_cap = next(
                 (c for c in caps if c.get('option_id') == option_id),
                 None
             )
+            _logger.info(f"Cap para opción {option_id}: {option_cap}")
 
             if option_cap is None:
                 # Opción no disponible para este pack
+                _logger.warning(f"Opción {option_id} no disponible en caps")
                 return {
                     'can_send': False,
                     'reason': f'La opción {option_id} no está disponible para este pack',

@@ -56,7 +56,13 @@ class MercadolibreAccountMessaging(models.Model):
         }
 
         try:
-            _logger.debug(f"API Request: {method} {url}")
+            _logger.info(f"=== ML API REQUEST ===")
+            _logger.info(f"Method: {method.upper()}")
+            _logger.info(f"URL: {url}")
+            if data:
+                _logger.info(f"Data: {data}")
+            if params:
+                _logger.info(f"Params: {params}")
 
             response = requests.request(
                 method=method.upper(),
@@ -68,7 +74,9 @@ class MercadolibreAccountMessaging(models.Model):
             )
 
             # Log respuesta
-            _logger.debug(f"API Response: {response.status_code}")
+            _logger.info(f"=== ML API RESPONSE ===")
+            _logger.info(f"Status Code: {response.status_code}")
+            _logger.info(f"Response Body: {response.text[:1000] if response.text else 'Empty'}")
 
             # Manejar errores HTTP
             if response.status_code >= 400:
@@ -81,7 +89,10 @@ class MercadolibreAccountMessaging(models.Model):
                 error_msg = error_data.get('message', response.text)
                 error_code = error_data.get('error', str(response.status_code))
 
-                _logger.error(f"API Error {error_code}: {error_msg}")
+                _logger.error(f"=== ML API ERROR ===")
+                _logger.error(f"Error Code: {error_code}")
+                _logger.error(f"Error Message: {error_msg}")
+                _logger.error(f"Full Error Data: {error_data}")
                 raise Exception(f"{error_code}: {error_msg}")
 
             # Retornar JSON si hay contenido
