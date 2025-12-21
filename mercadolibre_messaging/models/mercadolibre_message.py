@@ -137,7 +137,34 @@ class MercadolibreMessage(models.Model):
             record.message_date = record.ml_date_created or record.create_date or fields.Datetime.now()
 
     def init(self):
-        """Recalcula message_date para mensajes sin ese campo al actualizar módulo."""
+        """Inicializa campos faltantes al actualizar módulo."""
+        # Crear columna attachment_urls si no existe
+        self.env.cr.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'mercadolibre_message'
+            AND column_name = 'attachment_urls'
+        """)
+        if not self.env.cr.fetchone():
+            self.env.cr.execute("""
+                ALTER TABLE mercadolibre_message
+                ADD COLUMN attachment_urls TEXT
+            """)
+
+        # Crear columna has_attachments si no existe
+        self.env.cr.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'mercadolibre_message'
+            AND column_name = 'has_attachments'
+        """)
+        if not self.env.cr.fetchone():
+            self.env.cr.execute("""
+                ALTER TABLE mercadolibre_message
+                ADD COLUMN has_attachments BOOLEAN DEFAULT FALSE
+            """)
+
+        # Recalcula message_date para mensajes sin ese campo
         self.env.cr.execute("""
             UPDATE mercadolibre_message
             SET message_date = COALESCE(ml_date_created, create_date, NOW())
