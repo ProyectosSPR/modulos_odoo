@@ -122,7 +122,7 @@
             <p>
                 Las notificaciones de MercadoLibre (preguntas, mensajes, órdenes) aparecerán aquí.
                 <br/>
-                <strong>URL de Webhook:</strong> https://tu-dominio.com/mercadolibre/notifications
+                <strong>URL de Webhook:</strong> https://tu-dominio.com/mercadolibre/callback
             </p>
         </field>
     </record>
