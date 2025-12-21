@@ -10,6 +10,7 @@
         <field name="arch" type="xml">
             <!-- Add smart buttons -->
             <xpath expr="//div[@name='button_box']" position="inside">
+                <field name="unread_message_count" invisible="1"/>
                 <button name="action_view_conversation" type="object"
                         class="oe_stat_button" icon="fa-comments">
                     <div class="o_field_widget o_stat_info">
@@ -18,9 +19,10 @@
                         </span>
                         <span class="o_stat_text">Mensajes</span>
                     </div>
-                    <span class="badge bg-danger" invisible="unread_message_count == 0"
+                    <span class="badge bg-danger"
+                          attrs="{'invisible': [('unread_message_count', '=', 0)]}"
                           style="position: absolute; top: 5px; right: 5px;">
-                        <field name="unread_message_count"/>
+                        <field name="unread_message_count" nolabel="1"/>
                     </span>
                 </button>
             </xpath>

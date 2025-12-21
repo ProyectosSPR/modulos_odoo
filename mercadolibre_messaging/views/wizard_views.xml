@@ -155,33 +155,52 @@
         <field name="model">mercadolibre.question.sync</field>
         <field name="arch" type="xml">
             <form string="Sincronizar Preguntas MercadoLibre">
+                <field name="state" invisible="1"/>
+                <field name="sync_mode" invisible="1"/>
+                <field name="use_date_filter" invisible="1"/>
+
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Configuración">
                         <field name="account_id"/>
+                        <field name="sync_mode" widget="radio"/>
                         <field name="status_filter"/>
                         <field name="limit"/>
                     </group>
-                    <group string="Información">
-                        <div class="alert alert-info" role="alert">
-                            <p class="mb-1"><strong>Estados de preguntas:</strong></p>
-                            <ul class="mb-0">
-                                <li><strong>Sin Responder:</strong> Preguntas pendientes de respuesta</li>
-                                <li><strong>Respondidas:</strong> Preguntas ya contestadas</li>
-                                <li><strong>Todas:</strong> Ambos estados</li>
-                            </ul>
-                        </div>
+                    <group string="Opciones Historial"
+                           attrs="{'invisible': [('sync_mode', '!=', 'history')]}">
+                        <field name="max_pages"/>
+                        <field name="use_date_filter"/>
+                        <field name="date_from"
+                               attrs="{'invisible': [('use_date_filter', '=', False)],
+                                       'required': [('use_date_filter', '=', True)]}"/>
+                        <field name="date_to"
+                               attrs="{'invisible': [('use_date_filter', '=', False)],
+                                       'required': [('use_date_filter', '=', True)]}"/>
                     </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <div class="alert alert-info" role="alert">
+                        <p class="mb-1"><strong>Modos de sincronización:</strong></p>
+                        <ul class="mb-0">
+                            <li><strong>Recientes:</strong> Últimas preguntas (rápido)</li>
+                            <li><strong>Historial:</strong> Descarga masiva con paginación (hasta páginas_máx x 50 preguntas)</li>
+                        </ul>
+                        <p class="mt-2 mb-0" attrs="{'invisible': [('sync_mode', '!=', 'history')]}">
+                            <em>Nota: El filtro de fechas se aplica después de descargar las preguntas.</em>
+                        </p>
+                    </div>
                 </group>
 
                 <group attrs="{'invisible': [('state', '!=', 'done')]}">
                     <group string="Resultado">
                         <field name="questions_synced"/>
+                        <field name="questions_filtered"
+                               attrs="{'invisible': ['|', ('sync_mode', '!=', 'history'), ('use_date_filter', '=', False)]}"/>
                         <field name="result_message" readonly="1" nolabel="1"
-                               style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 5px;"/>
+                               style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;"/>
                     </group>
                 </group>
-
-                <field name="state" invisible="1"/>
 
                 <footer>
                     <button name="action_sync" string="Sincronizar" type="object"
