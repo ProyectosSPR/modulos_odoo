@@ -672,6 +672,24 @@ class MercadolibreConversation(models.Model):
         # Invalidar cache para forzar recálculo del HTML del chat
         self.invalidate_recordset(['chat_messages_html'])
 
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Sincronización Completa'),
+                'message': _('Se sincronizaron los mensajes correctamente.'),
+                'type': 'success',
+                'sticky': False,
+                'next': {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'mercadolibre.conversation',
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'target': 'current',
+                }
+            }
+        }
+
     def action_fix_message_order(self):
         """Recalcula las fechas de ordenamiento de los mensajes."""
         self.ensure_one()
