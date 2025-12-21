@@ -57,6 +57,22 @@ class MercadolibreMessage(models.Model):
         compute='_compute_body_char_count'
     )
 
+    # Imágenes/Attachments
+    attachment_urls = fields.Text(
+        string='URLs de Adjuntos',
+        help='URLs de imágenes adjuntas (separadas por coma)'
+    )
+    has_attachments = fields.Boolean(
+        string='Tiene Adjuntos',
+        compute='_compute_has_attachments',
+        store=True
+    )
+
+    @api.depends('attachment_urls')
+    def _compute_has_attachments(self):
+        for record in self:
+            record.has_attachments = bool(record.attachment_urls and record.attachment_urls.strip())
+
     # Plantilla/Regla usada
     template_id = fields.Many2one(
         'mercadolibre.message.template',

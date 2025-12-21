@@ -261,9 +261,41 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// ============================================
+// Lightbox para Imágenes
+// ============================================
+
+function openLightbox(imgSrc) {
+    // Crear lightbox
+    const lightbox = document.createElement('div');
+    lightbox.className = 'ml-chat-lightbox';
+    lightbox.innerHTML = `
+        <span class="ml-chat-lightbox-close">&times;</span>
+        <img src="${imgSrc}" alt="Imagen ampliada"/>
+    `;
+
+    // Cerrar al hacer click
+    lightbox.onclick = () => lightbox.remove();
+
+    document.body.appendChild(lightbox);
+}
+
+// Event listener para imágenes del chat
+document.addEventListener('click', (e) => {
+    const attachment = e.target.closest('.ml-chat-attachment');
+    if (attachment) {
+        e.preventDefault();
+        const img = attachment.querySelector('img');
+        if (img) {
+            openLightbox(img.src);
+        }
+    }
+});
+
 // Exportar para uso en módulos OWL
 export const mlChatUtils = {
     scrollToBottom,
     initChatContainer,
     initChatObserver,
+    openLightbox,
 };

@@ -255,8 +255,8 @@ class MercadolibreConversation(models.Model):
                 continue
 
             # Ordenar por message_date (campo stored que siempre tiene valor)
-            # reverse=True para que los más nuevos estén al final (scroll down)
-            messages = record.ml_message_ids.sorted('message_date', reverse=True)
+            # reverse=False = ascendente (más antiguos primero, más nuevos al final)
+            messages = record.ml_message_ids.sorted('message_date', reverse=False)
             html_parts = ['<div class="ml-chat-container" id="ml-chat-messages">']
 
             current_date = None
@@ -304,6 +304,20 @@ class MercadolibreConversation(models.Model):
                 # Escapar HTML en el cuerpo del mensaje
                 body_escaped = (msg.body or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
 
+                # Generar HTML para imágenes adjuntas
+                images_html = ''
+                if msg.attachment_urls:
+                    urls = [u.strip() for u in msg.attachment_urls.split(',') if u.strip()]
+                    if urls:
+                        images_html = '<div class="ml-chat-attachments">'
+                        for url in urls:
+                            images_html += f'''
+                                <a href="{url}" target="_blank" class="ml-chat-attachment">
+                                    <img src="{url}" alt="Imagen adjunta" loading="lazy"/>
+                                </a>
+                            '''
+                        images_html += '</div>'
+
                 html_parts.append(f'''
                     <div class="ml-chat-bubble {bubble_class} {unread_class}">
                         <div class="ml-chat-bubble-content">
@@ -313,6 +327,7 @@ class MercadolibreConversation(models.Model):
                                 </span>
                             </div>
                             <div class="ml-chat-bubble-body">{body_escaped}</div>
+                            {images_html}
                             <div class="ml-chat-bubble-footer">
                                 <span class="ml-chat-time">{time_str}</span>
                                 {state_icon}
@@ -437,10 +452,14 @@ class MercadolibreConversation(models.Model):
 
         message_text = self.quick_message.strip()[:350]  # Límite ML
 
-        # Crear y enviar el mensaje
+        # Limpiar el campo de mensaje rápido ANTES de crear/enviar
+        self.write({'quick_message': False})
+
+        # Crear el mensaje
         message = self.env['mercadolibre.message'].create({
             'conversation_id': self.id,
             'account_id': self.account_id.id,
+            'ml_order_id': self.ml_order_id.id if self.ml_order_id else False,
             'body': message_text,
             'direction': 'outgoing',
             'state': 'pending',
@@ -448,32 +467,41 @@ class MercadolibreConversation(models.Model):
         })
 
         # Intentar enviar
+        error_msg = None
         try:
             message._send_to_ml()
-            # Limpiar el campo de mensaje rápido
-            self.write({'quick_message': False})
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Mensaje Enviado'),
-                    'message': _('Tu mensaje ha sido enviado correctamente.'),
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
         except Exception as e:
+            error_msg = str(e)
+            _logger.error(f"Error enviando mensaje rápido: {e}")
+
+        # Recargar la vista para mostrar el nuevo mensaje
+        if error_msg:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'title': _('Error al Enviar'),
-                    'message': str(e),
+                    'message': error_msg,
                     'type': 'danger',
                     'sticky': True,
+                    'next': {
+                        'type': 'ir.actions.act_window',
+                        'res_model': 'mercadolibre.conversation',
+                        'res_id': self.id,
+                        'view_mode': 'form',
+                        'target': 'current',
+                    }
                 }
             }
+
+        # Éxito - recargar el formulario
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'mercadolibre.conversation',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
 
     def action_refresh_caps(self):
         """
@@ -698,15 +726,24 @@ class MercadolibreConversation(models.Model):
                 except Exception:
                     _logger.warning(f"No se pudo parsear fecha: {date_str}")
 
+        # Extraer URLs de attachments/imágenes
+        attachment_urls = []
+        attachments = msg_data.get('attachments', []) or msg_data.get('message_attachments', [])
+        for attach in attachments:
+            url = attach.get('url') or attach.get('original') or attach.get('filename')
+            if url:
+                attachment_urls.append(url)
+
         message = self.env['mercadolibre.message'].create({
             'ml_message_id': ml_message_id,
             'conversation_id': self.id,
             'account_id': self.account_id.id,
-            'body': msg_data.get('text', ''),
+            'body': msg_data.get('text', '') or '',
             'direction': direction,
             'state': 'sent' if direction == 'outgoing' else 'received',
             'is_read': direction == 'outgoing',
             'ml_date_created': date_created,
+            'attachment_urls': ','.join(attachment_urls) if attachment_urls else False,
         })
 
         # Sincronizar al chatter si está configurado
