@@ -539,32 +539,11 @@ class MercadolibreConversation(models.Model):
 
         # Recargar la vista para mostrar el nuevo mensaje
         if error_msg:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Error al Enviar'),
-                    'message': error_msg,
-                    'type': 'danger',
-                    'sticky': True,
-                    'next': {
-                        'type': 'ir.actions.act_window',
-                        'res_model': 'mercadolibre.conversation',
-                        'res_id': self.id,
-                        'view_mode': 'form',
-                        'target': 'current',
-                    }
-                }
-            }
+            # Mostrar error como UserError para que Odoo lo maneje correctamente
+            raise UserError(error_msg)
 
-        # Éxito - recargar el formulario
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'mercadolibre.conversation',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        # Éxito - simplemente retornar True para recargar
+        return True
 
     def action_refresh_caps(self):
         """
