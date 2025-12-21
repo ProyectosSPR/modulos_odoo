@@ -241,7 +241,8 @@ class MercadolibreConversation(models.Model):
                 record.last_message_direction = False
 
     @api.depends('ml_message_ids', 'ml_message_ids.body', 'ml_message_ids.direction',
-                 'ml_message_ids.message_date', 'ml_message_ids.state', 'ml_message_ids.is_read')
+                 'ml_message_ids.message_date', 'ml_message_ids.state', 'ml_message_ids.is_read',
+                 'ml_message_ids.attachment_urls')
     def _compute_chat_messages_html(self):
         """Genera HTML tipo chat para los mensajes."""
         for record in self:
@@ -311,9 +312,11 @@ class MercadolibreConversation(models.Model):
                     if urls:
                         images_html = '<div class="ml-chat-attachments">'
                         for url in urls:
+                            # Usar onerror para mostrar placeholder si falla
                             images_html += f'''
                                 <a href="{url}" target="_blank" class="ml-chat-attachment">
-                                    <img src="{url}" alt="Imagen adjunta" loading="lazy"/>
+                                    <img src="{url}" alt="Imagen adjunta" loading="lazy"
+                                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIj5JbWFnZW48L3RleHQ+PC9zdmc+'; this.parentElement.classList.add('ml-chat-attachment-error');"/>
                                 </a>
                             '''
                         images_html += '</div>'
@@ -602,13 +605,26 @@ class MercadolibreConversation(models.Model):
         """Sincroniza mensajes de la conversación desde ML."""
         self.ensure_one()
         self._sync_messages_from_ml()
-        # Recalcular message_date para todos los mensajes
-        self.ml_message_ids._compute_message_date()
+        # Forzar recálculo de message_date para mensajes sin fecha
+        messages_without_date = self.ml_message_ids.filtered(lambda m: not m.message_date)
+        for msg in messages_without_date:
+            msg.message_date = msg.ml_date_created or msg.create_date or fields.Datetime.now()
+        # Invalidar cache para forzar recálculo del HTML del chat
+        self.invalidate_recordset(['chat_messages_html'])
 
     def action_fix_message_order(self):
         """Recalcula las fechas de ordenamiento de los mensajes."""
         self.ensure_one()
-        self.ml_message_ids._compute_message_date()
+        # Usar SQL directo para forzar actualización
+        if self.ml_message_ids:
+            self.env.cr.execute("""
+                UPDATE mercadolibre_message
+                SET message_date = COALESCE(ml_date_created, create_date, NOW())
+                WHERE id IN %s
+            """, (tuple(self.ml_message_ids.ids),))
+            # Invalidar cache
+            self.ml_message_ids.invalidate_recordset(['message_date'])
+            self.invalidate_recordset(['chat_messages_html'])
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -727,12 +743,31 @@ class MercadolibreConversation(models.Model):
                     _logger.warning(f"No se pudo parsear fecha: {date_str}")
 
         # Extraer URLs de attachments/imágenes
+        # ML puede devolver diferentes estructuras según el endpoint
         attachment_urls = []
         attachments = msg_data.get('attachments', []) or msg_data.get('message_attachments', [])
+
+        # Log para debug de estructura de attachments
+        if attachments:
+            _logger.info(f"Attachments recibidos para mensaje {ml_message_id}: {attachments}")
+
         for attach in attachments:
-            url = attach.get('url') or attach.get('original') or attach.get('filename')
-            if url:
+            # Intentar obtener URL en orden de preferencia
+            # 'original' es la imagen completa, 'thumbnail' es más pequeña
+            url = (
+                attach.get('original') or
+                attach.get('url') or
+                attach.get('thumbnail') or
+                attach.get('filename') or
+                attach.get('link')
+            )
+            if url and url.startswith('http'):
                 attachment_urls.append(url)
+            elif attach.get('id'):
+                # Si solo hay ID, construir URL de la API de ML
+                # Las imágenes de mensajes suelen estar en este endpoint
+                img_id = attach.get('id')
+                attachment_urls.append(f"https://http2.mlstatic.com/D_{img_id}-F.jpg")
 
         message = self.env['mercadolibre.message'].create({
             'ml_message_id': ml_message_id,

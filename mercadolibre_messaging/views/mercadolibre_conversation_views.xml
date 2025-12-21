@@ -61,6 +61,8 @@
                             attrs="{'invisible': [('cap_available', '=', True)]}"/>
                     <button name="action_sync_messages" type="object" string="Sincronizar"
                             class="btn-secondary" icon="fa-refresh"/>
+                    <button name="action_fix_message_order" type="object" string="Corregir Orden"
+                            class="btn-secondary" icon="fa-sort" groups="base.group_no_one"/>
                     <button name="action_mark_read" type="object" string="Marcar Leídos"
                             class="btn-secondary" icon="fa-check"
                             attrs="{'invisible': [('is_unread', '=', False)]}"/>
