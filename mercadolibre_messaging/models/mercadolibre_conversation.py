@@ -1196,34 +1196,31 @@ class MercadolibreConversation(models.Model):
         """
         Sincroniza conversaciones de una cuenta desde ML.
 
+        La sincronización se basa en las conversaciones existentes en Odoo,
+        ya que ML no tiene un endpoint para listar todas las conversaciones.
+
         Args:
             account: mercadolibre.account record
         """
         config = self.env['mercadolibre.messaging.config'].get_config_for_account(account)
 
         try:
-            # Obtener packs recientes con mensajes
-            endpoint = f'/messages/packs?seller_id={account.ml_user_id}'
-            response = account._make_request('GET', endpoint)
+            # Sincronizar conversaciones existentes que estén abiertas o en espera
+            conversations = self.search([
+                ('account_id', '=', account.id),
+                ('state', 'in', ['open', 'waiting']),
+            ], limit=50, order='last_message_date desc')
 
-            if not response or 'results' not in response:
-                return
-
-            for pack_data in response.get('results', []):
-                pack_id = pack_data.get('pack_id') or pack_data.get('id')
-                if pack_id:
-                    # Buscar orden asociada
-                    ml_order = self.env['mercadolibre.order'].search([
-                        ('ml_pack_id', '=', str(pack_id)),
-                        ('account_id', '=', account.id),
-                    ], limit=1)
-
-                    if ml_order:
-                        conversation = self.get_or_create_for_order(ml_order)
-                        if conversation:
-                            conversation._sync_messages_from_ml()
+            synced_count = 0
+            for conversation in conversations:
+                try:
+                    conversation._sync_messages_from_ml()
+                    synced_count += 1
+                except Exception as e:
+                    _logger.warning(f"Error sincronizando conversación {conversation.ml_pack_id}: {e}")
 
             config.write({'last_sync_date': fields.Datetime.now()})
+            _logger.info(f"Sincronizadas {synced_count} conversaciones para cuenta {account.name}")
 
         except Exception as e:
             config._log(
