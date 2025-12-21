@@ -123,6 +123,8 @@
         <field name="model">mercadolibre.question</field>
         <field name="arch" type="xml">
             <form string="Pregunta MercadoLibre">
+                <!-- Campos invisibles necesarios para attrs -->
+                <field name="is_late" invisible="1"/>
                 <header>
                     <button name="action_answer" type="object" string="Enviar Respuesta"
                             class="btn-primary" icon="fa-paper-plane"
