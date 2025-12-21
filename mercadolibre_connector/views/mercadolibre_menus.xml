@@ -6,4 +6,5 @@
     <menuitem id="menu_mercadolibre_invitations" name="Invitaciones" parent="menu_mercadolibre_root" sequence="30" action="action_mercadolibre_invitation"/>
     <menuitem id="menu_mercadolibre_playground" name="API Playground" parent="menu_mercadolibre_root" sequence="40" action="action_mercadolibre_api_playground"/>
     <menuitem id="menu_mercadolibre_logs" name="Logs" parent="menu_mercadolibre_root" sequence="90" action="action_mercadolibre_log" groups="group_mercadolibre_manager"/>
+    <menuitem id="menu_mercadolibre_webhooks" name="Webhooks Recibidos" parent="menu_mercadolibre_root" sequence="85" action="action_mercadolibre_webhook_notifications"/>
 </odoo>

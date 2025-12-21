@@ -69,24 +69,62 @@
                 <field name="message"/>
                 <field name="account_id"/>
                 <field name="log_type"/>
+                <field name="request_url" string="Resource"/>
+
+                <separator/>
+                <filter string="Webhooks/Notificaciones" name="notifications" domain="[('log_type', '=', 'notification')]"/>
+                <filter string="OAuth" name="oauth" domain="[('log_type', '=', 'oauth')]"/>
+                <filter string="API Requests" name="api" domain="[('log_type', 'in', ['api_request', 'api_response'])]"/>
+                <separator/>
                 <filter string="Hoy" name="today" domain="[('create_date', '&gt;=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Última Hora" name="last_hour" domain="[('create_date', '&gt;=', (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
+                <filter string="Últimas 24h" name="last_24h" domain="[('create_date', '&gt;=', (datetime.datetime.now() - datetime.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
                 <filter string="Última Semana" name="week" domain="[('create_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
                 <filter string="Errores" name="errors" domain="[('level', '=', 'error')]"/>
                 <filter string="Warnings" name="warnings" domain="[('level', '=', 'warning')]"/>
                 <filter string="Success" name="success" domain="[('level', '=', 'success')]"/>
+                <separator/>
+                <filter string="Questions" name="questions" domain="[('message', 'ilike', 'questions')]"/>
+                <filter string="Messages" name="messages" domain="[('message', 'ilike', 'messages')]"/>
+                <filter string="Orders" name="orders" domain="[('message', 'ilike', 'orders')]"/>
+
                 <group expand="0" string="Agrupar por">
-                    <filter string="Tipo" name="log_type" context="{'group_by': 'log_type'}"/>
-                    <filter string="Nivel" name="level" context="{'group_by': 'level'}"/>
-                    <filter string="Cuenta" name="account" context="{'group_by': 'account_id'}"/>
-                    <filter string="Fecha" name="date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Tipo" name="group_log_type" context="{'group_by': 'log_type'}"/>
+                    <filter string="Nivel" name="group_level" context="{'group_by': 'level'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Hora" name="group_hour" context="{'group_by': 'create_date:hour'}"/>
                 </group>
             </search>
         </field>
     </record>
+
+    <!-- Acción general de logs -->
     <record id="action_mercadolibre_log" model="ir.actions.act_window">
         <field name="name">Logs</field>
         <field name="res_model">mercadolibre.log</field>
         <field name="view_mode">tree,form</field>
         <field name="context">{}</field>
     </record>
+
+    <!-- Acción específica para Webhooks/Notificaciones -->
+    <record id="action_mercadolibre_webhook_notifications" model="ir.actions.act_window">
+        <field name="name">Webhooks Recibidos</field>
+        <field name="res_model">mercadolibre.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('log_type', '=', 'notification')]</field>
+        <field name="context">{'search_default_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay notificaciones webhook recibidas hoy
+            </p>
+            <p>
+                Las notificaciones de MercadoLibre (preguntas, mensajes, órdenes) aparecerán aquí.
+                <br/>
+                <strong>URL de Webhook:</strong> https://tu-dominio.com/mercadolibre/notifications
+            </p>
+        </field>
+    </record>
+
 </odoo>

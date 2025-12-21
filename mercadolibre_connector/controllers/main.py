@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import json
 import requests
 import logging
 from datetime import datetime, timedelta
@@ -59,13 +60,24 @@ class MercadolibreController(http.Controller):
 
         IMPORTANTE: Responder HTTP 200 en menos de 500ms para evitar reintentos.
         """
+        start_time = datetime.now()
+
         try:
             data = request.jsonrequest
-            topic = data.get('topic')
+            topic = data.get('topic', 'unknown')
             user_id = str(data.get('user_id', ''))
             resource = data.get('resource', '')
+            attempts = data.get('attempts', 1)
+            notification_id = data.get('_id', '')
 
-            _logger.info(f"ML Notification - Topic: {topic}, User: {user_id}, Resource: {resource}")
+            _logger.info("=" * 60)
+            _logger.info(f"[WEBHOOK] Notificación recibida")
+            _logger.info(f"[WEBHOOK] Topic: {topic}")
+            _logger.info(f"[WEBHOOK] User ID: {user_id}")
+            _logger.info(f"[WEBHOOK] Resource: {resource}")
+            _logger.info(f"[WEBHOOK] Attempts: {attempts}")
+            _logger.info(f"[WEBHOOK] Notification ID: {notification_id}")
+            _logger.info(f"[WEBHOOK] Payload completo: {json.dumps(data, indent=2)}")
 
             # Buscar cuenta ML
             account = request.env['mercadolibre.account'].sudo().search([
@@ -73,30 +85,83 @@ class MercadolibreController(http.Controller):
                 ('active', '=', True)
             ], limit=1)
 
+            account_name = account.name if account else 'NO ENCONTRADA'
+
             if not account:
-                _logger.warning(f"Cuenta ML no encontrada para user_id: {user_id}")
+                _logger.warning(f"[WEBHOOK] Cuenta ML no encontrada para user_id: {user_id}")
+
+                # Log a BD incluso si no hay cuenta
+                request.env['mercadolibre.log'].sudo().create({
+                    'log_type': 'notification',
+                    'level': 'warning',
+                    'message': f'[WEBHOOK] Cuenta no encontrada - Topic: {topic}, Resource: {resource}',
+                    'request_url': resource,
+                    'request_body': json.dumps(data, indent=2),
+                })
+
                 return {'status': 'ignored', 'reason': 'account_not_found'}
 
-            # Log de la notificación
-            request.env['mercadolibre.log'].sudo().create({
+            # Log detallado de la notificación a BD
+            log_record = request.env['mercadolibre.log'].sudo().create({
                 'log_type': 'notification',
                 'level': 'info',
                 'account_id': account.id,
-                'message': f'Notificación recibida: {topic}',
+                'message': f'[WEBHOOK RECIBIDO] Topic: {topic} | Resource: {resource} | Intento: {attempts}',
                 'request_url': resource,
+                'request_method': 'POST',
+                'request_body': json.dumps(data, indent=2),
             })
+
+            _logger.info(f"[WEBHOOK] Cuenta encontrada: {account_name} (ID: {account.id})")
+            _logger.info(f"[WEBHOOK] Log ID creado: {log_record.id}")
 
             # Rutear según topic
             handler_method = f'_handle_notification_{topic}'
             if hasattr(self, handler_method):
-                return getattr(self, handler_method)(account, data)
+                _logger.info(f"[WEBHOOK] Usando handler interno: {handler_method}")
+                result = getattr(self, handler_method)(account, data)
+            else:
+                # Topic no manejado localmente, intentar delegación a módulos
+                _logger.info(f"[WEBHOOK] Delegando a módulo externo para topic: {topic}")
+                result = self._delegate_notification(account, data)
 
-            # Topic no manejado localmente, intentar delegación a módulos
-            return self._delegate_notification(account, data)
+            # Calcular duración
+            duration = (datetime.now() - start_time).total_seconds()
+
+            # Actualizar log con resultado
+            result_str = json.dumps(result, indent=2) if isinstance(result, dict) else str(result)
+            log_record.sudo().write({
+                'response_body': result_str,
+                'duration': duration,
+                'level': 'success' if result.get('status') == 'ok' else 'warning',
+            })
+
+            _logger.info(f"[WEBHOOK] Resultado: {result}")
+            _logger.info(f"[WEBHOOK] Duración: {duration:.3f}s")
+            _logger.info("=" * 60)
+
+            return result
 
         except Exception as e:
-            _logger.error(f"Error procesando notificación ML: {str(e)}")
-            return {'status': 'error', 'message': str(e)}
+            duration = (datetime.now() - start_time).total_seconds()
+            error_msg = str(e)
+
+            _logger.error(f"[WEBHOOK] Error procesando notificación: {error_msg}", exc_info=True)
+
+            # Log del error a BD
+            try:
+                request.env['mercadolibre.log'].sudo().create({
+                    'log_type': 'notification',
+                    'level': 'error',
+                    'message': f'[WEBHOOK ERROR] {error_msg}',
+                    'request_body': json.dumps(request.jsonrequest, indent=2) if hasattr(request, 'jsonrequest') else '',
+                    'error_details': error_msg,
+                    'duration': duration,
+                })
+            except:
+                pass
+
+            return {'status': 'error', 'message': error_msg}
 
     def _delegate_notification(self, account, data):
         """
@@ -106,6 +171,7 @@ class MercadolibreController(http.Controller):
         mercadolibre.notification.handler con método process_notification(account, data)
         """
         topic = data.get('topic')
+        resource = data.get('resource', '')
 
         # Mapeo de topics a modelos que pueden manejarlos
         topic_handlers = {
@@ -117,16 +183,26 @@ class MercadolibreController(http.Controller):
 
         handler_model = topic_handlers.get(topic)
 
+        _logger.info(f"[WEBHOOK] Topic: {topic} -> Handler: {handler_model or 'NO DEFINIDO'}")
+
         if handler_model and handler_model in request.env:
             model = request.env[handler_model].sudo()
             if hasattr(model, 'process_notification'):
                 try:
-                    return model.process_notification(account, data)
+                    _logger.info(f"[WEBHOOK] Ejecutando {handler_model}.process_notification()")
+                    result = model.process_notification(account, data)
+                    _logger.info(f"[WEBHOOK] Handler {handler_model} completado: {result}")
+                    return result
                 except Exception as e:
-                    _logger.error(f"Error en handler {handler_model}: {str(e)}")
+                    _logger.error(f"[WEBHOOK] Error en handler {handler_model}: {str(e)}", exc_info=True)
                     return {'status': 'error', 'handler': handler_model, 'message': str(e)}
+            else:
+                _logger.warning(f"[WEBHOOK] Modelo {handler_model} no tiene método process_notification")
+        else:
+            if handler_model:
+                _logger.warning(f"[WEBHOOK] Modelo {handler_model} no está instalado")
 
-        _logger.debug(f"Topic '{topic}' sin handler registrado")
+        _logger.debug(f"[WEBHOOK] Topic '{topic}' sin handler registrado")
         return {'status': 'ignored', 'reason': f'no_handler_for_{topic}'}
 
     @http.route('/mercadolibre/notifications/test', type='http', auth='public',
@@ -136,7 +212,65 @@ class MercadolibreController(http.Controller):
         Endpoint de prueba para verificar que el webhook está activo.
         ML puede usar esto para verificar la URL.
         """
+        _logger.info("[WEBHOOK] Test endpoint called - OK")
         return 'OK'
+
+    @http.route('/mercadolibre/notifications/status', type='json', auth='user',
+                methods=['POST'], csrf=False)
+    def webhook_status(self, **kwargs):
+        """
+        Endpoint para verificar el estado del webhook y ver estadísticas.
+        Requiere autenticación.
+        """
+        try:
+            Log = request.env['mercadolibre.log'].sudo()
+
+            # Estadísticas de las últimas 24 horas
+            since = datetime.now() - timedelta(hours=24)
+
+            notifications = Log.search([
+                ('log_type', '=', 'notification'),
+                ('create_date', '>=', since.strftime('%Y-%m-%d %H:%M:%S')),
+            ])
+
+            # Contar por topic (extraer del mensaje)
+            topic_counts = {}
+            status_counts = {'success': 0, 'warning': 0, 'error': 0, 'info': 0}
+
+            for log in notifications:
+                # Contar por nivel
+                status_counts[log.level] = status_counts.get(log.level, 0) + 1
+
+                # Extraer topic del mensaje
+                if 'Topic:' in log.message:
+                    try:
+                        topic = log.message.split('Topic:')[1].split('|')[0].strip()
+                        topic_counts[topic] = topic_counts.get(topic, 0) + 1
+                    except:
+                        pass
+
+            return {
+                'status': 'ok',
+                'webhook_url': '/mercadolibre/notifications',
+                'last_24h': {
+                    'total': len(notifications),
+                    'by_status': status_counts,
+                    'by_topic': topic_counts,
+                },
+                'last_notifications': [
+                    {
+                        'id': log.id,
+                        'date': log.create_date.strftime('%Y-%m-%d %H:%M:%S') if log.create_date else '',
+                        'level': log.level,
+                        'message': log.message[:100],
+                        'account': log.account_id.name if log.account_id else 'N/A',
+                    }
+                    for log in notifications[:10]
+                ],
+            }
+
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
 
     # =========================================================================
     # OAUTH CALLBACK
