@@ -259,6 +259,56 @@
     opacity: 0.6;
 }
 
+/* Estilo para archivos PDF, imágenes info y archivos genéricos */
+.ml-chat-attachment-pdf,
+.ml-chat-attachment-file,
+.ml-chat-attachment-image-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    color: #333;
+    text-decoration: none;
+    max-width: 220px;
+}
+
+.ml-chat-attachment-pdf:hover,
+.ml-chat-attachment-file:hover,
+.ml-chat-attachment-image-info:hover {
+    background: #e9ecef;
+    text-decoration: none;
+    color: #333;
+}
+
+.ml-chat-attachment-pdf i {
+    font-size: 24px;
+    color: #dc3545;
+    flex-shrink: 0;
+}
+
+.ml-chat-attachment-file i {
+    font-size: 24px;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+.ml-chat-attachment-image-info i {
+    font-size: 24px;
+    color: #17a2b8;
+    flex-shrink: 0;
+}
+
+.ml-chat-attachment-name {
+    font-size: 12px;
+    word-break: break-word;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Footer de la burbuja */
 .ml-chat-bubble-footer {
     display: flex;

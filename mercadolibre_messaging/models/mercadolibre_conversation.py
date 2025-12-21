@@ -305,20 +305,74 @@ class MercadolibreConversation(models.Model):
                 # Escapar HTML en el cuerpo del mensaje
                 body_escaped = (msg.body or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
 
-                # Generar HTML para imágenes adjuntas
+                # Generar HTML para archivos adjuntos (imágenes y PDFs)
                 images_html = ''
                 if msg.attachment_urls:
-                    urls = [u.strip() for u in msg.attachment_urls.split(',') if u.strip()]
-                    if urls:
+                    items = [u.strip() for u in msg.attachment_urls.split(',') if u.strip()]
+                    if items:
                         images_html = '<div class="ml-chat-attachments">'
-                        for url in urls:
-                            # Usar onerror para mostrar placeholder si falla
-                            images_html += f'''
-                                <a href="{url}" target="_blank" class="ml-chat-attachment">
-                                    <img src="{url}" alt="Imagen adjunta" loading="lazy"
-                                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIj5JbWFnZW48L3RleHQ+PC9zdmc+'; this.parentElement.classList.add('ml-chat-attachment-error');"/>
-                                </a>
-                            '''
+                        for item in items:
+                            # Verificar si es formato nuevo (tipo|filename|original) o URL directa
+                            if '|' in item:
+                                # Formato nuevo: tipo|filename|original_filename
+                                parts = item.split('|')
+                                file_type = parts[0] if len(parts) > 0 else ''
+                                filename = parts[1] if len(parts) > 1 else ''
+                                original_name = parts[2] if len(parts) > 2 else filename
+
+                                # Mostrar nombre corto
+                                display_name = original_name[:35] + '...' if len(original_name) > 35 else original_name
+
+                                if file_type.startswith('image/'):
+                                    images_html += f'''
+                                        <div class="ml-chat-attachment ml-chat-attachment-image-info">
+                                            <i class="fa fa-image"></i>
+                                            <span class="ml-chat-attachment-name" title="{original_name}">{display_name}</span>
+                                        </div>
+                                    '''
+                                elif file_type == 'application/pdf':
+                                    images_html += f'''
+                                        <div class="ml-chat-attachment ml-chat-attachment-pdf">
+                                            <i class="fa fa-file-pdf-o"></i>
+                                            <span class="ml-chat-attachment-name" title="{original_name}">{display_name}</span>
+                                        </div>
+                                    '''
+                                else:
+                                    images_html += f'''
+                                        <div class="ml-chat-attachment ml-chat-attachment-file">
+                                            <i class="fa fa-file-o"></i>
+                                            <span class="ml-chat-attachment-name" title="{original_name}">{display_name}</span>
+                                        </div>
+                                    '''
+                            elif item.startswith('http'):
+                                # URL directa (formato antiguo)
+                                url = item
+                                is_pdf = url.lower().endswith('.pdf')
+                                is_image = any(url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+
+                                if is_pdf:
+                                    filename = url.split('/')[-1] if '/' in url else 'documento.pdf'
+                                    images_html += f'''
+                                        <a href="{url}" target="_blank" class="ml-chat-attachment ml-chat-attachment-pdf">
+                                            <i class="fa fa-file-pdf-o"></i>
+                                            <span class="ml-chat-attachment-name">{filename[:30]}...</span>
+                                        </a>
+                                    '''
+                                elif is_image:
+                                    images_html += f'''
+                                        <a href="{url}" target="_blank" class="ml-chat-attachment">
+                                            <img src="{url}" alt="Imagen adjunta" loading="lazy"
+                                                 onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIj5JbWFnZW48L3RleHQ+PC9zdmc+'; this.parentElement.classList.add('ml-chat-attachment-error');"/>
+                                        </a>
+                                    '''
+                                else:
+                                    filename = url.split('/')[-1] if '/' in url else 'archivo'
+                                    images_html += f'''
+                                        <a href="{url}" target="_blank" class="ml-chat-attachment ml-chat-attachment-file">
+                                            <i class="fa fa-file-o"></i>
+                                            <span class="ml-chat-attachment-name">{filename[:30]}</span>
+                                        </a>
+                                    '''
                         images_html += '</div>'
 
                 html_parts.append(f'''
@@ -752,20 +806,29 @@ class MercadolibreConversation(models.Model):
             _logger.info(f"Attachments recibidos para mensaje {ml_message_id}: {attachments}")
 
         for attach in (attachments or []):
-            # Intentar obtener URL en orden de preferencia
-            # 'original' es la imagen completa, 'thumbnail' es más pequeña
+            # Intentar obtener URL directa en orden de preferencia
             url = (
                 attach.get('original') or
                 attach.get('url') or
                 attach.get('thumbnail') or
-                attach.get('filename') or
                 attach.get('link')
             )
+
             if url and url.startswith('http'):
                 attachment_urls.append(url)
+            elif attach.get('filename'):
+                # MercadoLibre devuelve filename para archivos de mensajes
+                # La URL de descarga requiere autenticación, guardamos metadatos
+                filename = attach.get('filename')
+                original_filename = attach.get('original_filename', filename)
+                file_type = attach.get('type', '')
+
+                # Guardar como: tipo|filename|original_filename para procesamiento
+                # En el HTML se mostrará un ícono según el tipo
+                attachment_info = f"{file_type}|{filename}|{original_filename}"
+                attachment_urls.append(attachment_info)
             elif attach.get('id'):
-                # Si solo hay ID, construir URL de la API de ML
-                # Las imágenes de mensajes suelen estar en este endpoint
+                # Si solo hay ID, podría ser imagen de producto
                 img_id = attach.get('id')
                 attachment_urls.append(f"https://http2.mlstatic.com/D_{img_id}-F.jpg")
 
