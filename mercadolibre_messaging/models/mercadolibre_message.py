@@ -245,21 +245,30 @@ class MercadolibreMessage(models.Model):
         _logger.info(f"Account: {account.name} (ML User: {seller_id})")
         _logger.info(f"Mensaje: {self.body[:100]}...")
 
-        # Verificar si la conversación ya tiene mensajes (determina qué endpoint usar)
-        has_messages = len(conversation.ml_message_ids) > 0
-        _logger.info(f"Conversación tiene mensajes previos: {has_messages}")
+        buyer_id = conversation.buyer_id
+        _logger.info(f"Buyer ID: {buyer_id}")
+        _logger.info(f"Seller ID: {seller_id}")
+
+        # Verificar que buyer_id sea válido (no corrupto)
+        if not buyer_id or 'mercadolibre' in str(buyer_id).lower():
+            _logger.error(f"buyer_id inválido: {buyer_id}. Ejecuta 'Sincronizar Mensajes' para corregirlo.")
+            raise Exception(f"buyer_id inválido: {buyer_id}. Sincroniza la conversación primero.")
 
         try:
-            # Determinar endpoint y payload según estado de conversación
+            # Verificar si la conversación ya tiene mensajes (determina qué endpoint usar)
+            has_messages = len(conversation.ml_message_ids) > 0
+            _logger.info(f"Conversación tiene mensajes previos: {has_messages}")
+
             if has_messages:
-                # Conversación existente: usar endpoint de mensajes normal
+                # Conversación existente: usar endpoint de mensajes directo
+                # POST /messages/packs/{pack}/sellers/{seller}?tag=post_sale
                 endpoint = f'/messages/packs/{pack_id}/sellers/{seller_id}?tag=post_sale'
                 payload = {
                     'from': {
-                        'user_id': seller_id
+                        'user_id': int(seller_id)  # ML espera integer
                     },
                     'to': {
-                        'user_id': conversation.buyer_id
+                        'user_id': int(buyer_id)  # ML espera integer
                     },
                     'text': self.body[:ML_MESSAGE_CHAR_LIMIT]
                 }
