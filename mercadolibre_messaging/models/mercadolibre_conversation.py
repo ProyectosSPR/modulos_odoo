@@ -703,65 +703,45 @@ class MercadolibreConversation(models.Model):
         self.ensure_one()
 
         if not self.ml_pack_id:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Error'),
-                    'message': _('Esta conversación no tiene Pack ID.'),
-                    'type': 'warning',
-                    'sticky': False,
-                }
-            }
+            raise UserError(_('Esta conversación no tiene Pack ID.'))
 
         account = self.account_id
         old_buyer_id = self.buyer_id
+        seller_id = account.ml_user_id
 
         try:
-            # Obtener datos de conversación desde ML
-            endpoint = f'/messages/packs/{self.ml_pack_id}/sellers/{account.ml_user_id}?tag=post_sale&limit=1'
+            # Obtener mensajes de la conversación para extraer buyer_id
+            endpoint = f'/messages/packs/{self.ml_pack_id}/sellers/{seller_id}?tag=post_sale&limit=10'
             response = account._make_request('GET', endpoint)
 
-            if response and 'conversation' in response:
-                conv_data = response['conversation']
-                buyer_data = conv_data.get('buyer', {}) or {}
-                new_buyer_id = str(buyer_data.get('user_id', ''))
+            if response:
+                new_buyer_id = None
+
+                # Buscar buyer_id en los mensajes
+                messages = response.get('messages', [])
+                for msg in messages:
+                    from_user = str(msg.get('from', {}).get('user_id', ''))
+                    to_user = str(msg.get('to', {}).get('user_id', ''))
+
+                    # El buyer es el que NO es el seller
+                    if from_user and from_user != seller_id:
+                        new_buyer_id = from_user
+                        break
+                    elif to_user and to_user != seller_id:
+                        new_buyer_id = to_user
+                        break
 
                 if new_buyer_id:
                     self.write({'buyer_id': new_buyer_id})
-                    return {
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'title': _('Buyer ID Corregido'),
-                            'message': _('Actualizado de "%s" a "%s"') % (old_buyer_id, new_buyer_id),
-                            'type': 'success',
-                            'sticky': False,
-                        }
-                    }
+                    _logger.info(f"Buyer ID corregido: {old_buyer_id} -> {new_buyer_id}")
+                    raise UserError(_('Buyer ID corregido: %s -> %s. Ahora puedes enviar mensajes.') % (old_buyer_id, new_buyer_id))
 
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Sin Cambios'),
-                    'message': _('No se pudo obtener buyer_id desde la API.'),
-                    'type': 'warning',
-                    'sticky': False,
-                }
-            }
+            raise UserError(_('No se pudo obtener buyer_id desde la API.'))
 
+        except UserError:
+            raise
         except Exception as e:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Error'),
-                    'message': str(e),
-                    'type': 'danger',
-                    'sticky': True,
-                }
-            }
+            raise UserError(_('Error: %s') % str(e))
 
     def _sync_messages_from_ml(self):
         """Sincroniza mensajes desde la API de ML con paginación completa."""
@@ -793,18 +773,36 @@ class MercadolibreConversation(models.Model):
                     break
 
                 # Actualizar cap_available y buyer_id (solo en primera iteración)
-                if offset == 0 and 'conversation' in response:
-                    conv_data = response['conversation']
+                if offset == 0:
                     update_vals = {
-                        'cap_available': conv_data.get('cap_available', True),
                         'cap_checked_at': fields.Datetime.now(),
                     }
-                    # Actualizar buyer_id si está corrupto o vacío
-                    buyer_data = conv_data.get('buyer', {}) or {}
-                    api_buyer_id = str(buyer_data.get('user_id', ''))
-                    if api_buyer_id and (not self.buyer_id or 'mercadolibre' in str(self.buyer_id)):
-                        update_vals['buyer_id'] = api_buyer_id
-                        _logger.info(f"Actualizado buyer_id de conversación {self.id}: {api_buyer_id}")
+
+                    # Obtener cap_available de conversation_status o conversation
+                    if 'conversation_status' in response:
+                        conv_status = response['conversation_status']
+                        # status 'active' significa que podemos enviar
+                        update_vals['cap_available'] = conv_status.get('status') == 'active'
+                    elif 'conversation' in response:
+                        conv_data = response['conversation']
+                        update_vals['cap_available'] = conv_data.get('cap_available', True)
+
+                    # Extraer buyer_id del primer mensaje entrante si está corrupto
+                    if not self.buyer_id or 'mercadolibre' in str(self.buyer_id).lower():
+                        messages = response.get('messages', [])
+                        for msg in messages:
+                            from_user = msg.get('from', {}).get('user_id')
+                            to_user = msg.get('to', {}).get('user_id')
+                            # El buyer es el que NO es el seller
+                            if str(from_user) != self.account_id.ml_user_id:
+                                update_vals['buyer_id'] = str(from_user)
+                                _logger.info(f"Actualizado buyer_id de conversación {self.id}: {from_user}")
+                                break
+                            elif str(to_user) != self.account_id.ml_user_id:
+                                update_vals['buyer_id'] = str(to_user)
+                                _logger.info(f"Actualizado buyer_id de conversación {self.id}: {to_user}")
+                                break
+
                     self.write(update_vals)
 
                 # Procesar mensajes
