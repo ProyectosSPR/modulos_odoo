@@ -160,15 +160,76 @@ class MercadolibreMessagingConfig(models.Model):
         help='Tiempo promedio de respuesta según MercadoLibre'
     )
     question_response_time_weekdays = fields.Integer(
-        string='T. Respuesta Días Hábiles',
+        string='T. Respuesta Días Hábiles (9-18h)',
+        readonly=True
+    )
+    question_response_time_weekdays_extra = fields.Integer(
+        string='T. Respuesta Fuera de Horario (18-24h)',
         readonly=True
     )
     question_response_time_weekend = fields.Integer(
         string='T. Respuesta Fin de Semana',
         readonly=True
     )
+    question_sales_percent_increase = fields.Float(
+        string='% Incremento Ventas',
+        readonly=True,
+        help='Porcentaje estimado de incremento de ventas si respondes en menos de 1 hora'
+    )
     question_metrics_last_update = fields.Datetime(
         string='Métricas Actualizadas',
+        readonly=True
+    )
+
+    # Reputación del vendedor (desde ML API)
+    seller_reputation_level = fields.Char(
+        string='Nivel de Reputación',
+        readonly=True,
+        help='Nivel actual de reputación en MercadoLibre'
+    )
+    seller_reputation_power_seller = fields.Char(
+        string='MercadoLíder',
+        readonly=True,
+        help='Status de MercadoLíder (gold, platinum, etc.)'
+    )
+    seller_transactions_completed = fields.Integer(
+        string='Ventas Completadas',
+        readonly=True
+    )
+    seller_transactions_canceled = fields.Integer(
+        string='Ventas Canceladas',
+        readonly=True
+    )
+    seller_transactions_period = fields.Char(
+        string='Período',
+        readonly=True
+    )
+    seller_ratings_positive = fields.Float(
+        string='% Positivas',
+        readonly=True
+    )
+    seller_ratings_neutral = fields.Float(
+        string='% Neutras',
+        readonly=True
+    )
+    seller_ratings_negative = fields.Float(
+        string='% Negativas',
+        readonly=True
+    )
+    seller_claims_rate = fields.Float(
+        string='Tasa Reclamos (%)',
+        readonly=True
+    )
+    seller_delayed_handling_rate = fields.Float(
+        string='Tasa Demoras (%)',
+        readonly=True
+    )
+    seller_cancellations_rate = fields.Float(
+        string='Tasa Cancelaciones (%)',
+        readonly=True
+    )
+    seller_reputation_last_update = fields.Datetime(
+        string='Reputación Actualizada',
         readonly=True
     )
 
@@ -389,18 +450,103 @@ class MercadolibreMessagingConfig(models.Model):
             response = account._make_request('GET', endpoint)
 
             if response:
-                self.write({
-                    'question_response_time_total': response.get('total', {}).get('response_time', 0),
-                    'question_response_time_weekdays': response.get('weekdays_working_hours', {}).get('response_time', 0),
-                    'question_response_time_weekend': response.get('weekend', {}).get('response_time', 0),
+                vals = {
                     'question_metrics_last_update': fields.Datetime.now(),
-                })
-                _logger.info(f"Métricas actualizadas: {response}")
+                }
+
+                # Total response time
+                if 'total' in response:
+                    vals['question_response_time_total'] = response['total'].get('response_time', 0)
+
+                # Weekdays working hours (9-18h)
+                if 'weekdays_working_hours' in response:
+                    vals['question_response_time_weekdays'] = response['weekdays_working_hours'].get('response_time', 0)
+
+                # Weekdays extra hours (18-24h)
+                if 'weekdays_extra_hours' in response:
+                    vals['question_response_time_weekdays_extra'] = response['weekdays_extra_hours'].get('response_time', 0)
+
+                # Weekend
+                if 'weekend' in response:
+                    vals['question_response_time_weekend'] = response['weekend'].get('response_time', 0)
+
+                # Sales percent increase if answering in less than 1 hour
+                if 'sales_percent_increase' in response:
+                    vals['question_sales_percent_increase'] = response.get('sales_percent_increase', 0)
+
+                self.write(vals)
+                _logger.info(f"Métricas de preguntas actualizadas: {vals}")
 
         except Exception as e:
             _logger.error(f"Error obteniendo métricas de preguntas: {e}")
             raise ValidationError(_('Error obteniendo métricas: %s') % str(e))
 
+        return True
+
+    def action_update_seller_reputation(self):
+        """Actualiza métricas de reputación del vendedor desde MercadoLibre."""
+        self.ensure_one()
+
+        account = self.account_id
+        _logger.info(f"Actualizando reputación de vendedor para {account.name}")
+
+        try:
+            # Endpoint: GET /users/{user_id}
+            endpoint = f'/users/{account.ml_user_id}'
+            response = account._make_request('GET', endpoint)
+
+            if response and 'seller_reputation' in response:
+                rep = response.get('seller_reputation', {})
+                transactions = rep.get('transactions', {})
+                metrics = rep.get('metrics', {})
+
+                vals = {
+                    'seller_reputation_last_update': fields.Datetime.now(),
+                    'seller_reputation_level': rep.get('level_id', ''),
+                    'seller_reputation_power_seller': rep.get('power_seller_status', ''),
+                    'seller_transactions_period': transactions.get('period', ''),
+                    'seller_transactions_completed': transactions.get('completed', 0),
+                    'seller_transactions_canceled': transactions.get('canceled', 0),
+                }
+
+                # Ratings
+                ratings = transactions.get('ratings', {})
+                if ratings:
+                    vals['seller_ratings_positive'] = ratings.get('positive', 0)
+                    vals['seller_ratings_neutral'] = ratings.get('neutral', 0)
+                    vals['seller_ratings_negative'] = ratings.get('negative', 0)
+
+                # Metrics
+                if metrics:
+                    # Claims rate
+                    claims = metrics.get('claims', {})
+                    if claims:
+                        vals['seller_claims_rate'] = claims.get('rate', 0) * 100
+
+                    # Delayed handling time
+                    delayed = metrics.get('delayed_handling_time', {})
+                    if delayed:
+                        vals['seller_delayed_handling_rate'] = delayed.get('rate', 0) * 100
+
+                    # Cancellations
+                    cancellations = metrics.get('cancellations', {})
+                    if cancellations:
+                        vals['seller_cancellations_rate'] = cancellations.get('rate', 0) * 100
+
+                self.write(vals)
+                _logger.info(f"Reputación de vendedor actualizada: nivel={vals.get('seller_reputation_level')}")
+
+        except Exception as e:
+            _logger.error(f"Error obteniendo reputación de vendedor: {e}")
+            raise ValidationError(_('Error obteniendo reputación: %s') % str(e))
+
+        return True
+
+    def action_update_all_metrics(self):
+        """Actualiza todas las métricas (preguntas y reputación)."""
+        self.ensure_one()
+        self.action_update_question_metrics()
+        self.action_update_seller_reputation()
         return True
 
     def action_view_pending_questions(self):

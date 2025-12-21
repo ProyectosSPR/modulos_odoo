@@ -96,24 +96,24 @@
                                             string="Sincronizar Ahora" class="btn-secondary"
                                             icon="fa-refresh"/>
                                 </group>
-                                <group string="Asignación">
+                                <group string="Asignación y Notificaciones">
                                     <field name="question_auto_assign_user_id"/>
                                     <field name="question_notify_user_ids" widget="many2many_tags"/>
                                 </group>
                             </group>
 
-                            <group string="Métricas de MercadoLibre">
+                            <separator string="Métricas de Tiempo de Respuesta (MercadoLibre)"/>
+                            <group>
                                 <group>
-                                    <field name="question_response_time_total"/>
-                                    <field name="question_response_time_weekdays"/>
-                                    <field name="question_response_time_weekend"/>
+                                    <field name="question_response_time_total" string="Promedio General (min)"/>
+                                    <field name="question_response_time_weekdays" string="Días Hábiles 9-18h (min)"/>
+                                    <field name="question_response_time_weekdays_extra" string="Fuera de Horario 18-24h (min)"/>
+                                    <field name="question_response_time_weekend" string="Fin de Semana (min)"/>
                                 </group>
                                 <group>
-                                    <field name="questions_avg_response_time" string="T. Promedio Local"/>
+                                    <field name="question_sales_percent_increase" string="% Incremento Ventas (si &lt;1h)"/>
+                                    <field name="questions_avg_response_time" string="T. Promedio Local (min)"/>
                                     <field name="question_metrics_last_update"/>
-                                    <button name="action_update_question_metrics" type="object"
-                                            string="Actualizar Métricas ML" class="btn-secondary"
-                                            icon="fa-cloud-download"/>
                                 </group>
                             </group>
 
@@ -122,8 +122,52 @@
                                 <ul class="mb-0">
                                     <li><strong>T. Respuesta:</strong> Tiempo promedio en minutos según ML (últimos 14 días)</li>
                                     <li><strong>Días hábiles:</strong> Lunes a Viernes 9am-6pm</li>
+                                    <li><strong>Fuera de horario:</strong> Lunes a Viernes 6pm-12am</li>
                                     <li><strong>Fin de semana:</strong> Sábado y Domingo</li>
-                                    <li>Responder en menos de 1 hora mejora tus ventas</li>
+                                    <li><strong>% Incremento:</strong> Porcentaje estimado de aumento en ventas si respondes en &lt;1 hora</li>
+                                </ul>
+                            </div>
+                        </page>
+
+                        <page string="Reputación" name="reputation">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <button name="action_update_all_metrics" type="object"
+                                            string="Actualizar Todas las Métricas" class="btn-primary"
+                                            icon="fa-cloud-download"/>
+                                </div>
+                            </div>
+
+                            <group col="4">
+                                <group string="Nivel de Vendedor">
+                                    <field name="seller_reputation_level"/>
+                                    <field name="seller_reputation_power_seller"/>
+                                    <field name="seller_reputation_last_update"/>
+                                </group>
+                                <group string="Transacciones">
+                                    <field name="seller_transactions_period"/>
+                                    <field name="seller_transactions_completed"/>
+                                    <field name="seller_transactions_canceled"/>
+                                </group>
+                                <group string="Calificaciones (%)">
+                                    <field name="seller_ratings_positive" widget="progressbar"/>
+                                    <field name="seller_ratings_neutral"/>
+                                    <field name="seller_ratings_negative"/>
+                                </group>
+                                <group string="Métricas de Calidad (%)">
+                                    <field name="seller_claims_rate"/>
+                                    <field name="seller_delayed_handling_rate"/>
+                                    <field name="seller_cancellations_rate"/>
+                                </group>
+                            </group>
+
+                            <div class="alert alert-warning" role="alert">
+                                <p><strong>Métricas importantes para tu reputación:</strong></p>
+                                <ul class="mb-0">
+                                    <li><strong>Tasa de Reclamos:</strong> Debe ser menor al 4% (México) / 3% (Brasil)</li>
+                                    <li><strong>Tasa de Demoras:</strong> El tiempo de despacho debe ser máximo 3 días</li>
+                                    <li><strong>Tasa de Cancelaciones:</strong> Cancelaciones sin reclamo del comprador</li>
+                                    <li><strong>Tiempo de Respuesta:</strong> Responder preguntas en &lt;1 hora mejora ventas</li>
                                 </ul>
                             </div>
                         </page>

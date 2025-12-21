@@ -92,32 +92,36 @@
         </field>
     </record>
 
-    <!-- Vista Tree -->
+    <!-- Vista Tree - Mejorada -->
     <record id="view_mercadolibre_question_tree" model="ir.ui.view">
         <field name="name">mercadolibre.question.tree</field>
         <field name="model">mercadolibre.question</field>
         <field name="arch" type="xml">
-            <tree decoration-danger="state == 'pending'" decoration-muted="state == 'closed'"
-                  decoration-warning="is_late == True">
-                <field name="date_created" string="Fecha"/>
+            <tree decoration-danger="state == 'pending' and is_late == False"
+                  decoration-warning="is_late == True"
+                  decoration-muted="state == 'closed'"
+                  decoration-success="state == 'answered'"
+                  default_order="date_created desc">
+                <field name="date_created" string="Fecha" widget="datetime"/>
                 <field name="item_title" string="Producto"/>
-                <field name="text_preview" string="Pregunta"/>
+                <field name="text" string="Pregunta"/>
                 <field name="from_nickname" string="Usuario"/>
-                <field name="status" string="Estado ML"/>
                 <field name="state" string="Estado" widget="badge"
                        decoration-danger="state == 'pending'"
                        decoration-success="state == 'answered'"
                        decoration-muted="state == 'closed'"/>
-                <field name="response_time_display" string="T. Respuesta"/>
-                <field name="is_late" invisible="1"/>
-                <field name="user_id" widget="many2one_avatar_user" string="Asignado"/>
+                <field name="answer_text" string="Respuesta" optional="show"/>
+                <field name="response_time_display" string="T. Respuesta" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user" string="Asignado" optional="show"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="hide"/>
                 <field name="account_id" string="Cuenta" optional="hide"/>
-                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="is_late" invisible="1"/>
+                <field name="status" string="Estado ML" optional="hide"/>
             </tree>
         </field>
     </record>
 
-    <!-- Vista Form -->
+    <!-- Vista Form - Mejorada -->
     <record id="view_mercadolibre_question_form" model="ir.ui.view">
         <field name="name">mercadolibre.question.form</field>
         <field name="model">mercadolibre.question</field>
@@ -125,6 +129,9 @@
             <form string="Pregunta MercadoLibre">
                 <!-- Campos invisibles necesarios para attrs -->
                 <field name="is_late" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="item_thumbnail" invisible="1"/>
+
                 <header>
                     <button name="action_answer" type="object" string="Enviar Respuesta"
                             class="btn-primary" icon="fa-paper-plane"
@@ -136,84 +143,111 @@
                             class="btn-link" icon="fa-external-link"/>
                     <field name="state" widget="statusbar" statusbar_visible="pending,answered"/>
                 </header>
+
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_item" type="object" class="oe_stat_button" icon="fa-shopping-cart">
                             <span>Ver Producto</span>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Tardía" bg_color="bg-warning"
+
+                    <widget name="web_ribbon" title="Respuesta Tardía" bg_color="bg-warning"
                             attrs="{'invisible': [('is_late', '=', False)]}"/>
                     <widget name="web_ribbon" title="Respondida" bg_color="bg-success"
                             attrs="{'invisible': [('state', '!=', 'answered')]}"/>
 
-                    <div class="oe_title">
-                        <h1>
-                            <field name="item_title" readonly="1" placeholder="Producto"/>
-                        </h1>
+                    <!-- Encabezado con imagen y título -->
+                    <div class="row mb-3">
+                        <div class="col-2">
+                            <field name="item_thumbnail" widget="image_url" class="oe_avatar"
+                                   options="{'size': [90, 90]}"/>
+                        </div>
+                        <div class="col-10">
+                            <h1>
+                                <field name="item_title" readonly="1" placeholder="Producto"/>
+                            </h1>
+                            <h3 class="text-muted">
+                                <field name="item_id" readonly="1"/> -
+                                <field name="item_price" widget="monetary" readonly="1"
+                                       options="{'currency_field': 'currency_id'}"/>
+                            </h3>
+                        </div>
                     </div>
 
                     <group>
-                        <group string="Pregunta">
-                            <field name="text" readonly="1" nolabel="1"
-                                   widget="html" class="oe_read_only"
-                                   style="font-size: 1.2em; background: #f8f9fa; padding: 15px; border-radius: 8px;"/>
-                            <field name="from_nickname" string="De"/>
-                            <field name="from_answered_questions" string="Preguntas anteriores"/>
-                            <field name="date_created" string="Fecha"/>
+                        <!-- Pregunta -->
+                        <group string="Pregunta" col="1">
+                            <div class="alert alert-secondary" style="font-size: 1.1em;">
+                                <strong><i class="fa fa-user"/> <field name="from_nickname" class="oe_inline"/></strong>
+                                <span class="text-muted float-end">
+                                    <field name="date_created" widget="datetime" class="oe_inline"/>
+                                </span>
+                                <hr/>
+                                <field name="text" readonly="1" nolabel="1"/>
+                            </div>
+                            <field name="from_answered_questions" string="Historial del usuario"
+                                   help="Preguntas anteriores de este usuario que fueron respondidas"/>
                         </group>
-                        <group string="Producto">
-                            <field name="item_id"/>
-                            <field name="item_price"/>
-                            <field name="account_id"/>
-                        </group>
-                    </group>
 
-                    <!-- Panel de respuesta -->
-                    <group string="Responder" attrs="{'invisible': [('state', '!=', 'pending')]}">
-                        <field name="answer_draft" nolabel="1" placeholder="Escribe tu respuesta aquí..."
-                               style="min-height: 100px;"/>
-                        <div class="text-muted">
-                            <field name="answer_char_count" class="oe_inline"/> / 2000 caracteres
-                        </div>
-                    </group>
-
-                    <!-- Respuesta existente -->
-                    <group string="Respuesta Enviada" attrs="{'invisible': [('state', '!=', 'answered')]}">
-                        <field name="answer_text" readonly="1" nolabel="1"
-                               style="font-size: 1.1em; background: #d4edda; padding: 15px; border-radius: 8px;"/>
-                        <field name="answer_date"/>
-                        <field name="answer_status"/>
-                        <field name="response_time_display" string="Tiempo de respuesta"/>
-                    </group>
-
-                    <group string="Asignación">
-                        <group>
+                        <!-- Info adicional -->
+                        <group string="Información">
+                            <field name="account_id" readonly="1"/>
+                            <field name="status" readonly="1"/>
                             <field name="user_id"/>
                             <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
                         </group>
-                        <group>
-                            <field name="status"/>
-                            <field name="hold"/>
-                            <field name="deleted_from_listing"/>
+                    </group>
+
+                    <!-- Panel de respuesta (solo si está pendiente) -->
+                    <group string="Escribir Respuesta" attrs="{'invisible': [('state', '!=', 'pending')]}">
+                        <field name="answer_draft" nolabel="1" placeholder="Escribe tu respuesta aquí..."
+                               style="min-height: 120px; font-size: 1.1em;"/>
+                        <div class="row">
+                            <div class="col-6">
+                                <span class="text-muted">
+                                    <field name="answer_char_count" class="oe_inline"/> / 2000 caracteres
+                                </span>
+                            </div>
+                            <div class="col-6 text-end">
+                                <button name="action_answer" type="object" string="Enviar Respuesta"
+                                        class="btn btn-primary" icon="fa-paper-plane"/>
+                            </div>
+                        </div>
+                    </group>
+
+                    <!-- Respuesta existente (si ya fue respondida) -->
+                    <group string="Respuesta Enviada" attrs="{'invisible': [('state', '!=', 'answered')]}">
+                        <div class="alert alert-success" style="font-size: 1.1em;">
+                            <field name="answer_text" readonly="1" nolabel="1"/>
+                        </div>
+                        <group col="4">
+                            <field name="answer_date" readonly="1"/>
+                            <field name="answer_status" readonly="1"/>
+                            <field name="response_time_display" string="Tiempo de respuesta" readonly="1"/>
+                            <field name="response_time_minutes" string="Minutos" readonly="1"/>
                         </group>
                     </group>
 
+                    <!-- Información técnica en notebook -->
                     <notebook>
-                        <page string="Información Técnica" name="technical">
+                        <page string="Detalles Técnicos" name="technical">
                             <group>
-                                <group>
-                                    <field name="ml_question_id"/>
-                                    <field name="from_id"/>
+                                <group string="Identificadores">
+                                    <field name="ml_question_id" readonly="1"/>
+                                    <field name="from_id" readonly="1"/>
+                                    <field name="item_id" readonly="1"/>
                                 </group>
-                                <group>
-                                    <field name="company_id" groups="base.group_multi_company"/>
-                                    <field name="create_date"/>
+                                <group string="Flags">
+                                    <field name="hold" readonly="1"/>
+                                    <field name="deleted_from_listing" readonly="1"/>
+                                    <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                                    <field name="create_date" readonly="1"/>
                                 </group>
                             </group>
                         </page>
                     </notebook>
                 </sheet>
+
                 <div class="oe_chatter">
                     <field name="message_follower_ids"/>
                     <field name="activity_ids"/>
@@ -262,7 +296,7 @@
     <record id="action_mercadolibre_questions" model="ir.actions.act_window">
         <field name="name">Preguntas</field>
         <field name="res_model">mercadolibre.question</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="search_view_id" ref="view_mercadolibre_question_search"/>
         <field name="context">{'search_default_pending': 1}</field>
         <field name="help" type="html">
@@ -271,7 +305,7 @@
             </p>
             <p>
                 Las preguntas de tus productos de MercadoLibre aparecerán aquí.
-                Sincroniza las preguntas desde la configuración.
+                Sincroniza las preguntas desde la configuración o espera las notificaciones automáticas.
             </p>
         </field>
     </record>
@@ -280,7 +314,7 @@
     <record id="action_mercadolibre_questions_pending" model="ir.actions.act_window">
         <field name="name">Preguntas Pendientes</field>
         <field name="res_model">mercadolibre.question</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="domain">[('state', '=', 'pending')]</field>
         <field name="context">{}</field>
     </record>
@@ -289,7 +323,7 @@
     <record id="action_mercadolibre_questions_mine" model="ir.actions.act_window">
         <field name="name">Mis Preguntas</field>
         <field name="res_model">mercadolibre.question</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="domain">[('user_id', '=', uid), ('state', '=', 'pending')]</field>
         <field name="context">{}</field>
     </record>

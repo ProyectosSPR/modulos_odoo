@@ -112,6 +112,7 @@ class MercadolibreController(http.Controller):
             'messages': 'mercadolibre.conversation',
             'orders_v2': 'mercadolibre.order',
             'shipments': 'mercadolibre.shipment',
+            'questions': 'mercadolibre.question',
         }
 
         handler_model = topic_handlers.get(topic)
