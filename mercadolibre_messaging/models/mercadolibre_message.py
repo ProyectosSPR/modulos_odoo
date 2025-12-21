@@ -223,19 +223,14 @@ class MercadolibreMessage(models.Model):
 
     def _send_to_ml(self):
         """
-        Envía el mensaje a la API de MercadoLibre usando action_guide.
+        Envía el mensaje a la API de MercadoLibre.
 
-        MercadoLibre requiere usar el endpoint action_guide para iniciar conversaciones
-        en órdenes con Mercado Envíos 2 (Fulfillment, Cross docking, Drop off, Flex).
+        Usa el endpoint correcto según el estado de la conversación:
+        - Si la conversación ya existe (tiene mensajes): usa /messages/packs/{pack}/sellers/{seller}
+        - Si es primera comunicación: usa /messages/action_guide/packs/{pack}/option
 
-        Endpoint: POST /messages/action_guide/packs/{PACK_ID}/option?tag=post_sale
-
-        Opciones disponibles:
-        - REQUEST_BILLING_INFO: Solicitar datos de facturación (template)
-        - REQUEST_VARIANTS: Solicitar variantes del producto (template)
-        - SEND_INVOICE_LINK: Enviar link de factura (free text, 350 chars)
-        - DELIVERY_PROMISE: Promesa de entrega - solo Flex (template)
-        - OTHER: Comunicación general (free text, 350 chars)
+        Endpoint normal: POST /messages/packs/{PACK_ID}/sellers/{SELLER_ID}?tag=post_sale
+        Endpoint action_guide: POST /messages/action_guide/packs/{PACK_ID}/option?tag=post_sale
         """
         self.ensure_one()
 
@@ -243,44 +238,42 @@ class MercadolibreMessage(models.Model):
         config = self.env['mercadolibre.messaging.config'].get_config_for_account(account)
         conversation = self.conversation_id
         pack_id = conversation.ml_pack_id
+        seller_id = account.ml_user_id
 
         _logger.info(f"=== INICIO ENVÍO MENSAJE ===")
         _logger.info(f"Pack ID: {pack_id}")
-        _logger.info(f"Account: {account.name} (ML User: {account.ml_user_id})")
+        _logger.info(f"Account: {account.name} (ML User: {seller_id})")
         _logger.info(f"Mensaje: {self.body[:100]}...")
 
-        # Verificar caps_available antes de enviar
-        _logger.info(f"Verificando caps disponibles...")
-        caps_check = self._check_caps_available(account, pack_id)
-        _logger.info(f"Resultado caps: {caps_check}")
-
-        if not caps_check['can_send']:
-            self.write({
-                'state': 'failed',
-                'error_message': caps_check['reason']
-            })
-            config._log(
-                f'Mensaje bloqueado: {caps_check["reason"]} para pack {pack_id}',
-                level='warning',
-                log_type='message_error',
-                conversation_id=conversation.id
-            )
-            _logger.warning(f"Mensaje bloqueado por caps: {caps_check['reason']}")
-            return False
+        # Verificar si la conversación ya tiene mensajes (determina qué endpoint usar)
+        has_messages = len(conversation.ml_message_ids) > 0
+        _logger.info(f"Conversación tiene mensajes previos: {has_messages}")
 
         try:
-            # Construir payload según tipo de opción
-            option_id = self.ml_option_id or 'OTHER'
-            payload = self._build_message_payload(option_id)
-
-            # Endpoint de action_guide
-            endpoint = f'/messages/action_guide/packs/{pack_id}/option?tag=post_sale'
+            # Determinar endpoint y payload según estado de conversación
+            if has_messages:
+                # Conversación existente: usar endpoint de mensajes normal
+                endpoint = f'/messages/packs/{pack_id}/sellers/{seller_id}?tag=post_sale'
+                payload = {
+                    'from': {
+                        'user_id': seller_id
+                    },
+                    'to': {
+                        'user_id': conversation.buyer_id
+                    },
+                    'text': self.body[:ML_MESSAGE_CHAR_LIMIT]
+                }
+            else:
+                # Primera comunicación: usar action_guide
+                option_id = self.ml_option_id or 'OTHER'
+                endpoint = f'/messages/action_guide/packs/{pack_id}/option?tag=post_sale'
+                payload = self._build_message_payload(option_id)
 
             _logger.info(f"Endpoint: POST {endpoint}")
             _logger.info(f"Payload: {payload}")
 
             config._log(
-                f'Enviando mensaje a pack {pack_id} con opción {option_id}',
+                f'Enviando mensaje a pack {pack_id}',
                 level='debug',
                 log_type='messaging',
                 conversation_id=conversation.id,
@@ -305,8 +298,6 @@ class MercadolibreMessage(models.Model):
                 # Actualizar conversación
                 conversation.write({
                     'state': 'answered',
-                    'cap_available': caps_check.get('remaining_cap', 0) > 0,
-                    'cap_checked_at': fields.Datetime.now(),
                 })
 
                 config._log(
