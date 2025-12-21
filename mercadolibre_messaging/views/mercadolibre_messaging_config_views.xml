@@ -35,13 +35,20 @@
                         <button class="oe_stat_button" icon="fa-envelope">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_value"><field name="messages_sent_today"/></span>
-                                <span class="o_stat_text">Hoy</span>
+                                <span class="o_stat_text">Mensajes Hoy</span>
                             </div>
                         </button>
-                        <button class="oe_stat_button" icon="fa-calendar">
+                        <button class="oe_stat_button" icon="fa-question-circle"
+                                name="action_view_pending_questions" type="object">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value"><field name="messages_sent_week"/></span>
-                                <span class="o_stat_text">Esta Semana</span>
+                                <span class="o_stat_value"><field name="questions_pending_count"/></span>
+                                <span class="o_stat_text">Preguntas Pendientes</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-check-circle">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="questions_answered_today"/></span>
+                                <span class="o_stat_text">Respondidas Hoy</span>
                             </div>
                         </button>
                     </div>
@@ -74,7 +81,51 @@
                                     <field name="manual_messages_enabled" widget="boolean_toggle"/>
                                     <field name="sync_to_chatter" widget="boolean_toggle"/>
                                 </group>
+                                <group string="Preguntas">
+                                    <field name="sync_questions" widget="boolean_toggle"/>
+                                    <field name="notify_new_questions" widget="boolean_toggle"/>
+                                </group>
                             </group>
+                        </page>
+
+                        <page string="Preguntas" name="questions">
+                            <group>
+                                <group string="Sincronización">
+                                    <field name="sync_questions_interval"/>
+                                    <button name="action_sync_questions" type="object"
+                                            string="Sincronizar Ahora" class="btn-secondary"
+                                            icon="fa-refresh"/>
+                                </group>
+                                <group string="Asignación">
+                                    <field name="question_auto_assign_user_id"/>
+                                    <field name="question_notify_user_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+
+                            <group string="Métricas de MercadoLibre">
+                                <group>
+                                    <field name="question_response_time_total"/>
+                                    <field name="question_response_time_weekdays"/>
+                                    <field name="question_response_time_weekend"/>
+                                </group>
+                                <group>
+                                    <field name="questions_avg_response_time" string="T. Promedio Local"/>
+                                    <field name="question_metrics_last_update"/>
+                                    <button name="action_update_question_metrics" type="object"
+                                            string="Actualizar Métricas ML" class="btn-secondary"
+                                            icon="fa-cloud-download"/>
+                                </group>
+                            </group>
+
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Indicadores de MercadoLibre:</strong></p>
+                                <ul class="mb-0">
+                                    <li><strong>T. Respuesta:</strong> Tiempo promedio en minutos según ML (últimos 14 días)</li>
+                                    <li><strong>Días hábiles:</strong> Lunes a Viernes 9am-6pm</li>
+                                    <li><strong>Fin de semana:</strong> Sábado y Domingo</li>
+                                    <li>Responder en menos de 1 hora mejora tus ventas</li>
+                                </ul>
+                            </div>
                         </page>
 
                         <page string="Límites" name="limits">

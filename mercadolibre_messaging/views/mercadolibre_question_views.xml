@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================ -->
+    <!-- VISTAS DE PREGUNTAS -->
+    <!-- ============================================================ -->
+
+    <!-- Vista Kanban - Panel principal de preguntas -->
+    <record id="view_mercadolibre_question_kanban" model="ir.ui.view">
+        <field name="name">mercadolibre.question.kanban</field>
+        <field name="model">mercadolibre.question</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_mobile" quick_create="false">
+                <field name="id"/>
+                <field name="state"/>
+                <field name="status"/>
+                <field name="text"/>
+                <field name="item_title"/>
+                <field name="item_thumbnail"/>
+                <field name="from_nickname"/>
+                <field name="date_created"/>
+                <field name="answer_text"/>
+                <field name="user_id"/>
+                <field name="response_time_display"/>
+                <field name="is_late"/>
+                <field name="tag_ids"/>
+                <progressbar field="state" colors='{"pending": "danger", "answered": "success", "closed": "muted"}'/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_global_click #{record.is_late.raw_value ? 'bg-warning-light' : ''}">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top mb-2">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="item_title"/>
+                                        </strong>
+                                    </div>
+                                    <div class="o_kanban_record_top_right">
+                                        <field name="date_created" widget="date"/>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Imagen del producto -->
+                                    <div class="col-3">
+                                        <img t-if="record.item_thumbnail.raw_value"
+                                             t-att-src="record.item_thumbnail.raw_value"
+                                             class="img-fluid rounded"
+                                             style="max-height: 60px;"/>
+                                        <div t-else="" class="bg-light rounded d-flex align-items-center justify-content-center"
+                                             style="height: 60px;">
+                                            <i class="fa fa-image text-muted"/>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pregunta -->
+                                    <div class="col-9">
+                                        <div class="text-muted small mb-1">
+                                            <i class="fa fa-user"/> <field name="from_nickname"/>
+                                        </div>
+                                        <div class="o_kanban_record_body">
+                                            <field name="text"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Respuesta si existe -->
+                                <div t-if="record.answer_text.raw_value" class="mt-2 p-2 bg-success-light rounded">
+                                    <small class="text-success">
+                                        <i class="fa fa-check"/> Respuesta:
+                                    </small>
+                                    <div class="small"><field name="answer_text"/></div>
+                                    <div t-if="record.response_time_display.raw_value" class="text-muted small">
+                                        <i class="fa fa-clock-o"/> <field name="response_time_display"/>
+                                    </div>
+                                </div>
+
+                                <!-- Footer -->
+                                <div class="o_kanban_record_bottom mt-2">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="user_id" widget="many2one_avatar_user"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Vista Tree -->
+    <record id="view_mercadolibre_question_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.question.tree</field>
+        <field name="model">mercadolibre.question</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'pending'" decoration-muted="state == 'closed'"
+                  decoration-warning="is_late == True">
+                <field name="date_created" string="Fecha"/>
+                <field name="item_title" string="Producto"/>
+                <field name="text_preview" string="Pregunta"/>
+                <field name="from_nickname" string="Usuario"/>
+                <field name="status" string="Estado ML"/>
+                <field name="state" string="Estado" widget="badge"
+                       decoration-danger="state == 'pending'"
+                       decoration-success="state == 'answered'"
+                       decoration-muted="state == 'closed'"/>
+                <field name="response_time_display" string="T. Respuesta"/>
+                <field name="is_late" invisible="1"/>
+                <field name="user_id" widget="many2one_avatar_user" string="Asignado"/>
+                <field name="account_id" string="Cuenta" optional="hide"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form -->
+    <record id="view_mercadolibre_question_form" model="ir.ui.view">
+        <field name="name">mercadolibre.question.form</field>
+        <field name="model">mercadolibre.question</field>
+        <field name="arch" type="xml">
+            <form string="Pregunta MercadoLibre">
+                <header>
+                    <button name="action_answer" type="object" string="Enviar Respuesta"
+                            class="btn-primary" icon="fa-paper-plane"
+                            attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <button name="action_assign_to_me" type="object" string="Asignarme"
+                            class="btn-secondary" icon="fa-user-plus"
+                            attrs="{'invisible': [('user_id', '!=', False)]}"/>
+                    <button name="action_view_item" type="object" string="Ver en ML"
+                            class="btn-link" icon="fa-external-link"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,answered"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_item" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <span>Ver Producto</span>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Tardía" bg_color="bg-warning"
+                            attrs="{'invisible': [('is_late', '=', False)]}"/>
+                    <widget name="web_ribbon" title="Respondida" bg_color="bg-success"
+                            attrs="{'invisible': [('state', '!=', 'answered')]}"/>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="item_title" readonly="1" placeholder="Producto"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Pregunta">
+                            <field name="text" readonly="1" nolabel="1"
+                                   widget="html" class="oe_read_only"
+                                   style="font-size: 1.2em; background: #f8f9fa; padding: 15px; border-radius: 8px;"/>
+                            <field name="from_nickname" string="De"/>
+                            <field name="from_answered_questions" string="Preguntas anteriores"/>
+                            <field name="date_created" string="Fecha"/>
+                        </group>
+                        <group string="Producto">
+                            <field name="item_id"/>
+                            <field name="item_price" widget="monetary"/>
+                            <field name="ml_product_id"/>
+                            <field name="account_id"/>
+                        </group>
+                    </group>
+
+                    <!-- Panel de respuesta -->
+                    <group string="Responder" attrs="{'invisible': [('state', '!=', 'pending')]}">
+                        <field name="answer_draft" nolabel="1" placeholder="Escribe tu respuesta aquí..."
+                               style="min-height: 100px;"/>
+                        <div class="text-muted">
+                            <field name="answer_char_count" class="oe_inline"/> / 2000 caracteres
+                        </div>
+                    </group>
+
+                    <!-- Respuesta existente -->
+                    <group string="Respuesta Enviada" attrs="{'invisible': [('state', '!=', 'answered')]}">
+                        <field name="answer_text" readonly="1" nolabel="1"
+                               style="font-size: 1.1em; background: #d4edda; padding: 15px; border-radius: 8px;"/>
+                        <field name="answer_date"/>
+                        <field name="answer_status"/>
+                        <field name="response_time_display" string="Tiempo de respuesta"/>
+                    </group>
+
+                    <group string="Asignación">
+                        <group>
+                            <field name="user_id"/>
+                            <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="hold"/>
+                            <field name="deleted_from_listing"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Información Técnica" name="technical">
+                            <group>
+                                <group>
+                                    <field name="ml_question_id"/>
+                                    <field name="from_id"/>
+                                </group>
+                                <group>
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                    <field name="create_date"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Search -->
+    <record id="view_mercadolibre_question_search" model="ir.ui.view">
+        <field name="name">mercadolibre.question.search</field>
+        <field name="model">mercadolibre.question</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Preguntas">
+                <field name="text" string="Pregunta"/>
+                <field name="item_title" string="Producto"/>
+                <field name="from_nickname" string="Usuario"/>
+                <field name="item_id"/>
+                <field name="account_id"/>
+                <field name="user_id"/>
+
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <filter name="answered" string="Respondidas" domain="[('state', '=', 'answered')]"/>
+                <filter name="late" string="Respuesta Tardía" domain="[('is_late', '=', True)]"/>
+                <separator/>
+                <filter name="my_questions" string="Mis Preguntas" domain="[('user_id', '=', uid)]"/>
+                <filter name="unassigned" string="Sin Asignar" domain="[('user_id', '=', False)]"/>
+                <separator/>
+                <filter name="today" string="Hoy" domain="[('date_created', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter name="last_7_days" string="Últimos 7 días"
+                        domain="[('date_created', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_account" string="Cuenta" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_user" string="Asignado" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_date" string="Fecha" context="{'group_by': 'date_created:day'}"/>
+                    <filter name="group_item" string="Producto" context="{'group_by': 'item_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción principal -->
+    <record id="action_mercadolibre_questions" model="ir.actions.act_window">
+        <field name="name">Preguntas</field>
+        <field name="res_model">mercadolibre.question</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_question_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay preguntas pendientes
+            </p>
+            <p>
+                Las preguntas de tus productos de MercadoLibre aparecerán aquí.
+                Sincroniza las preguntas desde la configuración.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción: Preguntas pendientes -->
+    <record id="action_mercadolibre_questions_pending" model="ir.actions.act_window">
+        <field name="name">Preguntas Pendientes</field>
+        <field name="res_model">mercadolibre.question</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Acción: Mis preguntas asignadas -->
+    <record id="action_mercadolibre_questions_mine" model="ir.actions.act_window">
+        <field name="name">Mis Preguntas</field>
+        <field name="res_model">mercadolibre.question</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('user_id', '=', uid), ('state', '=', 'pending')]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- VISTAS DE ETIQUETAS -->
+    <!-- ============================================================ -->
+
+    <record id="view_mercadolibre_question_tag_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.question.tag.tree</field>
+        <field name="model">mercadolibre.question.tag</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_question_tags" model="ir.actions.act_window">
+        <field name="name">Etiquetas de Preguntas</field>
+        <field name="res_model">mercadolibre.question.tag</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- MENÚS -->
+    <!-- ============================================================ -->
+
+    <!-- Menú principal de Preguntas (submenu de ML Messaging) -->
+    <menuitem id="menu_mercadolibre_questions"
+              name="Preguntas"
+              parent="menu_mercadolibre_messaging_root"
+              sequence="20"/>
+
+    <!-- Submenús -->
+    <menuitem id="menu_mercadolibre_questions_all"
+              name="Todas las Preguntas"
+              parent="menu_mercadolibre_questions"
+              action="action_mercadolibre_questions"
+              sequence="10"/>
+
+    <menuitem id="menu_mercadolibre_questions_pending"
+              name="Pendientes"
+              parent="menu_mercadolibre_questions"
+              action="action_mercadolibre_questions_pending"
+              sequence="20"/>
+
+    <menuitem id="menu_mercadolibre_questions_mine"
+              name="Mis Preguntas"
+              parent="menu_mercadolibre_questions"
+              action="action_mercadolibre_questions_mine"
+              sequence="30"/>
+
+    <menuitem id="menu_mercadolibre_question_tags"
+              name="Etiquetas"
+              parent="menu_mercadolibre_questions"
+              action="action_mercadolibre_question_tags"
+              groups="base.group_system"
+              sequence="90"/>
+
+</odoo>

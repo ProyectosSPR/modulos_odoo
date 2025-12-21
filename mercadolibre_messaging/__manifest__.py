@@ -21,6 +21,10 @@ Características:
 * Integración con chatter de sale.order
 * Vista de conversaciones tipo chat
 * Sistema de logging dual (consola + BD)
+* Gestión de preguntas y respuestas de productos
+* Panel Kanban para preguntas pendientes
+* Métricas de tiempo de respuesta
+* Notificaciones a usuarios de nuevas preguntas
 
 Integración:
 ------------
@@ -72,6 +76,7 @@ Estados de Envío (API ML):
         'views/mercadolibre_conversation_views.xml',
         'views/mercadolibre_message_views.xml',
         'views/mercadolibre_message_queue_views.xml',
+        'views/mercadolibre_question_views.xml',
 
         # Views - Integration
         'views/sale_order_views.xml',

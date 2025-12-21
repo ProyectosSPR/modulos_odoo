@@ -121,7 +121,58 @@ class MercadolibreMessagingConfig(models.Model):
         help='Si está fuera de horario, encolar mensaje para envío posterior'
     )
 
-    # Estadísticas
+    # =========================================================================
+    # CONFIGURACIÓN DE PREGUNTAS
+    # =========================================================================
+    sync_questions = fields.Boolean(
+        string='Sincronizar Preguntas',
+        default=True,
+        help='Habilitar sincronización automática de preguntas'
+    )
+    sync_questions_interval = fields.Integer(
+        string='Intervalo Sync Preguntas (min)',
+        default=10,
+        help='Cada cuántos minutos sincronizar preguntas nuevas'
+    )
+    notify_new_questions = fields.Boolean(
+        string='Notificar Preguntas Nuevas',
+        default=True,
+        help='Crear actividad cuando llegue una nueva pregunta'
+    )
+    question_notify_user_ids = fields.Many2many(
+        'res.users',
+        'mercadolibre_config_question_users_rel',
+        'config_id',
+        'user_id',
+        string='Usuarios a Notificar',
+        help='Usuarios que recibirán notificación de nuevas preguntas'
+    )
+    question_auto_assign_user_id = fields.Many2one(
+        'res.users',
+        string='Asignar Automáticamente a',
+        help='Usuario al que se asignarán automáticamente las preguntas nuevas'
+    )
+
+    # Métricas de preguntas (desde ML API)
+    question_response_time_total = fields.Integer(
+        string='Tiempo Respuesta Promedio (min)',
+        readonly=True,
+        help='Tiempo promedio de respuesta según MercadoLibre'
+    )
+    question_response_time_weekdays = fields.Integer(
+        string='T. Respuesta Días Hábiles',
+        readonly=True
+    )
+    question_response_time_weekend = fields.Integer(
+        string='T. Respuesta Fin de Semana',
+        readonly=True
+    )
+    question_metrics_last_update = fields.Datetime(
+        string='Métricas Actualizadas',
+        readonly=True
+    )
+
+    # Estadísticas de mensajes
     messages_sent_today = fields.Integer(
         string='Mensajes Hoy',
         compute='_compute_messages_stats'
@@ -132,6 +183,20 @@ class MercadolibreMessagingConfig(models.Model):
     )
     last_sync_date = fields.Datetime(
         string='Última Sincronización'
+    )
+
+    # Estadísticas de preguntas
+    questions_pending_count = fields.Integer(
+        string='Preguntas Pendientes',
+        compute='_compute_questions_stats'
+    )
+    questions_answered_today = fields.Integer(
+        string='Respondidas Hoy',
+        compute='_compute_questions_stats'
+    )
+    questions_avg_response_time = fields.Float(
+        string='T. Respuesta Promedio (min)',
+        compute='_compute_questions_stats'
     )
 
     @api.depends('account_id')
@@ -157,6 +222,45 @@ class MercadolibreMessagingConfig(models.Model):
             else:
                 record.messages_sent_today = 0
                 record.messages_sent_week = 0
+
+    @api.depends('account_id')
+    def _compute_questions_stats(self):
+        from datetime import datetime
+        today = datetime.now().date()
+
+        for record in self:
+            if record.account_id:
+                Question = self.env['mercadolibre.question']
+
+                # Preguntas pendientes
+                record.questions_pending_count = Question.search_count([
+                    ('account_id', '=', record.account_id.id),
+                    ('state', '=', 'pending'),
+                ])
+
+                # Respondidas hoy
+                record.questions_answered_today = Question.search_count([
+                    ('account_id', '=', record.account_id.id),
+                    ('state', '=', 'answered'),
+                    ('answer_date', '>=', today.strftime('%Y-%m-%d 00:00:00')),
+                ])
+
+                # Tiempo promedio de respuesta (últimas 50 respondidas)
+                answered = Question.search([
+                    ('account_id', '=', record.account_id.id),
+                    ('state', '=', 'answered'),
+                    ('response_time_minutes', '>', 0),
+                ], limit=50, order='answer_date desc')
+
+                if answered:
+                    total_time = sum(answered.mapped('response_time_minutes'))
+                    record.questions_avg_response_time = total_time / len(answered)
+                else:
+                    record.questions_avg_response_time = 0
+            else:
+                record.questions_pending_count = 0
+                record.questions_answered_today = 0
+                record.questions_avg_response_time = 0
 
     @api.constrains('rate_limit_per_minute')
     def _check_rate_limit(self):
@@ -250,13 +354,66 @@ class MercadolibreMessagingConfig(models.Model):
         """Prueba la conexión con API de mensajería."""
         self.ensure_one()
         # Implementar prueba de conexión
+        return True
+
+    def action_sync_questions(self):
+        """Sincroniza preguntas pendientes desde MercadoLibre."""
+        self.ensure_one()
+
+        if not self.sync_questions:
+            raise ValidationError(_('La sincronización de preguntas está deshabilitada.'))
+
+        try:
+            synced = self.env['mercadolibre.question'].sync_questions_for_account(
+                self.account_id,
+                status='UNANSWERED',
+                limit=50
+            )
+            _logger.info(f"Sincronizadas {synced} preguntas para {self.account_id.name}")
+        except Exception as e:
+            _logger.error(f"Error sincronizando preguntas: {e}")
+            raise ValidationError(_('Error sincronizando preguntas: %s') % str(e))
+
+        return True
+
+    def action_update_question_metrics(self):
+        """Actualiza métricas de tiempo de respuesta desde MercadoLibre."""
+        self.ensure_one()
+
+        account = self.account_id
+        _logger.info(f"Actualizando métricas de preguntas para {account.name}")
+
+        try:
+            # Endpoint: GET /users/{user_id}/questions/response_time
+            endpoint = f'/users/{account.ml_user_id}/questions/response_time'
+            response = account._make_request('GET', endpoint)
+
+            if response:
+                self.write({
+                    'question_response_time_total': response.get('total', {}).get('response_time', 0),
+                    'question_response_time_weekdays': response.get('weekdays_working_hours', {}).get('response_time', 0),
+                    'question_response_time_weekend': response.get('weekend', {}).get('response_time', 0),
+                    'question_metrics_last_update': fields.Datetime.now(),
+                })
+                _logger.info(f"Métricas actualizadas: {response}")
+
+        except Exception as e:
+            _logger.error(f"Error obteniendo métricas de preguntas: {e}")
+            raise ValidationError(_('Error obteniendo métricas: %s') % str(e))
+
+        return True
+
+    def action_view_pending_questions(self):
+        """Abre vista de preguntas pendientes para esta cuenta."""
+        self.ensure_one()
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Conexión Exitosa'),
-                'message': _('La conexión con la API de mensajería funciona correctamente.'),
-                'type': 'success',
-                'sticky': False,
-            }
+            'type': 'ir.actions.act_window',
+            'name': _('Preguntas Pendientes'),
+            'res_model': 'mercadolibre.question',
+            'view_mode': 'kanban,tree,form',
+            'domain': [
+                ('account_id', '=', self.account_id.id),
+                ('state', '=', 'pending'),
+            ],
+            'context': {'default_account_id': self.account_id.id},
         }
