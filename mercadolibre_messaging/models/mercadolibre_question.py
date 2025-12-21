@@ -350,32 +350,51 @@ class MercadolibreQuestion(models.Model):
         Returns:
             int: Cantidad de preguntas sincronizadas
         """
-        _logger.info(f"Sincronizando preguntas {status} para cuenta {account.name}")
+        _logger.info(f"=== INICIO SINCRONIZACIÓN PREGUNTAS ===")
+        _logger.info(f"Cuenta: {account.name} (ml_user_id: {account.ml_user_id})")
+        _logger.info(f"Estado filtro: {status}")
+        _logger.info(f"Límite: {limit}")
 
         try:
             # Endpoint con api_version=4 para mejor estructura
             endpoint = f'/questions/search?seller_id={account.ml_user_id}&status={status}&api_version=4&sort_fields=date_created&sort_types=DESC&limit={limit}'
+            _logger.info(f"Endpoint: {endpoint}")
+
             response = account._make_request('GET', endpoint)
 
+            _logger.info(f"Respuesta API recibida: {bool(response)}")
+            if response:
+                _logger.info(f"Total en respuesta: {response.get('total', 'N/A')}")
+                _logger.info(f"Paging: {response.get('paging', 'N/A')}")
+
             if not response or 'questions' not in response:
-                _logger.info(f"Sin preguntas {status} para sincronizar")
+                _logger.info(f"Sin preguntas {status} para sincronizar (response vacía o sin 'questions')")
+                _logger.info(f"=== FIN SINCRONIZACIÓN: 0 preguntas ===")
                 return 0
 
             questions = response.get('questions', [])
+            total_in_api = response.get('total', len(questions))
+            _logger.info(f"Preguntas encontradas en API: {len(questions)} (total reportado: {total_in_api})")
+
             synced = 0
 
-            for q_data in questions:
+            for i, q_data in enumerate(questions):
                 try:
+                    question_id = q_data.get('id')
+                    question_text = (q_data.get('text', '') or '')[:50]
+                    _logger.debug(f"Procesando pregunta {i+1}/{len(questions)}: ID={question_id}, texto='{question_text}...'")
+
                     self._process_question_from_api(account, q_data)
                     synced += 1
+                    _logger.debug(f"Pregunta {question_id} procesada correctamente")
                 except Exception as e:
                     _logger.warning(f"Error procesando pregunta {q_data.get('id')}: {e}")
 
-            _logger.info(f"Sincronizadas {synced} preguntas para cuenta {account.name}")
+            _logger.info(f"=== FIN SINCRONIZACIÓN: {synced}/{len(questions)} preguntas procesadas ===")
             return synced
 
         except Exception as e:
-            _logger.error(f"Error sincronizando preguntas: {e}")
+            _logger.error(f"Error sincronizando preguntas: {e}", exc_info=True)
             raise
 
     def _process_question_from_api(self, account, q_data):
@@ -417,6 +436,10 @@ class MercadolibreQuestion(models.Model):
         # Datos del usuario que pregunta
         from_data = q_data.get('from') or {}
 
+        # Log detallado de datos recibidos
+        _logger.debug(f"Datos pregunta {ml_question_id}: status={q_data.get('status')}, "
+                     f"from_id={from_data.get('id')}, item={q_data.get('item_id')}")
+
         vals = {
             'ml_question_id': ml_question_id,
             'account_id': account.id,
@@ -425,6 +448,7 @@ class MercadolibreQuestion(models.Model):
             'status': q_data.get('status', 'UNANSWERED'),
             'date_created': date_created,
             'from_id': str(from_data.get('id', '')),
+            'from_nickname': from_data.get('nickname', ''),
             'from_answered_questions': from_data.get('answered_questions', 0),
             'hold': q_data.get('hold', False),
             'deleted_from_listing': q_data.get('deleted_from_listing', False),

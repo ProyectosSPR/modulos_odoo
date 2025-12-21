@@ -149,4 +149,65 @@
         <field name="target">new</field>
     </record>
 
+    <!-- Question Sync Wizard Form -->
+    <record id="mercadolibre_question_sync_view_form" model="ir.ui.view">
+        <field name="name">mercadolibre.question.sync.form</field>
+        <field name="model">mercadolibre.question.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Preguntas MercadoLibre">
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Configuración">
+                        <field name="account_id"/>
+                        <field name="status_filter"/>
+                        <field name="limit"/>
+                    </group>
+                    <group string="Información">
+                        <div class="alert alert-info" role="alert">
+                            <p class="mb-1"><strong>Estados de preguntas:</strong></p>
+                            <ul class="mb-0">
+                                <li><strong>Sin Responder:</strong> Preguntas pendientes de respuesta</li>
+                                <li><strong>Respondidas:</strong> Preguntas ya contestadas</li>
+                                <li><strong>Todas:</strong> Ambos estados</li>
+                            </ul>
+                        </div>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <group string="Resultado">
+                        <field name="questions_synced"/>
+                        <field name="result_message" readonly="1" nolabel="1"
+                               style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 5px;"/>
+                    </group>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_sync" string="Sincronizar" type="object"
+                            class="btn-primary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_view_questions" string="Ver Preguntas" type="object"
+                            class="btn-secondary" icon="fa-question-circle"
+                            attrs="{'invisible': [('state', '!=', 'done')]}"/>
+                    <button name="action_new_sync" string="Nueva Sincronización" type="object"
+                            class="btn-secondary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'done')]}"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"
+                            attrs="{'invisible': [('state', '!=', 'done')]}"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Question Sync Action -->
+    <record id="action_mercadolibre_question_sync" model="ir.actions.act_window">
+        <field name="name">Sincronizar Preguntas</field>
+        <field name="res_model">mercadolibre.question.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
 </odoo>
