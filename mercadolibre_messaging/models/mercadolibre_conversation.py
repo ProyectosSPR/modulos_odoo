@@ -745,13 +745,13 @@ class MercadolibreConversation(models.Model):
         # Extraer URLs de attachments/imágenes
         # ML puede devolver diferentes estructuras según el endpoint
         attachment_urls = []
-        attachments = msg_data.get('attachments', []) or msg_data.get('message_attachments', [])
+        attachments = msg_data.get('attachments') or msg_data.get('message_attachments') or []
 
         # Log para debug de estructura de attachments
         if attachments:
             _logger.info(f"Attachments recibidos para mensaje {ml_message_id}: {attachments}")
 
-        for attach in attachments:
+        for attach in (attachments or []):
             # Intentar obtener URL en orden de preferencia
             # 'original' es la imagen completa, 'thumbnail' es más pequeña
             url = (
