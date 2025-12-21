@@ -210,4 +210,11 @@
         <field name="target">new</field>
     </record>
 
+    <!-- Menu for Question Sync (must be after action definition) -->
+    <menuitem id="menu_mercadolibre_questions_sync"
+              name="Sincronizar Preguntas"
+              parent="menu_mercadolibre_questions"
+              action="action_mercadolibre_question_sync"
+              sequence="100"/>
+
 </odoo>

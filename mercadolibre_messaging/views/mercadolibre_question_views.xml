@@ -351,10 +351,4 @@
               groups="base.group_system"
               sequence="90"/>
 
-    <menuitem id="menu_mercadolibre_questions_sync"
-              name="Sincronizar Preguntas"
-              parent="menu_mercadolibre_questions"
-              action="action_mercadolibre_question_sync"
-              sequence="100"/>
-
 </odoo>
