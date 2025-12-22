@@ -119,17 +119,35 @@ class BillingPortalAuth(http.Controller):
         Acceso como invitado para solicitar factura de una orden específica.
         No requiere login previo.
         """
+        _logger.warning("=" * 80)
+        _logger.warning("🌐 /portal/billing/guest ACCEDIDO")
+        _logger.warning("📥 Método: %s", request.httprequest.method)
+        _logger.warning("📥 IP: %s", request.httprequest.remote_addr)
+
         error = None
 
         if request.httprequest.method == 'POST':
+            _logger.warning("📝 POST recibido - Búsqueda de orden")
             order_ref = kwargs.get('order_ref', '').strip()
+            _logger.warning("🔎 Referencia buscada: '%s'", order_ref)
 
             if not order_ref:
+                _logger.warning("❌ Referencia vacía")
                 error = _('Ingrese el número de pedido')
             else:
                 # Buscar la orden (sin filtros de facturabilidad)
+                _logger.warning("📞 Llamando a _find_order_by_ref()...")
                 order = self._find_order_by_ref(order_ref)
                 if order:
+                    _logger.warning("✅ Orden encontrada!")
+                    _logger.warning("   ID: %d", order.id)
+                    _logger.warning("   Name: %s", order.name)
+                    _logger.warning("   Ref: %s", order.client_order_ref or 'N/A')
+                    _logger.warning("   Estado: %s", order.state)
+                    _logger.warning("   Facturable: %s", order.is_portal_billable)
+                    _logger.warning("🔄 Redirigiendo a formulario de facturación...")
+                    _logger.warning("=" * 80)
+
                     # Siempre mostrar la orden encontrada
                     # Las validaciones de facturabilidad se hacen en el formulario
                     token = str(uuid.uuid4())
@@ -142,6 +160,8 @@ class BillingPortalAuth(http.Controller):
                     )
                     return response
                 else:
+                    _logger.warning("❌ No se encontró ninguna orden")
+                    _logger.warning("=" * 80)
                     error = _('No se encontró ningún pedido con esa referencia')
 
         return request.render('billing_portal.portal_guest_access', {
