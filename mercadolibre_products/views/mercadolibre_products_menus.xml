@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu principal de Productos bajo MercadoLibre -->
+    <menuitem id="menu_mercadolibre_products_root"
+              name="Productos"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="30"/>
+
+    <!-- Items ML -->
+    <menuitem id="menu_mercadolibre_items"
+              name="Items MercadoLibre"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_item"
+              sequence="10"/>
+
+    <!-- Items con alerta de stock -->
+    <menuitem id="menu_mercadolibre_items_stock_alert"
+              name="Alertas de Stock"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_item_stock_alert"
+              sequence="15"/>
+
+    <!-- Items sin vincular -->
+    <menuitem id="menu_mercadolibre_items_not_linked"
+              name="Sin Vincular"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_item_not_linked"
+              sequence="20"/>
+
+    <!-- Conciliacion de Inventario -->
+    <menuitem id="menu_mercadolibre_stock_reconcile"
+              name="Conciliacion Inventario"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_stock_reconcile"
+              sequence="30"/>
+
+    <!-- Categorias ML -->
+    <menuitem id="menu_mercadolibre_categories"
+              name="Categorias ML"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_category"
+              sequence="40"/>
+
+    <!-- Configuracion -->
+    <menuitem id="menu_mercadolibre_products_config"
+              name="Configuracion"
+              parent="menu_mercadolibre_products_root"
+              sequence="100"/>
+
+    <menuitem id="menu_mercadolibre_product_sync_config"
+              name="Sincronizacion Automatica"
+              parent="menu_mercadolibre_products_config"
+              action="action_mercadolibre_product_sync_config"
+              sequence="10"/>
+
+    <!-- Accion para abrir wizard de sync manual -->
+    <record id="action_mercadolibre_product_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronizar Productos</field>
+        <field name="res_model">mercadolibre.product.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_mercadolibre_product_sync_wizard"
+              name="Sincronizar Items"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_product_sync_wizard"
+              sequence="5"/>
+</odoo>

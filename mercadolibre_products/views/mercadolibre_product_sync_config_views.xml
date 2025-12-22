@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_product_sync_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.product.sync.config.tree</field>
+        <field name="model">mercadolibre.product.sync.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuraciones de Sincronizacion"
+                  decoration-success="state == 'active'"
+                  decoration-warning="state == 'paused'"
+                  decoration-muted="state == 'draft'">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="sync_direction"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
+                <field name="last_run"/>
+                <field name="last_sync_count"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-warning="state == 'paused'"
+                       decoration-info="state == 'draft'"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_product_sync_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.product.sync.config.form</field>
+        <field name="model">mercadolibre.product.sync.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuracion Sync Productos">
+                <header>
+                    <button name="action_run_now" type="object"
+                            string="Sincronizar Ahora"
+                            class="btn-primary" icon="fa-refresh"/>
+                    <button name="action_generate_reconcile_report" type="object"
+                            string="Generar Conciliacion"
+                            class="btn-secondary" icon="fa-balance-scale"/>
+                    <button name="action_activate" type="object"
+                            string="Activar"
+                            class="btn-success" icon="fa-play"
+                            attrs="{'invisible': [('state', '=', 'active')]}"/>
+                    <button name="action_pause" type="object"
+                            string="Pausar"
+                            class="btn-warning" icon="fa-pause"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"/>
+                    <button name="action_resume" type="object"
+                            string="Reanudar"
+                            class="btn-success" icon="fa-play"
+                            attrs="{'invisible': [('state', '!=', 'paused')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_run_now"
+                                icon="fa-refresh">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="total_syncs" nolabel="1"/></span>
+                                <span class="o_stat_text">Ejecuciones</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_generate_reconcile_report"
+                                icon="fa-balance-scale">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="total_items_synced" nolabel="1"/></span>
+                                <span class="o_stat_text">Items Sync</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Ej: Sync Diario Productos"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Configuracion Principal">
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="sync_direction"/>
+                            <field name="link_method"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Programacion">
+                            <label for="interval_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline"/>
+                                <field name="interval_type" class="oe_inline"/>
+                            </div>
+                            <field name="next_run"/>
+                            <field name="last_run"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="ML -> Odoo" name="ml_to_odoo"
+                              attrs="{'invisible': [('sync_direction', '=', 'odoo_to_ml')]}">
+                            <group>
+                                <group string="Campos a Sincronizar">
+                                    <field name="sync_title_to_name"/>
+                                    <field name="sync_price_ml_to_odoo"/>
+                                    <field name="sync_stock_ml_to_odoo"/>
+                                    <field name="sync_description"/>
+                                    <field name="sync_images"/>
+                                </group>
+                                <group string="Creacion de Productos">
+                                    <field name="create_new_products"/>
+                                    <field name="default_category_id"
+                                           attrs="{'invisible': [('create_new_products', '=', False)]}"/>
+                                    <field name="default_product_type"
+                                           attrs="{'invisible': [('create_new_products', '=', False)]}"/>
+                                    <field name="default_uom_id"
+                                           attrs="{'invisible': [('create_new_products', '=', False)]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Odoo -> ML" name="odoo_to_ml"
+                              attrs="{'invisible': [('sync_direction', '=', 'ml_to_odoo')]}">
+                            <group>
+                                <group string="Campos a Enviar">
+                                    <field name="sync_price_odoo_to_ml"/>
+                                    <field name="sync_stock_odoo_to_ml"/>
+                                    <field name="sync_name_to_title"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <strong>Nota:</strong> Algunos campos como el titulo no se pueden modificar
+                                si el item ya tiene ventas en MercadoLibre.
+                            </div>
+                        </page>
+
+                        <page string="Stock" name="stock">
+                            <group>
+                                <group string="Ubicacion de Referencia">
+                                    <field name="stock_warehouse_id"/>
+                                    <field name="stock_location_id"
+                                           domain="[('usage', '=', 'internal')]"/>
+                                </group>
+                                <group string="Ajustes de Inventario">
+                                    <field name="create_stock_adjustment"/>
+                                    <field name="stock_adjustment_reason"
+                                           attrs="{'invisible': [('create_stock_adjustment', '=', False)]}"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-warning" role="alert"
+                                 attrs="{'invisible': [('create_stock_adjustment', '=', False)]}">
+                                <strong>Importante:</strong> Al activar la creacion de ajustes de inventario,
+                                el sistema creara movimientos de stock automaticamente para igualar el
+                                stock de Odoo con el de MercadoLibre. Use con precaucion.
+                            </div>
+                        </page>
+
+                        <page string="Filtros" name="filters">
+                            <group>
+                                <group>
+                                    <field name="item_status_filter"/>
+                                    <field name="sync_only_linked"/>
+                                    <field name="limit"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Ultima Ejecucion" name="last_run"
+                              attrs="{'invisible': [('last_sync_log', '=', False)]}">
+                            <group>
+                                <group>
+                                    <field name="last_sync_count"/>
+                                    <field name="last_sync_created"/>
+                                </group>
+                                <group>
+                                    <field name="last_sync_updated"/>
+                                    <field name="last_sync_errors"/>
+                                </group>
+                            </group>
+                            <field name="last_sync_log" nolabel="1" readonly="1"
+                                   widget="text"
+                                   style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                        </page>
+                    </notebook>
+                    <field name="company_id" invisible="1"/>
+                    <field name="cron_id" invisible="1"/>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_product_sync_config_search" model="ir.ui.view">
+        <field name="name">mercadolibre.product.sync.config.search</field>
+        <field name="model">mercadolibre.product.sync.config</field>
+        <field name="arch" type="xml">
+            <search string="Configuraciones">
+                <field name="name"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Activas" name="active_state" domain="[('state', '=', 'active')]"/>
+                <filter string="Pausadas" name="paused_state" domain="[('state', '=', 'paused')]"/>
+                <separator/>
+                <filter string="ML -> Odoo" name="ml_to_odoo" domain="[('sync_direction', 'in', ['ml_to_odoo', 'bidirectional'])]"/>
+                <filter string="Odoo -> ML" name="odoo_to_ml" domain="[('sync_direction', 'in', ['odoo_to_ml', 'bidirectional'])]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Direccion" name="group_direction" context="{'group_by': 'sync_direction'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_product_sync_config" model="ir.actions.act_window">
+        <field name="name">Configuracion Sync</field>
+        <field name="res_model">mercadolibre.product.sync.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear configuracion de sincronizacion
+            </p>
+            <p>
+                Configure la sincronizacion automatica de productos entre
+                MercadoLibre y Odoo. Puede elegir la direccion, campos a
+                sincronizar y frecuencia.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_item_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.item.tree</field>
+        <field name="model">mercadolibre.item</field>
+        <field name="arch" type="xml">
+            <tree string="Items MercadoLibre"
+                  decoration-success="status == 'active'"
+                  decoration-warning="status == 'paused'"
+                  decoration-muted="status in ('closed', 'inactive')"
+                  decoration-danger="stock_alert == True">
+                <field name="ml_item_id"/>
+                <field name="title"/>
+                <field name="seller_sku"/>
+                <field name="price" widget="monetary"/>
+                <field name="available_quantity"/>
+                <field name="odoo_stock"/>
+                <field name="stock_difference" decoration-danger="stock_difference != 0"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'active'"
+                       decoration-warning="status == 'paused'"
+                       decoration-muted="status in ('closed', 'inactive')"/>
+                <field name="is_linked"/>
+                <field name="product_tmpl_id" optional="show"/>
+                <field name="account_id" optional="hide"/>
+                <field name="last_sync" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_item_form" model="ir.ui.view">
+        <field name="name">mercadolibre.item.form</field>
+        <field name="model">mercadolibre.item</field>
+        <field name="arch" type="xml">
+            <form string="Item MercadoLibre">
+                <header>
+                    <button name="action_sync_from_ml" type="object"
+                            string="Sincronizar desde ML"
+                            class="btn-primary" icon="fa-refresh"/>
+                    <button name="action_sync_stock_to_ml" type="object"
+                            string="Enviar Stock a ML"
+                            class="btn-secondary" icon="fa-upload"
+                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
+                    <button name="action_sync_price_to_ml" type="object"
+                            string="Enviar Precio a ML"
+                            class="btn-secondary" icon="fa-money"
+                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
+                    <button name="action_pause_item" type="object"
+                            string="Pausar"
+                            class="btn-warning"
+                            attrs="{'invisible': [('status', '!=', 'active')]}"/>
+                    <button name="action_activate_item" type="object"
+                            string="Activar"
+                            class="btn-success"
+                            attrs="{'invisible': [('status', '!=', 'paused')]}"/>
+                    <field name="status" widget="statusbar" statusbar_visible="active,paused,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_on_ml" type="object"
+                                class="oe_stat_button" icon="fa-external-link"
+                                attrs="{'invisible': [('permalink', '=', False)]}">
+                            <span class="o_stat_text">Ver en ML</span>
+                        </button>
+                        <button name="action_link_product" type="object"
+                                class="oe_stat_button" icon="fa-link"
+                                attrs="{'invisible': [('is_linked', '=', True)]}">
+                            <span class="o_stat_text">Vincular</span>
+                        </button>
+                    </div>
+                    <field name="main_picture_url" widget="image_url" class="oe_avatar" options="{'size': [90, 90]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="ml_item_id" readonly="1"/>
+                        </h1>
+                        <h2>
+                            <field name="title" placeholder="Titulo"/>
+                        </h2>
+                    </div>
+                    <group>
+                        <group string="Informacion General">
+                            <field name="account_id" readonly="1"/>
+                            <field name="category_id"/>
+                            <field name="condition"/>
+                            <field name="listing_type_id"/>
+                            <field name="buying_mode"/>
+                        </group>
+                        <group string="Precio y Stock">
+                            <field name="price" widget="monetary"/>
+                            <field name="original_price" widget="monetary"
+                                   attrs="{'invisible': [('original_price', '=', 0)]}"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="available_quantity"/>
+                            <field name="sold_quantity"/>
+                        </group>
+                    </group>
+
+                    <group string="Vinculacion con Odoo"
+                           attrs="{'invisible': [('is_linked', '=', False)]}">
+                        <group>
+                            <field name="product_tmpl_id"/>
+                            <field name="product_id"/>
+                            <field name="is_linked" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="odoo_stock"/>
+                            <field name="stock_difference"
+                                   decoration-danger="stock_difference != 0"/>
+                            <field name="stock_alert" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': ['|', ('is_linked', '=', False), ('stock_alert', '=', False)]}">
+                        <strong>Alerta de Stock:</strong>
+                        Hay una diferencia de <field name="stock_difference" nolabel="1" class="oe_inline"/> unidades
+                        entre MercadoLibre (<field name="available_quantity" nolabel="1" class="oe_inline"/>)
+                        y Odoo (<field name="odoo_stock" nolabel="1" class="oe_inline"/>).
+                    </div>
+
+                    <div class="alert alert-info" role="alert"
+                         attrs="{'invisible': [('is_linked', '=', True)]}">
+                        <strong>Item sin vincular:</strong>
+                        Este item no esta vinculado a ningun producto de Odoo.
+                        <button name="action_link_product" type="object" class="btn btn-sm btn-primary ml-2">
+                            Vincular Ahora
+                        </button>
+                        <button name="action_auto_link_by_sku" type="object" class="btn btn-sm btn-secondary ml-2">
+                            Auto-vincular por SKU
+                        </button>
+                    </div>
+
+                    <notebook>
+                        <page string="SKU e Identificadores" name="sku">
+                            <group>
+                                <group>
+                                    <field name="seller_sku"/>
+                                    <field name="seller_custom_field"/>
+                                </group>
+                                <group>
+                                    <field name="brand"/>
+                                    <field name="model"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Variaciones" name="variations"
+                              attrs="{'invisible': [('has_variations', '=', False)]}">
+                            <field name="has_variations" invisible="1"/>
+                            <field name="variation_ids">
+                                <tree editable="bottom"
+                                      decoration-danger="stock_difference != 0">
+                                    <field name="ml_variation_id" readonly="1"/>
+                                    <field name="attribute_display" readonly="1"/>
+                                    <field name="seller_sku"/>
+                                    <field name="price"/>
+                                    <field name="available_quantity"/>
+                                    <field name="odoo_stock"/>
+                                    <field name="stock_difference"/>
+                                    <field name="product_id"/>
+                                    <field name="is_linked"/>
+                                    <button name="action_sync_stock_to_ml" type="object"
+                                            icon="fa-upload" title="Enviar Stock a ML"
+                                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
+                                    <button name="action_link_product" type="object"
+                                            icon="fa-link" title="Vincular"
+                                            attrs="{'invisible': [('is_linked', '=', True)]}"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Envio" name="shipping">
+                            <group>
+                                <group>
+                                    <field name="shipping_mode"/>
+                                    <field name="logistic_type"/>
+                                </group>
+                                <group>
+                                    <field name="free_shipping"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Descripcion" name="description">
+                            <field name="description"/>
+                        </page>
+
+                        <page string="Sincronizacion" name="sync">
+                            <group>
+                                <group>
+                                    <field name="auto_sync_stock"/>
+                                    <field name="auto_sync_price"/>
+                                </group>
+                                <group>
+                                    <field name="last_sync"/>
+                                    <field name="sync_status" widget="badge"/>
+                                </group>
+                            </group>
+                            <group attrs="{'invisible': [('sync_error', '=', False)]}">
+                                <field name="sync_error" readonly="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Fechas" name="dates">
+                            <group>
+                                <group>
+                                    <field name="date_created"/>
+                                    <field name="start_time"/>
+                                </group>
+                                <group>
+                                    <field name="last_updated"/>
+                                    <field name="stop_time"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Datos Tecnicos" name="technical">
+                            <group>
+                                <field name="permalink" widget="url"/>
+                                <field name="thumbnail"/>
+                                <field name="sub_status"/>
+                            </group>
+                            <group string="Atributos (JSON)">
+                                <field name="attributes_json" nolabel="1"/>
+                            </group>
+                            <group string="Imagenes (JSON)">
+                                <field name="picture_urls" nolabel="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_item_search" model="ir.ui.view">
+        <field name="name">mercadolibre.item.search</field>
+        <field name="model">mercadolibre.item</field>
+        <field name="arch" type="xml">
+            <search string="Items MercadoLibre">
+                <field name="ml_item_id"/>
+                <field name="title"/>
+                <field name="seller_sku"/>
+                <field name="seller_custom_field"/>
+                <field name="product_tmpl_id"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Activos" name="active" domain="[('status', '=', 'active')]"/>
+                <filter string="Pausados" name="paused" domain="[('status', '=', 'paused')]"/>
+                <filter string="Cerrados" name="closed" domain="[('status', '=', 'closed')]"/>
+                <separator/>
+                <filter string="Vinculados" name="linked" domain="[('is_linked', '=', True)]"/>
+                <filter string="Sin Vincular" name="not_linked" domain="[('is_linked', '=', False)]"/>
+                <separator/>
+                <filter string="Alerta Stock" name="stock_alert" domain="[('stock_alert', '=', True)]"/>
+                <filter string="Con Variaciones" name="with_variations" domain="[('has_variations', '=', True)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Categoria" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="Tipo Logistico" name="group_logistic" context="{'group_by': 'logistic_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_item" model="ir.actions.act_window">
+        <field name="name">Items MercadoLibre</field>
+        <field name="res_model">mercadolibre.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay items sincronizados
+            </p>
+            <p>
+                Sincronice sus publicaciones de MercadoLibre para verlas aqui.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: Items con Alerta de Stock -->
+    <record id="action_mercadolibre_item_stock_alert" model="ir.actions.act_window">
+        <field name="name">Alertas de Stock</field>
+        <field name="res_model">mercadolibre.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('stock_alert', '=', True)]</field>
+        <field name="context">{'search_default_linked': 1}</field>
+    </record>
+
+    <!-- Action: Items sin Vincular -->
+    <record id="action_mercadolibre_item_not_linked" model="ir.actions.act_window">
+        <field name="name">Items sin Vincular</field>
+        <field name="res_model">mercadolibre.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_linked', '=', False)]</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <!-- Server Action: Auto-vincular por SKU -->
+    <record id="action_server_auto_link_by_sku" model="ir.actions.server">
+        <field name="name">Auto-vincular por SKU</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_auto_link_by_sku()
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar Stock a ML -->
+    <record id="action_server_sync_stock_to_ml" model="ir.actions.server">
+        <field name="name">Enviar Stock a MercadoLibre</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+for item in records.filtered(lambda i: i.is_linked):
+    try:
+        item.action_sync_stock_to_ml()
+    except Exception as e:
+        pass
+        </field>
+    </record>
+</odoo>

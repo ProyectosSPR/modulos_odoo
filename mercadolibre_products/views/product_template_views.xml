@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extender vista de product.template -->
+    <record id="view_product_template_form_ml" model="ir.ui.view">
+        <field name="name">product.template.form.ml</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Agregar botones en button_box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_items" type="object"
+                        class="oe_stat_button" icon="fa-shopping-cart"
+                        attrs="{'invisible': [('ml_item_count', '=', 0)]}">
+                    <field name="ml_item_count" widget="statinfo" string="Items ML"/>
+                </button>
+            </xpath>
+
+            <!-- Agregar pestana MercadoLibre -->
+            <xpath expr="//notebook" position="inside">
+                <page string="MercadoLibre" name="mercadolibre">
+                    <group>
+                        <group string="Sincronizacion">
+                            <field name="ml_sync_enabled"/>
+                            <field name="ml_auto_sync_stock"
+                                   attrs="{'invisible': [('ml_sync_enabled', '=', False)]}"/>
+                            <field name="ml_auto_sync_price"
+                                   attrs="{'invisible': [('ml_sync_enabled', '=', False)]}"/>
+                            <field name="ml_last_sync" readonly="1"/>
+                        </group>
+                        <group string="Stock MercadoLibre"
+                               attrs="{'invisible': [('has_ml_items', '=', False)]}">
+                            <field name="has_ml_items" invisible="1"/>
+                            <field name="ml_total_stock" readonly="1"/>
+                            <field name="ml_stock_difference" readonly="1"
+                                   decoration-danger="ml_stock_difference != 0"/>
+                            <field name="ml_stock_alert" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': ['|', ('has_ml_items', '=', False), ('ml_stock_alert', '=', False)]}">
+                        <strong>Alerta de Stock:</strong>
+                        Hay una diferencia de stock entre Odoo y MercadoLibre.
+                        <button name="action_sync_to_ml" type="object"
+                                class="btn btn-sm btn-primary ml-2">
+                            Sincronizar Stock a ML
+                        </button>
+                    </div>
+
+                    <group string="Acciones" attrs="{'invisible': [('has_ml_items', '=', False)]}">
+                        <div>
+                            <button name="action_sync_to_ml" type="object"
+                                    string="Enviar a MercadoLibre" icon="fa-upload"
+                                    class="btn-primary mr-2"/>
+                            <button name="action_sync_from_ml" type="object"
+                                    string="Traer de MercadoLibre" icon="fa-download"
+                                    class="btn-secondary mr-2"/>
+                            <button name="action_view_ml_items" type="object"
+                                    string="Ver Publicaciones" icon="fa-list"
+                                    class="btn-info"/>
+                        </div>
+                    </group>
+
+                    <group string="Acciones" attrs="{'invisible': [('has_ml_items', '=', True)]}">
+                        <div>
+                            <button name="action_publish_to_ml" type="object"
+                                    string="Publicar en MercadoLibre" icon="fa-plus"
+                                    class="btn-primary mr-2"/>
+                            <button name="action_link_ml_item" type="object"
+                                    string="Vincular a Item Existente" icon="fa-link"
+                                    class="btn-secondary"/>
+                        </div>
+                    </group>
+
+                    <group string="Publicaciones Vinculadas"
+                           attrs="{'invisible': [('has_ml_items', '=', False)]}">
+                        <field name="ml_item_ids" nolabel="1">
+                            <tree>
+                                <field name="ml_item_id"/>
+                                <field name="title"/>
+                                <field name="price"/>
+                                <field name="available_quantity"/>
+                                <field name="status" widget="badge"/>
+                                <field name="account_id"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista tree extendida -->
+    <record id="view_product_template_tree_ml" model="ir.ui.view">
+        <field name="name">product.template.tree.ml</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='qty_available']" position="after">
+                <field name="ml_total_stock" optional="hide" string="Stock ML"/>
+                <field name="ml_item_count" optional="hide" string="Pubs ML"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filtros de busqueda -->
+    <record id="view_product_template_search_ml" model="ir.ui.view">
+        <field name="name">product.template.search.ml</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Con Publicaciones ML" name="with_ml_items"
+                        domain="[('has_ml_items', '=', True)]"/>
+                <filter string="Sin Publicaciones ML" name="without_ml_items"
+                        domain="[('has_ml_items', '=', False)]"/>
+                <filter string="Alerta Stock ML" name="ml_stock_alert"
+                        domain="[('ml_stock_alert', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar a ML -->
+    <record id="action_server_product_sync_to_ml" model="ir.actions.server">
+        <field name="name">Sincronizar a MercadoLibre</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_sync_to_ml_batch()
+        </field>
+    </record>
+
+    <!-- Server Action: Traer de ML -->
+    <record id="action_server_product_sync_from_ml" model="ir.actions.server">
+        <field name="name">Actualizar desde MercadoLibre</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_sync_from_ml_batch()
+        </field>
+    </record>
+</odoo>

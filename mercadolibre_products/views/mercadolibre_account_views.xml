@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extender vista de cuenta ML -->
+    <record id="view_mercadolibre_account_form_products" model="ir.ui.view">
+        <field name="name">mercadolibre.account.form.products</field>
+        <field name="model">mercadolibre.account</field>
+        <field name="inherit_id" ref="mercadolibre_connector.view_mercadolibre_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_items" type="object"
+                        class="oe_stat_button" icon="fa-shopping-cart">
+                    <field name="item_count" widget="statinfo" string="Items ML"/>
+                </button>
+                <button name="action_view_stock_alerts" type="object"
+                        class="oe_stat_button" icon="fa-exclamation-triangle"
+                        attrs="{'invisible': [('items_with_stock_alert', '=', 0)]}">
+                    <field name="items_with_stock_alert" widget="statinfo" string="Alertas Stock"/>
+                </button>
+                <button name="action_view_product_sync_configs" type="object"
+                        class="oe_stat_button" icon="fa-cogs">
+                    <field name="product_sync_config_count" widget="statinfo" string="Configs Sync"/>
+                </button>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <notebook position="inside">
+                    <page string="Productos" name="products">
+                        <group>
+                            <group string="Estadisticas Items">
+                                <field name="item_count" readonly="1"/>
+                                <field name="item_active_count" readonly="1"/>
+                                <field name="item_linked_count" readonly="1"/>
+                            </group>
+                            <group string="Acciones Rapidas">
+                                <button name="action_sync_all_items" type="object"
+                                        string="Sincronizar Items" icon="fa-refresh"
+                                        class="btn-primary"/>
+                                <button name="action_auto_link_all_items" type="object"
+                                        string="Auto-vincular por SKU" icon="fa-link"
+                                        class="btn-secondary"/>
+                            </group>
+                        </group>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+</odoo>

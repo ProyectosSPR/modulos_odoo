@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_mercadolibre_product_publish_form" model="ir.ui.view">
+        <field name="name">mercadolibre.product.publish.form</field>
+        <field name="model">mercadolibre.product.publish</field>
+        <field name="arch" type="xml">
+            <form string="Publicar en MercadoLibre">
+                <!-- Estado: Configuracion -->
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Cuenta y Productos">
+                        <field name="account_id"/>
+                        <field name="product_tmpl_ids" widget="many2many_tags"/>
+                        <field name="product_count"/>
+                    </group>
+                    <group string="Tipo de Publicacion">
+                        <field name="listing_type_id"/>
+                        <field name="condition"/>
+                        <field name="buying_mode"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Categoria MercadoLibre">
+                        <field name="ml_category_id" placeholder="Ej: MLM1055"/>
+                        <field name="category_name" readonly="1"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Precio">
+                        <field name="use_product_price"/>
+                        <field name="custom_price"
+                               attrs="{'invisible': [('use_product_price', '=', True)]}"/>
+                    </group>
+                    <group string="Stock">
+                        <field name="use_product_stock"/>
+                        <field name="custom_stock"
+                               attrs="{'invisible': [('use_product_stock', '=', True)]}"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="SKU">
+                        <field name="sku_field"/>
+                        <field name="custom_sku"
+                               attrs="{'invisible': [('sku_field', '!=', 'custom')]}"/>
+                    </group>
+                    <group string="Envio">
+                        <field name="shipping_mode"/>
+                        <field name="free_shipping"/>
+                    </group>
+                </group>
+
+                <!-- Estado: Vista Previa -->
+                <group attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <field name="publish_log" nolabel="1" readonly="1"
+                           style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                </group>
+
+                <!-- Estado: Publicado/Error -->
+                <group attrs="{'invisible': [('state', 'not in', ['done', 'error'])]}">
+                    <group>
+                        <field name="published_count"/>
+                        <field name="error_count"/>
+                    </group>
+                    <field name="publish_log" nolabel="1" readonly="1"
+                           style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <!-- Footers segun estado -->
+                <footer attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <button name="action_preview" type="object"
+                            string="Vista Previa" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <button name="action_publish" type="object"
+                            string="Publicar" class="btn-primary"/>
+                    <button name="action_back_to_config" type="object"
+                            string="Volver" class="btn-secondary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', 'not in', ['done', 'error'])]}">
+                    <button name="action_view_items" type="object"
+                            string="Ver Publicaciones" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_product_publish" model="ir.actions.act_window">
+        <field name="name">Publicar en MercadoLibre</field>
+        <field name="res_model">mercadolibre.product.publish</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

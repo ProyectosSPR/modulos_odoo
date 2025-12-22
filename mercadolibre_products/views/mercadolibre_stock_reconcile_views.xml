@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_stock_reconcile_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.stock.reconcile.tree</field>
+        <field name="model">mercadolibre.stock.reconcile</field>
+        <field name="arch" type="xml">
+            <tree string="Conciliacion de Inventario"
+                  decoration-danger="difference_type == 'ml_higher'"
+                  decoration-warning="difference_type == 'odoo_higher'"
+                  decoration-muted="state in ('adjusted_ml', 'adjusted_odoo', 'ignored')">
+                <field name="product_default_code"/>
+                <field name="product_name"/>
+                <field name="ml_item_id"/>
+                <field name="variation_sku" optional="show"/>
+                <field name="ml_stock"/>
+                <field name="odoo_stock"/>
+                <field name="difference" decoration-danger="difference &gt; 0" decoration-warning="difference &lt; 0"/>
+                <field name="difference_type" widget="badge"
+                       decoration-danger="difference_type == 'ml_higher'"
+                       decoration-warning="difference_type == 'odoo_higher'"
+                       decoration-success="difference_type == 'equal'"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'pending'"
+                       decoration-success="state in ('adjusted_ml', 'adjusted_odoo')"
+                       decoration-muted="state == 'ignored'"
+                       decoration-primary="state == 'reviewed'"/>
+                <field name="reviewed_by" optional="hide"/>
+                <button name="action_adjust_odoo_to_ml" type="object"
+                        icon="fa-arrow-right" title="Ajustar ML con stock de Odoo"
+                        attrs="{'invisible': [('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored'])]}"/>
+                <button name="action_adjust_ml_to_odoo" type="object"
+                        icon="fa-arrow-left" title="Ajustar Odoo con stock de ML"
+                        attrs="{'invisible': [('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored'])]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_stock_reconcile_form" model="ir.ui.view">
+        <field name="name">mercadolibre.stock.reconcile.form</field>
+        <field name="model">mercadolibre.stock.reconcile</field>
+        <field name="arch" type="xml">
+            <form string="Conciliacion de Inventario">
+                <header>
+                    <button name="action_adjust_odoo_to_ml" type="object"
+                            string="Ajustar ML (Odoo -> ML)"
+                            class="btn-primary" icon="fa-arrow-right"
+                            attrs="{'invisible': [('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored'])]}"/>
+                    <button name="action_adjust_ml_to_odoo" type="object"
+                            string="Ajustar Odoo (ML -> Odoo)"
+                            class="btn-secondary" icon="fa-arrow-left"
+                            attrs="{'invisible': [('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored'])]}"/>
+                    <button name="action_refresh_stocks" type="object"
+                            string="Actualizar Stocks" icon="fa-refresh"/>
+                    <button name="action_mark_reviewed" type="object"
+                            string="Marcar Revisado"
+                            attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <button name="action_mark_ignored" type="object"
+                            string="Ignorar"
+                            attrs="{'invisible': [('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored'])]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,reviewed,adjusted_ml,adjusted_odoo"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_item" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart">
+                            <span class="o_stat_text">Ver Item ML</span>
+                        </button>
+                        <button name="action_view_product" type="object"
+                                class="oe_stat_button" icon="fa-cube">
+                            <span class="o_stat_text">Ver Producto</span>
+                        </button>
+                        <button name="action_view_stock_quant" type="object"
+                                class="oe_stat_button" icon="fa-cubes">
+                            <span class="o_stat_text">Ver Stock</span>
+                        </button>
+                    </div>
+
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('difference_type', '!=', 'ml_higher')]}">
+                        <strong>MercadoLibre tiene MAS stock:</strong>
+                        ML tiene <field name="difference_abs" nolabel="1" class="oe_inline"/> unidades mas que Odoo.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('difference_type', '!=', 'odoo_higher')]}">
+                        <strong>Odoo tiene MAS stock:</strong>
+                        Odoo tiene <field name="difference_abs" nolabel="1" class="oe_inline"/> unidades mas que ML.
+                    </div>
+
+                    <group>
+                        <group string="Producto Odoo">
+                            <field name="product_id"/>
+                            <field name="product_default_code"/>
+                            <field name="odoo_stock" class="oe_inline"/>
+                            <field name="location_id"/>
+                        </group>
+                        <group string="Item MercadoLibre">
+                            <field name="item_id"/>
+                            <field name="ml_item_id"/>
+                            <field name="variation_id" attrs="{'invisible': [('variation_id', '=', False)]}"/>
+                            <field name="ml_stock" class="oe_inline"/>
+                        </group>
+                    </group>
+
+                    <group string="Diferencia">
+                        <group>
+                            <field name="difference"/>
+                            <field name="difference_type"/>
+                        </group>
+                        <group>
+                            <field name="reviewed_by"/>
+                            <field name="reviewed_date"/>
+                        </group>
+                    </group>
+
+                    <group string="Notas">
+                        <field name="notes" nolabel="1" placeholder="Notas sobre esta diferencia..."/>
+                    </group>
+
+                    <field name="sync_config_id" invisible="1"/>
+                    <field name="account_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_stock_reconcile_search" model="ir.ui.view">
+        <field name="name">mercadolibre.stock.reconcile.search</field>
+        <field name="model">mercadolibre.stock.reconcile</field>
+        <field name="arch" type="xml">
+            <search string="Conciliacion">
+                <field name="product_name"/>
+                <field name="product_default_code"/>
+                <field name="ml_item_id"/>
+                <separator/>
+                <filter string="Pendientes" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Revisados" name="reviewed" domain="[('state', '=', 'reviewed')]"/>
+                <filter string="Ajustados" name="adjusted" domain="[('state', 'in', ['adjusted_ml', 'adjusted_odoo'])]"/>
+                <filter string="Ignorados" name="ignored" domain="[('state', '=', 'ignored')]"/>
+                <separator/>
+                <filter string="ML tiene mas" name="ml_higher" domain="[('difference_type', '=', 'ml_higher')]"/>
+                <filter string="Odoo tiene mas" name="odoo_higher" domain="[('difference_type', '=', 'odoo_higher')]"/>
+                <separator/>
+                <filter string="Diferencia > 5" name="diff_gt_5" domain="[('difference_abs', '>', 5)]"/>
+                <filter string="Diferencia > 10" name="diff_gt_10" domain="[('difference_abs', '>', 10)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo Diferencia" name="group_diff_type" context="{'group_by': 'difference_type'}"/>
+                    <filter string="Cuenta ML" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Config Sync" name="group_config" context="{'group_by': 'sync_config_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_stock_reconcile" model="ir.actions.act_window">
+        <field name="name">Conciliacion de Inventario</field>
+        <field name="res_model">mercadolibre.stock.reconcile</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay diferencias de inventario
+            </p>
+            <p>
+                Genere un reporte de conciliacion desde una configuracion
+                de sincronizacion para ver las diferencias entre el stock
+                de MercadoLibre y Odoo.
+            </p>
+        </field>
+    </record>
+
+    <!-- Server Action: Ajustar todos a ML -->
+    <record id="action_server_bulk_adjust_odoo_to_ml" model="ir.actions.server">
+        <field name="name">Ajustar ML (Odoo -> ML)</field>
+        <field name="model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="binding_model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_bulk_adjust_odoo_to_ml()
+        </field>
+    </record>
+
+    <!-- Server Action: Ajustar todos a Odoo -->
+    <record id="action_server_bulk_adjust_ml_to_odoo" model="ir.actions.server">
+        <field name="name">Ajustar Odoo (ML -> Odoo)</field>
+        <field name="model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="binding_model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_bulk_adjust_ml_to_odoo()
+        </field>
+    </record>
+
+    <!-- Server Action: Marcar como revisados -->
+    <record id="action_server_bulk_mark_reviewed" model="ir.actions.server">
+        <field name="name">Marcar como Revisados</field>
+        <field name="model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="binding_model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_bulk_mark_reviewed()
+        </field>
+    </record>
+
+    <!-- Server Action: Ignorar -->
+    <record id="action_server_bulk_mark_ignored" model="ir.actions.server">
+        <field name="name">Ignorar Seleccionados</field>
+        <field name="model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="binding_model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_bulk_mark_ignored()
+        </field>
+    </record>
+</odoo>

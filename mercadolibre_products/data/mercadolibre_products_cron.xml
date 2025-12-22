@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cron: Ejecutar sincronizaciones activas -->
+    <record id="ir_cron_mercadolibre_product_sync" model="ir.cron">
+        <field name="name">MercadoLibre: Verificar Sincronizaciones de Productos Pendientes</field>
+        <field name="model_id" ref="model_mercadolibre_product_sync_config"/>
+        <field name="state">code</field>
+        <field name="code">
+# Ejecutar configuraciones que tienen su cron desactivado pero deberian ejecutarse
+configs = model.search([
+    ('state', '=', 'active'),
+    ('active', '=', True),
+    ('next_run', '&lt;=', datetime.datetime.now()),
+])
+for config in configs:
+    try:
+        config._execute_sync()
+    except Exception as e:
+        pass
+        </field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">False</field>
+        <field name="doall">False</field>
+    </record>
+
+    <!-- Cron: Actualizar stock de items vinculados cuando cambia en Odoo -->
+    <record id="ir_cron_mercadolibre_auto_sync_stock" model="ir.cron">
+        <field name="name">MercadoLibre: Auto-sync Stock a ML</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+# Buscar items con auto_sync_stock activo y diferencia de stock
+items = model.search([
+    ('is_linked', '=', True),
+    ('auto_sync_stock', '=', True),
+    ('stock_alert', '=', True),
+    ('status', '=', 'active'),
+])
+for item in items:
+    try:
+        item.action_sync_stock_to_ml()
+    except Exception as e:
+        env['mercadolibre.log'].sudo().create({
+            'log_type': 'error',
+            'level': 'error',
+            'account_id': item.account_id.id,
+            'message': f'Error auto-sync stock {item.ml_item_id}: {str(e)}',
+        })
+        </field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">False</field>
+        <field name="doall">False</field>
+    </record>
+
+    <!-- Cron: Limpiar registros de conciliacion antiguos -->
+    <record id="ir_cron_mercadolibre_clean_reconcile" model="ir.cron">
+        <field name="name">MercadoLibre: Limpiar Conciliaciones Antiguas</field>
+        <field name="model_id" ref="model_mercadolibre_stock_reconcile"/>
+        <field name="state">code</field>
+        <field name="code">
+# Eliminar registros de conciliacion procesados mayores a 30 dias
+from datetime import timedelta
+cutoff_date = datetime.datetime.now() - timedelta(days=30)
+old_records = model.search([
+    ('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored']),
+    ('reviewed_date', '&lt;', cutoff_date),
+])
+old_records.unlink()
+        </field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">False</field>
+        <field name="doall">False</field>
+    </record>
+</odoo>
