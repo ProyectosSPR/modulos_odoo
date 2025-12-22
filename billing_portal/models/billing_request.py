@@ -117,17 +117,37 @@ class BillingRequest(models.Model):
     )
 
     # Campos CFDI de la factura (del módulo cdfi_invoice)
+    # Usamos campos computados en lugar de related para evitar errores si cdfi_invoice no está instalado
     folio_fiscal = fields.Char(
-        related='invoice_id.folio_fiscal',
         string='Folio Fiscal (UUID)',
+        compute='_compute_cfdi_info',
         readonly=True
     )
 
-    cfdi_state = fields.Selection(
-        related='invoice_id.estado_factura',
+    cfdi_state = fields.Char(
         string='Estado CFDI',
+        compute='_compute_cfdi_info',
         readonly=True
     )
+
+    @api.depends('invoice_id')
+    def _compute_cfdi_info(self):
+        """Obtiene información CFDI de la factura si el módulo cdfi_invoice está instalado"""
+        for record in self:
+            record.folio_fiscal = False
+            record.cfdi_state = False
+
+            if not record.invoice_id:
+                continue
+
+            invoice = record.invoice_id
+            # Intentar obtener folio_fiscal si el campo existe
+            if hasattr(invoice, 'folio_fiscal') and invoice.folio_fiscal:
+                record.folio_fiscal = invoice.folio_fiscal
+
+            # Intentar obtener estado_factura si el campo existe
+            if hasattr(invoice, 'estado_factura') and invoice.estado_factura:
+                record.cfdi_state = invoice.estado_factura
 
     # Archivos CFDI para descarga
     cfdi_xml_file = fields.Binary(
@@ -482,7 +502,7 @@ class BillingRequest(models.Model):
             'is_done': self.state == 'done',
         }
 
-    @api.depends('invoice_id', 'invoice_id.folio_fiscal')
+    @api.depends('invoice_id')
     def _compute_cfdi_files(self):
         """Obtiene los archivos XML y PDF del CFDI desde la factura"""
         for record in self:
