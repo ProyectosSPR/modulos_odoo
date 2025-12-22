@@ -53,9 +53,9 @@ class BillingPortalMain(http.Controller):
         if receiver_id:
             domain.append(('ml_receiver_id', '=', receiver_id))
 
-        # Búsqueda adicional
-        if search:
-            domain = ['&'] + domain + [
+        # Búsqueda adicional (se agrega con AND implícito)
+        if search and len(search.strip()) >= 2:
+            domain += [
                 '|', '|', '|',
                 ('client_order_ref', 'ilike', search),
                 ('name', 'ilike', search),

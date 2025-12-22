@@ -125,10 +125,17 @@ class SaleOrder(models.Model):
         Busca en client_order_ref, name, ml_order_id, ml_pack_id
         Retorna TODAS las órdenes encontradas con su estado de facturabilidad
         """
-        _logger.info("=" * 60)
-        _logger.info("BILLING PORTAL - Búsqueda de órdenes")
-        _logger.info("Término de búsqueda: '%s'", search_term)
-        _logger.info("Receiver ID: %s", receiver_id)
+        _logger.warning("=" * 60)
+        _logger.warning("BILLING PORTAL - Búsqueda de órdenes")
+        _logger.warning("Término de búsqueda: '%s'", search_term)
+        _logger.warning("Receiver ID: %s", receiver_id)
+
+        # Validar término de búsqueda mínimo
+        if not search_term or len(search_term.strip()) < 2:
+            _logger.warning("Término de búsqueda muy corto o vacío, retornando lista vacía")
+            return []
+
+        search_term = search_term.strip()
 
         # Buscar en múltiples campos
         search_domain = [
@@ -143,25 +150,22 @@ class SaleOrder(models.Model):
         if receiver_id:
             search_domain = ['&', ('ml_receiver_id', '=', receiver_id)] + search_domain
 
-        _logger.info("Dominio de búsqueda: %s", search_domain)
+        _logger.warning("Dominio de búsqueda: %s", search_domain)
 
         # Buscar todas las órdenes que coincidan (sin filtrar por facturabilidad)
         all_orders = self.search(search_domain, limit=limit, order='date_order desc')
-        _logger.info("Órdenes encontradas: %d", len(all_orders))
+        _logger.warning("Órdenes encontradas: %d", len(all_orders))
 
         result = []
         for order in all_orders:
             # Determinar si es facturable y por qué no
             is_billable, not_billable_reason = order._check_billing_eligibility()
 
-            _logger.info(
-                "  -> Orden: %s | Ref: %s | Estado: %s | Invoice Status: %s | "
-                "ML Shipment: %s | Facturable: %s | Razón: %s",
+            # Log detallado solo en modo debug para evitar saturar logs
+            _logger.debug(
+                "  -> Orden: %s | Ref: %s | Facturable: %s | Razón: %s",
                 order.name,
                 order.client_order_ref or 'N/A',
-                order.state,
-                order.invoice_status,
-                order.ml_shipment_status or 'N/A',
                 is_billable,
                 not_billable_reason or 'OK'
             )
@@ -180,8 +184,8 @@ class SaleOrder(models.Model):
                 'partner_name': order.partner_id.name if order.partner_id else '',
             })
 
-        _logger.info("Retornando %d órdenes", len(result))
-        _logger.info("=" * 60)
+        _logger.warning("Retornando %d órdenes", len(result))
+        _logger.warning("=" * 60)
         return result
 
     def _check_billing_eligibility(self):
