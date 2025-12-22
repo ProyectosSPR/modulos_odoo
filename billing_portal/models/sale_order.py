@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
@@ -98,29 +101,95 @@ class SaleOrder(models.Model):
         """
         Busca órdenes para el portal de facturación.
         Busca en client_order_ref, name, ml_order_id, ml_pack_id
+        Retorna TODAS las órdenes encontradas con su estado de facturabilidad
         """
-        domain = [
-            ('is_portal_billable', '=', True),
-            '|', '|', '|',
+        _logger.info("=" * 60)
+        _logger.info("BILLING PORTAL - Búsqueda de órdenes")
+        _logger.info("Término de búsqueda: '%s'", search_term)
+        _logger.info("Receiver ID: %s", receiver_id)
+
+        # Buscar en múltiples campos
+        search_domain = [
+            '|', '|', '|', '|',
             ('client_order_ref', 'ilike', search_term),
             ('name', 'ilike', search_term),
             ('ml_order_id', 'ilike', search_term),
             ('ml_pack_id', 'ilike', search_term),
+            ('partner_id.email', 'ilike', search_term),
         ]
 
         if receiver_id:
-            domain = [('ml_receiver_id', '=', receiver_id)] + domain
+            search_domain = ['&', ('ml_receiver_id', '=', receiver_id)] + search_domain
 
-        orders = self.search(domain, limit=limit)
+        _logger.info("Dominio de búsqueda: %s", search_domain)
 
-        return [{
-            'id': order.id,
-            'name': order.name,
-            'client_order_ref': order.client_order_ref,
-            'ml_order_id': order.ml_order_id,
-            'amount_total': order.amount_total,
-            'date_order': order.date_order.strftime('%Y-%m-%d') if order.date_order else '',
-            'invoice_status': order.invoice_status,
-            'ml_shipment_status': order.ml_shipment_status,
-            'is_billable': order.is_portal_billable,
-        } for order in orders]
+        # Buscar todas las órdenes que coincidan (sin filtrar por facturabilidad)
+        all_orders = self.search(search_domain, limit=limit, order='date_order desc')
+        _logger.info("Órdenes encontradas: %d", len(all_orders))
+
+        result = []
+        for order in all_orders:
+            # Determinar si es facturable y por qué no
+            is_billable, not_billable_reason = order._check_billing_eligibility()
+
+            _logger.info(
+                "  -> Orden: %s | Ref: %s | Estado: %s | Invoice Status: %s | "
+                "ML Shipment: %s | Facturable: %s | Razón: %s",
+                order.name,
+                order.client_order_ref or 'N/A',
+                order.state,
+                order.invoice_status,
+                order.ml_shipment_status or 'N/A',
+                is_billable,
+                not_billable_reason or 'OK'
+            )
+
+            result.append({
+                'id': order.id,
+                'name': order.name,
+                'client_order_ref': order.client_order_ref or '',
+                'ml_order_id': order.ml_order_id or '',
+                'amount_total': order.amount_total,
+                'date_order': order.date_order.strftime('%Y-%m-%d') if order.date_order else '',
+                'invoice_status': order.invoice_status,
+                'ml_shipment_status': order.ml_shipment_status or '',
+                'is_billable': is_billable,
+                'not_billable_reason': not_billable_reason or '',
+                'partner_name': order.partner_id.name if order.partner_id else '',
+            })
+
+        _logger.info("Retornando %d órdenes", len(result))
+        _logger.info("=" * 60)
+        return result
+
+    def _check_billing_eligibility(self):
+        """
+        Verifica si una orden es elegible para facturación.
+        Retorna: (is_billable: bool, reason: str or None)
+        """
+        self.ensure_one()
+
+        # Verificar estado de la orden
+        if self.state not in ('sale', 'done'):
+            state_labels = dict(self._fields['state'].selection)
+            return False, f"La orden está en estado '{state_labels.get(self.state, self.state)}'"
+
+        # Verificar si ya está facturada
+        if self.invoice_status == 'invoiced':
+            return False, "La orden ya está completamente facturada"
+
+        # Verificar estado de envío (OBLIGATORIO para ML)
+        if self.ml_shipment_status and self.ml_shipment_status != 'delivered':
+            shipment_labels = {
+                'pending': 'pendiente',
+                'shipped': 'en camino',
+                'cancelled': 'cancelado',
+            }
+            status_text = shipment_labels.get(self.ml_shipment_status, self.ml_shipment_status)
+            return False, f"El envío aún no ha sido entregado (estado: {status_text})"
+
+        # Verificar si no tiene nada que facturar
+        if self.invoice_status == 'no':
+            return False, "No hay nada que facturar en esta orden"
+
+        return True, None
