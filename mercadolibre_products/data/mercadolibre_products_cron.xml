@@ -63,8 +63,7 @@ for item in items:
         <field name="state">code</field>
         <field name="code">
 # Eliminar registros de conciliacion procesados mayores a 30 dias
-from datetime import timedelta
-cutoff_date = datetime.datetime.now() - timedelta(days=30)
+cutoff_date = datetime.datetime.now() - datetime.timedelta(days=30)
 old_records = model.search([
     ('state', 'in', ['adjusted_ml', 'adjusted_odoo', 'ignored']),
     ('reviewed_date', '&lt;', cutoff_date),
