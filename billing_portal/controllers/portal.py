@@ -18,30 +18,59 @@ class BillingPortalPrivate(http.Controller):
     Facturación, historial, progreso.
     """
 
-    @http.route('/portal/billing/request/<int:order_id>', type='http', auth='user', website=True, methods=['GET', 'POST'])
-    def billing_request(self, order_id, **kwargs):
+    @http.route(['/portal/billing/request/<int:order_id>',
+                 '/portal/billing/request'], type='http', auth='user', website=True, methods=['GET', 'POST'])
+    def billing_request(self, order_id=None, order_ids=None, **kwargs):
         """
-        Solicitar factura para una orden.
+        Solicitar factura para una o varias órdenes.
         REQUIERE LOGIN - auth='user'
+
+        Soporta:
+        - /portal/billing/request/123 (una orden)
+        - /portal/billing/request?order_ids=123,456,789 (múltiples órdenes)
 
         GET: Muestra formulario de facturación
         POST: Crea solicitud de facturación
         """
-        order = request.env['sale.order'].sudo().browse(order_id)
-
-        if not order.exists():
+        # Obtener IDs de órdenes
+        if order_id:
+            # Ruta con ID único
+            order_id_list = [order_id]
+        elif order_ids:
+            # Parámetro con múltiples IDs separados por coma
+            if isinstance(order_ids, str):
+                order_id_list = [int(x.strip()) for x in order_ids.split(',') if x.strip().isdigit()]
+            else:
+                order_id_list = [int(order_ids)]
+        elif kwargs.get('order_ids'):
+            # Desde formulario POST
+            ids_str = kwargs.get('order_ids', '')
+            if isinstance(ids_str, str):
+                order_id_list = [int(x.strip()) for x in ids_str.split(',') if x.strip().isdigit()]
+            else:
+                order_id_list = [int(ids_str)]
+        else:
             return request.render('billing_portal.portal_error', {
-                'error_title': _('Orden no encontrada'),
-                'error_message': _('La orden especificada no existe.')
+                'error_title': _('Sin órdenes'),
+                'error_message': _('No se especificaron órdenes para facturar.')
             })
 
-        # Verificar si es facturable
-        is_billable = getattr(order, 'is_portal_billable', True)
+        # Buscar órdenes
+        orders = request.env['sale.order'].sudo().browse(order_id_list)
+        orders = orders.exists()  # Filtrar solo las que existen
 
-        if not is_billable:
+        if not orders:
             return request.render('billing_portal.portal_error', {
-                'error_title': _('Orden no facturable'),
-                'error_message': _('Esta orden no puede facturarse actualmente.')
+                'error_title': _('Órdenes no encontradas'),
+                'error_message': _('Las órdenes especificadas no existen.')
+            })
+
+        # Verificar cuáles son facturables
+        non_billable = orders.filtered(lambda o: not getattr(o, 'is_portal_billable', True))
+        if non_billable:
+            return request.render('billing_portal.portal_error', {
+                'error_title': _('Órdenes no facturables'),
+                'error_message': _('Las siguientes órdenes no pueden facturarse: %s') % ', '.join(non_billable.mapped('name'))
             })
 
         if request.httprequest.method == 'GET':
@@ -53,28 +82,38 @@ class BillingPortalPrivate(http.Controller):
             user = request.env.user
             partner = user.partner_id
 
+            # Preparar order_ids como string para el formulario
+            order_ids_str = ','.join(str(o.id) for o in orders)
+
             return request.render('billing_portal.portal_billing_form', {
-                'order': order,
+                'orders': orders,
+                'order_ids': order_ids_str,
                 'usos_cfdi': usos_cfdi,
                 'formas_pago': formas_pago,
                 'user': user,
                 'partner': partner,
-                'page_title': _('Solicitar Factura - %s') % order.name,
+                'saved_data': {
+                    'email': partner.email or '',
+                    'telefono': partner.phone or '',
+                },
+                'page_title': _('Solicitar Factura - %d órdenes') % len(orders) if len(orders) > 1 else _('Solicitar Factura - %s') % orders[0].name,
             })
 
         # POST - Crear solicitud
-        _logger.info("Creando solicitud de facturación para orden %s", order.name)
+        _logger.info("Creando solicitud de facturación para %d órdenes", len(orders))
         _logger.info("Usuario: %s", request.env.user.login)
-        _logger.info("Datos: %s", kwargs)
 
         try:
+            # Referencias de órdenes
+            order_refs = ', '.join(o.client_order_ref or o.name for o in orders)
+
             billing_request = request.env['billing.request'].sudo().create({
                 'user_id': request.env.user.id,
                 'partner_id': request.env.user.partner_id.id,
                 'email': kwargs.get('email') or request.env.user.email,
                 'phone': kwargs.get('phone') or request.env.user.partner_id.phone,
-                'order_ids': [(6, 0, [order.id])],
-                'order_references': order.client_order_ref or order.name,
+                'order_ids': [(6, 0, orders.ids)],
+                'order_references': order_refs,
                 'rfc': kwargs.get('rfc'),
                 'razon_social': kwargs.get('razon_social'),
                 'codigo_postal': kwargs.get('codigo_postal'),

@@ -6,9 +6,9 @@
             <div class="row">
                 <!-- Columna principal - Formulario -->
                 <div class="col-lg-8">
-                    <form id="billingForm" class="billing-form" data-order-ids="">
-                        <t t-set="order_ids_str" t-value="order_ids"/>
-                        <input type="hidden" name="order_ids" t-att-value="order_ids_str"/>
+                    <form id="billingForm" class="billing-form" method="post" action="/portal/billing/request">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <input type="hidden" name="order_ids" t-att-value="order_ids"/>
 
                         <!-- Paso 1: CSF -->
                         <div class="card mb-4" id="stepCSF">
