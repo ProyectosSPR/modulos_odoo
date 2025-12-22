@@ -143,41 +143,6 @@
                                         </div>
                                     </form>
 
-                                    <script>
-                                        console.log('🎬 Script de validación de formulario guest cargado');
-                                        document.addEventListener('DOMContentLoaded', function() {
-                                            const form = document.getElementById('guestSearchForm');
-                                            const input = document.getElementById('order_ref');
-                                            const btn = document.getElementById('btnSearchGuest');
-
-                                            console.log('✅ Formulario encontrado:', !!form);
-                                            console.log('✅ Input encontrado:', !!input);
-                                            console.log('✅ Botón encontrado:', !!btn);
-
-                                            if (form) {
-                                                form.addEventListener('submit', function(e) {
-                                                    console.log('📝 SUBMIT del formulario detectado');
-                                                    const value = input.value.trim();
-                                                    console.log('  📦 Valor del input:', value);
-                                                    console.log('  📏 Longitud:', value.length);
-
-                                                    if (!value || value.length &lt; 3) {
-                                                        console.error('  ❌ Valor inválido, previniendo submit');
-                                                        e.preventDefault();
-                                                        alert('Por favor ingrese al menos 3 caracteres para buscar');
-                                                        return false;
-                                                    }
-
-                                                    console.log('  ✅ Validación OK, permitiendo submit');
-                                                });
-
-                                                // Log cuando se escribe en el input
-                                                input.addEventListener('input', function() {
-                                                    console.log('⌨️ Input cambiado:', input.value);
-                                                });
-                                            }
-                                        });
-                                    </script>
 
                                     <hr class="my-4"/>
 

@@ -61,6 +61,7 @@ Características:
             'billing_portal/static/src/js/csf_uploader.js',
             'billing_portal/static/src/js/progress_tracker.js',
             'billing_portal/static/src/js/order_selector.js',
+            'billing_portal/static/src/js/guest_form.js',
         ],
     },
     'external_dependencies': {
