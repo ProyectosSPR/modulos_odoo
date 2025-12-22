@@ -153,21 +153,9 @@ class BillingPortalAuth(http.Controller):
     def _find_order_by_ref(self, ref):
         """
         Busca una orden por diferentes referencias.
-        Búsqueda flexible sin filtros de facturabilidad.
+        Usa el método del modelo para que se recargue con -u.
         """
-        Order = request.env['sale.order'].sudo()
-
-        # Búsqueda simple y flexible
-        order = Order.search([
-            '|', '|', '|', '|',
-            ('client_order_ref', '=', ref),
-            ('client_order_ref', 'ilike', ref),
-            ('name', 'ilike', ref),
-            ('ml_order_id', '=', ref),
-            ('ml_pack_id', '=', ref),
-        ], limit=1)
-
-        return order
+        return request.env['sale.order'].sudo().find_order_by_ref_flexible(ref)
 
     @http.route('/portal/billing/guest/request', type='http', auth='public', website=True, methods=['GET', 'POST'])
     def portal_guest_request(self, order_id=None, **kwargs):

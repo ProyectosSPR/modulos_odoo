@@ -97,6 +97,28 @@ class SaleOrder(models.Model):
         }
 
     @api.model
+    def find_order_by_ref_flexible(self, ref):
+        """
+        Búsqueda flexible de orden por referencia.
+        Busca en múltiples campos sin filtros de facturabilidad.
+        Usado por el portal de invitados.
+        """
+        if not ref:
+            return self.browse()
+
+        # Búsqueda flexible en múltiples campos
+        order = self.search([
+            '|', '|', '|', '|',
+            ('client_order_ref', '=', ref),
+            ('client_order_ref', 'ilike', ref),
+            ('name', 'ilike', ref),
+            ('ml_order_id', '=', ref),
+            ('ml_pack_id', '=', ref),
+        ], limit=1)
+
+        return order
+
+    @api.model
     def search_for_billing_portal(self, search_term, receiver_id=None, limit=50):
         """
         Busca órdenes para el portal de facturación.
