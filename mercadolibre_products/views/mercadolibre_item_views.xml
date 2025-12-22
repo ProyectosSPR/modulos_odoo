@@ -10,6 +10,7 @@
                   decoration-warning="status == 'paused'"
                   decoration-muted="status in ('closed', 'inactive')"
                   decoration-danger="stock_alert == True">
+                <field name="stock_alert" invisible="1"/>
                 <field name="ml_item_id"/>
                 <field name="title"/>
                 <field name="seller_sku"/>
