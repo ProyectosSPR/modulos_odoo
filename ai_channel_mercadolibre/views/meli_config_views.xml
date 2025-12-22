@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- MercadoLibre Config Form View -->
+    <record id="view_meli_config_form" model="ir.ui.view">
+        <field name="name">ai.meli.config.form</field>
+        <field name="model">ai.meli.config</field>
+        <field name="arch" type="xml">
+            <form string="MercadoLibre Configuration">
+                <header>
+                    <button name="action_authorize" type="object" string="Authorize"
+                            class="btn-primary" attrs="{'invisible': [('connection_status', '=', 'connected')]}"/>
+                    <button name="test_connection" type="object" string="Test Connection"
+                            class="btn-secondary"/>
+                    <button name="action_sync_conversations" type="object" string="Sync Conversations"
+                            class="btn-secondary" attrs="{'invisible': [('connection_status', '!=', 'connected')]}"/>
+                    <field name="connection_status" widget="statusbar"
+                           statusbar_visible="disconnected,connecting,connected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_messages" type="object" class="oe_stat_button" icon="fa-comments">
+                            <field name="total_messages_received" widget="statinfo" string="Messages"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Configuration Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="API Credentials">
+                            <field name="app_id"/>
+                            <field name="client_secret" password="True"/>
+                            <field name="site_id"/>
+                            <field name="redirect_uri" readonly="1"/>
+                        </group>
+                        <group string="Account Info">
+                            <field name="meli_user_id" readonly="1"/>
+                            <field name="meli_nickname" readonly="1"/>
+                            <field name="access_token" password="True" readonly="1"/>
+                            <field name="token_expires" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="AI Configuration">
+                            <field name="agent_id"/>
+                            <field name="auto_reply_enabled"/>
+                            <field name="reply_to_questions"/>
+                            <field name="reply_to_orders"/>
+                        </group>
+                        <group string="Webhook">
+                            <field name="webhook_url" readonly="1"/>
+                            <field name="webhook_secret"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Status">
+                            <field name="active"/>
+                            <field name="last_message_date" readonly="1"/>
+                            <field name="total_messages_sent" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Instructions" name="instructions">
+                            <div class="alert alert-info" role="alert">
+                                <h4>Setup Instructions</h4>
+                                <ol>
+                                    <li>Go to <a href="https://developers.mercadolibre.com.ar/devcenter" target="_blank">MercadoLibre Developer Center</a></li>
+                                    <li>Create a new application</li>
+                                    <li>Copy the App ID and Client Secret here</li>
+                                    <li>Set the Redirect URI in your MercadoLibre app to: <code><field name="redirect_uri" readonly="1" nolabel="1"/></code></li>
+                                    <li>Set the Webhook URL in your MercadoLibre app to: <code><field name="webhook_url" readonly="1" nolabel="1"/></code></li>
+                                    <li>Click "Authorize" to connect your account</li>
+                                    <li>Subscribe to notifications: messages, questions, orders_v2</li>
+                                </ol>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- MercadoLibre Config Tree View -->
+    <record id="view_meli_config_tree" model="ir.ui.view">
+        <field name="name">ai.meli.config.tree</field>
+        <field name="model">ai.meli.config</field>
+        <field name="arch" type="xml">
+            <tree string="MercadoLibre Configurations">
+                <field name="name"/>
+                <field name="meli_nickname"/>
+                <field name="site_id"/>
+                <field name="agent_id"/>
+                <field name="connection_status" decoration-success="connection_status == 'connected'"
+                       decoration-warning="connection_status == 'connecting'"
+                       decoration-danger="connection_status == 'disconnected'" widget="badge"/>
+                <field name="auto_reply_enabled"/>
+                <field name="total_messages_received"/>
+                <field name="last_message_date"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- MercadoLibre Config Search View -->
+    <record id="view_meli_config_search" model="ir.ui.view">
+        <field name="name">ai.meli.config.search</field>
+        <field name="model">ai.meli.config</field>
+        <field name="arch" type="xml">
+            <search string="Search Configurations">
+                <field name="name"/>
+                <field name="meli_nickname"/>
+                <field name="agent_id"/>
+                <filter name="connected" string="Connected"
+                        domain="[('connection_status', '=', 'connected')]"/>
+                <filter name="auto_reply" string="Auto Reply Enabled"
+                        domain="[('auto_reply_enabled', '=', True)]"/>
+                <filter name="archived" string="Archived"
+                        domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_status" string="Status"
+                            context="{'group_by': 'connection_status'}"/>
+                    <filter name="group_site" string="Site"
+                            context="{'group_by': 'site_id'}"/>
+                    <filter name="group_agent" string="Agent"
+                            context="{'group_by': 'agent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- MercadoLibre Config Action -->
+    <record id="action_meli_config" model="ir.actions.act_window">
+        <field name="name">MercadoLibre Connections</field>
+        <field name="res_model">ai.meli.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first MercadoLibre connection
+            </p>
+            <p>
+                Connect your MercadoLibre seller account to enable automated
+                responses to customer messages and product questions.
+            </p>
+        </field>
+    </record>
+</odoo>

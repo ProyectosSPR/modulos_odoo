@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- OAuth Success Template -->
+    <template id="oauth_success" name="MercadoLibre OAuth Success">
+        <html>
+            <head>
+                <title>Authorization Successful</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #f5f5f5;
+                    }
+                    .container {
+                        text-align: center;
+                        padding: 40px;
+                        background: white;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        max-width: 400px;
+                    }
+                    .success-icon {
+                        width: 80px;
+                        height: 80px;
+                        background: #4CAF50;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                    }
+                    .success-icon::after {
+                        content: "✓";
+                        color: white;
+                        font-size: 40px;
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 10px;
+                    }
+                    p {
+                        color: #666;
+                        margin-bottom: 20px;
+                    }
+                    .info {
+                        background: #e8f5e9;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                    }
+                    .info strong {
+                        color: #2e7d32;
+                    }
+                    .btn {
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background: #FFE600;
+                        color: #333;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: bold;
+                    }
+                    .btn:hover {
+                        background: #FFD600;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="success-icon"></div>
+                    <h1>Authorization Successful!</h1>
+                    <p>Your MercadoLibre account has been connected.</p>
+                    <div class="info">
+                        <strong>Configuration:</strong> <t t-esc="config_name"/><br/>
+                        <strong>User ID:</strong> <t t-esc="user_id"/>
+                    </div>
+                    <p>You can now close this window and return to Odoo.</p>
+                    <a href="/web" class="btn">Go to Odoo</a>
+                </div>
+            </body>
+        </html>
+    </template>
+
+    <!-- OAuth Error Template -->
+    <template id="oauth_error" name="MercadoLibre OAuth Error">
+        <html>
+            <head>
+                <title>Authorization Failed</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #f5f5f5;
+                    }
+                    .container {
+                        text-align: center;
+                        padding: 40px;
+                        background: white;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        max-width: 400px;
+                    }
+                    .error-icon {
+                        width: 80px;
+                        height: 80px;
+                        background: #f44336;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                    }
+                    .error-icon::after {
+                        content: "✗";
+                        color: white;
+                        font-size: 40px;
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 10px;
+                    }
+                    p {
+                        color: #666;
+                        margin-bottom: 20px;
+                    }
+                    .error-details {
+                        background: #ffebee;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                        text-align: left;
+                    }
+                    .error-details strong {
+                        color: #c62828;
+                    }
+                    .error-details p {
+                        margin: 5px 0;
+                        color: #b71c1c;
+                        font-size: 14px;
+                    }
+                    .btn {
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background: #2196F3;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: bold;
+                    }
+                    .btn:hover {
+                        background: #1976D2;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="error-icon"></div>
+                    <h1>Authorization Failed</h1>
+                    <p>There was an error connecting your MercadoLibre account.</p>
+                    <div class="error-details">
+                        <strong>Error:</strong> <t t-esc="error"/>
+                        <p t-if="error_description"><t t-esc="error_description"/></p>
+                    </div>
+                    <p>Please try again or contact support if the problem persists.</p>
+                    <a href="/web" class="btn">Return to Odoo</a>
+                </div>
+            </body>
+        </html>
+    </template>
+</odoo>

@@ -35,6 +35,7 @@ Requirements:
     'data': [
         'security/ir.model.access.csv',
         'data/ai_channel_data.xml',
+        'views/oauth_templates.xml',
         'views/meli_config_views.xml',
         'views/meli_message_views.xml',
         'views/meli_menu.xml',

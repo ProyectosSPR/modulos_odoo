@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- MercadoLibre Main Menu -->
+    <menuitem
+        id="menu_meli_root"
+        name="MercadoLibre"
+        parent="ai_agent_core.menu_ai_root"
+        sequence="50"/>
+
+    <!-- Connections Submenu -->
+    <menuitem
+        id="menu_meli_config"
+        name="Connections"
+        parent="menu_meli_root"
+        action="action_meli_config"
+        sequence="10"/>
+
+    <!-- Messages Submenu -->
+    <menuitem
+        id="menu_meli_messages"
+        name="Messages"
+        parent="menu_meli_root"
+        action="action_meli_message_log"
+        sequence="20"/>
+
+    <!-- Incoming Messages Submenu -->
+    <menuitem
+        id="menu_meli_incoming"
+        name="Pending Messages"
+        parent="menu_meli_root"
+        action="action_meli_message_incoming"
+        sequence="30"/>
+</odoo>

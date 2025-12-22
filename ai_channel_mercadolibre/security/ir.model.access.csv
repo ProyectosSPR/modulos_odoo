@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_meli_config_user,ai.meli.config.user,model_ai_meli_config,ai_agent_core.group_ai_user,1,0,0,0
+access_meli_config_manager,ai.meli.config.manager,model_ai_meli_config,ai_agent_core.group_ai_manager,1,1,1,0
+access_meli_config_admin,ai.meli.config.admin,model_ai_meli_config,ai_agent_core.group_ai_admin,1,1,1,1
+access_meli_message_log_user,ai.meli.message.log.user,model_ai_meli_message_log,ai_agent_core.group_ai_user,1,0,0,0
+access_meli_message_log_manager,ai.meli.message.log.manager,model_ai_meli_message_log,ai_agent_core.group_ai_manager,1,1,1,0
+access_meli_message_log_admin,ai.meli.message.log.admin,model_ai_meli_message_log,ai_agent_core.group_ai_admin,1,1,1,1
