@@ -13,17 +13,50 @@ class BillingPortalAPI(http.Controller):
     """API JSON para el portal de facturación"""
 
     def _get_portal_session(self):
-        """Obtiene la sesión actual del portal"""
+        """Obtiene la sesión actual del portal o usuario autenticado de Odoo"""
+        _logger.warning("🔍 _get_portal_session() iniciado")
+
+        # Verificar si hay usuario autenticado en Odoo
+        if request.env.user and request.env.user.id != request.env.ref('base.public_user').id:
+            _logger.warning("✓ Usuario Odoo autenticado detectado: %s (ID: %d)",
+                           request.env.user.login, request.env.user.id)
+            # Retornar sesión simulada para usuarios de Odoo
+            return {
+                'is_odoo_user': True,
+                'user_id': request.env.user.id,
+                'user_login': request.env.user.login,
+                'is_guest': False,
+                'receiver_id': None  # No filtrar por receiver_id para usuarios internos
+            }
+
+        _logger.warning("ℹ Usuario Odoo NO autenticado, verificando sesión de portal...")
+
+        # Verificar token de portal
         token = request.httprequest.cookies.get('billing_portal_token')
+        _logger.warning("🍪 Cookie billing_portal_token: %s", 'SÍ' if token else 'NO')
+
         if not token:
             # También verificar token de invitado
             token = request.httprequest.cookies.get('billing_portal_guest_token')
+            _logger.warning("🍪 Cookie billing_portal_guest_token: %s", 'SÍ' if token else 'NO')
+
             if token:
+                _logger.warning("✓ Sesión de invitado detectada")
                 return {'is_guest': True}
+
+            _logger.warning("❌ No hay sesión del portal ni usuario autenticado")
             return None
 
+        _logger.warning("🔐 Validando token de portal en BD externa...")
         external_db = request.env['billing.external.db'].sudo()
-        return external_db.validate_portal_session(token)
+        session = external_db.validate_portal_session(token)
+
+        if session:
+            _logger.warning("✓ Sesión de portal válida")
+        else:
+            _logger.warning("❌ Token de portal inválido o expirado")
+
+        return session
 
     @http.route('/portal/billing/api/validate-csf', type='json', auth='public', csrf=False)
     def api_validate_csf(self, **kwargs):
@@ -122,7 +155,12 @@ class BillingPortalAPI(http.Controller):
         session = self._get_portal_session()
         _logger.warning("🔐 Sesión obtenida: %s", 'SÍ' if session else 'NO')
         if session:
-            _logger.warning("🔐 Es invitado: %s", session.get('is_guest', False))
+            if session.get('is_odoo_user'):
+                _logger.warning("🔐 Tipo: Usuario Odoo autenticado (%s)", session.get('user_login'))
+            elif session.get('is_guest'):
+                _logger.warning("🔐 Tipo: Invitado (sin autenticar)")
+            else:
+                _logger.warning("🔐 Tipo: Portal (autenticado con token)")
             _logger.warning("🔐 Receiver ID en sesión: %s", session.get('receiver_id', 'N/A'))
 
         if not session:
