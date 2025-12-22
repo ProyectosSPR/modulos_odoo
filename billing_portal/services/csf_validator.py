@@ -97,7 +97,7 @@ class CSFValidator(models.AbstractModel):
                             result['data'][f'{field_config.technical_name}_id'] = odoo_record.id
                             result['data'][f'{field_config.technical_name}_display'] = odoo_record.display_name
 
-                elif field_config.required:
+                elif field_config.is_required:
                     result['warnings'].append(
                         _('No se pudo extraer: %s') % field_config.name
                     )
@@ -105,7 +105,7 @@ class CSFValidator(models.AbstractModel):
                 _logger.warning(f"Error extrayendo campo {field_config.name}: {e}")
 
         # 6. Verificar si necesitamos IA como fallback
-        required_fields = fields_config.filtered(lambda f: f.required)
+        required_fields = fields_config.filtered(lambda f: f.is_required)
         missing_required = [
             f for f in required_fields
             if not result['data'].get(f.technical_name)
