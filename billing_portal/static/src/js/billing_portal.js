@@ -25,33 +25,48 @@ const BillingPortal = {
     async rpc(endpoint, params = {}) {
         const url = endpoint.startsWith('/') ? endpoint : `${this.apiBase}/${endpoint}`;
 
+        console.log('🔌 RPC CALL INICIADA');
+        console.log('  📍 URL:', url);
+        console.log('  📦 Params:', params);
+
         try {
+            const requestBody = {
+                jsonrpc: '2.0',
+                method: 'call',
+                params: params,
+                id: Math.floor(Math.random() * 1000000000),
+            };
+
+            console.log('  📤 Request body:', requestBody);
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    method: 'call',
-                    params: params,
-                    id: Math.floor(Math.random() * 1000000000),
-                }),
+                body: JSON.stringify(requestBody),
             });
 
+            console.log('  📥 Response status:', response.status);
+
             if (!response.ok) {
+                console.error('  ❌ HTTP error:', response.status);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log('  📥 Response data:', data);
 
             if (data.error) {
+                console.error('  ❌ RPC error:', data.error);
                 throw new Error(data.error.data?.message || data.error.message || 'Error desconocido');
             }
 
+            console.log('  ✅ RPC exitoso, resultado:', data.result);
             return data.result;
         } catch (error) {
-            console.error('RPC Error:', error);
+            console.error('❌ RPC Error:', error);
+            console.error('  Stack:', error.stack);
             throw error;
         }
     },
@@ -250,8 +265,14 @@ const BillingPortal = {
      * Initialize module on DOM ready
      */
     init() {
+        console.log('🚀 BillingPortal.init() ejecutado');
+        console.log('📍 URL actual:', window.location.href);
+        console.log('📦 BillingPortal object:', this);
+
         // Add global event listeners
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ DOM cargado completamente');
+            console.log('📄 Document ready event fired');
             // Initialize any global components
             this.initTooltips();
         });

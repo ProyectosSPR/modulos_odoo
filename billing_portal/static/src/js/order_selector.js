@@ -33,8 +33,12 @@ const OrderSelector = {
      * @param {object} options - Custom options
      */
     init(options = {}) {
+        console.log('🎬 OrderSelector.init() INICIADO');
+        console.log('  ⚙️ Options:', options);
+
         this.config = { ...this.config, ...options };
 
+        console.log('  🔍 Buscando elementos DOM...');
         this.searchInput = document.querySelector(this.config.searchInputSelector);
         this.searchButton = document.querySelector(this.config.searchButtonSelector);
         this.orderList = document.querySelector(this.config.orderListSelector);
@@ -42,12 +46,20 @@ const OrderSelector = {
         this.totalAmountEl = document.querySelector(this.config.totalAmountSelector);
         this.orderCountEl = document.querySelector(this.config.orderCountSelector);
 
+        console.log('  ✅ Elementos encontrados:');
+        console.log('    - searchInput:', !!this.searchInput);
+        console.log('    - searchButton:', !!this.searchButton);
+        console.log('    - orderList:', !!this.orderList);
+
         if (!this.searchInput || !this.orderList) {
-            console.warn('Order Selector: Required elements not found');
+            console.warn('❌ OrderSelector: Elementos requeridos NO encontrados');
+            console.warn('  Selectores buscados:', this.config);
             return;
         }
 
+        console.log('  🔗 Enlazando eventos...');
         this.bindEvents();
+        console.log('  ✅ OrderSelector inicializado correctamente');
     },
 
     /**
@@ -89,9 +101,14 @@ const OrderSelector = {
      * Perform order search
      */
     async performSearch() {
+        console.log('🔍 performSearch() INICIADO');
         const searchTerm = this.searchInput.value.trim();
+        console.log('  📝 Término de búsqueda:', searchTerm);
+        console.log('  📏 Longitud:', searchTerm.length);
+        console.log('  ⚙️ Mínimo requerido:', this.config.minSearchLength);
 
         if (searchTerm.length < this.config.minSearchLength) {
+            console.warn('  ⚠️ Búsqueda muy corta, mostrando toast');
             BillingPortal.showToast(`Ingrese al menos ${this.config.minSearchLength} caracteres`, 'warning');
             return;
         }
@@ -100,26 +117,36 @@ const OrderSelector = {
         this.state.isLoading = true;
         this.showLoadingState();
 
+        console.log('  🔄 Llamando a BillingPortal.rpc...');
+
         try {
             const result = await BillingPortal.rpc('search-orders', {
                 search: searchTerm,
             });
 
+            console.log('  ✅ RPC completado');
+            console.log('  📊 Resultado:', result);
+
             this.state.isLoading = false;
 
             if (result.success) {
+                console.log('  ✅ Búsqueda exitosa');
+                console.log('  📦 Órdenes:', result.orders.length);
                 this.state.orders = result.orders;
                 this.renderOrders(result.orders);
 
                 if (result.orders.length === 0) {
+                    console.log('  ℹ️ No se encontraron órdenes');
                     BillingPortal.showToast('No se encontraron órdenes', 'info');
                 }
             } else {
+                console.error('  ❌ Búsqueda falló:', result.errors);
                 this.renderError(result.errors);
             }
         } catch (error) {
             this.state.isLoading = false;
-            console.error('Search error:', error);
+            console.error('❌ ERROR en performSearch:', error);
+            console.error('  Stack:', error.stack);
             this.renderError([error.message]);
         }
     },
