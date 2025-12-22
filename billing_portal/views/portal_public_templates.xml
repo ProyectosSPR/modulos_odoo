@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Templates PÚBLICOS del Portal de Facturación
+        No requieren autenticación
+    -->
+
+    <!-- Página principal de búsqueda -->
+    <template id="portal_search" name="Portal Search">
+        <t t-call="website.layout">
+            <div id="wrap" class="billing-portal-wrap">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <!-- Header -->
+                            <div class="text-center mb-5">
+                                <i class="fa fa-file-invoice-dollar fa-4x text-primary mb-3"></i>
+                                <h1>Portal de Facturación</h1>
+                                <p class="lead text-muted">Busque su pedido para solicitar factura</p>
+                            </div>
+
+                            <!-- Formulario de búsqueda -->
+                            <div class="card shadow">
+                                <div class="card-body p-4">
+                                    <form method="post" action="/portal/billing">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                        <div class="mb-4">
+                                            <label for="order_ref" class="form-label fw-bold">
+                                                <i class="fa fa-search me-2"></i>
+                                                Número de Pedido o Referencia
+                                            </label>
+                                            <input type="text"
+                                                   class="form-control form-control-lg"
+                                                   id="order_ref"
+                                                   name="order_ref"
+                                                   t-att-value="order_ref or ''"
+                                                   placeholder="Ej: SO001 o 2000014377529150"
+                                                   required="required"
+                                                   minlength="2"
+                                                   autofocus="autofocus"/>
+                                            <small class="text-muted">
+                                                Ingrese el número de pedido o referencia de MercadoLibre
+                                            </small>
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-lg">
+                                                <i class="fa fa-search me-2"></i>
+                                                Buscar Pedido
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Error -->
+                            <t t-if="error">
+                                <div class="alert alert-warning mt-4">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>
+                                    <t t-esc="error"/>
+                                </div>
+                            </t>
+
+                            <!-- Resultado de búsqueda -->
+                            <t t-if="order">
+                                <div class="card mt-4 border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fa fa-check-circle me-2"></i>
+                                            Pedido Encontrado
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Número:</strong> <t t-esc="order.name"/></p>
+                                                <p t-if="order.client_order_ref">
+                                                    <strong>Referencia:</strong> <t t-esc="order.client_order_ref"/>
+                                                </p>
+                                                <p><strong>Fecha:</strong>
+                                                    <t t-esc="order.date_order" t-options="{'widget': 'date'}"/>
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Cliente:</strong> <t t-esc="order.partner_id.name"/></p>
+                                                <p><strong>Total:</strong>
+                                                    <t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                                </p>
+                                                <p><strong>Estado:</strong>
+                                                    <span t-if="order.is_portal_billable" class="badge bg-success">
+                                                        Facturable
+                                                    </span>
+                                                    <span t-else="" class="badge bg-secondary">
+                                                        No facturable
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <hr/>
+
+                                        <!-- Botones de acción -->
+                                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                            <t t-if="order.is_portal_billable">
+                                                <t t-if="is_logged_in">
+                                                    <a t-attf-href="/portal/billing/request/#{order.id}"
+                                                       class="btn btn-success btn-lg">
+                                                        <i class="fa fa-file-invoice me-2"></i>
+                                                        Solicitar Factura
+                                                    </a>
+                                                </t>
+                                                <t t-else="">
+                                                    <a t-attf-href="/web/login?redirect=/portal/billing/request/#{order.id}"
+                                                       class="btn btn-primary btn-lg">
+                                                        <i class="fa fa-sign-in-alt me-2"></i>
+                                                        Iniciar Sesión para Facturar
+                                                    </a>
+                                                    <a href="/web/signup" class="btn btn-outline-primary btn-lg">
+                                                        <i class="fa fa-user-plus me-2"></i>
+                                                        Crear Cuenta
+                                                    </a>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <button class="btn btn-secondary btn-lg" disabled="disabled">
+                                                    <i class="fa fa-ban me-2"></i>
+                                                    No disponible para facturación
+                                                </button>
+                                            </t>
+                                        </div>
+
+                                        <t t-if="not order.is_portal_billable">
+                                            <div class="alert alert-info mt-3 mb-0">
+                                                <i class="fa fa-info-circle me-2"></i>
+                                                <t t-if="order.invoice_status == 'invoiced'">
+                                                    Esta orden ya está completamente facturada.
+                                                </t>
+                                                <t t-elif="order.state not in ('sale', 'done')">
+                                                    La orden aún no está confirmada.
+                                                </t>
+                                                <t t-elif="order.ml_shipment_status and order.ml_shipment_status != 'delivered'">
+                                                    El envío aún no ha sido entregado.
+                                                </t>
+                                                <t t-else="">
+                                                    Esta orden no puede facturarse actualmente.
+                                                </t>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <!-- Información para usuarios logueados -->
+                            <t t-if="is_logged_in">
+                                <div class="card mt-4">
+                                    <div class="card-body">
+                                        <h6><i class="fa fa-user me-2"></i>Sesión Activa</h6>
+                                        <p class="mb-2">Estás logueado como: <strong t-esc="request.env.user.name"/></p>
+                                        <a href="/portal/billing/orders" class="btn btn-outline-primary btn-sm me-2">
+                                            <i class="fa fa-shopping-cart me-1"></i>
+                                            Mis Órdenes
+                                        </a>
+                                        <a href="/portal/billing/history" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fa fa-history me-1"></i>
+                                            Historial
+                                        </a>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <!-- Requisitos -->
+                            <div class="card mt-4 border-info">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    Requisitos para facturar
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0">
+                                        <li>El pedido debe estar <strong>entregado</strong></li>
+                                        <li>Debe tener su <strong>Constancia de Situación Fiscal (CSF)</strong> del SAT</li>
+                                        <li>Debe <strong>iniciar sesión o crear una cuenta</strong> para solicitar factura</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Ver detalles de orden (público) -->
+    <template id="portal_order_view" name="Portal Order View">
+        <t t-call="website.layout">
+            <div id="wrap" class="billing-portal-wrap">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <div class="card shadow">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-shopping-cart me-2"></i>
+                                        Orden: <t t-esc="order.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-4">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Información del Pedido</h6>
+                                            <p><strong>Número:</strong> <t t-esc="order.name"/></p>
+                                            <p t-if="order.client_order_ref">
+                                                <strong>Referencia:</strong> <t t-esc="order.client_order_ref"/>
+                                            </p>
+                                            <p><strong>Fecha:</strong>
+                                                <t t-esc="order.date_order" t-options="{'widget': 'date'}"/>
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Totales</h6>
+                                            <p><strong>Total:</strong>
+                                                <t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                            </p>
+                                            <p><strong>Estado facturación:</strong>
+                                                <t t-if="order.invoice_status == 'invoiced'">
+                                                    <span class="badge bg-success">Facturado</span>
+                                                </t>
+                                                <t t-elif="order.invoice_status == 'to invoice'">
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-secondary"><t t-esc="order.invoice_status"/></span>
+                                                </t>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <hr/>
+
+                                    <t t-if="is_billable">
+                                        <t t-if="is_logged_in">
+                                            <div class="d-grid">
+                                                <a t-attf-href="/portal/billing/request/#{order.id}"
+                                                   class="btn btn-success btn-lg">
+                                                    <i class="fa fa-file-invoice me-2"></i>
+                                                    Solicitar Factura
+                                                </a>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="alert alert-info">
+                                                <i class="fa fa-info-circle me-2"></i>
+                                                Para solicitar factura debe iniciar sesión o crear una cuenta.
+                                            </div>
+                                            <div class="d-grid gap-2 d-md-flex">
+                                                <a t-attf-href="/web/login?redirect=/portal/billing/request/#{order.id}"
+                                                   class="btn btn-primary btn-lg flex-fill">
+                                                    <i class="fa fa-sign-in-alt me-2"></i>
+                                                    Iniciar Sesión
+                                                </a>
+                                                <a href="/web/signup" class="btn btn-outline-primary btn-lg flex-fill">
+                                                    <i class="fa fa-user-plus me-2"></i>
+                                                    Crear Cuenta
+                                                </a>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="alert alert-warning">
+                                            <i class="fa fa-exclamation-triangle me-2"></i>
+                                            <strong>Esta orden no puede facturarse:</strong>
+                                            <t t-esc="not_billable_reason"/>
+                                        </div>
+                                    </t>
+
+                                    <div class="mt-4">
+                                        <a href="/portal/billing" class="btn btn-outline-secondary">
+                                            <i class="fa fa-arrow-left me-2"></i>
+                                            Volver a Búsqueda
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Mis órdenes (requiere login) -->
+    <template id="portal_my_orders" name="Portal My Orders">
+        <t t-call="website.layout">
+            <div id="wrap" class="billing-portal-wrap">
+                <div class="container py-5">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2>
+                                    <i class="fa fa-shopping-cart me-2"></i>
+                                    Mis Órdenes
+                                </h2>
+                                <div>
+                                    <a href="/portal/billing/history" class="btn btn-outline-secondary">
+                                        <i class="fa fa-history me-2"></i>
+                                        Historial de Solicitudes
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Búsqueda -->
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <form method="get" action="/portal/billing/orders">
+                                        <div class="input-group">
+                                            <input type="text"
+                                                   name="search"
+                                                   class="form-control"
+                                                   placeholder="Buscar por número o referencia..."
+                                                   t-att-value="search or ''"/>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fa fa-search"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Lista de órdenes -->
+                            <t t-if="orders">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Número</th>
+                                                <th>Referencia</th>
+                                                <th>Fecha</th>
+                                                <th>Total</th>
+                                                <th>Estado</th>
+                                                <th>Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="orders" t-as="order">
+                                                <tr>
+                                                    <td><t t-esc="order.name"/></td>
+                                                    <td><t t-esc="order.client_order_ref or '-'"/></td>
+                                                    <td><t t-esc="order.date_order" t-options="{'widget': 'date'}"/></td>
+                                                    <td><t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></td>
+                                                    <td>
+                                                        <t t-if="order.is_portal_billable">
+                                                            <span class="badge bg-success">Facturable</span>
+                                                        </t>
+                                                        <t t-elif="order.invoice_status == 'invoiced'">
+                                                            <span class="badge bg-info">Facturado</span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge bg-secondary">No facturable</span>
+                                                        </t>
+                                                    </td>
+                                                    <td>
+                                                        <t t-if="order.is_portal_billable">
+                                                            <a t-attf-href="/portal/billing/request/#{order.id}"
+                                                               class="btn btn-sm btn-success">
+                                                                <i class="fa fa-file-invoice"></i>
+                                                                Facturar
+                                                            </a>
+                                                        </t>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    No se encontraron órdenes.
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

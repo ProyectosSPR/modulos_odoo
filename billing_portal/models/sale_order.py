@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Extensión del modelo sale.order para el portal de facturación.
+"""
 
 from odoo import models, fields, api
 import logging
@@ -96,115 +99,7 @@ class SaleOrder(models.Model):
             'domain': [('order_ids', 'in', self.id)],
         }
 
-    @api.model
-    def find_order_by_ref_flexible(self, ref):
-        """
-        Búsqueda flexible de orden por referencia.
-        Busca en múltiples campos sin filtros de facturabilidad.
-        Usado por el portal de invitados.
-        """
-        _logger.warning("=" * 80)
-        _logger.warning("🔎 BÚSQUEDA INVITADO (find_order_by_ref_flexible)")
-        _logger.warning("📥 Referencia buscada: '%s'", ref)
-
-        if not ref:
-            _logger.warning("❌ Referencia vacía, retornando vacío")
-            _logger.warning("=" * 80)
-            return self.browse()
-
-        # Búsqueda flexible en múltiples campos
-        domain = [
-            '|', '|', '|', '|',
-            ('client_order_ref', '=', ref),
-            ('client_order_ref', 'ilike', ref),
-            ('name', 'ilike', ref),
-            ('ml_order_id', '=', ref),
-            ('ml_pack_id', '=', ref),
-        ]
-
-        _logger.warning("🔍 Dominio de búsqueda: %s", domain)
-        order = self.search(domain, limit=1)
-
-        if order:
-            _logger.warning("✅ Orden encontrada: ID=%d, Name=%s, Ref=%s",
-                           order.id, order.name, order.client_order_ref or 'N/A')
-        else:
-            _logger.warning("❌ No se encontró ninguna orden")
-
-        _logger.warning("=" * 80)
-        return order
-
-    @api.model
-    def search_for_billing_portal(self, search_term, receiver_id=None, limit=50):
-        """
-        Busca órdenes para el portal de facturación.
-        Busca en client_order_ref, name, ml_order_id, ml_pack_id
-        Retorna TODAS las órdenes encontradas con su estado de facturabilidad
-        """
-        _logger.warning("=" * 60)
-        _logger.warning("BILLING PORTAL - Búsqueda de órdenes")
-        _logger.warning("Término de búsqueda: '%s'", search_term)
-        _logger.warning("Receiver ID: %s", receiver_id)
-
-        # Validar término de búsqueda mínimo
-        if not search_term or len(search_term.strip()) < 2:
-            _logger.warning("Término de búsqueda muy corto o vacío, retornando lista vacía")
-            return []
-
-        search_term = search_term.strip()
-
-        # Buscar en múltiples campos
-        search_domain = [
-            '|', '|', '|', '|',
-            ('client_order_ref', 'ilike', search_term),
-            ('name', 'ilike', search_term),
-            ('ml_order_id', 'ilike', search_term),
-            ('ml_pack_id', 'ilike', search_term),
-            ('partner_id.email', 'ilike', search_term),
-        ]
-
-        if receiver_id:
-            search_domain = ['&', ('ml_receiver_id', '=', receiver_id)] + search_domain
-
-        _logger.warning("Dominio de búsqueda: %s", search_domain)
-
-        # Buscar todas las órdenes que coincidan (sin filtrar por facturabilidad)
-        all_orders = self.search(search_domain, limit=limit, order='date_order desc')
-        _logger.warning("Órdenes encontradas: %d", len(all_orders))
-
-        result = []
-        for order in all_orders:
-            # Determinar si es facturable y por qué no
-            is_billable, not_billable_reason = order._check_billing_eligibility()
-
-            # Log detallado solo en modo debug para evitar saturar logs
-            _logger.debug(
-                "  -> Orden: %s | Ref: %s | Facturable: %s | Razón: %s",
-                order.name,
-                order.client_order_ref or 'N/A',
-                is_billable,
-                not_billable_reason or 'OK'
-            )
-
-            result.append({
-                'id': order.id,
-                'name': order.name,
-                'client_order_ref': order.client_order_ref or '',
-                'ml_order_id': order.ml_order_id or '',
-                'amount_total': order.amount_total,
-                'date_order': order.date_order.strftime('%Y-%m-%d') if order.date_order else '',
-                'invoice_status': order.invoice_status,
-                'ml_shipment_status': order.ml_shipment_status or '',
-                'is_billable': is_billable,
-                'not_billable_reason': not_billable_reason or '',
-                'partner_name': order.partner_id.name if order.partner_id else '',
-            })
-
-        _logger.warning("Retornando %d órdenes", len(result))
-        _logger.warning("=" * 60)
-        return result
-
-    def _check_billing_eligibility(self):
+    def get_billing_eligibility(self):
         """
         Verifica si una orden es elegible para facturación.
         Retorna: (is_billable: bool, reason: str or None)

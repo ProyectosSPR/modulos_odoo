@@ -49,7 +49,7 @@ Características:
         'views/menu.xml',
         # Vistas Portal
         'views/portal_templates.xml',
-        'views/portal_login_templates.xml',
+        'views/portal_public_templates.xml',
         'views/portal_orders_templates.xml',
         'views/portal_billing_form_templates.xml',
         'views/portal_progress_templates.xml',
@@ -60,8 +60,6 @@ Características:
             'billing_portal/static/src/js/billing_portal.js',
             'billing_portal/static/src/js/csf_uploader.js',
             'billing_portal/static/src/js/progress_tracker.js',
-            'billing_portal/static/src/js/order_selector.js',
-            'billing_portal/static/src/js/guest_form.js',
         ],
     },
     'external_dependencies': {
