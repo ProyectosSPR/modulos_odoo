@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="message_wizard_form" model="ir.ui.view">
+        <field name="name">message.wizard.form</field>
+        <field name="model">message.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Result">
+                <div class="text-center">
+                    <field name="message" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_ok" string="Ok" type="object" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
