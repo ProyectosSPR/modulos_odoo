@@ -70,18 +70,6 @@
             <field name="perm_unlink">1</field>
         </record>
 
-        <!-- Reglas de acceso para billing.settings -->
-        <record id="billing_settings_rule_manager" model="ir.rule">
-            <field name="name">Billing Settings: Solo administradores</field>
-            <field name="model_id" ref="model_billing_settings"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_billing_portal_manager'))]"/>
-            <field name="perm_read">1</field>
-            <field name="perm_write">1</field>
-            <field name="perm_create">1</field>
-            <field name="perm_unlink">0</field>
-        </record>
-
         <!-- Reglas de acceso para billing.status.config -->
         <record id="billing_status_config_rule_user" model="ir.rule">
             <field name="name">Billing Status Config: Usuario solo lectura</field>

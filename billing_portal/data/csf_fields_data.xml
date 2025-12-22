@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <!-- RFC -->
+        <!-- RFC - Formato CSF SAT: "RFC: DML221107B29" -->
         <record id="csf_field_rfc" model="billing.csf.field.config">
             <field name="name">RFC</field>
             <field name="field_type">rfc</field>
             <field name="odoo_field">vat</field>
             <field name="regex_pattern">RFC:\s*([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})</field>
-            <field name="alternative_patterns">Registro Federal de Contribuyentes:\s*([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})
+            <field name="alternative_patterns">Registro Federal de Contribuyentes\s*([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})
 Clave del RFC:\s*([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})
-([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})\s*RFC</field>
+^([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})$</field>
             <field name="validation_regex">^[A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3}$</field>
-            <field name="error_message">El RFC no tiene un formato válido</field>
+            <field name="error_message">El RFC no tiene un formato válido (debe ser 12 o 13 caracteres)</field>
             <field name="transformation">uppercase</field>
             <field name="is_required">True</field>
             <field name="sequence">10</field>
@@ -19,14 +19,15 @@ Clave del RFC:\s*([A-ZÑ&amp;]{3,4}\d{6}[A-Z0-9]{3})
             <field name="ai_json_path">rfc</field>
         </record>
 
-        <!-- Razón Social / Nombre -->
+        <!-- Razón Social - Formato CSF SAT: "Denominación/Razón Social: DISTRIBUIDORA MEDICA DE LEON" -->
         <record id="csf_field_razon_social" model="billing.csf.field.config">
             <field name="name">Razón Social</field>
             <field name="field_type">text</field>
             <field name="odoo_field">name</field>
-            <field name="regex_pattern">(?:Denominación|Razón Social|Nombre)[\s:]+([A-ZÁÉÍÓÚÑ\s.,&amp;]+?)(?:\n|RFC|Régimen)</field>
-            <field name="alternative_patterns">Nombre.*?:\s*(.+?)(?:\n|$)
-Denominación/Razón Social:\s*(.+?)(?:\n|RFC)</field>
+            <field name="regex_pattern">Denominación/Razón Social:\s*(.+?)(?:\n|Régimen Capital)</field>
+            <field name="alternative_patterns">Nombre, denominación o razón\s+social\s*(.+?)(?:\n|idCIF)
+Razón Social:\s*(.+?)(?:\n|$)
+Denominación:\s*(.+?)(?:\n|$)</field>
             <field name="transformation">strip</field>
             <field name="is_required">True</field>
             <field name="sequence">20</field>
@@ -34,14 +35,14 @@ Denominación/Razón Social:\s*(.+?)(?:\n|RFC)</field>
             <field name="ai_json_path">razon_social</field>
         </record>
 
-        <!-- Código Postal -->
+        <!-- Código Postal - Formato CSF SAT: "Código Postal:37290" -->
         <record id="csf_field_codigo_postal" model="billing.csf.field.config">
             <field name="name">Código Postal</field>
             <field name="field_type">postal_code</field>
             <field name="odoo_field">zip</field>
-            <field name="regex_pattern">(?:Código Postal|C\.?P\.?)[\s:]+(\d{5})</field>
-            <field name="alternative_patterns">CP:\s*(\d{5})
-(\d{5})\s*(?:México|MX)</field>
+            <field name="regex_pattern">Código Postal:\s*(\d{5})</field>
+            <field name="alternative_patterns">C\.?P\.?:\s*(\d{5})
+CP\s*(\d{5})</field>
             <field name="validation_regex">^\d{5}$</field>
             <field name="error_message">El código postal debe tener 5 dígitos</field>
             <field name="transformation">digits_only</field>
@@ -51,28 +52,32 @@ Denominación/Razón Social:\s*(.+?)(?:\n|RFC)</field>
             <field name="ai_json_path">codigo_postal</field>
         </record>
 
-        <!-- Régimen Fiscal -->
+        <!-- Régimen Fiscal - Formato CSF SAT tabla: "Régimen General de Ley Personas Morales" (código 601) -->
+        <!-- En el CSF aparece en la sección "Regímenes:" como texto, hay que mapear al código SAT -->
         <record id="csf_field_regimen_fiscal" model="billing.csf.field.config">
             <field name="name">Régimen Fiscal</field>
             <field name="field_type">catalog</field>
-            <field name="odoo_field">l10n_mx_edi_fiscal_regime</field>
-            <field name="regex_pattern">Régimen(?:es)?(?:\s+Fiscal(?:es)?)?[\s:]+(\d{3})\s*[-–]\s*(.+?)(?:\n|$)</field>
-            <field name="alternative_patterns">(\d{3})\s*[-–]\s*(?:Régimen|Personas|Actividades|Ingresos).+?(?:\n|$)
-Régimen:\s*(\d{3})</field>
-            <field name="transformation">none</field>
+            <field name="odoo_field">regimen_fiscal</field>
+            <field name="regex_pattern">Regímenes:\s*\n\s*Régimen\s+Fecha Inicio.*?\n\s*(.+?)\s+\d{2}/\d{2}/\d{4}</field>
+            <field name="alternative_patterns">Régimen\s+Fecha Inicio.*?\n(.+?)\s+\d{2}/
+(\d{3})\s*[-–]\s*(.+?)(?:\n|$)
+Régimen Fiscal:\s*(.+?)(?:\n|$)</field>
+            <field name="transformation">strip</field>
             <field name="is_required">True</field>
             <field name="sequence">40</field>
             <field name="use_ai_extraction">True</field>
             <field name="ai_json_path">regimen_fiscal</field>
+            <field name="help_text">Regímenes comunes: 601-General de Ley PM, 603-Personas Morales Fines no Lucrativos, 605-Sueldos y Salarios, 606-Arrendamiento, 612-Personas Físicas Actividades Empresariales, 616-Sin Obligaciones Fiscales, 621-Incorporación Fiscal, 625-Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas, 626-Régimen Simplificado de Confianza</field>
         </record>
 
-        <!-- Entidad Federativa (Estado) -->
+        <!-- Entidad Federativa - Formato CSF SAT: "Nombre de la Entidad Federativa: GUANAJUATO" -->
         <record id="csf_field_entidad" model="billing.csf.field.config">
             <field name="name">Entidad Federativa</field>
             <field name="field_type">text</field>
             <field name="odoo_field">state_id</field>
-            <field name="regex_pattern">(?:Entidad Federativa|Estado)[\s:]+([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|,|Municipio)</field>
-            <field name="alternative_patterns">(?:CDMX|Ciudad de México|Jalisco|Nuevo León|Estado de México|Veracruz|Puebla|Guanajuato|Chihuahua|Michoacán|Oaxaca|Chiapas|Guerrero|Tamaulipas|Baja California|Sinaloa|Coahuila|Sonora|Hidalgo|San Luis Potosí|Tabasco|Yucatán|Querétaro|Morelos|Durango|Zacatecas|Quintana Roo|Aguascalientes|Tlaxcala|Nayarit|Campeche|Colima|Baja California Sur)</field>
+            <field name="regex_pattern">Nombre de la Entidad Federativa:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\s+Entre|\n|$)</field>
+            <field name="alternative_patterns">Entidad Federativa:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)
+Estado:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">50</field>
@@ -80,12 +85,15 @@ Régimen:\s*(\d{3})</field>
             <field name="ai_json_path">entidad_federativa</field>
         </record>
 
-        <!-- Municipio -->
+        <!-- Municipio - Formato CSF SAT: "Nombre del Municipio o Demarcación Territorial: LEON" -->
         <record id="csf_field_municipio" model="billing.csf.field.config">
             <field name="name">Municipio / Alcaldía</field>
             <field name="field_type">text</field>
             <field name="odoo_field">city</field>
-            <field name="regex_pattern">(?:Municipio|Alcaldía|Delegación)[\s:]+([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|,|Localidad|Colonia)</field>
+            <field name="regex_pattern">Nombre del Municipio o Demarcación Territorial:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)</field>
+            <field name="alternative_patterns">Municipio:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)
+Alcaldía:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)
+Delegación:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">60</field>
@@ -93,12 +101,14 @@ Régimen:\s*(\d{3})</field>
             <field name="ai_json_path">municipio</field>
         </record>
 
-        <!-- Colonia -->
+        <!-- Colonia - Formato CSF SAT: "Nombre de la Colonia: INDUSTRIAL LAS CRUCES" -->
         <record id="csf_field_colonia" model="billing.csf.field.config">
             <field name="name">Colonia</field>
             <field name="field_type">text</field>
             <field name="odoo_field">l10n_mx_edi_colony</field>
-            <field name="regex_pattern">(?:Colonia|Col\.)[\s:]+([A-ZÁÉÍÓÚÑ\s0-9]+?)(?:\n|,|Calle|C\.P\.)</field>
+            <field name="regex_pattern">Nombre de la Colonia:\s*([A-ZÁÉÍÓÚÑ\s0-9]+?)(?:\n|$)</field>
+            <field name="alternative_patterns">Colonia:\s*([A-ZÁÉÍÓÚÑ\s0-9]+?)(?:\n|$)
+Col\.:\s*([A-ZÁÉÍÓÚÑ\s0-9]+?)(?:\n|$)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">70</field>
@@ -106,12 +116,14 @@ Régimen:\s*(\d{3})</field>
             <field name="ai_json_path">colonia</field>
         </record>
 
-        <!-- Calle -->
+        <!-- Calle/Vialidad - Formato CSF SAT: "Nombre de Vialidad: DESARROLLO INDUSTRIAL" -->
         <record id="csf_field_calle" model="billing.csf.field.config">
             <field name="name">Calle</field>
             <field name="field_type">text</field>
             <field name="odoo_field">street</field>
-            <field name="regex_pattern">(?:Calle|Nombre de Vialidad)[\s:]+([A-ZÁÉÍÓÚÑ\s0-9.]+?)(?:\n|,|No\.|Núm|Número)</field>
+            <field name="regex_pattern">Nombre de Vialidad:\s*([A-ZÁÉÍÓÚÑ\s0-9.]+?)(?:\s+Número|\n|$)</field>
+            <field name="alternative_patterns">Calle:\s*([A-ZÁÉÍÓÚÑ\s0-9.]+?)(?:\n|$)
+Vialidad:\s*([A-ZÁÉÍÓÚÑ\s0-9.]+?)(?:\n|$)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">80</field>
@@ -119,14 +131,15 @@ Régimen:\s*(\d{3})</field>
             <field name="ai_json_path">calle</field>
         </record>
 
-        <!-- Número Exterior -->
+        <!-- Número Exterior - Formato CSF SAT: "Número Exterior: 201" -->
         <record id="csf_field_num_ext" model="billing.csf.field.config">
             <field name="name">Número Exterior</field>
             <field name="field_type">text</field>
             <field name="odoo_field">street_number</field>
-            <field name="regex_pattern">(?:No\.\s*Exterior|Núm\.\s*Exterior|Número Exterior)[\s:]+([A-Z0-9\-]+)</field>
-            <field name="alternative_patterns">Exterior[\s:]+(\d+[A-Z]?)
-No\.\s*Ext\.?[\s:]+([A-Z0-9\-]+)</field>
+            <field name="regex_pattern">Número Exterior:\s*([A-Z0-9\-]+)</field>
+            <field name="alternative_patterns">No\.\s*Exterior:\s*([A-Z0-9\-]+)
+Núm\.\s*Ext\.?:\s*([A-Z0-9\-]+)
+Ext\.?:\s*([A-Z0-9\-]+)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">90</field>
@@ -134,14 +147,15 @@ No\.\s*Ext\.?[\s:]+([A-Z0-9\-]+)</field>
             <field name="ai_json_path">numero_exterior</field>
         </record>
 
-        <!-- Número Interior -->
+        <!-- Número Interior - Formato CSF SAT: "Número Interior:" (puede estar vacío) -->
         <record id="csf_field_num_int" model="billing.csf.field.config">
             <field name="name">Número Interior</field>
             <field name="field_type">text</field>
             <field name="odoo_field">street2</field>
-            <field name="regex_pattern">(?:No\.\s*Interior|Núm\.\s*Interior|Número Interior)[\s:]+([A-Z0-9\-]+)</field>
-            <field name="alternative_patterns">Interior[\s:]+(\d+[A-Z]?)
-No\.\s*Int\.?[\s:]+([A-Z0-9\-]+)</field>
+            <field name="regex_pattern">Número Interior:\s*([A-Z0-9\-]+)</field>
+            <field name="alternative_patterns">No\.\s*Interior:\s*([A-Z0-9\-]+)
+Núm\.\s*Int\.?:\s*([A-Z0-9\-]+)
+Int\.?:\s*([A-Z0-9\-]+)</field>
             <field name="transformation">strip</field>
             <field name="is_required">False</field>
             <field name="sequence">100</field>
@@ -149,12 +163,14 @@ No\.\s*Int\.?[\s:]+([A-Z0-9\-]+)</field>
             <field name="ai_json_path">numero_interior</field>
         </record>
 
-        <!-- Fecha de Inicio de Operaciones -->
+        <!-- Fecha de Inicio de Operaciones - Formato CSF SAT: "Fecha inicio de operaciones: 07 DE NOVIEMBRE DE 2022" -->
         <record id="csf_field_fecha_inicio" model="billing.csf.field.config">
             <field name="name">Fecha Inicio Operaciones</field>
             <field name="field_type">date</field>
             <field name="odoo_field"></field>
-            <field name="regex_pattern">(?:Fecha de Inicio de Operaciones|Inicio de operaciones)[\s:]+(\d{1,2}[\s/\-]\w+[\s/\-]\d{4}|\d{4}[\s/\-]\d{2}[\s/\-]\d{2})</field>
+            <field name="regex_pattern">Fecha inicio de operaciones:\s*(\d{1,2}\s+DE\s+\w+\s+DE\s+\d{4})</field>
+            <field name="alternative_patterns">Fecha de Inicio de Operaciones:\s*(\d{1,2}/\d{2}/\d{4})
+Inicio de operaciones:\s*(.+?)(?:\n|$)</field>
             <field name="transformation">none</field>
             <field name="is_required">False</field>
             <field name="sequence">110</field>
@@ -162,18 +178,35 @@ No\.\s*Int\.?[\s:]+([A-Z0-9\-]+)</field>
             <field name="ai_json_path">fecha_inicio_operaciones</field>
         </record>
 
-        <!-- Estatus en el Padrón -->
+        <!-- Estatus en el Padrón - Formato CSF SAT: "Estatus en el padrón: ACTIVO" -->
         <record id="csf_field_estatus" model="billing.csf.field.config">
             <field name="name">Estatus en el Padrón</field>
             <field name="field_type">text</field>
             <field name="odoo_field"></field>
-            <field name="regex_pattern">(?:Estatus en el padrón|Situación del contribuyente)[\s:]+(\w+)</field>
-            <field name="alternative_patterns">(?:ACTIVO|CANCELADO|SUSPENDIDO)</field>
+            <field name="regex_pattern">Estatus en el padrón:\s*(\w+)</field>
+            <field name="alternative_patterns">Situación del contribuyente:\s*(\w+)
+(ACTIVO|CANCELADO|SUSPENDIDO)</field>
             <field name="transformation">uppercase</field>
             <field name="is_required">False</field>
             <field name="sequence">120</field>
             <field name="use_ai_extraction">True</field>
             <field name="ai_json_path">estatus_padron</field>
+        </record>
+
+        <!-- idCIF - Identificador único del documento CSF SAT: "idCIF: 22120112564" -->
+        <record id="csf_field_idcif" model="billing.csf.field.config">
+            <field name="name">idCIF</field>
+            <field name="field_type">text</field>
+            <field name="odoo_field"></field>
+            <field name="regex_pattern">idCIF:\s*(\d+)</field>
+            <field name="validation_regex">^\d{11}$</field>
+            <field name="error_message">El idCIF debe tener 11 dígitos</field>
+            <field name="transformation">digits_only</field>
+            <field name="is_required">False</field>
+            <field name="sequence">130</field>
+            <field name="use_ai_extraction">True</field>
+            <field name="ai_json_path">idcif</field>
+            <field name="help_text">Identificador único de la Constancia de Situación Fiscal emitida por el SAT</field>
         </record>
     </data>
 </odoo>

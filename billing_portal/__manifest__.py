@@ -40,7 +40,6 @@ Características:
         # Datos
         'data/csf_fields_data.xml',
         'data/billing_status_data.xml',
-        'data/billing_settings_data.xml',
         # Vistas Backend
         'views/csf_field_config_views.xml',
         'views/billing_request_views.xml',

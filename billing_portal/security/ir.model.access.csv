@@ -7,9 +7,6 @@ access_billing_request_public,billing.request.public,model_billing_request,,1,1,
 access_csf_field_config_user,billing.csf.field.config.user,model_billing_csf_field_config,group_billing_portal_user,1,0,0,0
 access_csf_field_config_manager,billing.csf.field.config.manager,model_billing_csf_field_config,group_billing_portal_manager,1,1,1,1
 access_csf_field_config_public,billing.csf.field.config.public,model_billing_csf_field_config,,1,0,0,0
-# billing.settings
-access_billing_settings_manager,billing.settings.manager,model_billing_settings,group_billing_portal_manager,1,1,1,0
-access_billing_settings_user,billing.settings.user,model_billing_settings,group_billing_portal_user,1,0,0,0
 # billing.status.config
 access_billing_status_config_user,billing.status.config.user,model_billing_status_config,group_billing_portal_user,1,0,0,0
 access_billing_status_config_manager,billing.status.config.manager,model_billing_status_config,group_billing_portal_manager,1,1,1,1

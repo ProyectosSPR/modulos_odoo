@@ -3,6 +3,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 import re
+import unicodedata
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -21,9 +22,19 @@ class CSFFieldConfig(models.Model):
 
     technical_name = fields.Char(
         string='Nombre Técnico',
-        required=True,
+        compute='_compute_technical_name',
+        store=True,
         help='Nombre interno usado en el código (ej: rfc, razon_social)'
     )
+
+    field_type = fields.Selection([
+        ('text', 'Texto'),
+        ('rfc', 'RFC'),
+        ('postal_code', 'Código Postal'),
+        ('date', 'Fecha'),
+        ('catalog', 'Catálogo'),
+        ('numeric', 'Numérico'),
+    ], string='Tipo de Campo', default='text')
 
     active = fields.Boolean(
         string='Activo',
@@ -31,7 +42,7 @@ class CSFFieldConfig(models.Model):
         help='Si está activo, este campo se extraerá del CSF'
     )
 
-    required = fields.Boolean(
+    is_required = fields.Boolean(
         string='Requerido',
         default=False,
         help='Si es requerido, la validación fallará si no se encuentra'
@@ -60,7 +71,7 @@ class CSFFieldConfig(models.Model):
         ('i', 'Ignorar mayúsculas (IGNORECASE)'),
         ('m', 'Multilínea (MULTILINE)'),
         ('im', 'IGNORECASE + MULTILINE'),
-    ], string='Flags Regex', default='i')
+    ], string='Flags Regex', default='im')
 
     alternative_patterns = fields.Text(
         string='Patrones Alternativos',
@@ -84,45 +95,33 @@ class CSFFieldConfig(models.Model):
     )
 
     # Validación
-    validation_type = fields.Selection([
-        ('none', 'Sin validación'),
-        ('regex', 'Validar con Regex'),
-        ('length', 'Validar longitud'),
-        ('numeric', 'Solo números'),
-        ('alpha', 'Solo letras'),
-        ('alphanumeric', 'Alfanumérico'),
-    ], string='Tipo de Validación', default='none')
-
-    validation_pattern = fields.Char(
-        string='Patrón de Validación',
+    validation_regex = fields.Char(
+        string='Regex de Validación',
         help='Regex para validar el valor extraído'
     )
 
-    validation_min_length = fields.Integer(
-        string='Longitud Mínima',
-        default=0
-    )
-
-    validation_max_length = fields.Integer(
-        string='Longitud Máxima',
-        default=0
-    )
-
-    validation_error_message = fields.Char(
+    error_message = fields.Char(
         string='Mensaje de Error',
         help='Mensaje a mostrar si la validación falla'
     )
 
     # Transformación
-    transform_type = fields.Selection([
+    transformation = fields.Selection([
         ('none', 'Sin transformación'),
-        ('upper', 'Mayúsculas'),
-        ('lower', 'Minúsculas'),
+        ('uppercase', 'Mayúsculas'),
+        ('lowercase', 'Minúsculas'),
         ('title', 'Capitalizar'),
         ('strip', 'Quitar espacios'),
+        ('digits_only', 'Solo dígitos'),
     ], string='Transformación', default='strip')
 
     # Para IA
+    use_ai_extraction = fields.Boolean(
+        string='Usar Extracción IA',
+        default=True,
+        help='Si se debe usar IA como fallback para extraer este campo'
+    )
+
     ai_json_path = fields.Char(
         string='Ruta JSON (IA)',
         help='Ruta en el JSON de respuesta de la IA (ej: contribuyente.rfc)'
@@ -161,6 +160,22 @@ class CSFFieldConfig(models.Model):
         help='Notas internas sobre este campo'
     )
 
+    @api.depends('name')
+    def _compute_technical_name(self):
+        """Genera nombre técnico automáticamente desde el nombre"""
+        for record in self:
+            if record.name:
+                # Normalizar y quitar acentos
+                nfkd = unicodedata.normalize('NFKD', record.name)
+                ascii_str = nfkd.encode('ASCII', 'ignore').decode('ASCII')
+                # Convertir a snake_case
+                technical = ascii_str.lower().replace(' ', '_').replace('/', '_')
+                technical = re.sub(r'[^a-z0-9_]', '', technical)
+                technical = re.sub(r'_+', '_', technical).strip('_')
+                record.technical_name = technical or 'field'
+            else:
+                record.technical_name = 'field'
+
     @api.constrains('regex_pattern')
     def _check_regex_pattern(self):
         """Valida que el patrón regex sea válido"""
@@ -173,16 +188,6 @@ class CSFFieldConfig(models.Model):
                         _('Patrón regex inválido para "%s": %s') % (record.name, str(e))
                     )
 
-    @api.constrains('technical_name')
-    def _check_technical_name(self):
-        """Valida el nombre técnico"""
-        for record in self:
-            if record.technical_name:
-                if not re.match(r'^[a-z_][a-z0-9_]*$', record.technical_name):
-                    raise ValidationError(
-                        _('El nombre técnico debe ser snake_case (ej: razon_social)')
-                    )
-
     def extract_value(self, text):
         """Extrae el valor de este campo del texto dado"""
         self.ensure_one()
@@ -191,11 +196,13 @@ class CSFFieldConfig(models.Model):
             return None
 
         # Compilar flags
-        flags = 0
-        if self.regex_flags and 'i' in self.regex_flags:
-            flags |= re.IGNORECASE
-        if self.regex_flags and 'm' in self.regex_flags:
-            flags |= re.MULTILINE
+        flags = re.IGNORECASE | re.MULTILINE
+        if self.regex_flags == 'none':
+            flags = 0
+        elif self.regex_flags == 'i':
+            flags = re.IGNORECASE
+        elif self.regex_flags == 'm':
+            flags = re.MULTILINE
 
         # Intentar patrón principal
         match = re.search(self.regex_pattern, text, flags)
@@ -237,14 +244,16 @@ class CSFFieldConfig(models.Model):
         if not value:
             return value
 
-        if self.transform_type == 'upper':
-            return value.upper()
-        elif self.transform_type == 'lower':
-            return value.lower()
-        elif self.transform_type == 'title':
-            return value.title()
-        elif self.transform_type == 'strip':
+        if self.transformation == 'uppercase':
+            return value.upper().strip()
+        elif self.transformation == 'lowercase':
+            return value.lower().strip()
+        elif self.transformation == 'title':
+            return value.title().strip()
+        elif self.transformation == 'strip':
             return value.strip()
+        elif self.transformation == 'digits_only':
+            return re.sub(r'\D', '', value)
 
         return value
 
@@ -253,30 +262,22 @@ class CSFFieldConfig(models.Model):
         if not value:
             return True, None
 
-        if self.validation_type == 'none':
-            return True, None
+        if self.validation_regex:
+            try:
+                if not re.match(self.validation_regex, value):
+                    return False, self.error_message or _('Formato inválido')
+            except re.error:
+                pass
 
-        if self.validation_type == 'regex' and self.validation_pattern:
-            if not re.match(self.validation_pattern, value):
-                return False, self.validation_error_message or _('Formato inválido')
+        # Validaciones por tipo de campo
+        if self.field_type == 'rfc':
+            # RFC: 12-13 caracteres alfanuméricos
+            if not re.match(r'^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$', value.upper()):
+                return False, self.error_message or _('RFC inválido')
 
-        if self.validation_type == 'length':
-            if self.validation_min_length and len(value) < self.validation_min_length:
-                return False, _('Muy corto (mín: %d)') % self.validation_min_length
-            if self.validation_max_length and len(value) > self.validation_max_length:
-                return False, _('Muy largo (máx: %d)') % self.validation_max_length
-
-        if self.validation_type == 'numeric':
-            if not value.isdigit():
-                return False, _('Debe contener solo números')
-
-        if self.validation_type == 'alpha':
-            if not value.replace(' ', '').isalpha():
-                return False, _('Debe contener solo letras')
-
-        if self.validation_type == 'alphanumeric':
-            if not value.replace(' ', '').isalnum():
-                return False, _('Debe ser alfanumérico')
+        elif self.field_type == 'postal_code':
+            if not re.match(r'^\d{5}$', value):
+                return False, self.error_message or _('Código postal inválido')
 
         return True, None
 

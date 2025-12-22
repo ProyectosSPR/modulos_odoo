@@ -1,111 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Settings Form View -->
-    <record id="view_billing_settings_form" model="ir.ui.view">
-        <field name="name">billing.settings.form</field>
-        <field name="model">billing.settings</field>
+    <!-- Settings Form View - inherits res.config.settings -->
+    <record id="res_config_settings_view_form_billing_portal" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.billing.portal</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="50"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <form>
-                <sheet>
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name" readonly="1"/>
-                        </h1>
-                    </div>
-                    <notebook>
-                        <page string="Inteligencia Artificial" name="ai">
-                            <group>
-                                <group string="Google Gemini">
-                                    <field name="ai_provider"/>
-                                    <field name="gemini_api_key" password="True"/>
-                                    <field name="gemini_model"/>
-                                </group>
-                                <group string="OpenAI (Alternativo)">
-                                    <field name="openai_api_key" password="True"/>
-                                    <field name="openai_model"/>
-                                </group>
-                            </group>
-                            <group string="Configuración de Validación">
-                                <field name="ai_fallback_enabled"/>
-                                <field name="ai_confidence_threshold"/>
-                            </group>
-                            <div class="alert alert-info" role="alert">
-                                <p><strong>Nota:</strong> La validación de CSF usa primero OCR local.
-                                Si no puede extraer los datos, usa IA como respaldo (si está habilitado).</p>
+            <xpath expr="//form" position="inside">
+                <app data-string="Portal de Facturación" string="Portal de Facturación" name="billing_portal" groups="billing_portal.group_billing_portal_manager">
+                    <block title="Inteligencia Artificial" name="ai_settings">
+                        <setting string="API de Google Gemini" help="Configura la conexión con Google Gemini para extracción de datos de CSF">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="billing_portal_gemini_api_key" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_gemini_api_key" password="True"/>
+                                </div>
+                                <div class="row">
+                                    <label for="billing_portal_gemini_model" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_gemini_model"/>
+                                </div>
+                                <div class="mt8">
+                                    <button name="action_test_gemini_connection" type="object"
+                                            string="Probar Conexión" class="btn-secondary" icon="fa-plug"/>
+                                </div>
                             </div>
-                        </page>
-                        <page string="Base de Datos Externa" name="external_db">
-                            <group>
-                                <group string="Conexión PostgreSQL">
-                                    <field name="external_db_host"/>
-                                    <field name="external_db_port"/>
-                                    <field name="external_db_name"/>
-                                    <field name="external_db_user"/>
-                                    <field name="external_db_password" password="True"/>
-                                </group>
-                                <group string="Tablas">
-                                    <field name="external_db_status_table"/>
-                                    <field name="external_db_users_table"/>
-                                    <field name="external_db_sessions_table"/>
-                                </group>
-                            </group>
-                            <div class="mt-3">
-                                <button name="action_test_external_db" type="object"
-                                        string="Probar Conexión" class="btn-secondary"/>
+                        </setting>
+                        <setting string="Validación con IA" help="Configuración del uso de IA para extraer datos del CSF">
+                            <field name="billing_portal_use_ai_fallback"/>
+                            <div class="content-group" attrs="{'invisible': [('billing_portal_use_ai_fallback', '=', False)]}">
+                                <div class="text-muted mt8">
+                                    Si la extracción local falla, se usará IA como respaldo
+                                </div>
                             </div>
-                        </page>
-                        <page string="Portal" name="portal">
-                            <group>
-                                <group string="Autenticación">
-                                    <field name="allow_guest_billing"/>
-                                    <field name="session_timeout_hours"/>
-                                    <field name="max_orders_per_request"/>
-                                </group>
-                                <group string="Notificaciones">
-                                    <field name="send_email_on_complete"/>
-                                    <field name="notify_accounting_on_pending"/>
-                                    <field name="accounting_user_ids" widget="many2many_tags"/>
-                                </group>
-                            </group>
-                        </page>
-                        <page string="Procesamiento" name="processing">
-                            <group>
-                                <group string="Tiempos de Espera">
-                                    <field name="csf_validation_timeout"/>
-                                    <field name="ai_request_timeout"/>
-                                </group>
-                                <group string="Límites">
-                                    <field name="max_pdf_size_mb"/>
-                                    <field name="max_daily_requests"/>
-                                </group>
-                            </group>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
+                        </setting>
+                        <setting string="Solo usar IA" help="Siempre usar IA para extraer datos (más costoso pero más preciso)">
+                            <field name="billing_portal_ai_only"/>
+                        </setting>
+                    </block>
+                    <block title="Configuración del Portal" name="portal_settings">
+                        <setting string="Método de Autenticación" help="Cómo se autentican los clientes en el portal">
+                            <field name="billing_portal_auth_method" widget="radio"/>
+                        </setting>
+                        <setting string="Requerir Entrega" help="Solo permitir facturar órdenes con envío entregado">
+                            <field name="billing_portal_require_delivery"/>
+                        </setting>
+                        <setting string="Múltiples Órdenes" help="Permitir facturar múltiples órdenes en una sola solicitud">
+                            <field name="billing_portal_allow_multiple_orders"/>
+                            <div class="content-group" attrs="{'invisible': [('billing_portal_allow_multiple_orders', '=', False)]}">
+                                <div class="row mt8">
+                                    <label for="billing_portal_max_orders_per_invoice" class="col-4 o_light_label"/>
+                                    <field name="billing_portal_max_orders_per_invoice"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Duración de Sesión" help="Tiempo que dura la sesión del cliente en horas">
+                            <div class="content-group">
+                                <div class="row">
+                                    <label for="billing_portal_session_duration" class="col-4 o_light_label"/>
+                                    <field name="billing_portal_session_duration"/>
+                                    <span class="text-muted ml8">horas</span>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="Notificaciones" name="notification_settings">
+                        <setting string="Notificar al Recibir Solicitud" help="Enviar notificación cuando se recibe una nueva solicitud">
+                            <field name="billing_portal_notify_on_request"/>
+                            <div class="content-group" attrs="{'invisible': [('billing_portal_notify_on_request', '=', False)]}">
+                                <div class="row mt8">
+                                    <label for="billing_portal_notify_emails" class="col-4 o_light_label"/>
+                                    <field name="billing_portal_notify_emails" placeholder="email1@ejemplo.com, email2@ejemplo.com"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="Base de Datos Externa (MercadoLibre)" name="external_db_settings">
+                        <setting string="Conexión PostgreSQL" help="Configuración de la base de datos externa para consultar órdenes">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="billing_portal_external_db_host" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_external_db_host" placeholder="localhost"/>
+                                </div>
+                                <div class="row">
+                                    <label for="billing_portal_external_db_port" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_external_db_port" placeholder="5432"/>
+                                </div>
+                                <div class="row">
+                                    <label for="billing_portal_external_db_name" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_external_db_name" placeholder="mercadoLibre"/>
+                                </div>
+                                <div class="row">
+                                    <label for="billing_portal_external_db_user" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_external_db_user" placeholder="postgres"/>
+                                </div>
+                                <div class="row">
+                                    <label for="billing_portal_external_db_password" class="col-3 o_light_label"/>
+                                    <field name="billing_portal_external_db_password" password="True"/>
+                                </div>
+                                <div class="mt8">
+                                    <button name="action_test_external_db" type="object"
+                                            string="Probar Conexión" class="btn-secondary" icon="fa-database"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
         </field>
-    </record>
-
-    <!-- Tree View -->
-    <record id="view_billing_settings_tree" model="ir.ui.view">
-        <field name="name">billing.settings.tree</field>
-        <field name="model">billing.settings</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="name"/>
-                <field name="ai_provider"/>
-                <field name="ai_fallback_enabled"/>
-                <field name="allow_guest_billing"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- Action -->
-    <record id="action_billing_settings" model="ir.actions.act_window">
-        <field name="name">Configuración del Portal</field>
-        <field name="res_model">billing.settings</field>
-        <field name="view_mode">form</field>
-        <field name="target">inline</field>
     </record>
 
     <!-- Billing Status Config Views -->

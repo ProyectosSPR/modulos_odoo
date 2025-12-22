@@ -43,9 +43,4 @@
               action="action_billing_status_config"
               sequence="20"/>
 
-    <menuitem id="menu_billing_settings"
-              name="Ajustes"
-              parent="menu_billing_config"
-              action="action_billing_settings"
-              sequence="30"/>
 </odoo>
