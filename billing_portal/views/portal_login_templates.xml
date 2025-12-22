@@ -109,7 +109,7 @@
                                         </div>
                                     </t>
 
-                                    <form method="post" action="/portal/billing/guest" id="guestSearchForm">
+                                    <form method="post" action="/portal/billing/guest" id="guestSearchForm" onsubmit="return validateGuestForm(event)">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                                         <div class="mb-4">
@@ -142,6 +142,41 @@
                                             </button>
                                         </div>
                                     </form>
+
+                                    <script type="text/javascript">
+                                        // Inline validation function - ALWAYS fires
+                                        function validateGuestForm(event) {
+                                            console.log('🎯 INLINE validateGuestForm() EJECUTADO!');
+                                            console.log('  Event:', event);
+
+                                            var input = document.getElementById('order_ref');
+                                            console.log('  Input element:', input);
+                                            console.log('  Input value:', input ? input.value : 'NULL');
+                                            console.log('  Input value (trimmed):', input ? input.value.trim() : 'NULL');
+
+                                            if (!input) {
+                                                console.error('  ❌ Input NO encontrado!');
+                                                alert('Error: Campo de búsqueda no encontrado');
+                                                event.preventDefault();
+                                                return false;
+                                            }
+
+                                            var value = input.value.trim();
+                                            console.log('  📏 Longitud del valor:', value.length);
+
+                                            if (!value || value.length < 3) {
+                                                console.error('  ❌ VALIDACIÓN FALLIDA - Valor vacío o muy corto');
+                                                alert('Por favor ingrese al menos 3 caracteres para buscar');
+                                                event.preventDefault();
+                                                input.focus();
+                                                return false;
+                                            }
+
+                                            console.log('  ✅ VALIDACIÓN EXITOSA - Permitiendo submit');
+                                            console.log('  📤 Valor a enviar:', value);
+                                            return true;
+                                        }
+                                    </script>
 
 
                                     <hr class="my-4"/>
