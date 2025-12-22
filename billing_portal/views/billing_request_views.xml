@@ -21,6 +21,8 @@
                        decoration-success="state == 'done'"
                        decoration-warning="state == 'pending_stamp'"
                        decoration-info="state in ('validating', 'creating_partner', 'creating_invoice')"/>
+                <field name="unread_messages" widget="boolean" optional="show"/>
+                <field name="folio_fiscal" optional="hide"/>
                 <field name="invoice_id" optional="show"/>
             </tree>
         </field>
@@ -121,11 +123,41 @@
                                 <field name="order_references"/>
                             </group>
                         </page>
-                        <page string="Factura" name="invoice"
+                        <page string="Factura/CFDI" name="invoice"
                               attrs="{'invisible': [('invoice_id', '=', False)]}">
                             <group>
-                                <field name="invoice_id"/>
-                                <field name="invoice_name"/>
+                                <group string="Factura">
+                                    <field name="invoice_id"/>
+                                    <field name="invoice_name"/>
+                                </group>
+                                <group string="CFDI">
+                                    <field name="folio_fiscal"/>
+                                    <field name="cfdi_state"/>
+                                    <field name="has_cfdi_files"/>
+                                </group>
+                            </group>
+                            <group string="Archivos CFDI" attrs="{'invisible': [('has_cfdi_files', '=', False)]}">
+                                <field name="cfdi_xml_file" filename="cfdi_xml_filename"/>
+                                <field name="cfdi_xml_filename" invisible="1"/>
+                                <field name="cfdi_pdf_file" filename="cfdi_pdf_filename"/>
+                                <field name="cfdi_pdf_filename" invisible="1"/>
+                            </group>
+                        </page>
+                        <page string="Mensajería" name="messaging">
+                            <group>
+                                <group string="Mensaje del Cliente">
+                                    <field name="message_from_client" nolabel="1" colspan="2"/>
+                                    <field name="unread_messages"/>
+                                </group>
+                                <group string="Respuesta al Cliente">
+                                    <field name="message_to_client" nolabel="1" colspan="2"/>
+                                    <field name="last_message_date"/>
+                                </group>
+                            </group>
+                            <group>
+                                <button name="action_mark_messages_read" type="object"
+                                        string="Marcar como Leído" class="btn-secondary"
+                                        attrs="{'invisible': [('unread_messages', '=', False)]}"/>
                             </group>
                         </page>
                         <page string="Error" name="error"
@@ -181,6 +213,8 @@
                 <separator/>
                 <filter name="has_invoice" string="Con Factura"
                         domain="[('invoice_id', '!=', False)]"/>
+                <filter name="unread_messages" string="Mensajes Sin Leer"
+                        domain="[('unread_messages', '=', True)]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_date" string="Fecha" context="{'group_by': 'create_date:day'}"/>

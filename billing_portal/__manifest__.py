@@ -31,7 +31,7 @@ Características:
         'account',
         'website',
         'portal',
-        'l10n_mx_edi',
+        'mail',
     ],
     'data': [
         # Seguridad

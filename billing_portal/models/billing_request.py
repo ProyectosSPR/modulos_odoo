@@ -4,6 +4,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import json
 import logging
+import base64
 
 _logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class BillingRequest(models.Model):
     _description = 'Solicitud de Facturación'
     _order = 'create_date desc'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _mail_post_access = 'read'  # Permitir publicar mensajes con acceso de lectura
 
     name = fields.Char(
         string='Referencia',
@@ -112,6 +114,68 @@ class BillingRequest(models.Model):
     invoice_name = fields.Char(
         related='invoice_id.name',
         string='Número de Factura'
+    )
+
+    # Campos CFDI de la factura (del módulo cdfi_invoice)
+    folio_fiscal = fields.Char(
+        related='invoice_id.folio_fiscal',
+        string='Folio Fiscal (UUID)',
+        readonly=True
+    )
+
+    cfdi_state = fields.Selection(
+        related='invoice_id.estado_factura',
+        string='Estado CFDI',
+        readonly=True
+    )
+
+    # Archivos CFDI para descarga
+    cfdi_xml_file = fields.Binary(
+        string='XML CFDI',
+        compute='_compute_cfdi_files',
+        help='Archivo XML del CFDI timbrado'
+    )
+
+    cfdi_xml_filename = fields.Char(
+        compute='_compute_cfdi_files'
+    )
+
+    cfdi_pdf_file = fields.Binary(
+        string='PDF CFDI',
+        compute='_compute_cfdi_files',
+        help='Representación impresa del CFDI'
+    )
+
+    cfdi_pdf_filename = fields.Char(
+        compute='_compute_cfdi_files'
+    )
+
+    has_cfdi_files = fields.Boolean(
+        compute='_compute_cfdi_files',
+        string='Tiene archivos CFDI'
+    )
+
+    # Mensajería cliente-contador
+    message_from_client = fields.Text(
+        string='Mensaje del Cliente',
+        tracking=True,
+        help='Mensaje o comentarios del cliente para el contador'
+    )
+
+    message_to_client = fields.Text(
+        string='Respuesta al Cliente',
+        tracking=True,
+        help='Respuesta del contador hacia el cliente'
+    )
+
+    last_message_date = fields.Datetime(
+        string='Última Comunicación',
+        tracking=True
+    )
+
+    unread_messages = fields.Boolean(
+        string='Mensajes sin leer',
+        default=False
     )
 
     # Estado y progreso
@@ -406,8 +470,162 @@ class BillingRequest(models.Model):
         return {
             'state': self.state,
             'progress': self.progress,
-            'message': self.status_message or self.error_message,
+            'status_message': self.status_message,
+            'error_message': self.error_message,
             'invoice_name': self.invoice_name,
+            'folio_fiscal': self.folio_fiscal,
+            'cfdi_state': self.cfdi_state,
+            'has_cfdi_files': self.has_cfdi_files,
+            'message_to_client': self.message_to_client,
+            'last_message_date': self.last_message_date.isoformat() if self.last_message_date else None,
             'is_error': self.state == 'error',
             'is_done': self.state == 'done',
         }
+
+    @api.depends('invoice_id', 'invoice_id.folio_fiscal')
+    def _compute_cfdi_files(self):
+        """Obtiene los archivos XML y PDF del CFDI desde la factura"""
+        for record in self:
+            record.cfdi_xml_file = False
+            record.cfdi_xml_filename = False
+            record.cfdi_pdf_file = False
+            record.cfdi_pdf_filename = False
+            record.has_cfdi_files = False
+
+            if not record.invoice_id:
+                continue
+
+            invoice = record.invoice_id
+
+            # Buscar XML adjunto
+            xml_attachment = self.env['ir.attachment'].sudo().search([
+                ('res_model', '=', 'account.move'),
+                ('res_id', '=', invoice.id),
+                ('name', 'like', '.xml'),
+                ('name', 'not like', 'CANCEL_%'),
+            ], limit=1, order='create_date desc')
+
+            if xml_attachment:
+                record.cfdi_xml_file = xml_attachment.datas
+                record.cfdi_xml_filename = xml_attachment.name
+                record.has_cfdi_files = True
+
+            # Para el PDF, intentar obtenerlo del campo de la factura o generarlo
+            if hasattr(invoice, 'pdf_cdfi_invoice') and invoice.pdf_cdfi_invoice:
+                record.cfdi_pdf_file = invoice.pdf_cdfi_invoice
+                record.cfdi_pdf_filename = f'{invoice.name.replace("/", "_")}.pdf'
+                record.has_cfdi_files = True
+            else:
+                # Buscar PDF adjunto
+                pdf_attachment = self.env['ir.attachment'].sudo().search([
+                    ('res_model', '=', 'account.move'),
+                    ('res_id', '=', invoice.id),
+                    ('mimetype', '=', 'application/pdf'),
+                ], limit=1, order='create_date desc')
+
+                if pdf_attachment:
+                    record.cfdi_pdf_file = pdf_attachment.datas
+                    record.cfdi_pdf_filename = pdf_attachment.name
+                    record.has_cfdi_files = True
+
+    def action_send_client_message(self, message):
+        """Envía un mensaje del cliente al contador"""
+        self.ensure_one()
+        self.write({
+            'message_from_client': message,
+            'last_message_date': fields.Datetime.now(),
+            'unread_messages': True,
+        })
+
+        # Registrar en el chatter
+        self.message_post(
+            body=_('<strong>Mensaje del cliente:</strong><br/>%s') % message,
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
+        )
+
+        # Notificar a contabilidad
+        self._notify_accounting_team(_('Nuevo mensaje del cliente en solicitud %s') % self.name)
+
+        return True
+
+    def action_send_accountant_message(self, message):
+        """Envía un mensaje del contador al cliente"""
+        self.ensure_one()
+        self.write({
+            'message_to_client': message,
+            'last_message_date': fields.Datetime.now(),
+        })
+
+        # Registrar en el chatter
+        self.message_post(
+            body=_('<strong>Respuesta al cliente:</strong><br/>%s') % message,
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
+        )
+
+        return True
+
+    def action_mark_messages_read(self):
+        """Marca los mensajes como leídos"""
+        self.write({'unread_messages': False})
+
+    def _notify_accounting_team(self, subject):
+        """Notifica al equipo de contabilidad"""
+        settings = self.env['billing.settings'].sudo().search([], limit=1)
+        if not settings or not settings.notify_accounting_on_pending:
+            return
+
+        users = settings.accounting_user_ids
+        if not users:
+            users = self.env['res.users'].search([
+                ('groups_id', 'in', self.env.ref('account.group_account_manager').id)
+            ], limit=3)
+
+        for user in users:
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                summary=subject,
+                user_id=user.id,
+            )
+
+    def action_view_invoice(self):
+        """Abre la factura relacionada"""
+        self.ensure_one()
+        if not self.invoice_id:
+            raise UserError(_('No hay factura generada'))
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Factura'),
+            'res_model': 'account.move',
+            'res_id': self.invoice_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_view_partner(self):
+        """Abre el cliente relacionado"""
+        self.ensure_one()
+        if not self.partner_id:
+            raise UserError(_('No hay cliente relacionado'))
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Cliente'),
+            'res_model': 'res.partner',
+            'res_id': self.partner_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_reset_to_draft(self):
+        """Regresa a borrador desde error o cancelado"""
+        self.ensure_one()
+        if self.state not in ('error', 'cancelled'):
+            raise UserError(_('Solo se puede reiniciar desde estado de error o cancelado'))
+
+        self.write({
+            'state': 'draft',
+            'progress': 0,
+            'status_message': '',
+            'error_message': '',
+        })

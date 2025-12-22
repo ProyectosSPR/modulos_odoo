@@ -10,6 +10,7 @@
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Cuenta y Productos">
                         <field name="account_id"/>
+                        <field name="site_id"/>
                         <field name="product_tmpl_ids" widget="many2many_tags"/>
                         <field name="product_count"/>
                     </group>
@@ -22,14 +23,20 @@
 
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Categoria MercadoLibre">
-                        <field name="category_id" options="{'no_create': True}"/>
+                        <field name="category_id"
+                               domain="[('site_id', '=', site_id)]"
+                               options="{'no_create': True, 'no_quick_create': True}"/>
                         <field name="ml_category_id" readonly="1"/>
                         <label for="search_category_id"/>
                         <div class="o_row">
                             <field name="search_category_id" placeholder="Ej: MLM1055"/>
                             <button name="action_sync_categories" type="object"
-                                    string="Sincronizar Categorias" icon="fa-refresh"
+                                    string="Recargar" icon="fa-refresh"
                                     class="btn-link" title="Sincronizar categorias raiz de MercadoLibre"/>
+                        </div>
+                        <div class="text-muted small">
+                            Las categorias se sincronizan automaticamente. Seleccione una categoria
+                            o escriba el ID directamente (ej: MLM1055).
                         </div>
                     </group>
                 </group>

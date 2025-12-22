@@ -387,3 +387,151 @@ class BillingPortalAPI(http.Controller):
                 'success': False,
                 'errors': [str(e)]
             }
+
+    # =============================================
+    # API para Mensajería Cliente-Contador
+    # =============================================
+
+    @http.route('/portal/billing/api/send-message/<int:request_id>', type='json', auth='public', csrf=False)
+    def api_send_message(self, request_id, **kwargs):
+        """
+        Envía un mensaje del cliente al contador.
+
+        Espera:
+            message: texto del mensaje
+
+        Retorna:
+            {success: bool}
+        """
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            return {'success': False, 'errors': [_('Solicitud no encontrada')]}
+
+        message = kwargs.get('message', '').strip()
+        if not message:
+            return {'success': False, 'errors': [_('El mensaje no puede estar vacío')]}
+
+        try:
+            billing_request.action_send_client_message(message)
+            return {
+                'success': True,
+                'message': _('Mensaje enviado correctamente')
+            }
+        except Exception as e:
+            _logger.exception("Error enviando mensaje")
+            return {
+                'success': False,
+                'errors': [str(e)]
+            }
+
+    @http.route('/portal/billing/api/get-messages/<int:request_id>', type='json', auth='public', csrf=False)
+    def api_get_messages(self, request_id, **kwargs):
+        """
+        Obtiene los mensajes de una solicitud.
+
+        Retorna:
+            {success: bool, messages: [...]}
+        """
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            return {'success': False, 'errors': [_('Solicitud no encontrada')]}
+
+        return {
+            'success': True,
+            'message_from_client': billing_request.message_from_client or '',
+            'message_to_client': billing_request.message_to_client or '',
+            'last_message_date': billing_request.last_message_date.isoformat() if billing_request.last_message_date else None,
+        }
+
+    # =============================================
+    # API para Descarga de Archivos CFDI
+    # =============================================
+
+    @http.route('/portal/billing/download/xml/<int:request_id>', type='http', auth='public', csrf=False)
+    def download_cfdi_xml(self, request_id, **kwargs):
+        """
+        Descarga el XML del CFDI.
+        """
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            return request.not_found()
+
+        if not billing_request.cfdi_xml_file:
+            return request.not_found()
+
+        filename = billing_request.cfdi_xml_filename or f'CFDI_{billing_request.name}.xml'
+        content = base64.b64decode(billing_request.cfdi_xml_file)
+
+        return request.make_response(
+            content,
+            headers=[
+                ('Content-Type', 'application/xml'),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(content)),
+            ]
+        )
+
+    @http.route('/portal/billing/download/pdf/<int:request_id>', type='http', auth='public', csrf=False)
+    def download_cfdi_pdf(self, request_id, **kwargs):
+        """
+        Descarga el PDF del CFDI.
+        """
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            return request.not_found()
+
+        # Intentar obtener PDF del campo o generar uno
+        if billing_request.cfdi_pdf_file:
+            content = base64.b64decode(billing_request.cfdi_pdf_file)
+            filename = billing_request.cfdi_pdf_filename or f'CFDI_{billing_request.name}.pdf'
+        elif billing_request.invoice_id:
+            # Generar PDF de la factura
+            try:
+                pdf_content, _ = request.env['ir.actions.report'].sudo()._render_qweb_pdf(
+                    'account.account_invoices',
+                    [billing_request.invoice_id.id]
+                )
+                content = pdf_content
+                filename = f'{billing_request.invoice_id.name.replace("/", "_")}.pdf'
+            except Exception as e:
+                _logger.exception("Error generando PDF")
+                return request.not_found()
+        else:
+            return request.not_found()
+
+        return request.make_response(
+            content,
+            headers=[
+                ('Content-Type', 'application/pdf'),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(content)),
+            ]
+        )
+
+    @http.route('/portal/billing/api/cfdi-files/<int:request_id>', type='json', auth='public', csrf=False)
+    def api_cfdi_files_info(self, request_id, **kwargs):
+        """
+        Obtiene información sobre los archivos CFDI disponibles.
+
+        Retorna:
+            {success: bool, has_xml: bool, has_pdf: bool, folio_fiscal: str}
+        """
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            return {'success': False, 'errors': [_('Solicitud no encontrada')]}
+
+        return {
+            'success': True,
+            'has_xml': bool(billing_request.cfdi_xml_file),
+            'has_pdf': bool(billing_request.cfdi_pdf_file) or bool(billing_request.invoice_id),
+            'folio_fiscal': billing_request.folio_fiscal or '',
+            'cfdi_state': billing_request.cfdi_state or '',
+            'invoice_name': billing_request.invoice_name or '',
+            'download_xml_url': f'/portal/billing/download/xml/{request_id}' if billing_request.cfdi_xml_file else None,
+            'download_pdf_url': f'/portal/billing/download/pdf/{request_id}' if (billing_request.cfdi_pdf_file or billing_request.invoice_id) else None,
+        }

@@ -18,6 +18,17 @@ class MercadolibreProductPublish(models.TransientModel):
         required=True,
         domain="[('state', '=', 'connected')]"
     )
+    site_id = fields.Selection([
+        ('MLM', 'Mexico (MLM)'),
+        ('MLA', 'Argentina (MLA)'),
+        ('MLB', 'Brasil (MLB)'),
+        ('MLC', 'Chile (MLC)'),
+        ('MCO', 'Colombia (MCO)'),
+        ('MLU', 'Uruguay (MLU)'),
+        ('MPE', 'Peru (MPE)'),
+        ('MLV', 'Venezuela (MLV)'),
+    ], string='Sitio ML', default='MLM', required=True,
+       help='Sitio de MercadoLibre para obtener categorias')
 
     # Productos a publicar
     product_tmpl_ids = fields.Many2many(
@@ -137,14 +148,57 @@ class MercadolibreProductPublish(models.TransientModel):
         for record in self:
             record.product_count = len(record.product_tmpl_ids)
 
+    @api.model
+    def default_get(self, fields_list):
+        """Sincroniza categorias automaticamente al abrir el wizard"""
+        res = super().default_get(fields_list)
+
+        # Sincronizar categorias raiz si no hay ninguna
+        CategoryModel = self.env['mercadolibre.category']
+        site_id = res.get('site_id', 'MLM')
+
+        existing_categories = CategoryModel.search_count([
+            ('site_id', '=', site_id),
+            ('parent_id', '=', False)  # Solo raiz
+        ])
+
+        if existing_categories == 0:
+            try:
+                CategoryModel.action_sync_root_categories(site_id=site_id)
+            except Exception:
+                pass  # Silenciar errores de conexion
+
+        return res
+
+    @api.onchange('site_id')
+    def _onchange_site_id(self):
+        """Sincroniza categorias cuando cambia el sitio"""
+        if self.site_id:
+            CategoryModel = self.env['mercadolibre.category']
+            existing = CategoryModel.search_count([
+                ('site_id', '=', self.site_id),
+                ('parent_id', '=', False)
+            ])
+            if existing == 0:
+                try:
+                    CategoryModel.action_sync_root_categories(site_id=self.site_id)
+                except Exception:
+                    pass
+            # Limpiar categoria seleccionada si es de otro sitio
+            if self.category_id and self.category_id.site_id != self.site_id:
+                self.category_id = False
+
     @api.onchange('search_category_id')
     def _onchange_search_category_id(self):
         """Busca o crea la categoria por ID de ML"""
         if self.search_category_id:
             CategoryModel = self.env['mercadolibre.category']
+            site_id = self.site_id or 'MLM'
+
             # Buscar si ya existe
             existing = CategoryModel.search([
-                ('ml_category_id', '=', self.search_category_id)
+                ('ml_category_id', '=', self.search_category_id),
+                ('site_id', '=', site_id)
             ], limit=1)
 
             if existing:
@@ -155,7 +209,7 @@ class MercadolibreProductPublish(models.TransientModel):
                 try:
                     category = CategoryModel.get_or_create_from_ml(
                         self.search_category_id,
-                        site_id='MLM'
+                        site_id=site_id
                     )
                     if category:
                         self.category_id = category.id
@@ -166,11 +220,7 @@ class MercadolibreProductPublish(models.TransientModel):
     def action_sync_categories(self):
         """Sincroniza categorias raiz de MercadoLibre"""
         CategoryModel = self.env['mercadolibre.category']
-        # Determinar sitio segun cuenta
-        site_id = 'MLM'  # Default Mexico
-        if self.account_id:
-            # Intentar obtener el sitio de la cuenta
-            site_id = self.account_id.site_id or 'MLM'
+        site_id = self.site_id or 'MLM'
 
         CategoryModel.action_sync_root_categories(site_id=site_id)
 

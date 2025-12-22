@@ -154,11 +154,31 @@
                                     <p class="mb-0">
                                         Número de factura: <strong><t t-esc="billing_request.invoice_name"/></strong>
                                     </p>
+                                    <t t-if="billing_request.folio_fiscal">
+                                        <p class="mb-0 mt-2">
+                                            Folio Fiscal (UUID): <code><t t-esc="billing_request.folio_fiscal"/></code>
+                                        </p>
+                                    </t>
                                     <hr/>
-                                    <p class="mb-0 small">
-                                        La factura será enviada a <strong><t t-esc="billing_request.email"/></strong>
-                                        una vez que sea timbrada por el área de contabilidad.
-                                    </p>
+                                    <t t-if="billing_request.state == 'pending_stamp'">
+                                        <p class="mb-0 small">
+                                            La factura será enviada a <strong><t t-esc="billing_request.email"/></strong>
+                                            una vez que sea timbrada por el área de contabilidad.
+                                        </p>
+                                    </t>
+                                    <t t-if="billing_request.state == 'done' or billing_request.folio_fiscal">
+                                        <div class="d-flex gap-2 mt-3">
+                                            <a t-att-href="'/portal/billing/download/xml/%d' % billing_request.id"
+                                               class="btn btn-outline-primary btn-sm"
+                                               t-if="billing_request.has_cfdi_files">
+                                                <i class="fa fa-file-code-o me-1"></i> Descargar XML
+                                            </a>
+                                            <a t-att-href="'/portal/billing/download/pdf/%d' % billing_request.id"
+                                               class="btn btn-outline-danger btn-sm">
+                                                <i class="fa fa-file-pdf-o me-1"></i> Descargar PDF
+                                            </a>
+                                        </div>
+                                    </t>
                                 </div>
                             </t>
 
@@ -187,6 +207,70 @@
                                     </button>
                                 </t>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Mensajería Cliente-Contador -->
+                    <div class="card mt-4" id="messaging-section">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fa fa-comments me-2"></i>
+                                Comunicación con Contabilidad
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Respuesta del contador (si existe) -->
+                            <t t-if="billing_request.message_to_client">
+                                <div class="alert alert-info mb-3">
+                                    <div class="d-flex">
+                                        <i class="fa fa-user-circle fa-2x me-3 text-info"></i>
+                                        <div>
+                                            <strong>Respuesta de Contabilidad:</strong>
+                                            <p class="mb-0 mt-1"><t t-esc="billing_request.message_to_client"/></p>
+                                            <small class="text-muted">
+                                                <t t-if="billing_request.last_message_date">
+                                                    <t t-esc="billing_request.last_message_date" t-options="{'widget': 'datetime'}"/>
+                                                </t>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <!-- Mensaje anterior del cliente -->
+                            <t t-if="billing_request.message_from_client">
+                                <div class="alert alert-secondary mb-3">
+                                    <div class="d-flex">
+                                        <i class="fa fa-user fa-2x me-3"></i>
+                                        <div>
+                                            <strong>Tu mensaje anterior:</strong>
+                                            <p class="mb-0 mt-1"><t t-esc="billing_request.message_from_client"/></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <!-- Formulario para enviar mensaje -->
+                            <t t-if="billing_request.state in ('pending_stamp', 'error')">
+                                <form id="messageForm" class="mt-3">
+                                    <div class="mb-3">
+                                        <label for="clientMessage" class="form-label">
+                                            Enviar mensaje al contador
+                                        </label>
+                                        <textarea class="form-control" id="clientMessage" rows="3"
+                                                  placeholder="Escriba su mensaje o consulta aquí..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" id="btnSendMessage">
+                                        <i class="fa fa-paper-plane me-1"></i> Enviar Mensaje
+                                    </button>
+                                </form>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0">
+                                    <i class="fa fa-info-circle me-1"></i>
+                                    La mensajería estará disponible cuando la solicitud esté pendiente de timbrado.
+                                </p>
+                            </t>
                         </div>
                     </div>
 
@@ -220,7 +304,7 @@
                 </div>
             </div>
 
-            <!-- Script para actualización automática -->
+            <!-- Script para actualización automática y mensajería -->
             <script>
                 (function() {
                     var requestId = <t t-esc="billing_request.id"/>;
@@ -231,6 +315,58 @@
                         setTimeout(function() {
                             location.reload();
                         }, 5000);
+                    }
+
+                    // Manejar envío de mensajes
+                    var messageForm = document.getElementById('messageForm');
+                    if (messageForm) {
+                        messageForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+
+                            var messageInput = document.getElementById('clientMessage');
+                            var message = messageInput.value.trim();
+
+                            if (!message) {
+                                alert('Por favor escriba un mensaje');
+                                return;
+                            }
+
+                            var btn = document.getElementById('btnSendMessage');
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Enviando...';
+
+                            fetch('/portal/billing/api/send-message/' + requestId, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    jsonrpc: '2.0',
+                                    method: 'call',
+                                    params: { message: message },
+                                    id: Math.floor(Math.random() * 1000000000),
+                                }),
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.result &amp;&amp; data.result.success) {
+                                    // Mostrar éxito y recargar
+                                    alert('Mensaje enviado correctamente');
+                                    location.reload();
+                                } else {
+                                    var errors = data.result &amp;&amp; data.result.errors ? data.result.errors.join(', ') : 'Error desconocido';
+                                    alert('Error: ' + errors);
+                                    btn.disabled = false;
+                                    btn.innerHTML = '<i class="fa fa-paper-plane me-1"></i> Enviar Mensaje';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error de conexión');
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fa fa-paper-plane me-1"></i> Enviar Mensaje';
+                            });
+                        });
                     }
                 })();
             </script>
