@@ -109,42 +109,61 @@ class BillingPortalAPI(http.Controller):
         Retorna:
             {success: bool, orders: [...]}
         """
-        _logger.warning("=" * 60)
-        _logger.warning("API search-orders llamada")
-        # No logear kwargs completos por seguridad (puede contener datos sensibles)
-        _logger.warning("Parámetro search: '%s'", kwargs.get('search', ''))
+        import traceback
+        _logger.warning("=" * 80)
+        _logger.warning("🔍 API SEARCH-ORDERS INICIADA")
+        _logger.warning("=" * 80)
+        _logger.warning("📥 Request recibido en: %s", request.httprequest.path)
+        _logger.warning("📥 Método HTTP: %s", request.httprequest.method)
+        _logger.warning("📥 Content-Type: %s", request.httprequest.content_type)
+        _logger.warning("📥 Parámetro search: '%s'", kwargs.get('search', ''))
 
+        _logger.warning("🔐 Validando sesión...")
         session = self._get_portal_session()
-        _logger.warning("Sesión válida: %s, Es invitado: %s",
-                       session is not None,
-                       session.get('is_guest') if session else 'N/A')
+        _logger.warning("🔐 Sesión obtenida: %s", 'SÍ' if session else 'NO')
+        if session:
+            _logger.warning("🔐 Es invitado: %s", session.get('is_guest', False))
+            _logger.warning("🔐 Receiver ID en sesión: %s", session.get('receiver_id', 'N/A'))
 
         if not session:
-            _logger.warning("No hay sesión válida - retornando error")
+            _logger.warning("❌ No hay sesión válida - retornando error")
+            _logger.warning("=" * 80)
             return {'success': False, 'errors': [_('No autorizado')]}
 
         search_term = kwargs.get('search', '')
-        _logger.warning("Término de búsqueda recibido: '%s'", search_term)
+        _logger.warning("🔎 Término de búsqueda recibido: '%s' (longitud: %d)", search_term, len(search_term))
 
         receiver_id = session.get('receiver_id') if not session.get('is_guest') else None
-        _logger.warning("Receiver ID de sesión: %s", receiver_id)
+        _logger.warning("👤 Receiver ID a usar para filtrar: %s", receiver_id or 'NINGUNO (búsqueda global)')
 
         try:
+            _logger.warning("📞 Llamando a sale.order.search_for_billing_portal()...")
             orders = request.env['sale.order'].sudo().search_for_billing_portal(
                 search_term,
                 receiver_id=receiver_id,
                 limit=50
             )
 
-            _logger.warning("Órdenes encontradas por API: %d", len(orders))
-            _logger.warning("=" * 60)
+            _logger.warning("✅ Búsqueda completada")
+            _logger.warning("📊 Órdenes encontradas: %d", len(orders))
+            if len(orders) > 0:
+                _logger.warning("📊 Primera orden: ID=%s, Name=%s, Ref=%s",
+                               orders[0].get('id'),
+                               orders[0].get('name'),
+                               orders[0].get('client_order_ref'))
+            _logger.warning("=" * 80)
 
             return {
                 'success': True,
                 'orders': orders
             }
         except Exception as e:
-            _logger.exception("Error buscando órdenes")
+            _logger.error("=" * 80)
+            _logger.error("❌ ERROR EN BÚSQUEDA DE ÓRDENES")
+            _logger.error("❌ Tipo de error: %s", type(e).__name__)
+            _logger.error("❌ Mensaje: %s", str(e))
+            _logger.exception("❌ Traceback completo:")
+            _logger.error("=" * 80)
             return {
                 'success': False,
                 'errors': [str(e)]
