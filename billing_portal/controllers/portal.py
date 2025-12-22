@@ -108,7 +108,8 @@ class BillingPortalPrivate(http.Controller):
             # Referencias de órdenes
             order_refs = ', '.join(o.client_order_ref or o.name for o in orders)
 
-            billing_request = request.env['billing.request'].sudo().create({
+            # Crear valores de la solicitud
+            vals = {
                 'user_id': request.env.user.id,
                 'partner_id': request.env.user.partner_id.id,
                 'email': kwargs.get('email') or request.env.user.email,
@@ -122,9 +123,64 @@ class BillingPortalPrivate(http.Controller):
                 'forma_pago_id': int(kwargs.get('forma_pago_id')) if kwargs.get('forma_pago_id') else False,
                 'ip_address': request.httprequest.remote_addr,
                 'user_agent': request.httprequest.user_agent.string,
+            }
+
+            # Guardar datos del CSF si vienen del formulario
+            if kwargs.get('csf_data'):
+                vals['csf_data'] = kwargs.get('csf_data')
+                _logger.info("CSF Data recibido: %s caracteres", len(kwargs.get('csf_data', '')))
+
+            billing_request = request.env['billing.request'].sudo().create(vals)
+            _logger.info("Solicitud creada: %s", billing_request.name)
+
+            # Crear attachment del PDF si viene
+            csf_pdf = kwargs.get('csf_pdf')
+            if csf_pdf:
+                try:
+                    # El PDF viene como data URL: "data:application/pdf;base64,XXXX..."
+                    if ',' in csf_pdf:
+                        pdf_data = csf_pdf.split(',')[1]
+                    else:
+                        pdf_data = csf_pdf
+
+                    attachment = request.env['ir.attachment'].sudo().create({
+                        'name': f'CSF_{billing_request.rfc or billing_request.name}.pdf',
+                        'type': 'binary',
+                        'datas': pdf_data,
+                        'res_model': 'billing.request',
+                        'res_id': billing_request.id,
+                        'mimetype': 'application/pdf',
+                    })
+                    billing_request.write({'csf_attachment_id': attachment.id})
+                    _logger.info("Attachment CSF creado: %s", attachment.name)
+                except Exception as e:
+                    _logger.warning("Error creando attachment CSF: %s", e)
+
+            # Iniciar el proceso de facturación automáticamente
+            # Ya tenemos los datos validados del CSF, así que saltamos directamente a crear partner
+            billing_request.write({
+                'state': 'csf_validated',
+                'progress': 30,
+                'status_message': _('CSF validado, procesando...')
             })
 
-            _logger.info("Solicitud creada: %s", billing_request.name)
+            # Ejecutar el proceso de facturación completo
+            try:
+                # Paso 1: Crear/buscar partner
+                billing_request.action_create_partner()
+                _logger.info("Partner creado/actualizado para solicitud %s", billing_request.name)
+
+                # Paso 2: Crear factura
+                billing_request.action_create_invoice()
+                _logger.info("Factura creada para solicitud %s", billing_request.name)
+
+            except Exception as e:
+                _logger.exception("Error en proceso automático de facturación")
+                billing_request.write({
+                    'state': 'error',
+                    'error_message': str(e),
+                    'progress': 0,
+                })
 
             return request.redirect(f'/portal/billing/progress/{billing_request.id}')
 

@@ -46,6 +46,7 @@
                                 <input type="hidden" id="input-razon-social" name="razon_social"/>
                                 <input type="hidden" id="input-codigo-postal" name="codigo_postal"/>
                                 <input type="hidden" id="input-csf-data" name="csf_data"/>
+                                <input type="hidden" id="input-csf-pdf" name="csf_pdf"/>
                             </div>
                         </div>
 

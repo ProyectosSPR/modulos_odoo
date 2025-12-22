@@ -393,6 +393,12 @@ const CSFUploader = {
         if (dataInput) {
             dataInput.value = JSON.stringify(data);
         }
+
+        // Store PDF base64 in hidden field
+        const pdfInput = document.getElementById('input-csf-pdf');
+        if (pdfInput && this.state.fileBase64) {
+            pdfInput.value = this.state.fileBase64;
+        }
     },
 
     /**
