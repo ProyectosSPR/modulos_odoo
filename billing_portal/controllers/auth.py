@@ -128,8 +128,20 @@ class BillingPortalAuth(http.Controller):
 
         if request.httprequest.method == 'POST':
             _logger.warning("📝 POST recibido - Búsqueda de orden")
-            order_ref = kwargs.get('order_ref', '').strip()
-            _logger.warning("🔎 Referencia buscada: '%s'", order_ref)
+            _logger.warning("=" * 80)
+            _logger.warning("DEBUG - TODOS LOS DATOS DEL POST:")
+            _logger.warning("  1. Parámetro order_ref de función: '%s'", order_ref)
+            _logger.warning("  2. kwargs completo: %s", kwargs)
+            _logger.warning("  3. request.params: %s", dict(request.params))
+            _logger.warning("  4. request.httprequest.form: %s", dict(request.httprequest.form))
+            _logger.warning("  5. request.httprequest.values: %s", dict(request.httprequest.values))
+            _logger.warning("=" * 80)
+
+            # Intentar obtener de múltiples fuentes
+            order_ref = order_ref or kwargs.get('order_ref') or request.params.get('order_ref') or ''
+            order_ref = order_ref.strip() if order_ref else ''
+
+            _logger.warning("🔎 Referencia FINAL buscada: '%s'", order_ref)
 
             if not order_ref:
                 _logger.warning("❌ Referencia vacía")
