@@ -25,6 +25,13 @@ class BillingRequest(models.Model):
     )
 
     # Datos del solicitante
+    user_id = fields.Many2one(
+        'res.users',
+        string='Usuario Solicitante',
+        default=lambda self: self.env.user,
+        tracking=True
+    )
+
     receiver_id = fields.Char(
         string='Receiver ID (ML)',
         index=True,
@@ -302,35 +309,105 @@ class BillingRequest(models.Model):
             'status_message': _('Buscando/creando cliente...')
         })
 
-        # Buscar cliente existente por RFC
-        partner = self.env['res.partner'].search([
-            ('vat', '=', self.rfc)
-        ], limit=1)
-
-        if not partner:
-            # Buscar por email
-            partner = self.env['res.partner'].search([
-                ('email', '=', self.email)
-            ], limit=1)
-
-        csf_data = json.loads(self.csf_data or '{}')
-
-        if partner:
-            # Actualizar datos fiscales
-            partner.write(self._prepare_partner_vals(csf_data))
-            self.partner_created = False
-        else:
-            # Crear nuevo cliente
-            vals = self._prepare_partner_vals(csf_data)
-            vals['customer_rank'] = 1
-            partner = self.env['res.partner'].create(vals)
-            self.partner_created = True
+        partner = self._find_or_create_billing_partner()
 
         self.write({
             'partner_id': partner.id,
             'progress': 50,
             'status_message': _('Cliente %s') % (_('creado') if self.partner_created else _('actualizado'))
         })
+
+        # Actualizar billing_partner_id en las órdenes
+        if self.order_ids:
+            self.order_ids.write({'billing_partner_id': partner.id})
+            _logger.info("Actualizado billing_partner_id=%d en órdenes: %s",
+                        partner.id, self.order_ids.mapped('name'))
+
+    def _find_or_create_billing_partner(self):
+        """
+        Busca o crea el cliente de facturación basándose en el RFC del CSF.
+
+        Orden de búsqueda:
+        1. Por RFC (vat)
+        2. Por email
+        3. Crear nuevo
+
+        También vincula el partner con el usuario de Odoo si existe.
+
+        Returns:
+            res.partner: El partner encontrado o creado
+        """
+        self.ensure_one()
+
+        # 1. Buscar cliente existente por RFC
+        partner = self.env['res.partner'].search([
+            ('vat', '=', self.rfc),
+            ('parent_id', '=', False),  # Solo partners principales
+        ], limit=1)
+
+        if partner:
+            _logger.info("Partner encontrado por RFC %s: %s (ID: %d)",
+                        self.rfc, partner.name, partner.id)
+
+        # 2. Si no se encuentra por RFC, buscar por email
+        if not partner and self.email:
+            partner = self.env['res.partner'].search([
+                ('email', '=', self.email),
+                ('parent_id', '=', False),
+            ], limit=1)
+
+            if partner:
+                _logger.info("Partner encontrado por email %s: %s (ID: %d)",
+                            self.email, partner.name, partner.id)
+
+        csf_data = json.loads(self.csf_data or '{}')
+
+        if partner:
+            # Actualizar datos fiscales del partner existente
+            partner.write(self._prepare_partner_vals(csf_data))
+            self.partner_created = False
+            _logger.info("Partner actualizado con datos del CSF")
+        else:
+            # Crear nuevo cliente
+            vals = self._prepare_partner_vals(csf_data)
+            vals['customer_rank'] = 1
+            partner = self.env['res.partner'].create(vals)
+            self.partner_created = True
+            _logger.info("Nuevo partner creado: %s (ID: %d)", partner.name, partner.id)
+
+        # Vincular partner con usuario de Odoo si el usuario tiene partner diferente
+        self._link_partner_to_user(partner)
+
+        return partner
+
+    def _link_partner_to_user(self, partner):
+        """
+        Vincula el partner de facturación con el usuario de Odoo.
+        Si el usuario ya tiene un partner, este nuevo partner se convierte en
+        un contacto de facturación vinculado.
+        """
+        if not self.user_id:
+            return
+
+        user_partner = self.user_id.partner_id
+
+        # Si el usuario no tiene partner o su partner es el public_user, asignar directamente
+        if not user_partner or user_partner.id == self.env.ref('base.public_partner', raise_if_not_found=False).id:
+            return
+
+        # Si el partner del usuario es diferente al partner de facturación
+        if user_partner.id != partner.id:
+            # Marcar en el partner que está vinculado a este usuario para facturación
+            if not partner.user_ids:
+                # El partner no tiene usuarios, lo vinculamos como contacto de facturación
+                _logger.info("Partner %s vinculado como contacto de facturación del usuario %s",
+                            partner.name, self.user_id.login)
+
+            # Marcar que el CSF fue validado
+            partner.write({
+                'csf_validated': True,
+                'csf_validation_date': fields.Datetime.now(),
+            })
 
     def _prepare_partner_vals(self, csf_data):
         """Prepara los valores para crear/actualizar el cliente"""
@@ -410,10 +487,19 @@ class BillingRequest(models.Model):
                     })
 
                 # Agregar datos fiscales
+                invoice_vals = {}
                 if self.uso_cfdi_id:
-                    invoice.write({'uso_cfdi_id': self.uso_cfdi_id.id})
+                    invoice_vals['uso_cfdi_id'] = self.uso_cfdi_id.id
                 if self.forma_pago_id:
-                    invoice.write({'forma_pago_id': self.forma_pago_id.id})
+                    invoice_vals['forma_pago_id'] = self.forma_pago_id.id
+
+                # Agregar notas de MercadoLibre con referencias de las órdenes
+                ml_notes = self._build_ml_invoice_notes()
+                if ml_notes:
+                    invoice_vals['narration'] = ml_notes
+
+                if invoice_vals:
+                    invoice.write(invoice_vals)
 
                 # Publicar factura
                 invoice.action_post()
@@ -434,6 +520,43 @@ class BillingRequest(models.Model):
                 'state': 'error',
                 'error_message': str(e)
             })
+
+    def _build_ml_invoice_notes(self):
+        """
+        Construye las notas de la factura con referencias de MercadoLibre.
+
+        Incluye:
+        - Referencias de órdenes de venta (client_order_ref)
+        - IDs de órdenes de MercadoLibre (ml_order_id)
+        - IDs de paquetes (ml_pack_id)
+        """
+        notes = []
+
+        for order in self.order_ids:
+            order_notes = []
+
+            # Referencia de la orden
+            if order.client_order_ref:
+                order_notes.append(f"Ref: {order.client_order_ref}")
+            else:
+                order_notes.append(f"Orden: {order.name}")
+
+            # ID de orden ML
+            if order.ml_order_id:
+                order_notes.append(f"ML Order: {order.ml_order_id}")
+
+            # ID de pack ML
+            if order.ml_pack_id:
+                order_notes.append(f"ML Pack: {order.ml_pack_id}")
+
+            if order_notes:
+                notes.append(" | ".join(order_notes))
+
+        if notes:
+            header = _("Referencias MercadoLibre:")
+            return f"{header}\n" + "\n".join(notes)
+
+        return ""
 
     def _create_stamp_activity(self, invoice):
         """Crea actividades para seguimiento de timbrado"""

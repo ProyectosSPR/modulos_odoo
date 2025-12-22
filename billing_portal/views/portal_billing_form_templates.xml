@@ -24,88 +24,28 @@
                                     Los datos fiscales se extraerán automáticamente.
                                 </p>
 
-                                <!-- Dropzone para CSF -->
-                                <div id="csfDropzone" class="csf-dropzone border rounded p-5 text-center mb-3">
-                                    <div class="dropzone-content">
-                                        <i class="fa fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
-                                        <h5>Arrastra tu CSF aquí</h5>
-                                        <p class="text-muted">o haz clic para seleccionar</p>
-                                        <input type="file"
-                                               id="csfFileInput"
-                                               accept=".pdf"
-                                               class="d-none"/>
-                                        <button type="button"
-                                                class="btn btn-outline-primary"
-                                                onclick="document.getElementById('csfFileInput').click()">
-                                            <i class="fa fa-folder-open me-1"></i>
-                                            Seleccionar Archivo
-                                        </button>
-                                    </div>
-                                    <div class="dropzone-uploading d-none">
-                                        <div class="spinner-border text-primary mb-3" role="status"></div>
-                                        <h5>Procesando CSF...</h5>
-                                        <p class="text-muted">Extrayendo datos automáticamente</p>
-                                    </div>
-                                    <div class="dropzone-success d-none">
-                                        <i class="fa fa-check-circle fa-4x text-success mb-3"></i>
-                                        <h5 class="text-success">CSF Validado</h5>
-                                        <p class="csf-filename text-muted"></p>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnChangeCSF">
-                                            <i class="fa fa-sync me-1"></i> Cambiar
-                                        </button>
-                                    </div>
-                                    <div class="dropzone-error d-none">
-                                        <i class="fa fa-exclamation-circle fa-4x text-danger mb-3"></i>
-                                        <h5 class="text-danger">Error de Validación</h5>
-                                        <p class="error-message text-danger"></p>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnRetryCSF">
-                                            <i class="fa fa-redo me-1"></i> Intentar de nuevo
-                                        </button>
-                                    </div>
+                                <!-- Dropzone para CSF (IDs compatibles con csf_uploader.js) -->
+                                <div id="csf-dropzone" class="csf-dropzone border rounded p-5 text-center mb-3" style="cursor: pointer;">
+                                    <i class="fa fa-cloud-upload fa-4x text-muted mb-3"></i>
+                                    <h5>Arrastra tu CSF aquí</h5>
+                                    <p class="text-muted">o haz clic para seleccionar</p>
+                                    <input type="file"
+                                           id="csf-file-input"
+                                           accept=".pdf"
+                                           class="d-none"/>
                                 </div>
 
+                                <!-- Preview del archivo (oculto inicialmente) -->
+                                <div id="csf-preview" style="display: none;"></div>
+
                                 <!-- Datos extraídos (oculto inicialmente) -->
-                                <div id="csfExtractedData" class="d-none">
-                                    <hr/>
-                                    <h6 class="mb-3">
-                                        <i class="fa fa-check-circle text-success me-2"></i>
-                                        Datos extraídos automáticamente
-                                    </h6>
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label class="form-label">RFC</label>
-                                            <input type="text"
-                                                   class="form-control"
-                                                   id="extractedRFC"
-                                                   name="rfc"
-                                                   readonly="readonly"/>
-                                        </div>
-                                        <div class="col-md-8">
-                                            <label class="form-label">Razón Social</label>
-                                            <input type="text"
-                                                   class="form-control"
-                                                   id="extractedRazonSocial"
-                                                   name="razon_social"
-                                                   readonly="readonly"/>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Código Postal</label>
-                                            <input type="text"
-                                                   class="form-control"
-                                                   id="extractedCP"
-                                                   name="codigo_postal"
-                                                   readonly="readonly"/>
-                                        </div>
-                                        <div class="col-md-8">
-                                            <label class="form-label">Régimen Fiscal</label>
-                                            <input type="text"
-                                                   class="form-control"
-                                                   id="extractedRegimen"
-                                                   readonly="readonly"/>
-                                            <input type="hidden" id="extractedRegimenId" name="regimen_fiscal_id"/>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div id="csf-data-container" style="display: none;"></div>
+
+                                <!-- Campos ocultos para el formulario -->
+                                <input type="hidden" id="input-rfc" name="rfc"/>
+                                <input type="hidden" id="input-razon-social" name="razon_social"/>
+                                <input type="hidden" id="input-codigo-postal" name="codigo_postal"/>
+                                <input type="hidden" id="input-csf-data" name="csf_data"/>
                             </div>
                         </div>
 
@@ -233,6 +173,86 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Script para manejar el formulario -->
+            <script type="text/javascript">
+            //<![CDATA[
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📝 Billing Form JS loaded');
+
+                var btnSubmit = document.getElementById('btnSubmit');
+                var stepDatos = document.getElementById('stepDatos');
+
+                // Escuchar cuando se valide el CSF
+                document.addEventListener('csf:validated', function(e) {
+                    console.log('✅ CSF validado:', e.detail);
+
+                    // Habilitar botón de envío
+                    if (btnSubmit) {
+                        btnSubmit.disabled = false;
+                    }
+
+                    // Resaltar paso 2
+                    if (stepDatos) {
+                        stepDatos.querySelector('.card-header').classList.add('bg-primary', 'text-white');
+                        stepDatos.querySelector('.badge').classList.remove('bg-secondary');
+                        stepDatos.querySelector('.badge').classList.add('bg-white', 'text-primary');
+                    }
+                });
+
+                // Escuchar errores de CSF
+                document.addEventListener('csf:error', function(e) {
+                    console.log('❌ Error CSF:', e.detail);
+
+                    // Deshabilitar botón
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                    }
+                });
+
+                // Escuchar cuando se remueva el CSF
+                document.addEventListener('csf:removed', function() {
+                    console.log('🗑️ CSF removido');
+
+                    // Deshabilitar botón
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                    }
+
+                    // Quitar resaltado paso 2
+                    if (stepDatos) {
+                        stepDatos.querySelector('.card-header').classList.remove('bg-primary', 'text-white');
+                        stepDatos.querySelector('.badge').classList.add('bg-secondary');
+                        stepDatos.querySelector('.badge').classList.remove('bg-white', 'text-primary');
+                    }
+                });
+
+                // Validación del formulario antes de enviar
+                var form = document.getElementById('billingForm');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        var rfc = document.getElementById('input-rfc');
+                        var email = document.getElementById('email');
+
+                        if (!rfc || !rfc.value) {
+                            e.preventDefault();
+                            BillingPortal.showToast('Debe subir su CSF primero', 'error');
+                            return false;
+                        }
+
+                        if (!email || !email.value) {
+                            e.preventDefault();
+                            BillingPortal.showToast('El email es requerido', 'error');
+                            return false;
+                        }
+
+                        // Mostrar loading
+                        BillingPortal.showLoading('Procesando solicitud...');
+                    });
+                }
+            });
+            //]]>
+            </script>
         </t>
     </template>
 </odoo>

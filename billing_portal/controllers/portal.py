@@ -8,6 +8,7 @@ from odoo import http, _
 from odoo.http import request
 import logging
 import base64
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -197,19 +198,25 @@ class BillingPortalPrivate(http.Controller):
         """
         Mis órdenes facturables.
         REQUIERE LOGIN.
+
+        Muestra órdenes donde:
+        - El usuario es el partner de la orden
+        - El usuario es el billing_partner (cliente de facturación)
         """
         user = request.env.user
         partner = user.partner_id
 
-        # Buscar órdenes del partner
+        # Buscar órdenes del partner (original o de facturación)
         domain = [
+            '|',
             ('partner_id', '=', partner.id),
+            ('billing_partner_id', '=', partner.id),
         ]
 
         # Filtro de búsqueda
         if search and len(search.strip()) >= 2:
             search = search.strip()
-            domain += [
+            domain = ['&'] + domain + [
                 '|',
                 ('client_order_ref', 'ilike', search),
                 ('name', 'ilike', search),
@@ -310,3 +317,57 @@ class BillingPortalPrivate(http.Controller):
                 ('Content-Length', len(content)),
             ]
         )
+
+    # =========================================
+    # API para validación de CSF
+    # =========================================
+
+    @http.route('/portal/billing/api/validate-csf', type='json', auth='user', methods=['POST'])
+    def api_validate_csf(self, csf_pdf=None, **kwargs):
+        """
+        Validar CSF y extraer datos.
+        REQUIERE LOGIN.
+
+        Args:
+            csf_pdf: PDF en base64 (con o sin prefijo data:application/pdf;base64,)
+
+        Returns:
+            dict con success, method, data, errors
+        """
+        _logger.info("Solicitud de validación de CSF")
+
+        if not csf_pdf:
+            return {
+                'success': False,
+                'errors': [_('No se proporcionó archivo PDF')]
+            }
+
+        try:
+            # Limpiar base64 si tiene prefijo
+            if ',' in csf_pdf:
+                csf_pdf = csf_pdf.split(',')[1]
+
+            # Decodificar PDF
+            pdf_content = base64.b64decode(csf_pdf)
+
+            # Validar con el servicio
+            validator = request.env['billing.csf.validator'].sudo()
+            result = validator.validate_csf(pdf_content)
+
+            _logger.info("Resultado validación CSF: success=%s, method=%s",
+                        result.get('success'), result.get('method'))
+
+            return result
+
+        except base64.binascii.Error:
+            _logger.error("Error decodificando base64")
+            return {
+                'success': False,
+                'errors': [_('Error decodificando archivo PDF')]
+            }
+        except Exception as e:
+            _logger.exception("Error validando CSF")
+            return {
+                'success': False,
+                'errors': [str(e)]
+            }

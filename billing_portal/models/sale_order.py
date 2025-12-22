@@ -3,7 +3,7 @@
 Extensión del modelo sale.order para el portal de facturación.
 """
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -42,6 +42,13 @@ class SaleOrder(models.Model):
         ('approved', 'Aprobado'),
         ('released', 'Liberado'),
     ], string='Estado Pago ML')
+
+    # Partner de facturación (diferente al partner original de la orden)
+    billing_partner_id = fields.Many2one(
+        'res.partner',
+        string='Cliente para Facturación',
+        help='Cliente al que se emitirá la factura (datos fiscales del CSF)'
+    )
 
     # Solicitudes de facturación relacionadas
     billing_request_ids = fields.Many2many(
