@@ -103,19 +103,35 @@ class SaleOrder(models.Model):
         Busca en múltiples campos sin filtros de facturabilidad.
         Usado por el portal de invitados.
         """
+        _logger.warning("=" * 80)
+        _logger.warning("🔎 BÚSQUEDA INVITADO (find_order_by_ref_flexible)")
+        _logger.warning("📥 Referencia buscada: '%s'", ref)
+
         if not ref:
+            _logger.warning("❌ Referencia vacía, retornando vacío")
+            _logger.warning("=" * 80)
             return self.browse()
 
         # Búsqueda flexible en múltiples campos
-        order = self.search([
+        domain = [
             '|', '|', '|', '|',
             ('client_order_ref', '=', ref),
             ('client_order_ref', 'ilike', ref),
             ('name', 'ilike', ref),
             ('ml_order_id', '=', ref),
             ('ml_pack_id', '=', ref),
-        ], limit=1)
+        ]
 
+        _logger.warning("🔍 Dominio de búsqueda: %s", domain)
+        order = self.search(domain, limit=1)
+
+        if order:
+            _logger.warning("✅ Orden encontrada: ID=%d, Name=%s, Ref=%s",
+                           order.id, order.name, order.client_order_ref or 'N/A')
+        else:
+            _logger.warning("❌ No se encontró ninguna orden")
+
+        _logger.warning("=" * 80)
         return order
 
     @api.model
