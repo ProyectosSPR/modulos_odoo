@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Playground Tree View -->
+    <record id="view_ai_playground_tree" model="ir.ui.view">
+        <field name="name">ai.playground.tree</field>
+        <field name="model">ai.playground</field>
+        <field name="arch" type="xml">
+            <tree string="Playground Sessions">
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="simulated_channel"/>
+                <field name="test_partner_id"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Playground Form View -->
+    <record id="view_ai_playground_form" model="ir.ui.view">
+        <field name="name">ai.playground.form</field>
+        <field name="model">ai.playground</field>
+        <field name="arch" type="xml">
+            <form string="AI Playground">
+                <header>
+                    <button name="action_send_message" string="Send Message" type="object" class="btn-primary"/>
+                    <button name="action_clear_chat" string="Clear Chat" type="object" class="btn-secondary" confirm="Clear all messages?"/>
+                    <button name="action_preview_prompt" string="Preview Prompt" type="object" class="btn-secondary"/>
+                    <button name="action_view_conversation" string="View Conversation" type="object" class="btn-secondary" attrs="{'invisible': [('conversation_id', '=', False)]}"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Agent Configuration">
+                            <field name="name"/>
+                            <field name="agent_id"/>
+                            <field name="simulated_channel"/>
+                        </group>
+                        <group string="Test Context">
+                            <field name="test_partner_id"/>
+                            <field name="show_debug"/>
+                            <field name="conversation_id" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Chat" name="chat">
+                            <field name="message_ids" nolabel="1" mode="tree">
+                                <tree create="0" delete="0" default_order="create_date" decoration-info="role == 'user'" decoration-success="role == 'assistant'" decoration-warning="role == 'system'">
+                                    <field name="create_date" string="Time" widget="datetime"/>
+                                    <field name="role"/>
+                                    <field name="content"/>
+                                    <field name="processing_time" string="Time (s)"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Debug Info" name="debug" attrs="{'invisible': [('show_debug', '=', False)]}">
+                            <group>
+                                <field name="last_processing_time"/>
+                                <field name="last_triggered_rules"/>
+                            </group>
+                            <group string="System Prompt">
+                                <field name="last_system_prompt" widget="ace" options="{'mode': 'text'}" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Tools Called">
+                                <field name="last_tools_called" widget="ace" options="{'mode': 'json'}" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Raw Response">
+                                <field name="last_raw_response" widget="ace" options="{'mode': 'json'}" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Additional Context" name="context">
+                            <group>
+                                <field name="test_context" widget="ace" options="{'mode': 'json'}" placeholder='{"custom_var": "value"}' nolabel="1"/>
+                            </group>
+                            <group class="oe_edit_only">
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Context Variables:</strong> Add custom variables to test different scenarios.
+                                    <br/>These will be available as {{variable}} in prompts.
+                                    <br/>Example: {"order_id": "SO001", "urgency": "high"}
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Playground Search View -->
+    <record id="view_ai_playground_search" model="ir.ui.view">
+        <field name="name">ai.playground.search</field>
+        <field name="model">ai.playground</field>
+        <field name="arch" type="xml">
+            <search string="Playground Sessions">
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="test_partner_id"/>
+                <group expand="0" string="Group By">
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Channel" name="group_channel" context="{'group_by': 'simulated_channel'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Playground Action -->
+    <record id="action_ai_playground" model="ir.actions.act_window">
+        <field name="name">Playground</field>
+        <field name="res_model">ai.playground</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_playground_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new playground session
+            </p>
+            <p>
+                Test your AI agents with different contexts and simulate various channels.
+            </p>
+        </field>
+    </record>
+
+    <!-- Send Message Wizard -->
+    <record id="view_ai_playground_send_wizard_form" model="ir.ui.view">
+        <field name="name">ai.playground.send.wizard.form</field>
+        <field name="model">ai.playground.send.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Send Message">
+                <group>
+                    <field name="playground_id" invisible="1"/>
+                    <field name="quick_message"/>
+                    <field name="message" placeholder="Type your message here..."/>
+                </group>
+                <footer>
+                    <button name="action_send" string="Send" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Playground Message Form (for detail view) -->
+    <record id="view_ai_playground_message_form" model="ir.ui.view">
+        <field name="name">ai.playground.message.form</field>
+        <field name="model">ai.playground.message</field>
+        <field name="arch" type="xml">
+            <form string="Message" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="role"/>
+                            <field name="create_date"/>
+                            <field name="processing_time"/>
+                        </group>
+                    </group>
+                    <group string="Content">
+                        <field name="content" nolabel="1"/>
+                    </group>
+                    <group string="Tools Called" attrs="{'invisible': [('tools_called', '=', False)]}">
+                        <field name="tools_called" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

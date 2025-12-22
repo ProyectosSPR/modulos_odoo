@@ -37,13 +37,15 @@ class BillingCustomerPortal(CustomerPortal):
         Dominio de /my/orders - MISMA LÓGICA que /portal/billing/orders
         Busca por partner_id O billing_partner_id (que SÍ funciona)
         """
-        # Misma lógica que funciona en /portal/billing/orders
-        return [
+        domain = [
             '|',
             ('partner_id', '=', partner.id),
             ('billing_partner_id', '=', partner.id),
             ('state', 'in', ['sale', 'done']),
         ]
+        _logger.info("=== BILLING PORTAL: _prepare_orders_domain called for partner %s (id=%s) ===", partner.name, partner.id)
+        _logger.info("=== BILLING PORTAL: Domain = %s ===", domain)
+        return domain
 
     def _prepare_quotations_domain(self, partner):
         """

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ai_playground_user,ai.playground.user,model_ai_playground,ai_agent_core.group_ai_user,1,1,1,1
+access_ai_playground_message_user,ai.playground.message.user,model_ai_playground_message,ai_agent_core.group_ai_user,1,1,1,1
+access_ai_playground_send_wizard_user,ai.playground.send.wizard.user,model_ai_playground_send_wizard,ai_agent_core.group_ai_user,1,1,1,1
