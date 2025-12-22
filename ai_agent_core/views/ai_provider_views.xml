@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Provider Tree View -->
+    <record id="view_ai_provider_tree" model="ir.ui.view">
+        <field name="name">ai.agent.provider.tree</field>
+        <field name="model">ai.agent.provider</field>
+        <field name="arch" type="xml">
+            <tree string="LLM Providers">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="provider_type"/>
+                <field name="default_model"/>
+                <field name="last_test_status" widget="badge" decoration-success="last_test_status == 'success'" decoration-danger="last_test_status == 'failed'"/>
+                <field name="total_requests"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Provider Form View -->
+    <record id="view_ai_provider_form" model="ir.ui.view">
+        <field name="name">ai.agent.provider.form</field>
+        <field name="model">ai.agent.provider</field>
+        <field name="arch" type="xml">
+            <form string="LLM Provider">
+                <header>
+                    <button name="action_test_connection" string="Test Connection" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Connection OK" bg_color="bg-success" attrs="{'invisible': [('last_test_status', '!=', 'success')]}"/>
+                    <widget name="web_ribbon" title="Connection Failed" bg_color="bg-danger" attrs="{'invisible': [('last_test_status', '!=', 'failed')]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Provider Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Provider Configuration">
+                            <field name="provider_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="api_key" password="True" attrs="{'invisible': [('provider_type', '=', 'ollama')], 'required': [('provider_type', '!=', 'ollama')]}"/>
+                            <field name="api_base_url" attrs="{'invisible': [('provider_type', 'not in', ['ollama', 'azure_openai'])]}"/>
+                        </group>
+                        <group string="Model Settings">
+                            <field name="default_model"/>
+                            <field name="available_models" placeholder="model1, model2, model3"/>
+                            <field name="active"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Connection Status" name="status">
+                            <group>
+                                <group string="Last Test">
+                                    <field name="last_test_date"/>
+                                    <field name="last_test_status" widget="badge" decoration-success="last_test_status == 'success'" decoration-danger="last_test_status == 'failed'"/>
+                                </group>
+                                <group string="Usage Statistics">
+                                    <field name="total_requests"/>
+                                    <field name="total_tokens_used"/>
+                                </group>
+                            </group>
+                            <group attrs="{'invisible': [('last_test_message', '=', False)]}">
+                                <field name="last_test_message" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+                        <page string="Available Models" name="models">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Available models for this provider:</strong>
+                                <p><field name="available_models" readonly="1"/></p>
+                            </div>
+                            <group string="Common Models by Provider">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Google Gemini</h5>
+                                        <ul>
+                                            <li><code>gemini-1.5-flash</code> - Fast, efficient</li>
+                                            <li><code>gemini-1.5-pro</code> - Most capable</li>
+                                            <li><code>gemini-2.0-flash-exp</code> - Experimental</li>
+                                        </ul>
+                                        <h5>OpenAI</h5>
+                                        <ul>
+                                            <li><code>gpt-4o</code> - Latest multimodal</li>
+                                            <li><code>gpt-4o-mini</code> - Fast and cheap</li>
+                                            <li><code>gpt-4-turbo</code> - Previous generation</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Anthropic</h5>
+                                        <ul>
+                                            <li><code>claude-3-5-sonnet-latest</code> - Best balance</li>
+                                            <li><code>claude-3-5-haiku-latest</code> - Fastest</li>
+                                            <li><code>claude-3-opus-latest</code> - Most capable</li>
+                                        </ul>
+                                        <h5>Ollama (Local)</h5>
+                                        <ul>
+                                            <li><code>llama3.2</code> - Meta's latest</li>
+                                            <li><code>mistral</code> - Efficient</li>
+                                            <li><code>codellama</code> - Code focused</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Provider Search View -->
+    <record id="view_ai_provider_search" model="ir.ui.view">
+        <field name="name">ai.agent.provider.search</field>
+        <field name="model">ai.agent.provider</field>
+        <field name="arch" type="xml">
+            <search string="LLM Providers">
+                <field name="name"/>
+                <field name="provider_type"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Connection OK" name="connected" domain="[('last_test_status', '=', 'success')]"/>
+                <filter string="Connection Failed" name="failed" domain="[('last_test_status', '=', 'failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Provider Type" name="group_type" context="{'group_by': 'provider_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Provider Action -->
+    <record id="action_ai_provider" model="ir.actions.act_window">
+        <field name="name">LLM Providers</field>
+        <field name="res_model">ai.agent.provider</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_provider_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure your first LLM Provider
+            </p>
+            <p>
+                Add API keys for Gemini, OpenAI, Anthropic, or configure local Ollama.
+            </p>
+        </field>
+    </record>
+</odoo>

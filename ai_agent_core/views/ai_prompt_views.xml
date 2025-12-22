@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Prompt Template Tree View -->
+    <record id="view_ai_prompt_template_tree" model="ir.ui.view">
+        <field name="name">ai.agent.prompt.template.tree</field>
+        <field name="model">ai.agent.prompt.template</field>
+        <field name="arch" type="xml">
+            <tree string="Prompt Templates">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category"/>
+                <field name="variable_names"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Prompt Template Form View -->
+    <record id="view_ai_prompt_template_form" model="ir.ui.view">
+        <field name="name">ai.agent.prompt.template.form</field>
+        <field name="model">ai.agent.prompt.template</field>
+        <field name="arch" type="xml">
+            <form string="Prompt Template">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="category"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="variable_names" readonly="1"/>
+                            <field name="description"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="content" widget="ace" options="{'mode': 'text'}" placeholder="Enter template content. Use {{variable}} for placeholders."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Prompt Template Action -->
+    <record id="action_ai_prompt_template" model="ir.actions.act_window">
+        <field name="name">Prompt Templates</field>
+        <field name="res_model">ai.agent.prompt.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create reusable prompt templates
+            </p>
+            <p>
+                Templates can be used across multiple agents for consistent behavior.
+            </p>
+        </field>
+    </record>
+</odoo>
