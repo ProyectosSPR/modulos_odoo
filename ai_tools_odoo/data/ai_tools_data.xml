@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Search Products Tool -->
+        <record id="ai_tool_search_products" model="ai.agent.tool">
+            <field name="name">Search Products</field>
+            <field name="technical_name">search_products</field>
+            <field name="description">Search products by name, reference, or barcode. Returns product name, price, and stock availability. Use when customer asks about products, prices, or availability.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">products</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "query": {
+            "type": "string",
+            "description": "Product name, reference code, or barcode to search"
+        },
+        "category": {
+            "type": "string",
+            "description": "Optional product category to filter results"
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Maximum number of results",
+            "default": 5
+        }
+    },
+    "required": ["query"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Product Details Tool -->
+        <record id="ai_tool_get_product_details" model="ai.agent.tool">
+            <field name="name">Get Product Details</field>
+            <field name="technical_name">get_product_details</field>
+            <field name="description">Get detailed information about a specific product including price, stock, category, and description. Use when customer wants complete product information.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">products</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "product_ref": {
+            "type": "string",
+            "description": "Product reference code or exact product name"
+        }
+    },
+    "required": ["product_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Check Stock Tool -->
+        <record id="ai_tool_check_stock" model="ai.agent.tool">
+            <field name="name">Check Stock</field>
+            <field name="technical_name">check_stock</field>
+            <field name="description">Check stock availability for a specific product. Can filter by warehouse. Use when customer asks about availability or inventory.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">inventory</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "product_ref": {
+            "type": "string",
+            "description": "Product reference code or name"
+        },
+        "warehouse": {
+            "type": "string",
+            "description": "Optional warehouse name to check specific location"
+        }
+    },
+    "required": ["product_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Order Status Tool -->
+        <record id="ai_tool_get_order_status" model="ai.agent.tool">
+            <field name="name">Get Order Status</field>
+            <field name="technical_name">get_order_status</field>
+            <field name="description">Get the status of a sales order including delivery and payment status. Use when customer asks about their order, delivery, or shipment.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">sales</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "order_ref": {
+            "type": "string",
+            "description": "Order number (e.g., SO001) or client reference"
+        }
+    },
+    "required": ["order_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Customer Orders Tool -->
+        <record id="ai_tool_get_customer_orders" model="ai.agent.tool">
+            <field name="name">Get Customer Orders</field>
+            <field name="technical_name">get_customer_orders</field>
+            <field name="description">Get recent orders for a customer. Use when customer asks about their order history or recent purchases.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">sales</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "customer_ref": {
+            "type": "string",
+            "description": "Customer name, email, or phone number"
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Maximum orders to return",
+            "default": 5
+        }
+    },
+    "required": ["customer_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Invoice Status Tool -->
+        <record id="ai_tool_get_invoice_status" model="ai.agent.tool">
+            <field name="name">Get Invoice Status</field>
+            <field name="technical_name">get_invoice_status</field>
+            <field name="description">Get invoice details and payment status. Use when customer asks about invoices, bills, or payments.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">accounting</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "invoice_ref": {
+            "type": "string",
+            "description": "Invoice number or reference"
+        }
+    },
+    "required": ["invoice_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Customer Balance Tool -->
+        <record id="ai_tool_get_customer_balance" model="ai.agent.tool">
+            <field name="name">Get Customer Balance</field>
+            <field name="technical_name">get_customer_balance</field>
+            <field name="description">Get customer account balance and pending invoices. Use when customer asks about their account status or amounts owed.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">accounting</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "customer_ref": {
+            "type": "string",
+            "description": "Customer name, email, or reference"
+        }
+    },
+    "required": ["customer_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Customer Info Tool -->
+        <record id="ai_tool_get_customer_info" model="ai.agent.tool">
+            <field name="name">Get Customer Info</field>
+            <field name="technical_name">get_customer_info</field>
+            <field name="description">Get customer contact information including address, phone, and email. Use when you need to verify or provide customer details.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">contacts</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "customer_ref": {
+            "type": "string",
+            "description": "Customer name, email, phone, or tax ID (VAT/CUIT)"
+        }
+    },
+    "required": ["customer_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get Lead Info Tool -->
+        <record id="ai_tool_get_lead_info" model="ai.agent.tool">
+            <field name="name">Get Lead Info</field>
+            <field name="technical_name">get_lead_info</field>
+            <field name="description">Get CRM lead or opportunity information. Use when you need details about a sales opportunity.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">crm</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "lead_ref": {
+            "type": "string",
+            "description": "Lead or opportunity name"
+        }
+    },
+    "required": ["lead_ref"]
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Create Activity Task Tool (enhanced version) -->
+        <record id="ai_tool_create_activity_task_odoo" model="ai.agent.tool">
+            <field name="name">Create Activity Task</field>
+            <field name="technical_name">create_activity_task</field>
+            <field name="description">Create a pending task for human review. Use when customer requests something that needs manual processing like: requesting an invoice, asking for a quote, reporting a problem, requesting a callback, or any action that requires human intervention.</field>
+            <field name="tool_type">builtin</field>
+            <field name="category">general</field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "task_type": {
+            "type": "string",
+            "description": "Type of task to create",
+            "enum": ["create_invoice", "create_lead", "create_ticket", "send_quote", "create_task", "schedule_call", "send_email", "custom"]
+        },
+        "description": {
+            "type": "string",
+            "description": "Clear description of what needs to be done"
+        },
+        "extracted_data": {
+            "type": "object",
+            "description": "Relevant data extracted from conversation: customer_ref, amounts, product names, dates, etc."
+        },
+        "priority": {
+            "type": "string",
+            "description": "Priority level: 0=low, 1=normal, 2=high, 3=urgent",
+            "default": "1"
+        }
+    },
+    "required": ["task_type", "description"]
+}</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>
