@@ -53,6 +53,8 @@ Características:
         'views/portal_orders_templates.xml',
         'views/portal_billing_form_templates.xml',
         'views/portal_progress_templates.xml',
+        # Integración con Portal Estándar de Odoo
+        'views/portal_integration_templates.xml',
     ],
     'assets': {
         'web.assets_frontend': [

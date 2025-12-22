@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================
+         Integración con Portal Estándar de Odoo
+         ============================================ -->
+
+    <!-- Breadcrumbs para las páginas de facturación -->
+    <template id="portal_my_home_menu_billing" name="Portal layout: billing menu entries" inherit_id="portal.portal_breadcrumbs" priority="40">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <!-- Breadcrumb para órdenes facturables -->
+            <li t-if="page_name == 'billing_orders'" class="breadcrumb-item active">
+                Órdenes Facturables
+            </li>
+            <!-- Breadcrumb para solicitudes de factura -->
+            <li t-if="page_name == 'billing_requests'" class="breadcrumb-item active">
+                Solicitudes de Factura
+            </li>
+            <!-- Breadcrumb para detalle de solicitud -->
+            <li t-if="page_name == 'billing_request_detail'" class="breadcrumb-item">
+                <a href="/my/billing/requests">Solicitudes de Factura</a>
+            </li>
+            <li t-if="page_name == 'billing_request_detail' and billing_request" class="breadcrumb-item active">
+                <t t-esc="billing_request.name"/>
+            </li>
+        </xpath>
+    </template>
+
+    <!-- Agregar entradas al portal home -->
+    <template id="portal_my_home_billing" name="Portal Facturación" customize_show="True" inherit_id="portal.portal_my_home" priority="40">
+        <!-- Habilitar la categoría de cliente si no está habilitada -->
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
+            <t t-set="portal_client_category_enable" t-value="True"/>
+        </xpath>
+
+        <!-- Agregar entrada de Órdenes Facturables -->
+        <div id="portal_client_category" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/billing_portal/static/src/img/invoice-order.svg'"/>
+                <t t-set="title">Solicitar Factura</t>
+                <t t-set="url" t-value="'/my/billing/orders'"/>
+                <t t-set="text">Selecciona tus órdenes para facturar</t>
+                <t t-set="placeholder_count" t-value="'billing_orders_count'"/>
+            </t>
+        </div>
+
+        <!-- Agregar entrada de Solicitudes de Factura (historial) -->
+        <div id="portal_client_category" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/billing_portal/static/src/img/invoice-history.svg'"/>
+                <t t-set="title">Mis Solicitudes de Factura</t>
+                <t t-set="url" t-value="'/my/billing/requests'"/>
+                <t t-set="text">Historial y estado de tus solicitudes</t>
+                <t t-set="placeholder_count" t-value="'billing_requests_count'"/>
+            </t>
+        </div>
+    </template>
+
+    <!-- ============================================
+         Página: Lista de Órdenes Facturables
+         ============================================ -->
+    <template id="portal_my_billing_orders" name="Órdenes Facturables">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Órdenes Facturables</t>
+            </t>
+
+            <!-- Instrucciones -->
+            <div class="alert alert-info mb-4" role="alert">
+                <i class="fa fa-info-circle me-2"></i>
+                <strong>Selecciona las órdenes</strong> que deseas facturar y haz clic en "Solicitar Factura".
+                Puedes seleccionar varias órdenes para facturarlas juntas.
+            </div>
+
+            <div t-if="not orders" class="alert alert-warning" role="alert">
+                <i class="fa fa-exclamation-triangle me-2"></i>
+                No tienes órdenes disponibles para facturar en este momento.
+            </div>
+
+            <form t-if="orders" action="/my/billing/request" method="get" id="billingOrdersForm">
+                <!-- Barra de acciones -->
+                <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom">
+                    <div>
+                        <span class="text-muted">
+                            <span id="selectedCount">0</span> órdenes seleccionadas
+                        </span>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btnRequestInvoice" disabled="disabled">
+                        <i class="fa fa-file-text me-1"></i> Solicitar Factura
+                    </button>
+                </div>
+
+                <t t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th class="text-center" style="width: 40px;">
+                                <input type="checkbox" id="selectAll" class="form-check-input"/>
+                            </th>
+                            <th>Referencia</th>
+                            <th class="text-end">Fecha</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="orders" t-as="order">
+                            <tr class="order-row" t-att-data-order-id="order.id">
+                                <td class="text-center">
+                                    <input type="checkbox"
+                                           name="order_ids"
+                                           t-att-value="order.id"
+                                           class="form-check-input order-checkbox"/>
+                                </td>
+                                <td>
+                                    <strong t-esc="order.client_order_ref or order.name"/>
+                                    <br/>
+                                    <small class="text-muted" t-esc="order.name"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="order.date_order" t-options="{'widget': 'date'}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="order.amount_total"/>
+                                </td>
+                                <td class="text-center">
+                                    <span t-if="order.state == 'sale'" class="badge bg-success">Confirmada</span>
+                                    <span t-elif="order.state == 'done'" class="badge bg-primary">Completada</span>
+                                    <span t-else="" class="badge bg-secondary" t-esc="order.state"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </t>
+            </form>
+
+            <!-- JavaScript para manejo de selección -->
+            <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                const selectAll = document.getElementById('selectAll');
+                const checkboxes = document.querySelectorAll('.order-checkbox');
+                const selectedCount = document.getElementById('selectedCount');
+                const btnRequest = document.getElementById('btnRequestInvoice');
+
+                function updateSelection() {
+                    const checked = document.querySelectorAll('.order-checkbox:checked');
+                    selectedCount.textContent = checked.length;
+                    btnRequest.disabled = checked.length === 0;
+                }
+
+                if (selectAll) {
+                    selectAll.addEventListener('change', function() {
+                        checkboxes.forEach(cb => cb.checked = this.checked);
+                        updateSelection();
+                    });
+                }
+
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', updateSelection);
+                });
+
+                // Click en fila selecciona checkbox
+                document.querySelectorAll('.order-row').forEach(row => {
+                    row.addEventListener('click', function(e) {
+                        if (e.target.type !== 'checkbox') {
+                            const cb = this.querySelector('.order-checkbox');
+                            cb.checked = !cb.checked;
+                            updateSelection();
+                        }
+                    });
+                    row.style.cursor = 'pointer';
+                });
+            });
+            </script>
+        </t>
+    </template>
+
+    <!-- ============================================
+         Página: Lista de Solicitudes de Factura
+         ============================================ -->
+    <template id="portal_my_billing_requests" name="Solicitudes de Factura">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Mis Solicitudes de Factura</t>
+            </t>
+
+            <div t-if="not billing_requests" class="alert alert-info" role="alert">
+                <i class="fa fa-info-circle me-2"></i>
+                No tienes solicitudes de factura aún.
+                <a href="/my/billing/orders" class="alert-link">Solicita tu primera factura aquí</a>.
+            </div>
+
+            <t t-if="billing_requests" t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>Solicitud</th>
+                        <th>RFC</th>
+                        <th class="text-end">Fecha</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="billing_requests" t-as="req">
+                        <tr>
+                            <td>
+                                <a t-attf-href="/my/billing/request/#{req.id}">
+                                    <strong t-esc="req.name"/>
+                                </a>
+                                <br/>
+                                <small class="text-muted" t-esc="req.order_references or ''"/>
+                            </td>
+                            <td>
+                                <span t-esc="req.rfc or '-'"/>
+                            </td>
+                            <td class="text-end">
+                                <span t-field="req.create_date" t-options="{'widget': 'date'}"/>
+                            </td>
+                            <td class="text-center">
+                                <!-- Estados con colores apropiados -->
+                                <span t-if="req.state == 'draft'" class="badge bg-secondary">
+                                    <i class="fa fa-clock-o"></i> Borrador
+                                </span>
+                                <span t-elif="req.state == 'validating_csf'" class="badge bg-info">
+                                    <i class="fa fa-spinner fa-spin"></i> Validando CSF
+                                </span>
+                                <span t-elif="req.state == 'csf_validated'" class="badge bg-info">
+                                    <i class="fa fa-check"></i> CSF Validado
+                                </span>
+                                <span t-elif="req.state == 'creating_partner'" class="badge bg-info">
+                                    <i class="fa fa-spinner fa-spin"></i> Creando Cliente
+                                </span>
+                                <span t-elif="req.state == 'creating_invoice'" class="badge bg-info">
+                                    <i class="fa fa-spinner fa-spin"></i> Creando Factura
+                                </span>
+                                <span t-elif="req.state == 'pending_stamp'" class="badge bg-warning text-dark">
+                                    <i class="fa fa-clock-o"></i> En Revisión
+                                </span>
+                                <span t-elif="req.state == 'stamped'" class="badge bg-success">
+                                    <i class="fa fa-check-circle"></i> Timbrada
+                                </span>
+                                <span t-elif="req.state == 'sent'" class="badge bg-success">
+                                    <i class="fa fa-envelope"></i> Enviada
+                                </span>
+                                <span t-elif="req.state == 'error'" class="badge bg-danger">
+                                    <i class="fa fa-exclamation-triangle"></i> Error
+                                </span>
+                                <span t-elif="req.state == 'cancelled'" class="badge bg-dark">
+                                    <i class="fa fa-times"></i> Cancelada
+                                </span>
+                                <span t-else="" class="badge bg-secondary" t-esc="req.state"/>
+                            </td>
+                            <td class="text-end">
+                                <a t-attf-href="/my/billing/request/#{req.id}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fa fa-eye"></i> Ver
+                                </a>
+                                <!-- Botones de descarga si está timbrada -->
+                                <t t-if="req.state in ('stamped', 'sent')">
+                                    <a t-if="req.cfdi_xml_file"
+                                       t-attf-href="/portal/billing/download/xml/#{req.id}"
+                                       class="btn btn-sm btn-outline-secondary ms-1"
+                                       title="Descargar XML">
+                                        <i class="fa fa-file-code-o"></i>
+                                    </a>
+                                    <a t-attf-href="/portal/billing/download/pdf/#{req.id}"
+                                       class="btn btn-sm btn-outline-secondary ms-1"
+                                       title="Descargar PDF">
+                                        <i class="fa fa-file-pdf-o"></i>
+                                    </a>
+                                </t>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </t>
+        </t>
+    </template>
+
+    <!-- ============================================
+         Página: Detalle de Solicitud de Factura
+         ============================================ -->
+    <template id="portal_billing_request_detail" name="Detalle Solicitud Factura">
+        <t t-call="portal.portal_layout">
+            <t t-set="no_breadcrumbs" t-value="False"/>
+
+            <div class="row">
+                <!-- Columna principal -->
+                <div class="col-lg-8">
+                    <!-- Encabezado -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0">
+                            <i class="fa fa-file-text-o me-2"></i>
+                            Solicitud <t t-esc="billing_request.name"/>
+                        </h3>
+                        <!-- Estado destacado -->
+                        <span t-if="billing_request.state == 'pending_stamp'"
+                              class="badge bg-warning text-dark fs-6">
+                            <i class="fa fa-clock-o"></i> En Revisión por Contabilidad
+                        </span>
+                        <span t-elif="billing_request.state in ('stamped', 'sent')"
+                              class="badge bg-success fs-6">
+                            <i class="fa fa-check-circle"></i> Factura Lista
+                        </span>
+                        <span t-elif="billing_request.state == 'error'"
+                              class="badge bg-danger fs-6">
+                            <i class="fa fa-exclamation-triangle"></i> Error
+                        </span>
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Progreso</span>
+                                <span><t t-esc="billing_request.progress"/>%</span>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar"
+                                     role="progressbar"
+                                     t-attf-style="width: #{billing_request.progress}%"
+                                     t-att-class="'progress-bar ' + ('bg-success' if billing_request.progress == 100 else 'bg-primary')"
+                                     t-att-aria-valuenow="billing_request.progress"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <p class="text-muted mt-2 mb-0">
+                                <t t-esc="billing_request.status_message or 'Procesando...'"/>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Información del mensaje de error si existe -->
+                    <div t-if="billing_request.state == 'error' and billing_request.error_message"
+                         class="alert alert-danger mb-4">
+                        <h5><i class="fa fa-exclamation-triangle me-2"></i>Error en el proceso</h5>
+                        <p t-esc="billing_request.error_message"/>
+                    </div>
+
+                    <!-- Datos fiscales -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fa fa-building me-2"></i>Datos Fiscales</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>RFC:</strong> <t t-esc="billing_request.rfc or '-'"/></p>
+                                    <p><strong>Razón Social:</strong> <t t-esc="billing_request.razon_social or '-'"/></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Código Postal:</strong> <t t-esc="billing_request.codigo_postal or '-'"/></p>
+                                    <p><strong>Email:</strong> <t t-esc="billing_request.email or '-'"/></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Órdenes incluidas -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fa fa-shopping-cart me-2"></i>Órdenes Incluidas</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Orden</th>
+                                        <th>Referencia</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="billing_request.order_ids" t-as="order">
+                                        <tr>
+                                            <td t-esc="order.name"/>
+                                            <td t-esc="order.client_order_ref or '-'"/>
+                                            <td class="text-end">
+                                                <span t-field="order.amount_total"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Chat con contabilidad (solo si está en revisión) -->
+                    <div t-if="billing_request.state in ('pending_stamp', 'error')" class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fa fa-comments me-2"></i>
+                                Comunicación con Contabilidad
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Mensajes existentes -->
+                            <div t-if="billing_request.message_from_accounting" class="mb-3 p-3 bg-light rounded">
+                                <strong class="text-primary">
+                                    <i class="fa fa-user-circle me-1"></i> Contabilidad:
+                                </strong>
+                                <p class="mb-0 mt-2" t-esc="billing_request.message_from_accounting"/>
+                            </div>
+
+                            <div t-if="billing_request.message_from_client" class="mb-3 p-3 bg-info bg-opacity-10 rounded">
+                                <strong class="text-info">
+                                    <i class="fa fa-user me-1"></i> Tu mensaje:
+                                </strong>
+                                <p class="mb-0 mt-2" t-esc="billing_request.message_from_client"/>
+                            </div>
+
+                            <!-- Formulario para enviar mensaje -->
+                            <div id="chat-form">
+                                <textarea id="messageText"
+                                          class="form-control mb-2"
+                                          rows="3"
+                                          placeholder="Escribe un mensaje para el equipo de contabilidad..."></textarea>
+                                <button type="button"
+                                        class="btn btn-primary"
+                                        id="btnSendMessage"
+                                        t-att-data-request-id="billing_request.id">
+                                    <i class="fa fa-paper-plane me-1"></i> Enviar Mensaje
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <!-- Acciones rápidas -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Acciones</h5>
+                        </div>
+                        <div class="card-body d-grid gap-2">
+                            <a href="/my/billing/orders" class="btn btn-outline-primary">
+                                <i class="fa fa-plus me-1"></i> Nueva Solicitud
+                            </a>
+                            <a href="/my/billing/requests" class="btn btn-outline-secondary">
+                                <i class="fa fa-list me-1"></i> Ver Todas
+                            </a>
+                            <!-- Descargas si está timbrada -->
+                            <t t-if="billing_request.state in ('stamped', 'sent')">
+                                <hr/>
+                                <h6>Descargar Factura</h6>
+                                <a t-if="billing_request.cfdi_xml_file"
+                                   t-attf-href="/portal/billing/download/xml/#{billing_request.id}"
+                                   class="btn btn-success">
+                                    <i class="fa fa-file-code-o me-1"></i> Descargar XML
+                                </a>
+                                <a t-attf-href="/portal/billing/download/pdf/#{billing_request.id}"
+                                   class="btn btn-danger">
+                                    <i class="fa fa-file-pdf-o me-1"></i> Descargar PDF
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- Info adicional -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Información</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <i class="fa fa-calendar me-2 text-muted"></i>
+                                <strong>Creada:</strong>
+                                <span t-field="billing_request.create_date" t-options="{'widget': 'datetime'}"/>
+                            </p>
+                            <p class="mb-2" t-if="billing_request.invoice_id">
+                                <i class="fa fa-file-text me-2 text-muted"></i>
+                                <strong>Factura:</strong>
+                                <t t-esc="billing_request.invoice_id.name"/>
+                            </p>
+                            <p class="mb-0" t-if="billing_request.uso_cfdi_id">
+                                <i class="fa fa-tag me-2 text-muted"></i>
+                                <strong>Uso CFDI:</strong>
+                                <t t-esc="billing_request.uso_cfdi_id.display_name"/>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script para el chat -->
+            <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                const btnSend = document.getElementById('btnSendMessage');
+                const messageText = document.getElementById('messageText');
+
+                if (btnSend &amp;&amp; messageText) {
+                    btnSend.addEventListener('click', function() {
+                        const requestId = this.dataset.requestId;
+                        const message = messageText.value.trim();
+
+                        if (!message) {
+                            alert('Por favor escribe un mensaje');
+                            return;
+                        }
+
+                        btnSend.disabled = true;
+                        btnSend.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
+
+                        fetch('/portal/billing/api/send-message/' + requestId, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                jsonrpc: '2.0',
+                                method: 'call',
+                                params: { message: message }
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.result &amp;&amp; data.result.success) {
+                                location.reload();
+                            } else {
+                                const errors = data.result?.errors || ['Error al enviar'];
+                                alert(errors.join('\n'));
+                                btnSend.disabled = false;
+                                btnSend.innerHTML = '<i class="fa fa-paper-plane me-1"></i> Enviar Mensaje';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error de conexión');
+                            btnSend.disabled = false;
+                            btnSend.innerHTML = '<i class="fa fa-paper-plane me-1"></i> Enviar Mensaje';
+                        });
+                    });
+                }
+            });
+            </script>
+        </t>
+    </template>
+</odoo>
