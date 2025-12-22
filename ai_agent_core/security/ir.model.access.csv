@@ -20,3 +20,6 @@ access_ai_conversation_user,ai.conversation.user,model_ai_conversation,group_ai_
 access_ai_conversation_manager,ai.conversation.manager,model_ai_conversation,group_ai_manager,1,1,1,1
 access_ai_conversation_message_user,ai.conversation.message.user,model_ai_conversation_message,group_ai_user,1,0,0,0
 access_ai_conversation_message_manager,ai.conversation.message.manager,model_ai_conversation_message,group_ai_manager,1,1,1,1
+access_ai_channel_user,ai.channel.user,model_ai_channel,group_ai_user,1,0,0,0
+access_ai_channel_manager,ai.channel.manager,model_ai_channel,group_ai_manager,1,1,1,1
+access_ai_prompt_preview_user,ai.agent.prompt.preview.user,model_ai_agent_prompt_preview,group_ai_user,1,1,1,1

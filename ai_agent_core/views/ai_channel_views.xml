@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Channel Tree View -->
+    <record id="view_ai_channel_tree" model="ir.ui.view">
+        <field name="name">ai.channel.tree</field>
+        <field name="model">ai.channel</field>
+        <field name="arch" type="xml">
+            <tree string="Channels">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="channel_type"/>
+                <field name="message_format"/>
+                <field name="max_message_length"/>
+                <field name="total_conversations"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Channel Form View -->
+    <record id="view_ai_channel_form" model="ir.ui.view">
+        <field name="name">ai.channel.form</field>
+        <field name="model">ai.channel</field>
+        <field name="arch" type="xml">
+            <form string="Channel">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Channel Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Channel Information">
+                            <field name="channel_type"/>
+                            <field name="channel_reference"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Message Format">
+                            <field name="message_format"/>
+                            <field name="max_message_length"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Capabilities">
+                            <field name="supports_attachments"/>
+                            <field name="supports_buttons"/>
+                            <field name="supports_cards"/>
+                            <field name="supports_quick_replies"/>
+                        </group>
+                        <group string="Statistics">
+                            <field name="total_conversations"/>
+                            <field name="total_messages"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Agents" name="agents">
+                            <field name="agent_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Configuration" name="config">
+                            <field name="config_data" widget="ace" options="{'mode': 'json'}" placeholder='{"key": "value"}'/>
+                        </page>
+                        <page string="Description" name="description">
+                            <field name="description" placeholder="Channel description and notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Channel Search View -->
+    <record id="view_ai_channel_search" model="ir.ui.view">
+        <field name="name">ai.channel.search</field>
+        <field name="model">ai.channel</field>
+        <field name="arch" type="xml">
+            <search string="Channels">
+                <field name="name"/>
+                <field name="channel_type"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Channel Type" name="group_type" context="{'group_by': 'channel_type'}"/>
+                    <filter string="Format" name="group_format" context="{'group_by': 'message_format'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Channel Action -->
+    <record id="action_ai_channel" model="ir.actions.act_window">
+        <field name="name">Channels</field>
+        <field name="res_model">ai.channel</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_channel_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure communication channels
+            </p>
+            <p>
+                Channels define how the AI communicates with different platforms.
+            </p>
+        </field>
+    </record>
+</odoo>

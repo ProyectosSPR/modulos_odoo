@@ -5,3 +5,4 @@ from . import ai_agent_prompt
 from . import ai_agent_rule
 from . import ai_agent_tool
 from . import ai_conversation
+from . import ai_channel

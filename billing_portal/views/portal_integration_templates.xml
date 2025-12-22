@@ -27,18 +27,16 @@
 
     <!-- Agregar entradas al portal home -->
     <template id="portal_my_home_billing" name="Portal Facturación" customize_show="True" inherit_id="portal.portal_my_home" priority="40">
-        <!-- Agregar entradas directamente en o_portal_docs -->
-        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+        <!-- Agregar entradas en o_portal_docs list-group -->
+        <xpath expr="//div[hasclass('o_portal_docs')]/p" position="before">
             <t t-call="portal.portal_docs_entry">
                 <t t-set="title">Solicitar Factura</t>
                 <t t-set="url" t-value="'/my/billing/orders'"/>
-                <t t-set="text">Selecciona tus órdenes para facturar</t>
                 <t t-set="placeholder_count" t-value="'billing_orders_count'"/>
             </t>
             <t t-call="portal.portal_docs_entry">
                 <t t-set="title">Mis Solicitudes de Factura</t>
                 <t t-set="url" t-value="'/my/billing/requests'"/>
-                <t t-set="text">Historial y estado de tus solicitudes</t>
                 <t t-set="placeholder_count" t-value="'billing_requests_count'"/>
             </t>
         </xpath>

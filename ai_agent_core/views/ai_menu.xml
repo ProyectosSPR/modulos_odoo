@@ -57,4 +57,11 @@
         parent="menu_ai_config"
         action="action_ai_prompt_template"
         sequence="40"/>
+
+    <menuitem
+        id="menu_ai_channels"
+        name="Channels"
+        parent="menu_ai_config"
+        action="action_ai_channel"
+        sequence="50"/>
 </odoo>
