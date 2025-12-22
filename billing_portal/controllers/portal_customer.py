@@ -9,11 +9,16 @@ Rutas nuevas bajo /my/billing/*:
 - /my/billing/request/<id> - Detalle de una solicitud
 
 También extiende /my/orders para mostrar órdenes por billing_partner_id
+
+IMPORTANTE: Heredamos de sale.controllers.portal.CustomerPortal
+para sobrescribir correctamente los métodos _prepare_orders_domain
 """
 
 from odoo import http, _
 from odoo.http import request
-from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
+from odoo.addons.portal.controllers.portal import pager as portal_pager
+# Heredar del controlador de SALE, no del portal base
+from odoo.addons.sale.controllers.portal import CustomerPortal
 import logging
 
 _logger = logging.getLogger(__name__)
