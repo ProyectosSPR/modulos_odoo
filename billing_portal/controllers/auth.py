@@ -161,17 +161,43 @@ class BillingPortalAuth(http.Controller):
 
     def _find_order_by_ref(self, ref):
         """Busca una orden por diferentes referencias"""
+        _logger.info("=" * 60)
+        _logger.info("GUEST - Búsqueda de orden")
+        _logger.info("Referencia buscada: '%s'", ref)
+
         Order = request.env['sale.order'].sudo()
 
         # Buscar por diferentes campos
-        order = Order.search([
-            '|', '|', '|',
+        domain = [
+            '|', '|', '|', '|',
             ('client_order_ref', '=', ref),
             ('client_order_ref', 'ilike', ref),
+            ('name', 'ilike', ref),
             ('ml_order_id', '=', ref),
             ('ml_pack_id', '=', ref),
-        ], limit=1)
+        ]
+        _logger.info("Dominio de búsqueda: %s", domain)
 
+        order = Order.search(domain, limit=1)
+
+        if order:
+            _logger.info("Orden encontrada: %s (ID: %s)", order.name, order.id)
+            _logger.info("  - client_order_ref: %s", order.client_order_ref)
+            _logger.info("  - ml_order_id: %s", order.ml_order_id)
+            _logger.info("  - ml_pack_id: %s", order.ml_pack_id)
+            _logger.info("  - state: %s", order.state)
+            _logger.info("  - invoice_status: %s", order.invoice_status)
+            _logger.info("  - ml_shipment_status: %s", order.ml_shipment_status)
+            _logger.info("  - is_portal_billable: %s", order.is_portal_billable)
+        else:
+            _logger.warning("No se encontró ninguna orden con ref: '%s'", ref)
+            # Intentar buscar con LIKE más amplio
+            all_orders = Order.search([('client_order_ref', '!=', False)], limit=10)
+            _logger.info("Ejemplo de órdenes con client_order_ref:")
+            for o in all_orders:
+                _logger.info("  -> %s | ref: '%s' | ml_order: %s", o.name, o.client_order_ref, o.ml_order_id)
+
+        _logger.info("=" * 60)
         return order
 
     @http.route('/portal/billing/guest/request', type='http', auth='public', website=True, methods=['GET', 'POST'])

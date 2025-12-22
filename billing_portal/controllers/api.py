@@ -109,12 +109,22 @@ class BillingPortalAPI(http.Controller):
         Retorna:
             {success: bool, orders: [...]}
         """
+        _logger.info("=" * 60)
+        _logger.info("API search-orders llamada")
+        _logger.info("kwargs recibidos: %s", kwargs)
+
         session = self._get_portal_session()
+        _logger.info("Sesión: %s", session)
+
         if not session:
+            _logger.warning("No hay sesión válida")
             return {'success': False, 'errors': [_('No autorizado')]}
 
         search_term = kwargs.get('search', '')
+        _logger.info("Término de búsqueda: '%s'", search_term)
+
         receiver_id = session.get('receiver_id') if not session.get('is_guest') else None
+        _logger.info("Receiver ID de sesión: %s", receiver_id)
 
         try:
             orders = request.env['sale.order'].sudo().search_for_billing_portal(
@@ -122,6 +132,9 @@ class BillingPortalAPI(http.Controller):
                 receiver_id=receiver_id,
                 limit=50
             )
+
+            _logger.info("Órdenes encontradas por API: %d", len(orders))
+            _logger.info("=" * 60)
 
             return {
                 'success': True,
