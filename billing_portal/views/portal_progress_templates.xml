@@ -28,7 +28,7 @@
                                     <div class="progress-bar progress-bar-striped progress-bar-animated"
                                          id="progressBar"
                                          role="progressbar"
-                                         t-att-style="'width: %d%%' % billing_request.progress"
+                                         t-attf-style="width: #{billing_request.progress}%"
                                          t-att-aria-valuenow="billing_request.progress"
                                          aria-valuemin="0"
                                          aria-valuemax="100">
