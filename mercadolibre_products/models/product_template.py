@@ -253,3 +253,49 @@ class ProductTemplate(models.Model):
                 'sticky': bool(errors),
             }
         }
+
+
+class ProductProduct(models.Model):
+    _inherit = 'product.product'
+
+    def action_publish_to_ml(self):
+        """Abre wizard para publicar este producto en ML"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Publicar en MercadoLibre'),
+            'res_model': 'mercadolibre.product.publish',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_product_tmpl_ids': [(6, 0, [self.product_tmpl_id.id])],
+            }
+        }
+
+    def action_link_ml_item(self):
+        """Abre wizard para vincular a item ML existente"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Vincular a Item ML'),
+            'res_model': 'mercadolibre.product.link',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_product_tmpl_id': self.product_tmpl_id.id,
+                'default_product_id': self.id,
+                'default_link_mode': 'product_to_item',
+            }
+        }
+
+    def action_sync_to_ml(self):
+        """Sincroniza este producto a todas sus publicaciones en ML"""
+        return self.product_tmpl_id.action_sync_to_ml()
+
+    def action_sync_from_ml(self):
+        """Trae datos desde ML para este producto"""
+        return self.product_tmpl_id.action_sync_from_ml()
+
+    def action_view_ml_items(self):
+        """Ver publicaciones de ML vinculadas"""
+        return self.product_tmpl_id.action_view_ml_items()
