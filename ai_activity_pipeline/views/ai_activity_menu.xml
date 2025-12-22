@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Activity Tasks Menu -->
+    <menuitem
+        id="menu_ai_activity_tasks"
+        name="Activity Tasks"
+        parent="ai_agent_core.menu_ai_root"
+        action="action_ai_activity_task"
+        sequence="30"/>
+
+    <!-- Pending Tasks Submenu -->
+    <menuitem
+        id="menu_ai_pending_tasks"
+        name="Pending Approval"
+        parent="menu_ai_activity_tasks"
+        action="action_ai_activity_task_pending"
+        sequence="10"/>
+
+    <!-- All Tasks Submenu -->
+    <menuitem
+        id="menu_ai_all_tasks"
+        name="All Tasks"
+        parent="menu_ai_activity_tasks"
+        action="action_ai_activity_task"
+        sequence="20"/>
+</odoo>

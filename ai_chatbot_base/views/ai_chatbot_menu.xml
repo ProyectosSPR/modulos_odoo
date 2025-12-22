@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add Webhooks to Configuration Menu -->
+    <menuitem
+        id="menu_ai_webhooks"
+        name="Webhooks"
+        parent="ai_agent_core.menu_ai_config"
+        action="action_ai_webhook"
+        sequence="60"/>
+</odoo>

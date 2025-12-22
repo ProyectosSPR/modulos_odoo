@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Webhook Tree View -->
+    <record id="view_ai_webhook_tree" model="ir.ui.view">
+        <field name="name">ai.webhook.tree</field>
+        <field name="model">ai.webhook</field>
+        <field name="arch" type="xml">
+            <tree string="Webhooks">
+                <field name="name"/>
+                <field name="channel_type"/>
+                <field name="agent_id"/>
+                <field name="total_requests"/>
+                <field name="successful_requests"/>
+                <field name="failed_requests"/>
+                <field name="last_request_date"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Webhook Form View -->
+    <record id="view_ai_webhook_form" model="ir.ui.view">
+        <field name="name">ai.webhook.form</field>
+        <field name="model">ai.webhook</field>
+        <field name="arch" type="xml">
+            <form string="Webhook">
+                <header>
+                    <button name="action_regenerate_token" string="Regenerate Token" type="object" class="btn-warning" confirm="This will invalidate the current webhook URL. Continue?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Webhook Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Channel Configuration">
+                            <field name="channel_type"/>
+                            <field name="channel_id"/>
+                            <field name="agent_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Webhook URL">
+                            <field name="webhook_url" widget="CopyClipboardURL"/>
+                            <field name="webhook_token"/>
+                            <field name="request_method"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Authentication" name="auth">
+                            <group>
+                                <group>
+                                    <field name="auth_type"/>
+                                    <field name="auth_token" password="True" attrs="{'invisible': [('auth_type', 'not in', ['token', 'basic'])]}"/>
+                                    <field name="secret_key" password="True" attrs="{'invisible': [('auth_type', '!=', 'signature')]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Field Mapping" name="mapping">
+                            <group>
+                                <group string="JSON Paths">
+                                    <field name="message_field_path"/>
+                                    <field name="sender_field_path"/>
+                                    <field name="conversation_field_path"/>
+                                </group>
+                            </group>
+                            <group class="oe_edit_only">
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Field Mapping:</strong> Use dot notation to specify JSON paths.
+                                    <br/>Examples:
+                                    <ul class="mb-0">
+                                        <li><code>message.text</code> - nested object</li>
+                                        <li><code>data.0.content</code> - array index</li>
+                                        <li><code>text</code> - root level field</li>
+                                    </ul>
+                                </div>
+                            </group>
+                        </page>
+
+                        <page string="Statistics" name="stats">
+                            <group>
+                                <group>
+                                    <field name="total_requests"/>
+                                    <field name="successful_requests"/>
+                                    <field name="failed_requests"/>
+                                    <field name="last_request_date"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Logs" name="logs">
+                            <field name="log_requests"/>
+                            <field name="log_ids" attrs="{'invisible': [('log_requests', '=', False)]}" nolabel="1">
+                                <tree create="0" delete="0" default_order="create_date desc" limit="50">
+                                    <field name="create_date"/>
+                                    <field name="success" widget="boolean"/>
+                                    <field name="request_data" string="Request"/>
+                                    <field name="response_data" string="Response"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Webhook Search View -->
+    <record id="view_ai_webhook_search" model="ir.ui.view">
+        <field name="name">ai.webhook.search</field>
+        <field name="model">ai.webhook</field>
+        <field name="arch" type="xml">
+            <search string="Webhooks">
+                <field name="name"/>
+                <field name="channel_type"/>
+                <field name="agent_id"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Has Errors" name="errors" domain="[('failed_requests', '>', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Channel Type" name="group_channel" context="{'group_by': 'channel_type'}"/>
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Webhook Action -->
+    <record id="action_ai_webhook" model="ir.actions.act_window">
+        <field name="name">Webhooks</field>
+        <field name="res_model">ai.webhook</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_webhook_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure webhooks for incoming messages
+            </p>
+            <p>
+                Webhooks allow external services to send messages to your AI agents.
+            </p>
+        </field>
+    </record>
+
+    <!-- Webhook Log Form -->
+    <record id="view_ai_webhook_log_form" model="ir.ui.view">
+        <field name="name">ai.webhook.log.form</field>
+        <field name="model">ai.webhook.log</field>
+        <field name="arch" type="xml">
+            <form string="Webhook Log" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="webhook_id"/>
+                            <field name="create_date"/>
+                            <field name="success"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Request">
+                            <field name="request_data" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                        </page>
+                        <page string="Response">
+                            <field name="response_data" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

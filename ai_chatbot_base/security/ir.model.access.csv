@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ai_webhook_user,ai.webhook.user,model_ai_webhook,ai_agent_core.group_ai_user,1,0,0,0
+access_ai_webhook_manager,ai.webhook.manager,model_ai_webhook,ai_agent_core.group_ai_manager,1,1,1,1
+access_ai_webhook_log_user,ai.webhook.log.user,model_ai_webhook_log,ai_agent_core.group_ai_user,1,0,0,0
+access_ai_webhook_log_manager,ai.webhook.log.manager,model_ai_webhook_log,ai_agent_core.group_ai_manager,1,1,0,1

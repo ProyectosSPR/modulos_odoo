@@ -30,30 +30,84 @@ class BillingCustomerPortal(CustomerPortal):
     def _prepare_orders_domain(self, partner):
         """
         Extiende el dominio de /my/orders para incluir:
-        - Órdenes donde partner_id es el cliente (original)
-        - Órdenes donde billing_partner_id es el cliente (nuevo)
+        - Órdenes donde el partner es seguidor (message_partner_ids) - ORIGINAL ODOO
+        - Órdenes donde billing_partner_id es el cliente (facturación)
+        - Órdenes de MercadoLibre donde x_buyer_id coincide con ml_buyer_id del partner
         """
-        # Dominio original de Odoo: partner_id child_of commercial_partner
-        # Lo extendemos para incluir billing_partner_id
-        return [
-            '|',
-            ('partner_id', 'child_of', [partner.commercial_partner_id.id]),
-            ('billing_partner_id', '=', partner.id),
-            ('state', 'in', ['sale', 'done']),
-        ]
+        # Buscar ml_buyer_ids asociados al partner
+        ml_buyer_ids = self._get_ml_buyer_ids(partner)
+
+        # Condición base de estado
+        state_condition = ('state', 'in', ['sale', 'done'])
+
+        # Construir dominio OR con todas las condiciones de pertenencia
+        # 1. message_partner_ids - Lógica original de Odoo (seguidores del chatter)
+        # 2. billing_partner_id - Cliente de facturación asignado
+        # 3. x_buyer_id - Comprador de MercadoLibre
+
+        if ml_buyer_ids:
+            # 3 condiciones OR: '|', '|', cond1, cond2, cond3
+            domain = [
+                '|', '|',
+                ('message_partner_ids', 'child_of', [partner.commercial_partner_id.id]),
+                ('billing_partner_id', '=', partner.id),
+                ('x_buyer_id', 'in', ml_buyer_ids),
+                state_condition,
+            ]
+        else:
+            # 2 condiciones OR: '|', cond1, cond2
+            domain = [
+                '|',
+                ('message_partner_ids', 'child_of', [partner.commercial_partner_id.id]),
+                ('billing_partner_id', '=', partner.id),
+                state_condition,
+            ]
+
+        return domain
 
     def _prepare_quotations_domain(self, partner):
         """
-        Extiende el dominio de /my/quotes para incluir:
-        - Cotizaciones donde partner_id es el cliente (original)
-        - Cotizaciones donde billing_partner_id es el cliente (nuevo)
+        Extiende el dominio de /my/quotes para incluir cotizaciones:
+        - Cotizaciones donde el partner es seguidor (message_partner_ids) - ORIGINAL ODOO
+        - Cotizaciones donde billing_partner_id es el cliente
+        - Cotizaciones de MercadoLibre donde x_buyer_id coincide
         """
-        return [
-            '|',
-            ('partner_id', 'child_of', [partner.commercial_partner_id.id]),
-            ('billing_partner_id', '=', partner.id),
-            ('state', '=', 'sent'),
-        ]
+        ml_buyer_ids = self._get_ml_buyer_ids(partner)
+
+        # Condición base de estado (sent o cancel según Odoo original)
+        state_condition = ('state', 'in', ['sent', 'cancel'])
+
+        if ml_buyer_ids:
+            domain = [
+                '|', '|',
+                ('message_partner_ids', 'child_of', [partner.commercial_partner_id.id]),
+                ('billing_partner_id', '=', partner.id),
+                ('x_buyer_id', 'in', ml_buyer_ids),
+                state_condition,
+            ]
+        else:
+            domain = [
+                '|',
+                ('message_partner_ids', 'child_of', [partner.commercial_partner_id.id]),
+                ('billing_partner_id', '=', partner.id),
+                state_condition,
+            ]
+
+        return domain
+
+    def _get_ml_buyer_ids(self, partner):
+        """
+        Obtiene los ml_buyer_id de MercadoLibre asociados al partner.
+        Busca en la tabla mercadolibre_buyer.
+        """
+        try:
+            MlBuyer = request.env['mercadolibre.buyer'].sudo()
+            buyers = MlBuyer.search([('partner_id', '=', partner.id)])
+            # Retornar como strings porque x_buyer_id es text
+            return [str(b.ml_buyer_id) for b in buyers if b.ml_buyer_id]
+        except Exception:
+            # Si el modelo no existe, retornar lista vacía
+            return []
 
     # =========================================
     # Contadores para portal home

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Activity Task Tree View -->
+    <record id="view_ai_activity_task_tree" model="ir.ui.view">
+        <field name="name">ai.activity.task.tree</field>
+        <field name="model">ai.activity.task</field>
+        <field name="arch" type="xml">
+            <tree string="Activity Tasks" default_order="priority desc, create_date desc" decoration-warning="state == 'pending'" decoration-info="state == 'approved'" decoration-success="state == 'done'" decoration-danger="state == 'failed'" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="task_type"/>
+                <field name="partner_id"/>
+                <field name="conversation_id"/>
+                <field name="priority"/>
+                <field name="state" widget="badge"/>
+                <field name="create_date"/>
+                <field name="approved_by"/>
+                <button name="action_approve" string="Approve" type="object" class="btn-success" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                <button name="action_execute" string="Execute" type="object" class="btn-primary" attrs="{'invisible': [('state', '!=', 'approved')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Activity Task Form View -->
+    <record id="view_ai_activity_task_form" model="ir.ui.view">
+        <field name="name">ai.activity.task.form</field>
+        <field name="model">ai.activity.task</field>
+        <field name="arch" type="xml">
+            <form string="Activity Task">
+                <header>
+                    <button name="action_approve" string="Approve" type="object" class="btn-success" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <button name="action_execute" string="Execute Now" type="object" class="btn-primary" attrs="{'invisible': [('state', 'not in', ['approved', 'pending'])]}"/>
+                    <button name="action_reject" string="Reject" type="object" class="btn-danger" attrs="{'invisible': [('state', 'in', ['done', 'processing'])]}"/>
+                    <button name="action_retry" string="Retry" type="object" class="btn-warning" attrs="{'invisible': [('state', '!=', 'failed')]}"/>
+                    <button name="action_view_result" string="View Result" type="object" class="btn-secondary" attrs="{'invisible': ['|', ('state', '!=', 'done'), ('res_id', '=', False)]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,approved,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_result" type="object" class="oe_stat_button" icon="fa-file" attrs="{'invisible': [('res_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">View Result</span>
+                            </div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Failed" bg_color="bg-danger" attrs="{'invisible': [('state', '!=', 'failed')]}"/>
+                    <widget name="web_ribbon" title="Completed" bg_color="bg-success" attrs="{'invisible': [('state', '!=', 'done')]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Task Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Task Information">
+                            <field name="task_type"/>
+                            <field name="priority" widget="priority"/>
+                            <field name="partner_id"/>
+                            <field name="scheduled_date"/>
+                        </group>
+                        <group string="Source">
+                            <field name="conversation_id"/>
+                            <field name="agent_id"/>
+                            <field name="requires_approval"/>
+                            <field name="auto_execute"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Summary" name="summary">
+                            <group>
+                                <field name="summary" nolabel="1" placeholder="Human-readable description of this task"/>
+                            </group>
+                        </page>
+
+                        <page string="Extracted Data" name="data">
+                            <field name="extracted_data" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                        </page>
+
+                        <page string="Approval" name="approval" attrs="{'invisible': [('state', '=', 'pending')]}">
+                            <group>
+                                <group>
+                                    <field name="approved_by"/>
+                                    <field name="approved_date"/>
+                                </group>
+                                <group>
+                                    <field name="executed_by"/>
+                                    <field name="executed_date"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Result" name="result" attrs="{'invisible': [('state', 'not in', ['done', 'failed'])]}">
+                            <group>
+                                <group>
+                                    <field name="res_model"/>
+                                    <field name="res_id"/>
+                                </group>
+                            </group>
+                            <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                                <field name="result_message" nolabel="1"/>
+                            </group>
+                            <group attrs="{'invisible': [('state', '!=', 'failed')]}">
+                                <field name="error_message" nolabel="1" class="text-danger"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Activity Task Kanban View -->
+    <record id="view_ai_activity_task_kanban" model="ir.ui.view">
+        <field name="name">ai.activity.task.kanban</field>
+        <field name="model">ai.activity.task</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="task_type"/>
+                <field name="partner_id"/>
+                <field name="priority"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="oe_kanban_details">
+                                <div class="o_kanban_record_top mb-2">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                    <field name="priority" widget="priority"/>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <field name="task_type"/>
+                                    <div t-if="record.partner_id.value">
+                                        <i class="fa fa-user"/> <field name="partner_id"/>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="create_date" widget="date"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="state" widget="label_selection" options="{'classes': {'pending': 'warning', 'approved': 'info', 'processing': 'primary', 'done': 'success', 'failed': 'danger', 'cancelled': 'secondary'}}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- AI Activity Task Search View -->
+    <record id="view_ai_activity_task_search" model="ir.ui.view">
+        <field name="name">ai.activity.task.search</field>
+        <field name="model">ai.activity.task</field>
+        <field name="arch" type="xml">
+            <search string="Activity Tasks">
+                <field name="name"/>
+                <field name="task_type"/>
+                <field name="partner_id"/>
+                <field name="conversation_id"/>
+                <filter string="Pending" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                <filter string="Completed" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Failed" name="failed" domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter string="High Priority" name="high_priority" domain="[('priority', 'in', ['2', '3'])]"/>
+                <filter string="Today" name="today" domain="[('create_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter string="Invoices" name="invoices" domain="[('task_type', '=', 'create_invoice')]"/>
+                <filter string="Leads" name="leads" domain="[('task_type', '=', 'create_lead')]"/>
+                <filter string="Quotes" name="quotes" domain="[('task_type', '=', 'send_quote')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Task Type" name="group_type" context="{'group_by': 'task_type'}"/>
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Priority" name="group_priority" context="{'group_by': 'priority'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Activity Task Action -->
+    <record id="action_ai_activity_task" model="ir.actions.act_window">
+        <field name="name">Activity Tasks</field>
+        <field name="res_model">ai.activity.task</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_ai_activity_task_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No pending tasks
+            </p>
+            <p>
+                Tasks are created automatically when customers request actions through the AI chatbot.
+            </p>
+        </field>
+    </record>
+
+    <!-- Pending Tasks Action (Dashboard shortcut) -->
+    <record id="action_ai_activity_task_pending" model="ir.actions.act_window">
+        <field name="name">Pending Approval</field>
+        <field name="res_model">ai.activity.task</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>
