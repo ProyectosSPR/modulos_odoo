@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_csf_field_config_tree" model="ir.ui.view">
+        <field name="name">billing.csf.field.config.tree</field>
+        <field name="model">billing.csf.field.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="field_type"/>
+                <field name="odoo_field"/>
+                <field name="is_required"/>
+                <field name="use_ai_extraction"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_csf_field_config_form" model="ir.ui.view">
+        <field name="name">billing.csf.field.config.form</field>
+        <field name="model">billing.csf.field.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_test_regex" type="object"
+                                class="oe_stat_button" icon="fa-flask">
+                            <span>Probar Regex</span>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre del campo"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Configuración General">
+                            <field name="field_type"/>
+                            <field name="odoo_field"/>
+                            <field name="sequence"/>
+                            <field name="is_required"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Extracción">
+                            <field name="use_ai_extraction"/>
+                            <field name="ai_json_path" attrs="{'invisible': [('use_ai_extraction', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Patrones de Búsqueda" name="patterns">
+                            <group>
+                                <field name="regex_pattern" placeholder="Ej: RFC:\s*([A-Z0-9]{12,13})"/>
+                                <field name="alternative_patterns"
+                                       placeholder="Un patrón por línea"
+                                       widget="text"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Guía de Regex:</strong></p>
+                                <ul class="mb-0">
+                                    <li><code>\s*</code> - Espacios opcionales</li>
+                                    <li><code>([A-Z0-9]+)</code> - Grupo de captura (lo que se extrae)</li>
+                                    <li><code>.*?</code> - Cualquier caracter (no codicioso)</li>
+                                    <li><code>\d{5}</code> - Exactamente 5 dígitos</li>
+                                </ul>
+                            </div>
+                        </page>
+                        <page string="Validación" name="validation">
+                            <group>
+                                <field name="validation_regex"
+                                       placeholder="Ej: ^[A-Z]{3,4}\d{6}[A-Z0-9]{3}$"/>
+                                <field name="error_message"
+                                       placeholder="Mensaje si la validación falla"/>
+                            </group>
+                        </page>
+                        <page string="Transformación" name="transformation">
+                            <group>
+                                <field name="transformation"/>
+                            </group>
+                            <div class="alert alert-secondary" role="alert">
+                                <p><strong>Opciones de Transformación:</strong></p>
+                                <ul class="mb-0">
+                                    <li><code>none</code> - Sin transformación</li>
+                                    <li><code>uppercase</code> - Convertir a MAYÚSCULAS</li>
+                                    <li><code>lowercase</code> - Convertir a minúsculas</li>
+                                    <li><code>strip</code> - Eliminar espacios al inicio/fin</li>
+                                    <li><code>digits_only</code> - Solo números</li>
+                                </ul>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_csf_field_config_search" model="ir.ui.view">
+        <field name="name">billing.csf.field.config.search</field>
+        <field name="model">billing.csf.field.config</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="field_type"/>
+                <field name="odoo_field"/>
+                <filter name="required" string="Requeridos" domain="[('is_required', '=', True)]"/>
+                <filter name="ai_extraction" string="Extracción IA" domain="[('use_ai_extraction', '=', True)]"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'field_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_csf_field_config" model="ir.actions.act_window">
+        <field name="name">Campos CSF</field>
+        <field name="res_model">billing.csf.field.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure los campos a extraer del CSF
+            </p>
+            <p>
+                Defina patrones regex para extraer automáticamente
+                datos del PDF de Constancia de Situación Fiscal.
+            </p>
+        </field>
+    </record>
+</odoo>

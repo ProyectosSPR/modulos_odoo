@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Formulario de facturación -->
+    <template id="portal_billing_form" name="Portal Billing Form">
+        <t t-call="billing_portal.portal_layout">
+            <div class="row">
+                <!-- Columna principal - Formulario -->
+                <div class="col-lg-8">
+                    <form id="billingForm" class="billing-form" data-order-ids="">
+                        <t t-set="order_ids_str" t-value="order_ids"/>
+                        <input type="hidden" name="order_ids" t-att-value="order_ids_str"/>
+
+                        <!-- Paso 1: CSF -->
+                        <div class="card mb-4" id="stepCSF">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <span class="badge bg-white text-primary me-2">1</span>
+                                    Constancia de Situación Fiscal
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">
+                                    Suba su Constancia de Situación Fiscal (CSF) del SAT.
+                                    Los datos fiscales se extraerán automáticamente.
+                                </p>
+
+                                <!-- Dropzone para CSF -->
+                                <div id="csfDropzone" class="csf-dropzone border rounded p-5 text-center mb-3">
+                                    <div class="dropzone-content">
+                                        <i class="fa fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
+                                        <h5>Arrastra tu CSF aquí</h5>
+                                        <p class="text-muted">o haz clic para seleccionar</p>
+                                        <input type="file"
+                                               id="csfFileInput"
+                                               accept=".pdf"
+                                               class="d-none"/>
+                                        <button type="button"
+                                                class="btn btn-outline-primary"
+                                                onclick="document.getElementById('csfFileInput').click()">
+                                            <i class="fa fa-folder-open me-1"></i>
+                                            Seleccionar Archivo
+                                        </button>
+                                    </div>
+                                    <div class="dropzone-uploading d-none">
+                                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                                        <h5>Procesando CSF...</h5>
+                                        <p class="text-muted">Extrayendo datos automáticamente</p>
+                                    </div>
+                                    <div class="dropzone-success d-none">
+                                        <i class="fa fa-check-circle fa-4x text-success mb-3"></i>
+                                        <h5 class="text-success">CSF Validado</h5>
+                                        <p class="csf-filename text-muted"></p>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnChangeCSF">
+                                            <i class="fa fa-sync me-1"></i> Cambiar
+                                        </button>
+                                    </div>
+                                    <div class="dropzone-error d-none">
+                                        <i class="fa fa-exclamation-circle fa-4x text-danger mb-3"></i>
+                                        <h5 class="text-danger">Error de Validación</h5>
+                                        <p class="error-message text-danger"></p>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnRetryCSF">
+                                            <i class="fa fa-redo me-1"></i> Intentar de nuevo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Datos extraídos (oculto inicialmente) -->
+                                <div id="csfExtractedData" class="d-none">
+                                    <hr/>
+                                    <h6 class="mb-3">
+                                        <i class="fa fa-check-circle text-success me-2"></i>
+                                        Datos extraídos automáticamente
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">RFC</label>
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="extractedRFC"
+                                                   name="rfc"
+                                                   readonly="readonly"/>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label">Razón Social</label>
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="extractedRazonSocial"
+                                                   name="razon_social"
+                                                   readonly="readonly"/>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Código Postal</label>
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="extractedCP"
+                                                   name="codigo_postal"
+                                                   readonly="readonly"/>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label">Régimen Fiscal</label>
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="extractedRegimen"
+                                                   readonly="readonly"/>
+                                            <input type="hidden" id="extractedRegimenId" name="regimen_fiscal_id"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paso 2: Datos de contacto y facturación -->
+                        <div class="card mb-4" id="stepDatos">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <span class="badge bg-secondary me-2">2</span>
+                                    Datos de Facturación
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="email" class="form-label">
+                                            Email para envío de factura <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="email"
+                                               class="form-control"
+                                               id="email"
+                                               name="email"
+                                               t-att-value="saved_data.get('email', '') if saved_data else ''"
+                                               required="required"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="phone" class="form-label">Teléfono</label>
+                                        <input type="tel"
+                                               class="form-control"
+                                               id="phone"
+                                               name="phone"
+                                               t-att-value="saved_data.get('telefono', '') if saved_data else ''"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="uso_cfdi_id" class="form-label">
+                                            Uso de CFDI <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="uso_cfdi_id" name="uso_cfdi_id" required="required">
+                                            <option value="">Seleccione...</option>
+                                            <t t-foreach="usos_cfdi" t-as="uso">
+                                                <option t-att-value="uso.id"
+                                                        t-att-selected="uso.code == 'G03'">
+                                                    <t t-esc="uso.display_name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="forma_pago_id" class="form-label">
+                                            Forma de Pago <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="forma_pago_id" name="forma_pago_id" required="required">
+                                            <option value="">Seleccione...</option>
+                                            <t t-foreach="formas_pago" t-as="forma">
+                                                <option t-att-value="forma.id"
+                                                        t-att-selected="forma.code == '03'">
+                                                    <t t-esc="forma.display_name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botón de envío -->
+                        <div class="d-grid gap-2">
+                            <button type="submit"
+                                    class="btn btn-success btn-lg"
+                                    id="btnSubmit"
+                                    disabled="disabled">
+                                <i class="fa fa-paper-plane me-2"></i>
+                                Solicitar Factura
+                            </button>
+                            <a href="/portal/billing/orders" class="btn btn-outline-secondary">
+                                <i class="fa fa-arrow-left me-1"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Columna lateral - Resumen -->
+                <div class="col-lg-4">
+                    <div class="card sticky-top" style="top: 20px;">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fa fa-shopping-cart me-2"></i>
+                                Resumen
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3">
+                                Órdenes a facturar (<t t-esc="len(orders)"/>)
+                            </h6>
+                            <ul class="list-unstyled">
+                                <t t-foreach="orders" t-as="order">
+                                    <li class="mb-2 pb-2 border-bottom">
+                                        <div class="d-flex justify-content-between">
+                                            <span><t t-esc="order.name"/></span>
+                                            <strong>
+                                                <t t-esc="order.amount_total"
+                                                   t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                            </strong>
+                                        </div>
+                                        <small class="text-muted">
+                                            <t t-esc="order.client_order_ref or ''"/>
+                                        </small>
+                                    </li>
+                                </t>
+                            </ul>
+                            <hr/>
+                            <div class="d-flex justify-content-between">
+                                <strong>Total:</strong>
+                                <strong class="text-primary fs-5">
+                                    <t t-esc="sum(orders.mapped('amount_total'))"
+                                       t-options="{'widget': 'monetary', 'display_currency': orders[0].currency_id if orders else None}"/>
+                                </strong>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <small class="text-muted">
+                                <i class="fa fa-info-circle me-1"></i>
+                                La factura será enviada al email proporcionado una vez que sea timbrada.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

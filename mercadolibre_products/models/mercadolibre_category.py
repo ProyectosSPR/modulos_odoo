@@ -158,3 +158,140 @@ class MercadolibreCategory(models.Model):
                 }
         except Exception as e:
             raise UserError(_('Error actualizando categoria: %s') % str(e))
+
+    @api.model
+    def action_sync_root_categories(self, site_id='MLM'):
+        """
+        Sincroniza las categorias raiz de MercadoLibre.
+        Este metodo se puede llamar desde un boton o manualmente.
+        """
+        import requests
+
+        url = f'https://api.mercadolibre.com/sites/{site_id}/categories'
+        try:
+            response = requests.get(url, timeout=30)
+            if response.status_code != 200:
+                raise UserError(_('Error obteniendo categorias: %s') % response.status_code)
+
+            categories_data = response.json()
+            created_count = 0
+            updated_count = 0
+
+            for cat_data in categories_data:
+                existing = self.search([
+                    ('ml_category_id', '=', cat_data.get('id')),
+                    ('site_id', '=', site_id)
+                ], limit=1)
+
+                if existing:
+                    existing.write({'name': cat_data.get('name')})
+                    updated_count += 1
+                else:
+                    self.create({
+                        'name': cat_data.get('name'),
+                        'ml_category_id': cat_data.get('id'),
+                        'site_id': site_id,
+                    })
+                    created_count += 1
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sincronizacion Completada'),
+                    'message': _('Creadas: %d, Actualizadas: %d') % (created_count, updated_count),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+
+        except Exception as e:
+            raise UserError(_('Error sincronizando categorias: %s') % str(e))
+
+    @api.model
+    def action_sync_subcategories(self, parent_ml_id, site_id='MLM'):
+        """
+        Sincroniza las subcategorias de una categoria padre.
+        """
+        import requests
+
+        url = f'https://api.mercadolibre.com/categories/{parent_ml_id}'
+        try:
+            response = requests.get(url, timeout=30)
+            if response.status_code != 200:
+                raise UserError(_('Error obteniendo subcategorias: %s') % response.status_code)
+
+            data = response.json()
+            children = data.get('children_categories', [])
+
+            if not children:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('Sin Subcategorias'),
+                        'message': _('Esta categoria no tiene subcategorias o es una categoria final.'),
+                        'type': 'warning',
+                        'sticky': False,
+                    }
+                }
+
+            # Obtener categoria padre
+            parent = self.search([
+                ('ml_category_id', '=', parent_ml_id),
+                ('site_id', '=', site_id)
+            ], limit=1)
+
+            created_count = 0
+            for child_data in children:
+                existing = self.search([
+                    ('ml_category_id', '=', child_data.get('id')),
+                    ('site_id', '=', site_id)
+                ], limit=1)
+
+                if not existing:
+                    self.create({
+                        'name': child_data.get('name'),
+                        'ml_category_id': child_data.get('id'),
+                        'site_id': site_id,
+                        'parent_id': parent.id if parent else False,
+                    })
+                    created_count += 1
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Subcategorias Sincronizadas'),
+                    'message': _('Se crearon %d subcategorias.') % created_count,
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+
+        except Exception as e:
+            raise UserError(_('Error sincronizando subcategorias: %s') % str(e))
+
+    def action_load_children(self):
+        """Carga las subcategorias de esta categoria"""
+        self.ensure_one()
+        return self.action_sync_subcategories(self.ml_category_id, self.site_id)
+
+    def name_get(self):
+        """Muestra la ruta completa en selectores"""
+        result = []
+        for record in self:
+            if record.path_from_root:
+                result.append((record.id, record.path_from_root))
+            else:
+                result.append((record.id, record.name))
+        return result
+
+    @api.model
+    def _name_search(self, name='', args=None, operator='ilike', limit=100, name_get_uid=None, order=None):
+        """Busca por nombre o ID de categoria ML"""
+        args = args or []
+        domain = []
+        if name:
+            domain = ['|', ('name', operator, name), ('ml_category_id', operator, name)]
+        return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid, order=order)

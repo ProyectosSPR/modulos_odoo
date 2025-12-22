@@ -22,8 +22,15 @@
 
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Categoria MercadoLibre">
-                        <field name="ml_category_id" placeholder="Ej: MLM1055"/>
-                        <field name="category_name" readonly="1"/>
+                        <field name="category_id" options="{'no_create': True}"/>
+                        <field name="ml_category_id" readonly="1"/>
+                        <label for="search_category_id"/>
+                        <div class="o_row">
+                            <field name="search_category_id" placeholder="Ej: MLM1055"/>
+                            <button name="action_sync_categories" type="object"
+                                    string="Sincronizar Categorias" icon="fa-refresh"
+                                    class="btn-link" title="Sincronizar categorias raiz de MercadoLibre"/>
+                        </div>
                     </group>
                 </group>
 

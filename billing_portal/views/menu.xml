@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_billing_portal_root"
+              name="Portal Facturación"
+              web_icon="billing_portal,static/description/icon.png"
+              sequence="50"/>
+
+    <!-- Solicitudes -->
+    <menuitem id="menu_billing_requests"
+              name="Solicitudes"
+              parent="menu_billing_portal_root"
+              sequence="10"/>
+
+    <menuitem id="menu_billing_request_all"
+              name="Todas las Solicitudes"
+              parent="menu_billing_requests"
+              action="action_billing_request"
+              sequence="10"/>
+
+    <menuitem id="menu_billing_request_pending"
+              name="Pendientes de Timbrado"
+              parent="menu_billing_requests"
+              action="action_billing_request_pending_stamp"
+              sequence="20"/>
+
+    <!-- Configuración -->
+    <menuitem id="menu_billing_config"
+              name="Configuración"
+              parent="menu_billing_portal_root"
+              sequence="90"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_billing_csf_fields"
+              name="Campos CSF"
+              parent="menu_billing_config"
+              action="action_csf_field_config"
+              sequence="10"/>
+
+    <menuitem id="menu_billing_status_config"
+              name="Estados"
+              parent="menu_billing_config"
+              action="action_billing_status_config"
+              sequence="20"/>
+
+    <menuitem id="menu_billing_settings"
+              name="Ajustes"
+              parent="menu_billing_config"
+              action="action_billing_settings"
+              sequence="30"/>
+</odoo>

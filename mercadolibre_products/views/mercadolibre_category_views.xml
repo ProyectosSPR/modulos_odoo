@@ -11,6 +11,8 @@
                 <field name="path_from_root"/>
                 <field name="site_id"/>
                 <field name="parent_id" optional="hide"/>
+                <button name="action_load_children" type="object"
+                        icon="fa-plus-square-o" title="Cargar Subcategorias"/>
             </tree>
         </field>
     </record>
@@ -23,7 +25,11 @@
             <form string="Categoria MercadoLibre">
                 <header>
                     <button name="action_refresh_from_ml" type="object"
-                            string="Actualizar desde ML" icon="fa-refresh"/>
+                            string="Actualizar desde ML" icon="fa-refresh"
+                            class="btn-secondary"/>
+                    <button name="action_load_children" type="object"
+                            string="Cargar Subcategorias" icon="fa-sitemap"
+                            class="btn-primary"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -46,6 +52,8 @@
                             <tree>
                                 <field name="ml_category_id"/>
                                 <field name="name"/>
+                                <button name="action_load_children" type="object"
+                                        icon="fa-plus-square-o" title="Cargar Subcategorias"/>
                             </tree>
                         </field>
                     </group>
@@ -63,6 +71,10 @@
                 <field name="name"/>
                 <field name="ml_category_id"/>
                 <field name="path_from_root"/>
+                <separator/>
+                <filter string="Categorias Raiz" name="root_categories"
+                        domain="[('parent_id', '=', False)]"/>
+                <separator/>
                 <group expand="0" string="Agrupar por">
                     <filter string="Sitio" name="group_site" context="{'group_by': 'site_id'}"/>
                     <filter string="Padre" name="group_parent" context="{'group_by': 'parent_id'}"/>
@@ -76,5 +88,37 @@
         <field name="name">Categorias ML</field>
         <field name="res_model">mercadolibre.category</field>
         <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay categorias sincronizadas
+            </p>
+            <p>
+                Haga clic en "Sincronizar Categorias Raiz" para obtener las categorias principales de MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar categorias raiz -->
+    <record id="action_server_sync_root_categories" model="ir.actions.server">
+        <field name="name">Sincronizar Categorias Raiz (MLM)</field>
+        <field name="model_id" ref="model_mercadolibre_category"/>
+        <field name="binding_model_id" ref="model_mercadolibre_category"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = model.action_sync_root_categories(site_id='MLM')
+        </field>
+    </record>
+
+    <!-- Server Action: Cargar subcategorias -->
+    <record id="action_server_load_children" model="ir.actions.server">
+        <field name="name">Cargar Subcategorias</field>
+        <field name="model_id" ref="model_mercadolibre_category"/>
+        <field name="binding_model_id" ref="model_mercadolibre_category"/>
+        <field name="state">code</field>
+        <field name="code">
+for record in records:
+    record.action_load_children()
+        </field>
     </record>
 </odoo>

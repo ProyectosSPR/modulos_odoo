@@ -1,0 +1,489 @@
+/**
+ * Billing Portal Styles
+ */
+
+/* ==========================================================================
+   Variables
+   ========================================================================== */
+
+:root {
+    --billing-primary: #3498db;
+    --billing-success: #27ae60;
+    --billing-warning: #f39c12;
+    --billing-danger: #e74c3c;
+    --billing-info: #17a2b8;
+    --billing-light: #f8f9fa;
+    --billing-dark: #343a40;
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+.billing-portal-container {
+    min-height: 100vh;
+    background-color: #f5f7fa;
+}
+
+.billing-portal-header {
+    background: linear-gradient(135deg, var(--billing-primary) 0%, #2980b9 100%);
+    padding: 1rem 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.billing-portal-header .navbar-brand {
+    color: white;
+    font-weight: 600;
+}
+
+.billing-portal-header .nav-link {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.billing-portal-header .nav-link:hover {
+    color: white;
+}
+
+.billing-portal-footer {
+    background-color: var(--billing-dark);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 2rem 0;
+    margin-top: auto;
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.billing-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.billing-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.12);
+}
+
+.billing-card .card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1.25rem;
+}
+
+.billing-card .card-body {
+    padding: 1.5rem;
+}
+
+/* ==========================================================================
+   CSF Dropzone
+   ========================================================================== */
+
+.csf-dropzone {
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #fafbfc;
+}
+
+.csf-dropzone:hover {
+    border-color: var(--billing-primary);
+    background-color: #f0f7ff;
+}
+
+.csf-dropzone.dragover {
+    border-color: var(--billing-success);
+    background-color: #e8f8ef;
+    transform: scale(1.02);
+}
+
+.csf-dropzone .dropzone-icon {
+    font-size: 4rem;
+    color: #adb5bd;
+    margin-bottom: 1rem;
+}
+
+.csf-dropzone:hover .dropzone-icon {
+    color: var(--billing-primary);
+}
+
+.csf-dropzone .dropzone-text {
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+.csf-dropzone .dropzone-hint {
+    font-size: 0.85rem;
+    color: #adb5bd;
+    margin-top: 0.5rem;
+}
+
+/* ==========================================================================
+   Progress Bar
+   ========================================================================== */
+
+.billing-progress {
+    height: 25px;
+    border-radius: 15px;
+    background-color: #e9ecef;
+    overflow: hidden;
+}
+
+.billing-progress .progress-bar {
+    border-radius: 15px;
+    transition: width 0.5s ease;
+}
+
+.progress-steps {
+    position: relative;
+    padding: 0;
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-left: 3px solid #dee2e6;
+    margin-left: 1rem;
+    position: relative;
+}
+
+.progress-step::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    border: 3px solid white;
+}
+
+.progress-step.completed {
+    border-left-color: var(--billing-success);
+}
+
+.progress-step.completed::before {
+    background-color: var(--billing-success);
+}
+
+.progress-step.active {
+    border-left-color: var(--billing-primary);
+}
+
+.progress-step.active::before {
+    background-color: var(--billing-primary);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+    }
+}
+
+/* ==========================================================================
+   Order List
+   ========================================================================== */
+
+.order-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.order-item {
+    transition: background-color 0.2s ease;
+}
+
+.order-item:hover {
+    background-color: #f8f9fa;
+}
+
+.order-item.selected {
+    background-color: #e3f2fd;
+    border-left: 3px solid var(--billing-primary);
+}
+
+.order-checkbox {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+/* ==========================================================================
+   Status Badges
+   ========================================================================== */
+
+.status-badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.75em;
+    font-weight: 600;
+    border-radius: 0.375rem;
+}
+
+.status-badge.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.in-progress {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-badge.completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+.billing-form .form-control {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e0e0e0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.billing-form .form-control:focus {
+    border-color: var(--billing-primary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.billing-form .form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.billing-form .form-select {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn-billing-primary {
+    background: linear-gradient(135deg, var(--billing-primary) 0%, #2980b9 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-billing-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    color: white;
+}
+
+.btn-billing-secondary {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-billing-secondary:hover {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+/* ==========================================================================
+   Login Page
+   ========================================================================== */
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.login-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem;
+}
+
+.login-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
+}
+
+.login-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.login-subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+
+#billing-toast-container {
+    z-index: 9999;
+}
+
+#billing-toast-container .toast {
+    min-width: 300px;
+    margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   Loading Overlay
+   ========================================================================== */
+
+#billing-loading-overlay {
+    z-index: 9998;
+    backdrop-filter: blur(2px);
+}
+
+/* ==========================================================================
+   Extracted Data Display
+   ========================================================================== */
+
+.csf-data-card {
+    border-left: 4px solid var(--billing-success);
+}
+
+.csf-data-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.csf-data-item:last-child {
+    border-bottom: none;
+}
+
+.csf-data-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.csf-data-value {
+    font-weight: 600;
+    color: #333;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .billing-portal-header .navbar-brand {
+        font-size: 1rem;
+    }
+
+    .csf-dropzone {
+        padding: 2rem 1rem;
+    }
+
+    .csf-dropzone .dropzone-icon {
+        font-size: 3rem;
+    }
+
+    .billing-card .card-body {
+        padding: 1rem;
+    }
+
+    .order-list-container {
+        max-height: 300px;
+    }
+
+    .login-card {
+        margin: 1rem;
+        border-radius: 10px;
+    }
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+    .billing-portal-header,
+    .billing-portal-footer,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    .billing-card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+}

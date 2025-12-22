@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Página de progreso -->
+    <template id="portal_progress" name="Portal Progress">
+        <t t-call="billing_portal.portal_layout">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-tasks me-2"></i>
+                                    Estado de Solicitud
+                                </h5>
+                                <span class="badge bg-secondary">
+                                    <t t-esc="billing_request.name"/>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Barra de progreso -->
+                            <div class="progress-section mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Progreso</span>
+                                    <strong><span id="progressPercent"><t t-esc="billing_request.progress"/></span>%</strong>
+                                </div>
+                                <div class="progress" style="height: 25px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         id="progressBar"
+                                         role="progressbar"
+                                         t-att-style="'width: %d%%' % billing_request.progress"
+                                         t-att-aria-valuenow="billing_request.progress"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Estado actual -->
+                            <div class="status-message mb-4 p-3 rounded"
+                                 id="statusMessage"
+                                 t-att-class="'alert alert-danger' if billing_request.state == 'error' else ('alert alert-success' if billing_request.state == 'done' else 'alert alert-info')">
+                                <div class="d-flex align-items-center">
+                                    <t t-if="billing_request.state == 'error'">
+                                        <i class="fa fa-exclamation-circle fa-2x me-3"></i>
+                                    </t>
+                                    <t t-elif="billing_request.state == 'done'">
+                                        <i class="fa fa-check-circle fa-2x me-3"></i>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="spinner-border me-3" role="status"></div>
+                                    </t>
+                                    <div>
+                                        <strong id="statusTitle">
+                                            <t t-if="billing_request.state == 'draft'">Iniciando...</t>
+                                            <t t-elif="billing_request.state == 'validating'">Validando CSF...</t>
+                                            <t t-elif="billing_request.state == 'csf_validated'">CSF Validado</t>
+                                            <t t-elif="billing_request.state == 'creating_partner'">Creando Cliente...</t>
+                                            <t t-elif="billing_request.state == 'creating_invoice'">Creando Factura...</t>
+                                            <t t-elif="billing_request.state == 'pending_stamp'">Pendiente de Timbrado</t>
+                                            <t t-elif="billing_request.state == 'done'">Completado</t>
+                                            <t t-elif="billing_request.state == 'error'">Error</t>
+                                            <t t-else=""><t t-esc="billing_request.state"/></t>
+                                        </strong>
+                                        <p class="mb-0" id="statusDetail">
+                                            <t t-esc="billing_request.status_message or billing_request.error_message or ''"/>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pasos del proceso -->
+                            <div class="process-steps">
+                                <h6 class="mb-3">Proceso de Facturación</h6>
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex align-items-center"
+                                        t-att-class="'list-group-item-success' if billing_request.progress >= 10 else ''">
+                                        <t t-if="billing_request.progress >= 10">
+                                            <i class="fa fa-check-circle text-success me-3"></i>
+                                        </t>
+                                        <t t-elif="billing_request.state == 'validating'">
+                                            <div class="spinner-border spinner-border-sm text-primary me-3"></div>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-circle text-muted me-3"></i>
+                                        </t>
+                                        <span>Validación de CSF</span>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-center"
+                                        t-att-class="'list-group-item-success' if billing_request.progress >= 40 else ''">
+                                        <t t-if="billing_request.progress >= 40">
+                                            <i class="fa fa-check-circle text-success me-3"></i>
+                                        </t>
+                                        <t t-elif="billing_request.state == 'creating_partner'">
+                                            <div class="spinner-border spinner-border-sm text-primary me-3"></div>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-circle text-muted me-3"></i>
+                                        </t>
+                                        <span>Registro de Cliente</span>
+                                        <t t-if="billing_request.partner_created">
+                                            <span class="badge bg-info ms-auto">Nuevo</span>
+                                        </t>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-center"
+                                        t-att-class="'list-group-item-success' if billing_request.progress >= 60 else ''">
+                                        <t t-if="billing_request.progress >= 60">
+                                            <i class="fa fa-check-circle text-success me-3"></i>
+                                        </t>
+                                        <t t-elif="billing_request.state == 'creating_invoice'">
+                                            <div class="spinner-border spinner-border-sm text-primary me-3"></div>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-circle text-muted me-3"></i>
+                                        </t>
+                                        <span>Creación de Factura</span>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-center"
+                                        t-att-class="'list-group-item-success' if billing_request.progress >= 80 else ''">
+                                        <t t-if="billing_request.progress >= 80">
+                                            <i class="fa fa-check-circle text-success me-3"></i>
+                                        </t>
+                                        <t t-elif="billing_request.state == 'pending_stamp'">
+                                            <div class="spinner-border spinner-border-sm text-warning me-3"></div>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-circle text-muted me-3"></i>
+                                        </t>
+                                        <span>Timbrado CFDI</span>
+                                        <t t-if="billing_request.state == 'pending_stamp'">
+                                            <span class="badge bg-warning ms-auto">En revisión</span>
+                                        </t>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-center"
+                                        t-att-class="'list-group-item-success' if billing_request.state == 'done' else ''">
+                                        <t t-if="billing_request.state == 'done'">
+                                            <i class="fa fa-check-circle text-success me-3"></i>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-circle text-muted me-3"></i>
+                                        </t>
+                                        <span>Envío por Email</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Información de factura (si existe) -->
+                            <t t-if="billing_request.invoice_id">
+                                <div class="alert alert-success mt-4">
+                                    <h6 class="alert-heading">
+                                        <i class="fa fa-file-invoice me-2"></i>
+                                        Factura Generada
+                                    </h6>
+                                    <p class="mb-0">
+                                        Número de factura: <strong><t t-esc="billing_request.invoice_name"/></strong>
+                                    </p>
+                                    <hr/>
+                                    <p class="mb-0 small">
+                                        La factura será enviada a <strong><t t-esc="billing_request.email"/></strong>
+                                        una vez que sea timbrada por el área de contabilidad.
+                                    </p>
+                                </div>
+                            </t>
+
+                            <!-- Error (si existe) -->
+                            <t t-if="billing_request.state == 'error' and billing_request.error_message">
+                                <div class="alert alert-danger mt-4">
+                                    <h6 class="alert-heading">
+                                        <i class="fa fa-exclamation-triangle me-2"></i>
+                                        Detalle del Error
+                                    </h6>
+                                    <p class="mb-0"><t t-esc="billing_request.error_message"/></p>
+                                </div>
+                            </t>
+                        </div>
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between">
+                                <a href="/portal/billing/orders" class="btn btn-outline-secondary">
+                                    <i class="fa fa-arrow-left me-1"></i> Volver a Órdenes
+                                </a>
+                                <t t-if="billing_request.state not in ('done', 'error', 'cancelled')">
+                                    <button type="button"
+                                            class="btn btn-outline-primary"
+                                            id="btnRefresh"
+                                            onclick="location.reload()">
+                                        <i class="fa fa-sync me-1"></i> Actualizar
+                                    </button>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="card mt-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fa fa-info-circle me-2"></i>
+                                Información de la Solicitud
+                            </h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <td class="text-muted">Fecha:</td>
+                                    <td><t t-esc="billing_request.create_date" t-options="{'widget': 'datetime'}"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Órdenes:</td>
+                                    <td><t t-esc="', '.join(billing_request.order_ids.mapped('name'))"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">RFC:</td>
+                                    <td><code><t t-esc="billing_request.rfc or '-'"/></code></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Email:</td>
+                                    <td><t t-esc="billing_request.email"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script para actualización automática -->
+            <script>
+                (function() {
+                    var requestId = <t t-esc="billing_request.id"/>;
+                    var state = '<t t-esc="billing_request.state"/>';
+
+                    // Auto-refresh si está en proceso
+                    if (['draft', 'validating', 'csf_validated', 'creating_partner', 'creating_invoice'].includes(state)) {
+                        setTimeout(function() {
+                            location.reload();
+                        }, 5000);
+                    }
+                })();
+            </script>
+        </t>
+    </template>
+</odoo>

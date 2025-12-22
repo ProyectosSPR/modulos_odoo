@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit res.partner form to add billing portal fields -->
+    <record id="view_partner_form_inherit_billing" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.billing</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_billing_requests" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('billing_request_count', '=', 0)]}">
+                    <field name="billing_request_count" widget="statinfo" string="Solicitudes"/>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='internal_notes']" position="before">
+                <page string="Portal Facturación" name="billing_portal"
+                      attrs="{'invisible': [('ml_receiver_id', '=', False), ('billing_request_count', '=', 0)]}">
+                    <group>
+                        <group string="MercadoLibre">
+                            <field name="ml_receiver_id"/>
+                            <field name="ml_nickname"/>
+                        </group>
+                        <group string="Validación CSF">
+                            <field name="csf_validated"/>
+                            <field name="csf_validation_date"/>
+                        </group>
+                    </group>
+                    <group string="Historial de Solicitudes" attrs="{'invisible': [('billing_request_count', '=', 0)]}">
+                        <field name="billing_request_ids" nolabel="1">
+                            <tree>
+                                <field name="name"/>
+                                <field name="create_date"/>
+                                <field name="state"/>
+                                <field name="invoice_id"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit sale.order form to add billing request info -->
+    <record id="view_sale_order_form_inherit_billing" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.billing</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_billing_requests" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('billing_request_count', '=', 0)]}">
+                    <field name="billing_request_count" widget="statinfo" string="Solicitudes"/>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='other_information']" position="after">
+                <page string="MercadoLibre" name="mercadolibre"
+                      attrs="{'invisible': [('ml_order_id', '=', False)]}">
+                    <group>
+                        <group string="IDs MercadoLibre">
+                            <field name="ml_order_id"/>
+                            <field name="ml_pack_id"/>
+                            <field name="ml_receiver_id"/>
+                        </group>
+                        <group string="Estados ML">
+                            <field name="ml_shipment_status"/>
+                            <field name="ml_payment_status"/>
+                            <field name="is_portal_billable"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit sale.order tree to show ML info -->
+    <record id="view_sale_order_tree_inherit_billing" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.billing</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_status']" position="after">
+                <field name="ml_shipment_status" optional="hide"/>
+                <field name="is_portal_billable" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

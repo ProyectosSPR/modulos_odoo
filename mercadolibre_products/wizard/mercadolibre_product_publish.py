@@ -50,14 +50,27 @@ class MercadolibreProductPublish(models.TransientModel):
     ], string='Modo Compra', default='buy_it_now', required=True)
 
     # Categoria ML
+    category_id = fields.Many2one(
+        'mercadolibre.category',
+        string='Categoria ML',
+        help='Categoria de MercadoLibre para la publicacion'
+    )
     ml_category_id = fields.Char(
         string='ID Categoria ML',
-        help='ID de la categoria en MercadoLibre (ej: MLM1055)'
+        related='category_id.ml_category_id',
+        readonly=True,
+        store=False
     )
     category_name = fields.Char(
-        string='Categoria',
+        string='Nombre Categoria',
+        related='category_id.path_from_root',
         readonly=True,
-        help='Nombre de la categoria'
+        store=False
+    )
+    # Campo para busqueda manual de categoria por ID
+    search_category_id = fields.Char(
+        string='Buscar por ID',
+        help='Ingrese el ID de categoria ML para buscar (ej: MLM1055)'
     )
 
     # Opciones
@@ -124,27 +137,57 @@ class MercadolibreProductPublish(models.TransientModel):
         for record in self:
             record.product_count = len(record.product_tmpl_ids)
 
-    @api.onchange('ml_category_id')
-    def _onchange_ml_category_id(self):
-        """Obtiene nombre de la categoria"""
-        if self.ml_category_id:
-            try:
-                import requests
-                url = f'https://api.mercadolibre.com/categories/{self.ml_category_id}'
-                response = requests.get(url, timeout=10)
-                if response.status_code == 200:
-                    data = response.json()
-                    self.category_name = data.get('name', '')
-                else:
-                    self.category_name = 'Categoria no encontrada'
-            except Exception:
-                self.category_name = ''
+    @api.onchange('search_category_id')
+    def _onchange_search_category_id(self):
+        """Busca o crea la categoria por ID de ML"""
+        if self.search_category_id:
+            CategoryModel = self.env['mercadolibre.category']
+            # Buscar si ya existe
+            existing = CategoryModel.search([
+                ('ml_category_id', '=', self.search_category_id)
+            ], limit=1)
+
+            if existing:
+                self.category_id = existing.id
+                self.search_category_id = False
+            else:
+                # Intentar obtener de ML y crear
+                try:
+                    category = CategoryModel.get_or_create_from_ml(
+                        self.search_category_id,
+                        site_id='MLM'
+                    )
+                    if category:
+                        self.category_id = category.id
+                        self.search_category_id = False
+                except Exception:
+                    pass
+
+    def action_sync_categories(self):
+        """Sincroniza categorias raiz de MercadoLibre"""
+        CategoryModel = self.env['mercadolibre.category']
+        # Determinar sitio segun cuenta
+        site_id = 'MLM'  # Default Mexico
+        if self.account_id:
+            # Intentar obtener el sitio de la cuenta
+            site_id = self.account_id.site_id or 'MLM'
+
+        CategoryModel.action_sync_root_categories(site_id=site_id)
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Publicar en MercadoLibre'),
+            'res_model': 'mercadolibre.product.publish',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def action_preview(self):
         """Muestra vista previa de la publicacion"""
         self.ensure_one()
 
-        if not self.ml_category_id:
+        if not self.category_id:
             raise ValidationError(_('Debe seleccionar una categoria de MercadoLibre.'))
 
         log_lines = []
@@ -222,7 +265,7 @@ class MercadolibreProductPublish(models.TransientModel):
         if not self.account_id.has_valid_token:
             raise ValidationError(_('La cuenta no tiene un token valido.'))
 
-        if not self.ml_category_id:
+        if not self.category_id:
             raise ValidationError(_('Debe seleccionar una categoria.'))
 
         log_lines = []

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Settings Form View -->
+    <record id="view_billing_settings_form" model="ir.ui.view">
+        <field name="name">billing.settings.form</field>
+        <field name="model">billing.settings</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page string="Inteligencia Artificial" name="ai">
+                            <group>
+                                <group string="Google Gemini">
+                                    <field name="ai_provider"/>
+                                    <field name="gemini_api_key" password="True"/>
+                                    <field name="gemini_model"/>
+                                </group>
+                                <group string="OpenAI (Alternativo)">
+                                    <field name="openai_api_key" password="True"/>
+                                    <field name="openai_model"/>
+                                </group>
+                            </group>
+                            <group string="Configuración de Validación">
+                                <field name="ai_fallback_enabled"/>
+                                <field name="ai_confidence_threshold"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Nota:</strong> La validación de CSF usa primero OCR local.
+                                Si no puede extraer los datos, usa IA como respaldo (si está habilitado).</p>
+                            </div>
+                        </page>
+                        <page string="Base de Datos Externa" name="external_db">
+                            <group>
+                                <group string="Conexión PostgreSQL">
+                                    <field name="external_db_host"/>
+                                    <field name="external_db_port"/>
+                                    <field name="external_db_name"/>
+                                    <field name="external_db_user"/>
+                                    <field name="external_db_password" password="True"/>
+                                </group>
+                                <group string="Tablas">
+                                    <field name="external_db_status_table"/>
+                                    <field name="external_db_users_table"/>
+                                    <field name="external_db_sessions_table"/>
+                                </group>
+                            </group>
+                            <div class="mt-3">
+                                <button name="action_test_external_db" type="object"
+                                        string="Probar Conexión" class="btn-secondary"/>
+                            </div>
+                        </page>
+                        <page string="Portal" name="portal">
+                            <group>
+                                <group string="Autenticación">
+                                    <field name="allow_guest_billing"/>
+                                    <field name="session_timeout_hours"/>
+                                    <field name="max_orders_per_request"/>
+                                </group>
+                                <group string="Notificaciones">
+                                    <field name="send_email_on_complete"/>
+                                    <field name="notify_accounting_on_pending"/>
+                                    <field name="accounting_user_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Procesamiento" name="processing">
+                            <group>
+                                <group string="Tiempos de Espera">
+                                    <field name="csf_validation_timeout"/>
+                                    <field name="ai_request_timeout"/>
+                                </group>
+                                <group string="Límites">
+                                    <field name="max_pdf_size_mb"/>
+                                    <field name="max_daily_requests"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_billing_settings_tree" model="ir.ui.view">
+        <field name="name">billing.settings.tree</field>
+        <field name="model">billing.settings</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="ai_provider"/>
+                <field name="ai_fallback_enabled"/>
+                <field name="allow_guest_billing"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_settings" model="ir.actions.act_window">
+        <field name="name">Configuración del Portal</field>
+        <field name="res_model">billing.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+    </record>
+
+    <!-- Billing Status Config Views -->
+    <record id="view_billing_status_config_tree" model="ir.ui.view">
+        <field name="name">billing.status.config.tree</field>
+        <field name="model">billing.status.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="progress_min"/>
+                <field name="progress_max"/>
+                <field name="is_error"/>
+                <field name="is_final"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_billing_status_config_form" model="ir.ui.view">
+        <field name="name">billing.status.config.form</field>
+        <field name="model">billing.status.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="progress_min"/>
+                            <field name="progress_max"/>
+                            <field name="color" widget="color"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="icon"/>
+                            <field name="message_template"/>
+                        </group>
+                        <group>
+                            <field name="is_error"/>
+                            <field name="is_final"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_billing_status_config" model="ir.actions.act_window">
+        <field name="name">Estados de Facturación</field>
+        <field name="res_model">billing.status.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

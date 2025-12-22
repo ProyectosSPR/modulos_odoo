@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_billing_request_tree" model="ir.ui.view">
+        <field name="name">billing.request.tree</field>
+        <field name="model">billing.request</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'error'"
+                  decoration-success="state == 'done'"
+                  decoration-warning="state == 'pending_stamp'"
+                  decoration-info="state in ('validating', 'creating_partner', 'creating_invoice')">
+                <field name="name"/>
+                <field name="create_date"/>
+                <field name="rfc"/>
+                <field name="razon_social"/>
+                <field name="email"/>
+                <field name="order_references"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state == 'error'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state == 'pending_stamp'"
+                       decoration-info="state in ('validating', 'creating_partner', 'creating_invoice')"/>
+                <field name="invoice_id" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_billing_request_form" model="ir.ui.view">
+        <field name="name">billing.request.form</field>
+        <field name="model">billing.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_validate_csf" type="object"
+                            string="Validar CSF" class="btn-primary"
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'error'])]}"/>
+                    <button name="action_create_partner" type="object"
+                            string="Crear/Actualizar Cliente" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'csf_validated')]}"/>
+                    <button name="action_create_invoice" type="object"
+                            string="Crear Factura" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'creating_partner')]}"/>
+                    <button name="action_mark_done" type="object"
+                            string="Marcar Completado" class="btn-success"
+                            attrs="{'invisible': [('state', '!=', 'pending_stamp')]}"/>
+                    <button name="action_reset_to_draft" type="object"
+                            string="Reiniciar" class="btn-secondary"
+                            attrs="{'invisible': [('state', 'not in', ['error', 'cancelled'])]}"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancelar"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancelled'])]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,csf_validated,creating_partner,creating_invoice,pending_stamp,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_invoice" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                attrs="{'invisible': [('invoice_id', '=', False)]}">
+                            <field name="invoice_id" widget="statinfo" string="Factura"/>
+                        </button>
+                        <button name="action_view_partner" type="object"
+                                class="oe_stat_button" icon="fa-user"
+                                attrs="{'invisible': [('partner_id', '=', False)]}">
+                            <field name="partner_id" widget="statinfo" string="Cliente"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Información de Contacto">
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="receiver_id"/>
+                        </group>
+                        <group string="Progreso">
+                            <field name="progress" widget="progressbar"/>
+                            <field name="status_message"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Datos Fiscales" name="fiscal_data">
+                            <group>
+                                <group>
+                                    <field name="rfc"/>
+                                    <field name="razon_social"/>
+                                    <field name="codigo_postal"/>
+                                    <field name="regimen_fiscal_id"/>
+                                </group>
+                                <group>
+                                    <field name="uso_cfdi_id"/>
+                                    <field name="forma_pago_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="partner_created"/>
+                                </group>
+                            </group>
+                            <group string="CSF">
+                                <field name="csf_attachment_id"/>
+                                <field name="csf_validation_method"/>
+                            </group>
+                            <group string="Datos Extraídos (JSON)" attrs="{'invisible': [('csf_data', '=', False)]}">
+                                <field name="csf_data" widget="text" nolabel="1" colspan="2"/>
+                            </group>
+                        </page>
+                        <page string="Órdenes" name="orders">
+                            <field name="order_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="client_order_ref"/>
+                                    <field name="date_order"/>
+                                    <field name="amount_total"/>
+                                    <field name="invoice_status"/>
+                                </tree>
+                            </field>
+                            <group>
+                                <field name="order_references"/>
+                            </group>
+                        </page>
+                        <page string="Factura" name="invoice"
+                              attrs="{'invisible': [('invoice_id', '=', False)]}">
+                            <group>
+                                <field name="invoice_id"/>
+                                <field name="invoice_name"/>
+                            </group>
+                        </page>
+                        <page string="Error" name="error"
+                              attrs="{'invisible': [('state', '!=', 'error')]}">
+                            <group>
+                                <field name="error_message" widget="text" nolabel="1" colspan="2"/>
+                            </group>
+                        </page>
+                        <page string="Información Técnica" name="technical">
+                            <group>
+                                <group>
+                                    <field name="ip_address"/>
+                                    <field name="user_agent"/>
+                                </group>
+                                <group>
+                                    <field name="create_date"/>
+                                    <field name="write_date"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_billing_request_search" model="ir.ui.view">
+        <field name="name">billing.request.search</field>
+        <field name="model">billing.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="rfc"/>
+                <field name="email"/>
+                <field name="razon_social"/>
+                <field name="order_references"/>
+                <filter name="today" string="Hoy"
+                        domain="[('create_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="pending" string="En Proceso"
+                        domain="[('state', 'not in', ['done', 'error', 'cancelled'])]"/>
+                <filter name="pending_stamp" string="Pendiente Timbrado"
+                        domain="[('state', '=', 'pending_stamp')]"/>
+                <filter name="done" string="Completados"
+                        domain="[('state', '=', 'done')]"/>
+                <filter name="error" string="Con Error"
+                        domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter name="has_invoice" string="Con Factura"
+                        domain="[('invoice_id', '!=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_date" string="Fecha" context="{'group_by': 'create_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Kanban View -->
+    <record id="view_billing_request_kanban" model="ir.ui.view">
+        <field name="name">billing.request.kanban</field>
+        <field name="model">billing.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="rfc"/>
+                <field name="email"/>
+                <field name="state"/>
+                <field name="progress"/>
+                <field name="color"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <field name="rfc"/>
+                                    <br/>
+                                    <small><field name="email"/></small>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="progress" widget="progressbar"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_request" model="ir.actions.act_window">
+        <field name="name">Solicitudes de Facturación</field>
+        <field name="res_model">billing.request</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay solicitudes de facturación
+            </p>
+            <p>
+                Las solicitudes de facturación se crean desde el portal público
+                cuando los clientes solicitan su factura.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for pending stamp -->
+    <record id="action_billing_request_pending_stamp" model="ir.actions.act_window">
+        <field name="name">Pendientes de Timbrado</field>
+        <field name="res_model">billing.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'pending_stamp')]</field>
+    </record>
+</odoo>

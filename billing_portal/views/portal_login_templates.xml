@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Página de Login -->
+    <template id="portal_login" name="Portal Login">
+        <t t-call="website.layout">
+            <div id="wrap" class="billing-portal-wrap">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-md-5">
+                            <div class="card shadow">
+                                <div class="card-header bg-primary text-white text-center py-4">
+                                    <i class="fa fa-file-invoice-dollar fa-3x mb-3"></i>
+                                    <h3 class="mb-0">Portal de Facturación</h3>
+                                    <small>DML Médica</small>
+                                </div>
+                                <div class="card-body p-4">
+                                    <t t-if="error">
+                                        <div class="alert alert-danger">
+                                            <i class="fa fa-exclamation-circle me-2"></i>
+                                            <t t-esc="error"/>
+                                        </div>
+                                    </t>
+
+                                    <form method="post" action="/portal/billing/login">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                        <div class="mb-4">
+                                            <label for="identifier" class="form-label fw-bold">
+                                                ID de MercadoLibre o Email
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="fa fa-user"></i>
+                                                </span>
+                                                <input type="text"
+                                                       class="form-control form-control-lg"
+                                                       id="identifier"
+                                                       name="identifier"
+                                                       placeholder="Ingrese su ID o email"
+                                                       required="required"
+                                                       autofocus="autofocus"/>
+                                            </div>
+                                            <small class="text-muted">
+                                                Puede usar su receiver_id de MercadoLibre o el email con el que ha solicitado facturas
+                                            </small>
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-lg">
+                                                <i class="fa fa-sign-in-alt me-2"></i>
+                                                Iniciar Sesión
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <hr class="my-4"/>
+
+                                    <div class="text-center">
+                                        <p class="text-muted mb-2">¿Primera vez aquí?</p>
+                                        <a href="/portal/billing/guest" class="btn btn-outline-secondary">
+                                            <i class="fa fa-file-alt me-2"></i>
+                                            Solicitar Factura sin Cuenta
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Información adicional -->
+                            <div class="card mt-4">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fa fa-info-circle me-2 text-info"></i>
+                                        ¿Cómo funciona?
+                                    </h6>
+                                    <ol class="small text-muted mb-0">
+                                        <li>Inicie sesión con su ID de MercadoLibre</li>
+                                        <li>Seleccione las órdenes que desea facturar</li>
+                                        <li>Suba su Constancia de Situación Fiscal (CSF)</li>
+                                        <li>Los datos se extraen automáticamente</li>
+                                        <li>Su factura será enviada por email</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Página de acceso como invitado -->
+    <template id="portal_guest_access" name="Portal Guest Access">
+        <t t-call="website.layout">
+            <div id="wrap" class="billing-portal-wrap">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-md-5">
+                            <div class="card shadow">
+                                <div class="card-header bg-secondary text-white text-center py-4">
+                                    <i class="fa fa-file-invoice fa-3x mb-3"></i>
+                                    <h3 class="mb-0">Solicitar Factura</h3>
+                                    <small>Acceso rápido sin cuenta</small>
+                                </div>
+                                <div class="card-body p-4">
+                                    <t t-if="error">
+                                        <div class="alert alert-danger">
+                                            <i class="fa fa-exclamation-circle me-2"></i>
+                                            <t t-esc="error"/>
+                                        </div>
+                                    </t>
+
+                                    <form method="post" action="/portal/billing/guest">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                        <div class="mb-4">
+                                            <label for="order_ref" class="form-label fw-bold">
+                                                Número de Pedido
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="fa fa-search"></i>
+                                                </span>
+                                                <input type="text"
+                                                       class="form-control form-control-lg"
+                                                       id="order_ref"
+                                                       name="order_ref"
+                                                       t-att-value="order_ref"
+                                                       placeholder="Ej: 2000014377529150"
+                                                       required="required"
+                                                       autofocus="autofocus"/>
+                                            </div>
+                                            <small class="text-muted">
+                                                Ingrese el número de pedido de MercadoLibre
+                                            </small>
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-secondary btn-lg">
+                                                <i class="fa fa-search me-2"></i>
+                                                Buscar Pedido
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <hr class="my-4"/>
+
+                                    <div class="text-center">
+                                        <p class="text-muted mb-2">¿Ya tiene cuenta?</p>
+                                        <a href="/portal/billing/login" class="btn btn-outline-primary">
+                                            <i class="fa fa-sign-in-alt me-2"></i>
+                                            Iniciar Sesión
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Requisitos -->
+                            <div class="card mt-4 border-warning">
+                                <div class="card-header bg-warning">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>
+                                    Requisitos para facturar
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0 small">
+                                        <li>El pedido debe estar <strong>entregado</strong></li>
+                                        <li>Debe tener su <strong>Constancia de Situación Fiscal (CSF)</strong> del SAT</li>
+                                        <li>La CSF debe estar <strong>vigente</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

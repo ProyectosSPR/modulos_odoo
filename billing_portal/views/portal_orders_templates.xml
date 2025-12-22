@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Página de órdenes -->
+    <template id="portal_orders" name="Portal Orders">
+        <t t-call="billing_portal.portal_layout">
+            <!-- Alerta de solicitudes pendientes -->
+            <t t-if="pending_requests">
+                <div class="alert alert-info mb-4">
+                    <i class="fa fa-clock me-2"></i>
+                    Tiene <strong><t t-esc="len(pending_requests)"/></strong> solicitud(es) en proceso.
+                    <a href="/portal/billing/history" class="alert-link">Ver estado</a>
+                </div>
+            </t>
+
+            <!-- Barra de búsqueda -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" action="/portal/billing/orders" class="row g-3">
+                        <div class="col-md-9">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fa fa-search"></i>
+                                </span>
+                                <input type="text"
+                                       class="form-control"
+                                       name="search"
+                                       t-att-value="search"
+                                       placeholder="Buscar por número de orden, pack_id, referencia..."/>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fa fa-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Formulario de selección de órdenes -->
+            <form id="ordersForm" method="get" action="/portal/billing/request">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fa fa-list me-2"></i>
+                            Órdenes Disponibles para Facturar
+                        </h5>
+                        <button type="submit" class="btn btn-success" id="btnSolicitar" disabled="disabled">
+                            <i class="fa fa-file-invoice me-1"></i>
+                            Solicitar Factura (<span id="selectedCount">0</span>)
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <t t-if="orders">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 40px;">
+                                                <input type="checkbox" id="selectAll" class="form-check-input"/>
+                                            </th>
+                                            <th>Orden</th>
+                                            <th>Referencia ML</th>
+                                            <th>Fecha</th>
+                                            <th class="text-end">Monto</th>
+                                            <th class="text-center">Envío</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="orders" t-as="order">
+                                            <tr t-att-class="'' if order.is_portal_billable else 'table-secondary'">
+                                                <td>
+                                                    <t t-if="order.is_portal_billable">
+                                                        <input type="checkbox"
+                                                               name="order_ids"
+                                                               t-att-value="order.id"
+                                                               class="form-check-input order-checkbox"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <i class="fa fa-ban text-muted" title="No facturable"></i>
+                                                    </t>
+                                                </td>
+                                                <td>
+                                                    <strong><t t-esc="order.name"/></strong>
+                                                </td>
+                                                <td>
+                                                    <code><t t-esc="order.client_order_ref or '-'"/></code>
+                                                </td>
+                                                <td>
+                                                    <t t-esc="order.date_order" t-options="{'widget': 'date'}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>
+                                                        <t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                                    </strong>
+                                                </td>
+                                                <td class="text-center">
+                                                    <t t-if="order.ml_shipment_status == 'delivered'">
+                                                        <span class="badge bg-success">
+                                                            <i class="fa fa-check"></i> Entregado
+                                                        </span>
+                                                    </t>
+                                                    <t t-elif="order.ml_shipment_status == 'shipped'">
+                                                        <span class="badge bg-warning">
+                                                            <i class="fa fa-truck"></i> En camino
+                                                        </span>
+                                                    </t>
+                                                    <t t-elif="order.ml_shipment_status == 'pending'">
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fa fa-clock"></i> Pendiente
+                                                        </span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-info">-</span>
+                                                    </t>
+                                                </td>
+                                                <td class="text-center">
+                                                    <t t-if="order.invoice_status == 'invoiced'">
+                                                        <span class="badge bg-primary">
+                                                            <i class="fa fa-check-circle"></i> Facturado
+                                                        </span>
+                                                    </t>
+                                                    <t t-elif="order.invoice_status == 'to invoice'">
+                                                        <span class="badge bg-success">
+                                                            <i class="fa fa-file-invoice"></i> Por facturar
+                                                        </span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-secondary">
+                                                            <t t-esc="order.invoice_status"/>
+                                                        </span>
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="p-5 text-center text-muted">
+                                <i class="fa fa-inbox fa-4x mb-3"></i>
+                                <h5>No se encontraron órdenes</h5>
+                                <p t-if="search">
+                                    No hay resultados para "<t t-esc="search"/>".
+                                    <a href="/portal/billing/orders">Ver todas</a>
+                                </p>
+                                <p t-else="">
+                                    No tiene órdenes disponibles para facturar en este momento.
+                                </p>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Leyenda -->
+            <div class="mt-4">
+                <small class="text-muted">
+                    <strong>Nota:</strong> Solo puede facturar órdenes que:
+                    <ul class="mb-0">
+                        <li>Hayan sido <strong>entregadas</strong></li>
+                        <li>No estén ya <strong>facturadas</strong></li>
+                    </ul>
+                </small>
+            </div>
+        </t>
+    </template>
+
+    <!-- Historial de solicitudes -->
+    <template id="portal_history" name="Portal History">
+        <t t-call="billing_portal.portal_layout">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-history me-2"></i>
+                        Historial de Solicitudes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <t t-if="requests">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Solicitud</th>
+                                        <th>Fecha</th>
+                                        <th>Órdenes</th>
+                                        <th>RFC</th>
+                                        <th>Factura</th>
+                                        <th class="text-center">Estado</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="requests" t-as="req">
+                                        <tr>
+                                            <td>
+                                                <strong><t t-esc="req.name"/></strong>
+                                            </td>
+                                            <td>
+                                                <t t-esc="req.create_date" t-options="{'widget': 'datetime'}"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="len(req.order_ids)"/> orden(es)
+                                            </td>
+                                            <td>
+                                                <code><t t-esc="req.rfc or '-'"/></code>
+                                            </td>
+                                            <td>
+                                                <t t-if="req.invoice_id">
+                                                    <span class="badge bg-success">
+                                                        <t t-esc="req.invoice_name"/>
+                                                    </span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="text-muted">-</span>
+                                                </t>
+                                            </td>
+                                            <td class="text-center">
+                                                <t t-if="req.state == 'done'">
+                                                    <span class="badge bg-success">Completado</span>
+                                                </t>
+                                                <t t-elif="req.state == 'error'">
+                                                    <span class="badge bg-danger">Error</span>
+                                                </t>
+                                                <t t-elif="req.state == 'cancelled'">
+                                                    <span class="badge bg-secondary">Cancelado</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-warning">En proceso</span>
+                                                </t>
+                                            </td>
+                                            <td>
+                                                <a t-att-href="'/portal/billing/progress/%d' % req.id"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fa fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="p-5 text-center text-muted">
+                            <i class="fa fa-history fa-4x mb-3"></i>
+                            <h5>Sin historial</h5>
+                            <p>Aún no ha realizado solicitudes de facturación.</p>
+                            <a href="/portal/billing/orders" class="btn btn-primary">
+                                <i class="fa fa-plus me-1"></i> Nueva Solicitud
+                            </a>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>
