@@ -27,13 +27,8 @@
 
     <!-- Agregar entradas al portal home -->
     <template id="portal_my_home_billing" name="Portal Facturación" customize_show="True" inherit_id="portal.portal_my_home" priority="40">
-        <!-- Habilitar la categoría de cliente si no está habilitada -->
-        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
-            <t t-set="portal_client_category_enable" t-value="True"/>
-        </xpath>
-
-        <!-- Agregar entrada de Órdenes Facturables -->
-        <div id="portal_client_category" position="inside">
+        <!-- Agregar entradas en portal_common_category que siempre existe -->
+        <xpath expr="//div[@id='portal_common_category']" position="inside">
             <t t-call="portal.portal_docs_entry">
                 <t t-set="icon" t-value="'/billing_portal/static/src/img/invoice-order.svg'"/>
                 <t t-set="title">Solicitar Factura</t>
@@ -41,10 +36,6 @@
                 <t t-set="text">Selecciona tus órdenes para facturar</t>
                 <t t-set="placeholder_count" t-value="'billing_orders_count'"/>
             </t>
-        </div>
-
-        <!-- Agregar entrada de Solicitudes de Factura (historial) -->
-        <div id="portal_client_category" position="inside">
             <t t-call="portal.portal_docs_entry">
                 <t t-set="icon" t-value="'/billing_portal/static/src/img/invoice-history.svg'"/>
                 <t t-set="title">Mis Solicitudes de Factura</t>
@@ -52,7 +43,7 @@
                 <t t-set="text">Historial y estado de tus solicitudes</t>
                 <t t-set="placeholder_count" t-value="'billing_requests_count'"/>
             </t>
-        </div>
+        </xpath>
     </template>
 
     <!-- ============================================
