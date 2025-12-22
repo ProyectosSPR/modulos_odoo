@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Rule Tree View -->
+    <record id="view_ai_rule_tree" model="ir.ui.view">
+        <field name="name">ai.agent.rule.tree</field>
+        <field name="model">ai.agent.rule</field>
+        <field name="arch" type="xml">
+            <tree string="Behavior Rules">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="trigger_type"/>
+                <field name="trigger_value"/>
+                <field name="action_type"/>
+                <field name="priority"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Rule Form View -->
+    <record id="view_ai_rule_form" model="ir.ui.view">
+        <field name="name">ai.agent.rule.form</field>
+        <field name="model">ai.agent.rule</field>
+        <field name="arch" type="xml">
+            <form string="Behavior Rule">
+                <sheet>
+                    <group>
+                        <group string="Rule Information">
+                            <field name="name"/>
+                            <field name="agent_id"/>
+                            <field name="sequence"/>
+                            <field name="priority"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Trigger Configuration">
+                            <field name="trigger_type"/>
+                            <field name="trigger_value" attrs="{'invisible': [('trigger_type', '=', 'always')]}"/>
+                            <field name="trigger_description"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Action" name="action">
+                            <group>
+                                <field name="action_type" widget="radio"/>
+                            </group>
+
+                            <!-- Instruction Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'instruction')]}">
+                                <field name="instruction_text" placeholder="Additional instruction to add to the AI prompt when this rule triggers"/>
+                            </group>
+
+                            <!-- Tool Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'tool')]}">
+                                <field name="tool_id"/>
+                                <field name="tool_params" placeholder='{"param1": "value1"}'/>
+                            </group>
+
+                            <!-- Activity Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'activity')]}">
+                                <field name="activity_type"/>
+                                <field name="activity_data_extraction" placeholder="Instructions for AI to extract required data from the conversation"/>
+                            </group>
+
+                            <!-- Response Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'response')]}">
+                                <field name="response_template" placeholder="Custom response template with {{variables}}"/>
+                            </group>
+
+                            <!-- Transfer Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'transfer')]}">
+                                <field name="transfer_to"/>
+                                <field name="transfer_user_id" attrs="{'invisible': [('transfer_to', '!=', 'specific_user')]}"/>
+                                <field name="transfer_message"/>
+                            </group>
+
+                            <!-- Context Action -->
+                            <group attrs="{'invisible': [('action_type', '!=', 'context')]}">
+                                <field name="context_key"/>
+                                <field name="context_value"/>
+                            </group>
+                        </page>
+
+                        <page string="Conditions" name="conditions">
+                            <field name="condition_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="condition_type"/>
+                                    <field name="context_key" attrs="{'invisible': [('condition_type', '!=', 'context_value')]}"/>
+                                    <field name="operator" attrs="{'invisible': [('condition_type', '!=', 'context_value')]}"/>
+                                    <field name="context_value" attrs="{'invisible': [('condition_type', 'not in', ['context_value', 'conversation_length'])]}"/>
+                                    <field name="channel_type" attrs="{'invisible': [('condition_type', '!=', 'channel')]}"/>
+                                    <field name="time_start" attrs="{'invisible': [('condition_type', '!=', 'time_range')]}"/>
+                                    <field name="time_end" attrs="{'invisible': [('condition_type', '!=', 'time_range')]}"/>
+                                </tree>
+                            </field>
+                            <group class="oe_edit_only">
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Conditions:</strong> All conditions must be met for the rule to trigger.
+                                    <ul class="mb-0">
+                                        <li><strong>Context Value:</strong> Check a value in conversation context</li>
+                                        <li><strong>Channel:</strong> Trigger only for specific channel</li>
+                                        <li><strong>Time Range:</strong> Trigger only during specific hours</li>
+                                        <li><strong>Conversation Length:</strong> Trigger after N messages</li>
+                                    </ul>
+                                </div>
+                            </group>
+                        </page>
+
+                        <page string="Limits" name="limits">
+                            <group>
+                                <field name="max_triggers_per_conversation"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Rule Search View -->
+    <record id="view_ai_rule_search" model="ir.ui.view">
+        <field name="name">ai.agent.rule.search</field>
+        <field name="model">ai.agent.rule</field>
+        <field name="arch" type="xml">
+            <search string="Behavior Rules">
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="trigger_type"/>
+                <field name="action_type"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <separator/>
+                <filter string="Keyword Triggers" name="keyword" domain="[('trigger_type', '=', 'keyword')]"/>
+                <filter string="Activity Actions" name="activity" domain="[('action_type', '=', 'activity')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Trigger Type" name="group_trigger" context="{'group_by': 'trigger_type'}"/>
+                    <filter string="Action Type" name="group_action" context="{'group_by': 'action_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Rule Action -->
+    <record id="action_ai_rule" model="ir.actions.act_window">
+        <field name="name">Behavior Rules</field>
+        <field name="res_model">ai.agent.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_rule_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create behavior rules for your AI agents
+            </p>
+            <p>
+                Rules define how agents respond to specific triggers like keywords, intents, or patterns.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem
+        id="menu_ai_root"
+        name="AI Chatbot"
+        web_icon="ai_agent_core,static/description/icon.png"
+        sequence="100"/>
+
+    <!-- Conversations Menu -->
+    <menuitem
+        id="menu_ai_conversations"
+        name="Conversations"
+        parent="menu_ai_root"
+        action="action_ai_conversation"
+        sequence="10"/>
+
+    <!-- Agents Menu -->
+    <menuitem
+        id="menu_ai_agents"
+        name="Agents"
+        parent="menu_ai_root"
+        action="action_ai_agent"
+        sequence="20"/>
+
+    <!-- Configuration Menu -->
+    <menuitem
+        id="menu_ai_config"
+        name="Configuration"
+        parent="menu_ai_root"
+        sequence="100"/>
+
+    <menuitem
+        id="menu_ai_providers"
+        name="LLM Providers"
+        parent="menu_ai_config"
+        action="action_ai_provider"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_ai_tools"
+        name="Tools"
+        parent="menu_ai_config"
+        action="action_ai_tool"
+        sequence="20"/>
+
+    <menuitem
+        id="menu_ai_rules"
+        name="Behavior Rules"
+        parent="menu_ai_config"
+        action="action_ai_rule"
+        sequence="30"/>
+
+    <menuitem
+        id="menu_ai_prompt_templates"
+        name="Prompt Templates"
+        parent="menu_ai_config"
+        action="action_ai_prompt_template"
+        sequence="40"/>
+</odoo>

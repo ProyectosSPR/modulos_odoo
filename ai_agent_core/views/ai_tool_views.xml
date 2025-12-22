@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- AI Tool Tree View -->
+    <record id="view_ai_tool_tree" model="ir.ui.view">
+        <field name="name">ai.agent.tool.tree</field>
+        <field name="model">ai.agent.tool</field>
+        <field name="arch" type="xml">
+            <tree string="AI Tools">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="technical_name"/>
+                <field name="category"/>
+                <field name="tool_type"/>
+                <field name="requires_confirmation"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- AI Tool Form View -->
+    <record id="view_ai_tool_form" model="ir.ui.view">
+        <field name="name">ai.agent.tool.form</field>
+        <field name="model">ai.agent.tool</field>
+        <field name="arch" type="xml">
+            <form string="AI Tool">
+                <header>
+                    <button name="action_test_tool" string="Test Tool" type="object" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Tool Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Basic Information">
+                            <field name="technical_name"/>
+                            <field name="category"/>
+                            <field name="tool_type"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Security">
+                            <field name="requires_confirmation"/>
+                            <field name="allowed_group_ids" widget="many2many_tags"/>
+                            <field name="return_format"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" placeholder="Describe what this tool does. This description is shown to the AI model."/>
+                    </group>
+
+                    <notebook>
+                        <page string="Configuration" name="config">
+                            <!-- Built-in Odoo Tool -->
+                            <group attrs="{'invisible': [('tool_type', '!=', 'builtin')]}" string="Odoo Model Configuration">
+                                <field name="odoo_model"/>
+                                <field name="odoo_method"/>
+                            </group>
+
+                            <!-- Python Code -->
+                            <group attrs="{'invisible': [('tool_type', '!=', 'python')]}" string="Python Code">
+                                <field name="python_code" widget="ace" options="{'mode': 'python'}" placeholder="# Available variables:
+# env - Odoo environment
+# params - Dictionary of input parameters
+# result - Set this to return value
+
+result = 'Hello from Python!'"/>
+                            </group>
+
+                            <!-- HTTP API -->
+                            <group attrs="{'invisible': [('tool_type', '!=', 'http_api')]}" string="HTTP API Configuration">
+                                <field name="api_endpoint"/>
+                                <field name="api_method"/>
+                                <field name="api_headers" placeholder='{"Content-Type": "application/json"}'/>
+                                <field name="api_body_template" placeholder='{"query": "{{query}}", "limit": {{limit}}}'/>
+                            </group>
+
+                            <!-- MCP Server -->
+                            <group attrs="{'invisible': [('tool_type', '!=', 'mcp_server')]}" string="MCP Server Configuration">
+                                <field name="mcp_server_url"/>
+                                <field name="mcp_tool_name"/>
+                                <field name="mcp_auth_token" password="True"/>
+                            </group>
+                        </page>
+
+                        <page string="Parameters" name="parameters">
+                            <group>
+                                <field name="parameters_schema" widget="ace" options="{'mode': 'json'}" placeholder='{
+    "type": "object",
+    "properties": {
+        "query": {
+            "type": "string",
+            "description": "Search query"
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Max results",
+            "default": 10
+        }
+    },
+    "required": ["query"]
+}'/>
+                            </group>
+                            <group class="oe_edit_only">
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Parameters Schema:</strong> Define tool parameters using JSON Schema format.
+                                    <ul class="mb-0">
+                                        <li><strong>type:</strong> Parameter type (string, integer, number, boolean, array, object)</li>
+                                        <li><strong>description:</strong> Parameter description for the AI</li>
+                                        <li><strong>default:</strong> Default value</li>
+                                        <li><strong>required:</strong> List of required parameter names</li>
+                                    </ul>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AI Tool Search View -->
+    <record id="view_ai_tool_search" model="ir.ui.view">
+        <field name="name">ai.agent.tool.search</field>
+        <field name="model">ai.agent.tool</field>
+        <field name="arch" type="xml">
+            <search string="AI Tools">
+                <field name="name"/>
+                <field name="technical_name"/>
+                <field name="category"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <separator/>
+                <filter string="Built-in" name="builtin" domain="[('tool_type', '=', 'builtin')]"/>
+                <filter string="Python" name="python" domain="[('tool_type', '=', 'python')]"/>
+                <filter string="HTTP API" name="http" domain="[('tool_type', '=', 'http_api')]"/>
+                <filter string="MCP" name="mcp" domain="[('tool_type', '=', 'mcp_server')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Category" name="group_category" context="{'group_by': 'category'}"/>
+                    <filter string="Tool Type" name="group_type" context="{'group_by': 'tool_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- AI Tool Action -->
+    <record id="action_ai_tool" model="ir.actions.act_window">
+        <field name="name">AI Tools</field>
+        <field name="res_model">ai.agent.tool</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ai_tool_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create tools for your AI agents
+            </p>
+            <p>
+                Tools allow AI agents to perform actions like searching products, creating records, or calling external APIs.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for conversations -->
+        <record id="seq_ai_conversation" model="ir.sequence">
+            <field name="name">AI Conversation</field>
+            <field name="code">ai.conversation</field>
+            <field name="prefix">CONV-</field>
+            <field name="padding">6</field>
+        </record>
+
+        <!-- Default Gemini Provider -->
+        <record id="ai_provider_gemini" model="ai.agent.provider">
+            <field name="name">Google Gemini</field>
+            <field name="provider_type">gemini</field>
+            <field name="default_model">gemini-1.5-flash</field>
+            <field name="available_models">gemini-1.5-flash,gemini-1.5-pro,gemini-2.0-flash-exp</field>
+            <field name="sequence">1</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- OpenAI Provider Template -->
+        <record id="ai_provider_openai" model="ai.agent.provider">
+            <field name="name">OpenAI</field>
+            <field name="provider_type">openai</field>
+            <field name="default_model">gpt-4o-mini</field>
+            <field name="available_models">gpt-4o,gpt-4o-mini,gpt-4-turbo,gpt-3.5-turbo</field>
+            <field name="sequence">2</field>
+            <field name="active">False</field>
+        </record>
+
+        <!-- Anthropic Provider Template -->
+        <record id="ai_provider_anthropic" model="ai.agent.provider">
+            <field name="name">Anthropic Claude</field>
+            <field name="provider_type">anthropic</field>
+            <field name="default_model">claude-3-5-sonnet-latest</field>
+            <field name="available_models">claude-3-5-sonnet-latest,claude-3-5-haiku-latest,claude-3-opus-latest</field>
+            <field name="sequence">3</field>
+            <field name="active">False</field>
+        </record>
+
+        <!-- Ollama Provider Template -->
+        <record id="ai_provider_ollama" model="ai.agent.provider">
+            <field name="name">Ollama (Local)</field>
+            <field name="provider_type">ollama</field>
+            <field name="default_model">llama3.2</field>
+            <field name="available_models">llama3.2,mistral,codellama,phi3,gemma2</field>
+            <field name="api_base_url">http://localhost:11434</field>
+            <field name="sequence">10</field>
+            <field name="active">False</field>
+        </record>
+
+        <!-- Groq Provider Template -->
+        <record id="ai_provider_groq" model="ai.agent.provider">
+            <field name="name">Groq</field>
+            <field name="provider_type">groq</field>
+            <field name="default_model">llama-3.3-70b-versatile</field>
+            <field name="available_models">llama-3.3-70b-versatile,mixtral-8x7b-32768,llama-3.1-8b-instant</field>
+            <field name="sequence">5</field>
+            <field name="active">False</field>
+        </record>
+    </data>
+</odoo>

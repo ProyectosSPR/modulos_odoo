@@ -7,6 +7,8 @@ Rutas nuevas bajo /my/billing/*:
 - /my/billing/orders - Órdenes disponibles para facturar
 - /my/billing/requests - Historial de solicitudes
 - /my/billing/request/<id> - Detalle de una solicitud
+
+También extiende /my/orders para mostrar órdenes por billing_partner_id
 """
 
 from odoo import http, _
@@ -19,6 +21,43 @@ _logger = logging.getLogger(__name__)
 
 class BillingCustomerPortal(CustomerPortal):
     """Extiende CustomerPortal para agregar funcionalidades de facturación."""
+
+    # =========================================
+    # Sobrescribir dominios de /my/orders y /my/quotes
+    # para incluir órdenes por billing_partner_id
+    # =========================================
+
+    def _prepare_orders_domain(self, partner):
+        """
+        Extiende el dominio de /my/orders para incluir:
+        - Órdenes donde partner_id es el cliente (original)
+        - Órdenes donde billing_partner_id es el cliente (nuevo)
+        """
+        # Dominio original de Odoo: partner_id child_of commercial_partner
+        # Lo extendemos para incluir billing_partner_id
+        return [
+            '|',
+            ('partner_id', 'child_of', [partner.commercial_partner_id.id]),
+            ('billing_partner_id', '=', partner.id),
+            ('state', 'in', ['sale', 'done']),
+        ]
+
+    def _prepare_quotations_domain(self, partner):
+        """
+        Extiende el dominio de /my/quotes para incluir:
+        - Cotizaciones donde partner_id es el cliente (original)
+        - Cotizaciones donde billing_partner_id es el cliente (nuevo)
+        """
+        return [
+            '|',
+            ('partner_id', 'child_of', [partner.commercial_partner_id.id]),
+            ('billing_partner_id', '=', partner.id),
+            ('state', '=', 'sent'),
+        ]
+
+    # =========================================
+    # Contadores para portal home
+    # =========================================
 
     def _prepare_home_portal_values(self, counters):
         """Agrega contadores de facturación al portal home."""
@@ -40,14 +79,12 @@ class BillingCustomerPortal(CustomerPortal):
         return values
 
     def _get_billing_orders_domain(self, partner):
-        """Dominio para órdenes facturables del partner."""
+        """Dominio para órdenes facturables del partner (billing portal)."""
         return [
             '|',
             ('partner_id', '=', partner.id),
             ('billing_partner_id', '=', partner.id),
             ('state', 'in', ['sale', 'done']),
-            # Solo órdenes que no tienen solicitud activa
-            # TODO: Agregar filtro si existe campo de factura
         ]
 
     def _get_billing_requests_domain(self, user, partner):

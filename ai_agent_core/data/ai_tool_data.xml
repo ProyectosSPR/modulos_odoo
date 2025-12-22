@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Basic greeting tool -->
+        <record id="ai_tool_greeting" model="ai.agent.tool">
+            <field name="name">Greeting Response</field>
+            <field name="technical_name">greeting_response</field>
+            <field name="description">Generate a friendly greeting for the customer. Use when the customer says hello or starts a conversation.</field>
+            <field name="tool_type">python</field>
+            <field name="category">general</field>
+            <field name="python_code">
+# Simple greeting tool
+from datetime import datetime
+
+hour = datetime.now().hour
+if hour &lt; 12:
+    greeting = "Buenos días"
+elif hour &lt; 18:
+    greeting = "Buenas tardes"
+else:
+    greeting = "Buenas noches"
+
+customer_name = params.get('customer_name', 'cliente')
+result = f"{greeting}, {customer_name}! ¿En qué puedo ayudarte hoy?"
+            </field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "customer_name": {
+            "type": "string",
+            "description": "Customer name for personalized greeting"
+        }
+    },
+    "required": []
+}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Get current date/time tool -->
+        <record id="ai_tool_datetime" model="ai.agent.tool">
+            <field name="name">Current Date/Time</field>
+            <field name="technical_name">get_current_datetime</field>
+            <field name="description">Get the current date and time. Use when customer asks about date, time, or schedules.</field>
+            <field name="tool_type">python</field>
+            <field name="category">general</field>
+            <field name="python_code">
+from datetime import datetime
+
+now = datetime.now()
+days_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+months_es = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+day_name = days_es[now.weekday()]
+month_name = months_es[now.month - 1]
+
+result = f"Hoy es {day_name}, {now.day} de {month_name} de {now.year}. La hora actual es {now.strftime('%H:%M')}."
+            </field>
+            <field name="parameters_schema">{"type": "object", "properties": {}, "required": []}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Company info tool -->
+        <record id="ai_tool_company_info" model="ai.agent.tool">
+            <field name="name">Company Information</field>
+            <field name="technical_name">get_company_info</field>
+            <field name="description">Get company information like name, address, phone, email. Use when customer asks about the business.</field>
+            <field name="tool_type">python</field>
+            <field name="category">general</field>
+            <field name="python_code">
+company = env.company
+
+info_parts = [f"Empresa: {company.name}"]
+
+if company.street:
+    info_parts.append(f"Dirección: {company.street}")
+if company.city:
+    info_parts.append(f"Ciudad: {company.city}")
+if company.phone:
+    info_parts.append(f"Teléfono: {company.phone}")
+if company.email:
+    info_parts.append(f"Email: {company.email}")
+if company.website:
+    info_parts.append(f"Sitio web: {company.website}")
+
+result = "\n".join(info_parts)
+            </field>
+            <field name="parameters_schema">{"type": "object", "properties": {}, "required": []}</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Create activity task tool -->
+        <record id="ai_tool_create_activity" model="ai.agent.tool">
+            <field name="name">Create Activity Task</field>
+            <field name="technical_name">create_activity_task</field>
+            <field name="description">Create a pending task for human review. Use when customer requests something that needs manual processing like invoices, quotes, returns, complaints, or special requests.</field>
+            <field name="tool_type">python</field>
+            <field name="category">general</field>
+            <field name="python_code">
+task_type = params.get('task_type', 'custom')
+description = params.get('description', 'Task from AI conversation')
+priority = params.get('priority', '1')
+extracted_data = params.get('extracted_data', {})
+
+# This will be available when ai_activity_pipeline is installed
+ActivityTask = env.get('ai.activity.task')
+if ActivityTask:
+    task = ActivityTask.create({
+        'name': description,
+        'task_type': task_type,
+        'extracted_data': json.dumps(extracted_data) if extracted_data else '{}',
+        'priority': priority,
+    })
+    result = f"He registrado tu solicitud (#{task.id}): {description}. Un agente lo procesará pronto."
+else:
+    result = f"He tomado nota de tu solicitud: {description}. Te contactaremos pronto."
+            </field>
+            <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "task_type": {
+            "type": "string",
+            "description": "Type of task: create_invoice, create_lead, create_ticket, send_quote, schedule_call, custom",
+            "enum": ["create_invoice", "create_lead", "create_ticket", "send_quote", "schedule_call", "custom"]
+        },
+        "description": {
+            "type": "string",
+            "description": "Clear description of what needs to be done"
+        },
+        "priority": {
+            "type": "string",
+            "description": "Priority level: 0=low, 1=normal, 2=high, 3=urgent",
+            "default": "1"
+        },
+        "extracted_data": {
+            "type": "object",
+            "description": "Relevant data extracted from conversation (customer name, amounts, dates, etc.)"
+        }
+    },
+    "required": ["task_type", "description"]
+}</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

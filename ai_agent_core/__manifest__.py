@@ -45,6 +45,8 @@ that can interact with Odoo data and perform automated tasks.
         'views/ai_rule_views.xml',
         'views/ai_tool_views.xml',
         'views/ai_conversation_views.xml',
+        'views/ai_channel_views.xml',
+        'wizard/ai_prompt_preview_views.xml',
         'views/ai_menu.xml',
     ],
     'assets': {

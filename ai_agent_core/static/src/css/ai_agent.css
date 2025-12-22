@@ -1,0 +1,209 @@
+/* AI Agent Core Styles */
+
+/* Conversation message styling */
+.o_ai_message_user {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+
+.o_ai_message_assistant {
+    background-color: #e8f5e9;
+    border-left: 3px solid #4caf50;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+
+.o_ai_message_system {
+    background-color: #fff3e0;
+    border-left: 3px solid #ff9800;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-style: italic;
+}
+
+/* Agent card styling */
+.o_ai_agent_card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: box-shadow 0.3s ease;
+}
+
+.o_ai_agent_card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.o_ai_agent_card.active {
+    border-color: #28a745;
+}
+
+.o_ai_agent_card.inactive {
+    border-color: #dc3545;
+    opacity: 0.7;
+}
+
+/* Provider status badges */
+.o_ai_provider_status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.o_ai_provider_status.connected {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.o_ai_provider_status.disconnected {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Rule priority indicator */
+.o_ai_rule_priority {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.o_ai_rule_priority.high {
+    background-color: #dc3545;
+    color: white;
+}
+
+.o_ai_rule_priority.normal {
+    background-color: #ffc107;
+    color: black;
+}
+
+.o_ai_rule_priority.low {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Tool type badges */
+.o_ai_tool_badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.o_ai_tool_badge.builtin {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.o_ai_tool_badge.python {
+    background-color: #3776ab;
+    color: white;
+}
+
+.o_ai_tool_badge.http {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.o_ai_tool_badge.mcp {
+    background-color: #fd7e14;
+    color: white;
+}
+
+/* Prompt editor enhancements */
+.o_ai_prompt_editor {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.o_ai_prompt_variable {
+    background-color: #fff3cd;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Channel type icons */
+.o_ai_channel_icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+/* Conversation state colors */
+.o_ai_state_active {
+    color: #28a745;
+}
+
+.o_ai_state_waiting {
+    color: #ffc107;
+}
+
+.o_ai_state_transferred {
+    color: #17a2b8;
+}
+
+.o_ai_state_closed {
+    color: #6c757d;
+}
+
+/* Debug panel styling */
+.o_ai_debug_panel {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    font-family: monospace;
+    font-size: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.o_ai_debug_section {
+    margin-bottom: 15px;
+}
+
+.o_ai_debug_section h6 {
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+/* Token usage display */
+.o_ai_token_usage {
+    display: flex;
+    gap: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.o_ai_token_item {
+    text-align: center;
+}
+
+.o_ai_token_item .value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.o_ai_token_item .label {
+    font-size: 12px;
+    color: #6c757d;
+}
