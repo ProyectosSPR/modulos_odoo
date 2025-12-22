@@ -580,6 +580,43 @@ class BillingRequest(models.Model):
                 'user_id': user.id,
             })
 
+    def _create_message_activity(self):
+        """Crea actividad para notificar mensaje del cliente a contabilidad"""
+        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not activity_type:
+            return
+
+        # Obtener usuarios de contabilidad
+        users = self.env['res.users'].search([
+            ('groups_id', 'in', self.env.ref('account.group_account_manager').id)
+        ], limit=2)
+
+        # Verificar si ya existe una actividad pendiente para esta solicitud
+        existing = self.env['mail.activity'].search([
+            ('res_model', '=', 'billing.request'),
+            ('res_id', '=', self.id),
+            ('summary', 'ilike', 'mensaje del cliente'),
+        ], limit=1)
+
+        if existing:
+            # Actualizar nota existente
+            existing.write({
+                'note': _('Nuevo mensaje del cliente:\n%s') % self.message_from_client,
+                'date_deadline': fields.Date.today(),
+            })
+        else:
+            # Crear nueva actividad
+            for user in users:
+                self.env['mail.activity'].create({
+                    'res_model_id': self.env['ir.model']._get('billing.request').id,
+                    'res_id': self.id,
+                    'activity_type_id': activity_type.id,
+                    'summary': _('Mensaje del cliente - %s') % self.name,
+                    'note': _('El cliente ha enviado un mensaje:\n%s') % self.message_from_client,
+                    'date_deadline': fields.Date.today(),
+                    'user_id': user.id,
+                })
+
     def action_mark_done(self):
         """Marca la solicitud como completada"""
         self.ensure_one()

@@ -4,7 +4,7 @@ Controlador PRIVADO del portal de facturación.
 REQUIERE autenticación de Odoo para todas las operaciones.
 """
 
-from odoo import http, _
+from odoo import http, _, fields
 from odoo.http import request
 import logging
 import base64
@@ -288,6 +288,68 @@ class BillingPortalPrivate(http.Controller):
             'user': user,
             'page_title': _('Mis Órdenes'),
         })
+
+    # =========================================
+    # Mensajería Cliente-Contabilidad
+    # =========================================
+
+    @http.route('/portal/billing/api/send-message/<int:request_id>', type='json', auth='user', methods=['POST'])
+    def api_send_message(self, request_id, message=None, **kwargs):
+        """
+        Enviar mensaje del cliente a contabilidad.
+        """
+        result = {
+            'success': False,
+            'errors': []
+        }
+
+        if not message or not message.strip():
+            result['errors'].append(_('El mensaje no puede estar vacío'))
+            return result
+
+        billing_request = request.env['billing.request'].sudo().browse(request_id)
+
+        if not billing_request.exists():
+            result['errors'].append(_('Solicitud no encontrada'))
+            return result
+
+        # Verificar que pertenece al usuario
+        user = request.env.user
+        is_owner = (
+            billing_request.user_id.id == user.id or
+            billing_request.partner_id.id == user.partner_id.id
+        )
+
+        if not is_owner:
+            result['errors'].append(_('No tiene permiso para enviar mensajes en esta solicitud'))
+            return result
+
+        # Verificar estado válido para mensajes
+        if billing_request.state not in ('pending_stamp', 'error'):
+            result['errors'].append(_('Solo puede enviar mensajes cuando la solicitud está en revisión'))
+            return result
+
+        try:
+            # Guardar mensaje del cliente
+            billing_request.write({
+                'message_from_client': message.strip(),
+                'last_message_date': fields.Datetime.now(),
+            })
+
+            # Crear actividad para contabilidad si no existe
+            billing_request._create_message_activity()
+
+            _logger.info("Mensaje enviado en solicitud %s por usuario %s",
+                        billing_request.name, user.login)
+
+            result['success'] = True
+            result['message'] = _('Mensaje enviado correctamente')
+
+        except Exception as e:
+            _logger.exception("Error enviando mensaje")
+            result['errors'].append(str(e))
+
+        return result
 
     # =========================================
     # Descargas de archivos CFDI
