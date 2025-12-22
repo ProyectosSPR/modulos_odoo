@@ -127,29 +127,20 @@ class BillingPortalAuth(http.Controller):
             if not order_ref:
                 error = _('Ingrese el número de pedido')
             else:
-                # Buscar la orden
+                # Buscar la orden (sin filtros de facturabilidad)
                 order = self._find_order_by_ref(order_ref)
                 if order:
-                    # Verificar si es facturable
-                    if order.is_portal_billable:
-                        # Crear token temporal de sesión
-                        token = str(uuid.uuid4())
-                        response = request.redirect(f'/portal/billing/guest/request?order_id={order.id}')
-                        response.set_cookie(
-                            'billing_portal_guest_token',
-                            token,
-                            max_age=3600,  # 1 hora
-                            httponly=True
-                        )
-                        return response
-                    else:
-                        if order.invoice_status == 'invoiced':
-                            error = _('Esta orden ya está facturada')
-                        elif order.ml_shipment_status != 'delivered':
-                            error = _('El pedido aún no ha sido entregado. '
-                                     'Solo puede solicitar factura después de recibir su paquete.')
-                        else:
-                            error = _('Esta orden no puede facturarse actualmente')
+                    # Siempre mostrar la orden encontrada
+                    # Las validaciones de facturabilidad se hacen en el formulario
+                    token = str(uuid.uuid4())
+                    response = request.redirect(f'/portal/billing/guest/request?order_id={order.id}')
+                    response.set_cookie(
+                        'billing_portal_guest_token',
+                        token,
+                        max_age=3600,  # 1 hora
+                        httponly=True
+                    )
+                    return response
                 else:
                     error = _('No se encontró ningún pedido con esa referencia')
 
@@ -160,44 +151,22 @@ class BillingPortalAuth(http.Controller):
         })
 
     def _find_order_by_ref(self, ref):
-        """Busca una orden por diferentes referencias"""
-        _logger.info("=" * 60)
-        _logger.info("GUEST - Búsqueda de orden")
-        _logger.info("Referencia buscada: '%s'", ref)
-
+        """
+        Busca una orden por diferentes referencias.
+        Búsqueda flexible sin filtros de facturabilidad.
+        """
         Order = request.env['sale.order'].sudo()
 
-        # Buscar por diferentes campos
-        domain = [
+        # Búsqueda simple y flexible
+        order = Order.search([
             '|', '|', '|', '|',
             ('client_order_ref', '=', ref),
             ('client_order_ref', 'ilike', ref),
             ('name', 'ilike', ref),
             ('ml_order_id', '=', ref),
             ('ml_pack_id', '=', ref),
-        ]
-        _logger.info("Dominio de búsqueda: %s", domain)
+        ], limit=1)
 
-        order = Order.search(domain, limit=1)
-
-        if order:
-            _logger.info("Orden encontrada: %s (ID: %s)", order.name, order.id)
-            _logger.info("  - client_order_ref: %s", order.client_order_ref)
-            _logger.info("  - ml_order_id: %s", order.ml_order_id)
-            _logger.info("  - ml_pack_id: %s", order.ml_pack_id)
-            _logger.info("  - state: %s", order.state)
-            _logger.info("  - invoice_status: %s", order.invoice_status)
-            _logger.info("  - ml_shipment_status: %s", order.ml_shipment_status)
-            _logger.info("  - is_portal_billable: %s", order.is_portal_billable)
-        else:
-            _logger.warning("No se encontró ninguna orden con ref: '%s'", ref)
-            # Intentar buscar con LIKE más amplio
-            all_orders = Order.search([('client_order_ref', '!=', False)], limit=10)
-            _logger.info("Ejemplo de órdenes con client_order_ref:")
-            for o in all_orders:
-                _logger.info("  -> %s | ref: '%s' | ml_order: %s", o.name, o.client_order_ref, o.ml_order_id)
-
-        _logger.info("=" * 60)
         return order
 
     @http.route('/portal/billing/guest/request', type='http', auth='public', website=True, methods=['GET', 'POST'])
@@ -213,14 +182,33 @@ class BillingPortalAuth(http.Controller):
 
         order = request.env['sale.order'].sudo().browse(int(order_id))
 
-        if not order.exists() or not order.is_portal_billable:
+        if not order.exists():
             return request.render('billing_portal.portal_error', {
-                'error_title': _('Orden no válida'),
-                'error_message': _('La orden no existe o no puede facturarse')
+                'error_title': _('Orden no encontrada'),
+                'error_message': _('La orden no existe')
             })
 
+        # Verificar facturabilidad y obtener razón si no es facturable
+        is_billable = order.is_portal_billable
+        not_billable_reason = None
+
+        if not is_billable:
+            # Determinar la razón
+            if order.invoice_status == 'invoiced':
+                not_billable_reason = _('Esta orden ya está completamente facturada.')
+            elif order.state not in ('sale', 'done'):
+                not_billable_reason = _('La orden aún no está confirmada.')
+            elif order.ml_shipment_status and order.ml_shipment_status != 'delivered':
+                status_labels = {'pending': 'pendiente', 'shipped': 'en camino', 'cancelled': 'cancelado'}
+                status_text = status_labels.get(order.ml_shipment_status, order.ml_shipment_status)
+                not_billable_reason = _('El envío aún no ha sido entregado (estado: %s). Podrá solicitar factura cuando reciba su pedido.') % status_text
+            elif order.invoice_status == 'no':
+                not_billable_reason = _('No hay nada que facturar en esta orden.')
+            else:
+                not_billable_reason = _('Esta orden no puede facturarse actualmente.')
+
         if request.httprequest.method == 'GET':
-            # Mostrar formulario
+            # Mostrar formulario (siempre, con o sin facturabilidad)
             usos_cfdi = request.env['catalogo.uso.cfdi'].sudo().search([])
             formas_pago = request.env['catalogo.forma.pago'].sudo().search([])
 
@@ -230,10 +218,18 @@ class BillingPortalAuth(http.Controller):
                 'usos_cfdi': usos_cfdi,
                 'formas_pago': formas_pago,
                 'is_guest': True,
+                'is_billable': is_billable,
+                'not_billable_reason': not_billable_reason,
                 'page_title': _('Solicitar Factura'),
             })
 
-        # POST - Procesar
+        # POST - Procesar (solo si es facturable)
+        if not is_billable:
+            return request.render('billing_portal.portal_error', {
+                'error_title': _('Orden no facturable'),
+                'error_message': not_billable_reason or _('Esta orden no puede facturarse actualmente.')
+            })
+
         try:
             billing_request = request.env['billing.request'].sudo().create({
                 'email': kwargs.get('email'),
