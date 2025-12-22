@@ -34,22 +34,21 @@ class BillingCustomerPortal(CustomerPortal):
 
     def _prepare_orders_domain(self, partner):
         """
-        Dominio de /my/orders - MISMA LÓGICA que /portal/billing/orders
-        Busca por partner_id O billing_partner_id (que SÍ funciona)
+        Dominio de /my/orders - Busca por partner_id O billing_partner_id.
+        Las órdenes aparecen si:
+        - El usuario es el partner original de la orden
+        - El usuario fue asignado como billing_partner (cliente de facturación)
         """
-        domain = [
+        return [
             '|',
             ('partner_id', '=', partner.id),
             ('billing_partner_id', '=', partner.id),
             ('state', 'in', ['sale', 'done']),
         ]
-        _logger.info("=== BILLING PORTAL: _prepare_orders_domain called for partner %s (id=%s) ===", partner.name, partner.id)
-        _logger.info("=== BILLING PORTAL: Domain = %s ===", domain)
-        return domain
 
     def _prepare_quotations_domain(self, partner):
         """
-        Dominio de /my/quotes - Misma lógica simplificada
+        Dominio de /my/quotes - Misma lógica para cotizaciones.
         """
         return [
             '|',
@@ -57,20 +56,6 @@ class BillingCustomerPortal(CustomerPortal):
             ('billing_partner_id', '=', partner.id),
             ('state', 'in', ['sent', 'cancel']),
         ]
-
-    def _get_ml_buyer_ids(self, partner):
-        """
-        Obtiene los ml_buyer_id de MercadoLibre asociados al partner.
-        Busca en la tabla mercadolibre_buyer.
-        """
-        try:
-            MlBuyer = request.env['mercadolibre.buyer'].sudo()
-            buyers = MlBuyer.search([('partner_id', '=', partner.id)])
-            # Retornar como strings porque x_buyer_id es text
-            return [str(b.ml_buyer_id) for b in buyers if b.ml_buyer_id]
-        except Exception:
-            # Si el modelo no existe, retornar lista vacía
-            return []
 
     # =========================================
     # Contadores para portal home
@@ -186,6 +171,146 @@ class BillingCustomerPortal(CustomerPortal):
 
         # Redirigir al formulario existente del billing_portal
         return request.redirect(f'/portal/billing/request?order_ids={order_ids}')
+
+    # =========================================
+    # API para vincular órdenes al usuario
+    # =========================================
+
+    @http.route('/my/billing/api/claim-orders', type='json', auth='user', methods=['POST'])
+    def api_claim_orders(self, order_ids=None, **kw):
+        """
+        Vincula órdenes al usuario actual asignando billing_partner_id.
+
+        Esto permite que las órdenes encontradas en búsqueda pública
+        aparezcan en "Mis Órdenes" del usuario logueado.
+
+        Args:
+            order_ids: Lista de IDs de órdenes o string separado por comas
+
+        Returns:
+            dict con success, claimed_count, orders, errors
+        """
+        result = {
+            'success': False,
+            'claimed_count': 0,
+            'orders': [],
+            'errors': []
+        }
+
+        if not order_ids:
+            result['errors'].append(_('No se especificaron órdenes'))
+            return result
+
+        # Parsear order_ids si es string
+        if isinstance(order_ids, str):
+            order_id_list = [int(x.strip()) for x in order_ids.split(',') if x.strip().isdigit()]
+        elif isinstance(order_ids, list):
+            order_id_list = [int(x) for x in order_ids if str(x).isdigit()]
+        else:
+            order_id_list = [int(order_ids)]
+
+        if not order_id_list:
+            result['errors'].append(_('IDs de órdenes inválidos'))
+            return result
+
+        user = request.env.user
+        partner = user.partner_id
+
+        # Buscar órdenes
+        orders = request.env['sale.order'].sudo().browse(order_id_list).exists()
+
+        if not orders:
+            result['errors'].append(_('No se encontraron las órdenes especificadas'))
+            return result
+
+        # Filtrar solo órdenes que pueden ser reclamadas
+        # (no tienen billing_partner_id o ya pertenecen al usuario)
+        claimable_orders = orders.filtered(
+            lambda o: not o.billing_partner_id or o.billing_partner_id.id == partner.id
+        )
+
+        already_claimed = orders.filtered(
+            lambda o: o.billing_partner_id and o.billing_partner_id.id != partner.id
+        )
+
+        if already_claimed:
+            result['errors'].append(
+                _('Las siguientes órdenes ya fueron reclamadas por otro usuario: %s') %
+                ', '.join(already_claimed.mapped('name'))
+            )
+
+        # Asignar billing_partner_id a las órdenes reclamables
+        if claimable_orders:
+            claimable_orders.write({'billing_partner_id': partner.id})
+            _logger.info(
+                "Usuario %s (partner_id=%d) reclamó %d órdenes: %s",
+                user.login, partner.id, len(claimable_orders),
+                ', '.join(claimable_orders.mapped('name'))
+            )
+
+            result['success'] = True
+            result['claimed_count'] = len(claimable_orders)
+            result['orders'] = [{
+                'id': o.id,
+                'name': o.name,
+                'client_order_ref': o.client_order_ref or '',
+                'amount_total': o.amount_total,
+                'date_order': o.date_order.isoformat() if o.date_order else '',
+            } for o in claimable_orders]
+
+        return result
+
+    @http.route('/my/billing/api/release-orders', type='json', auth='user', methods=['POST'])
+    def api_release_orders(self, order_ids=None, **kw):
+        """
+        Libera órdenes del usuario actual (quita billing_partner_id).
+
+        Args:
+            order_ids: Lista de IDs de órdenes
+
+        Returns:
+            dict con success, released_count, errors
+        """
+        result = {
+            'success': False,
+            'released_count': 0,
+            'errors': []
+        }
+
+        if not order_ids:
+            result['errors'].append(_('No se especificaron órdenes'))
+            return result
+
+        # Parsear order_ids
+        if isinstance(order_ids, str):
+            order_id_list = [int(x.strip()) for x in order_ids.split(',') if x.strip().isdigit()]
+        elif isinstance(order_ids, list):
+            order_id_list = [int(x) for x in order_ids if str(x).isdigit()]
+        else:
+            order_id_list = [int(order_ids)]
+
+        user = request.env.user
+        partner = user.partner_id
+
+        # Buscar solo órdenes que pertenecen al usuario
+        orders = request.env['sale.order'].sudo().search([
+            ('id', 'in', order_id_list),
+            ('billing_partner_id', '=', partner.id),
+        ])
+
+        if orders:
+            orders.write({'billing_partner_id': False})
+            _logger.info(
+                "Usuario %s liberó %d órdenes: %s",
+                user.login, len(orders), ', '.join(orders.mapped('name'))
+            )
+
+            result['success'] = True
+            result['released_count'] = len(orders)
+        else:
+            result['errors'].append(_('No se encontraron órdenes para liberar'))
+
+        return result
 
     # =========================================
     # Rutas de Solicitudes de Factura

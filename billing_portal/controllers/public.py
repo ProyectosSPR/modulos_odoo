@@ -37,11 +37,17 @@ class BillingPortalPublic(http.Controller):
         if request.httprequest.method == 'POST' and order_ref:
             _logger.info("Búsqueda de orden: '%s'", order_ref)
 
-            # Buscar por client_order_ref o name
+            # Buscar por múltiples campos:
+            # - client_order_ref: Referencia del cliente
+            # - name: Nombre de la orden (ej: DML00123)
+            # - ml_order_id: ID de orden de MercadoLibre
+            # - ml_pack_id: ID de pack de MercadoLibre
             domain = [
-                '|',
+                '|', '|', '|',
                 ('client_order_ref', 'ilike', order_ref),
                 ('name', 'ilike', order_ref),
+                ('ml_order_id', '=', order_ref),
+                ('ml_pack_id', '=', order_ref),
             ]
 
             order = request.env['sale.order'].sudo().search(domain, limit=1)
