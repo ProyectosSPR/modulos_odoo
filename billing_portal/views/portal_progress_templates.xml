@@ -39,13 +39,16 @@
                             <!-- Estado actual -->
                             <div class="status-message mb-4 p-3 rounded"
                                  id="statusMessage"
-                                 t-att-class="'alert alert-danger' if billing_request.state == 'error' else ('alert alert-success' if billing_request.state == 'done' else 'alert alert-info')">
+                                 t-att-class="'alert alert-danger' if billing_request.state == 'error' else ('alert alert-success' if billing_request.state == 'done' else ('alert alert-warning' if billing_request.state == 'pending_stamp' else 'alert alert-info'))">
                                 <div class="d-flex align-items-center">
                                     <t t-if="billing_request.state == 'error'">
                                         <i class="fa fa-exclamation-circle fa-2x me-3"></i>
                                     </t>
                                     <t t-elif="billing_request.state == 'done'">
                                         <i class="fa fa-check-circle fa-2x me-3"></i>
+                                    </t>
+                                    <t t-elif="billing_request.state == 'pending_stamp'">
+                                        <i class="fa fa-clock-o fa-2x me-3"></i>
                                     </t>
                                     <t t-else="">
                                         <div class="spinner-border me-3" role="status"></div>
@@ -57,17 +60,42 @@
                                             <t t-elif="billing_request.state == 'csf_validated'">CSF Validado</t>
                                             <t t-elif="billing_request.state == 'creating_partner'">Creando Cliente...</t>
                                             <t t-elif="billing_request.state == 'creating_invoice'">Creando Factura...</t>
-                                            <t t-elif="billing_request.state == 'pending_stamp'">Pendiente de Timbrado</t>
-                                            <t t-elif="billing_request.state == 'done'">Completado</t>
-                                            <t t-elif="billing_request.state == 'error'">Error</t>
+                                            <t t-elif="billing_request.state == 'pending_stamp'">En Revision por Contabilidad</t>
+                                            <t t-elif="billing_request.state == 'done'">Factura Timbrada y Enviada</t>
+                                            <t t-elif="billing_request.state == 'error'">Error en el Proceso</t>
                                             <t t-else=""><t t-esc="billing_request.state"/></t>
                                         </strong>
                                         <p class="mb-0" id="statusDetail">
-                                            <t t-esc="billing_request.status_message or billing_request.error_message or ''"/>
+                                            <t t-if="billing_request.state == 'pending_stamp'">
+                                                Su solicitud fue procesada exitosamente. El area de contabilidad revisara y timbrara su factura.
+                                            </t>
+                                            <t t-else="">
+                                                <t t-esc="billing_request.status_message or billing_request.error_message or ''"/>
+                                            </t>
                                         </p>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Panel informativo para pending_stamp -->
+                            <t t-if="billing_request.state == 'pending_stamp'">
+                                <div class="alert alert-light border mb-4">
+                                    <h6 class="alert-heading">
+                                        <i class="fa fa-info-circle text-primary me-2"></i>
+                                        ¿Que sigue ahora?
+                                    </h6>
+                                    <ol class="mb-0 ps-3">
+                                        <li class="mb-2">El area de contabilidad revisara su factura</li>
+                                        <li class="mb-2">Una vez aprobada, se realizara el timbrado fiscal (CFDI)</li>
+                                        <li class="mb-2">Recibira su factura timbrada en: <strong><t t-esc="billing_request.email"/></strong></li>
+                                    </ol>
+                                    <hr/>
+                                    <p class="mb-0 small text-muted">
+                                        <i class="fa fa-comments me-1"></i>
+                                        Si tiene alguna duda o necesita hacer cambios, puede comunicarse con contabilidad usando el chat de abajo.
+                                    </p>
+                                </div>
+                            </t>
 
                             <!-- Pasos del proceso -->
                             <div class="process-steps">
@@ -211,27 +239,44 @@
                     </div>
 
                     <!-- Sección de Mensajería Cliente-Contador -->
-                    <div class="card mt-4" id="messaging-section">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fa fa-comments me-2"></i>
-                                Comunicación con Contabilidad
-                            </h6>
+                    <div class="card mt-4" id="messaging-section"
+                         t-att-class="'card border-primary' if billing_request.state == 'pending_stamp' else 'card'">
+                        <div t-att-class="'card-header bg-primary text-white' if billing_request.state == 'pending_stamp' else 'card-header'">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-comments me-2"></i>
+                                    Chat con Contabilidad
+                                </h6>
+                                <t t-if="billing_request.state == 'pending_stamp'">
+                                    <span class="badge bg-light text-primary">Disponible</span>
+                                </t>
+                            </div>
                         </div>
                         <div class="card-body">
+                            <!-- Mensaje de bienvenida para pending_stamp -->
+                            <t t-if="billing_request.state == 'pending_stamp' and not billing_request.message_to_client and not billing_request.message_from_client">
+                                <div class="text-center text-muted mb-3 py-2">
+                                    <i class="fa fa-comment-o fa-2x mb-2 d-block"></i>
+                                    <p class="mb-0">¿Necesita hacer algun cambio o tiene alguna pregunta?</p>
+                                    <small>Escriba su mensaje y el area de contabilidad le respondera.</small>
+                                </div>
+                            </t>
+
                             <!-- Respuesta del contador (si existe) -->
                             <t t-if="billing_request.message_to_client">
                                 <div class="alert alert-info mb-3">
                                     <div class="d-flex">
                                         <i class="fa fa-user-circle fa-2x me-3 text-info"></i>
-                                        <div>
-                                            <strong>Respuesta de Contabilidad:</strong>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <strong>Contabilidad:</strong>
+                                                <small class="text-muted">
+                                                    <t t-if="billing_request.last_message_date">
+                                                        <t t-esc="billing_request.last_message_date" t-options="{'widget': 'datetime'}"/>
+                                                    </t>
+                                                </small>
+                                            </div>
                                             <p class="mb-0 mt-1"><t t-esc="billing_request.message_to_client"/></p>
-                                            <small class="text-muted">
-                                                <t t-if="billing_request.last_message_date">
-                                                    <t t-esc="billing_request.last_message_date" t-options="{'widget': 'datetime'}"/>
-                                                </t>
-                                            </small>
                                         </div>
                                     </div>
                                 </div>
@@ -243,7 +288,7 @@
                                     <div class="d-flex">
                                         <i class="fa fa-user fa-2x me-3"></i>
                                         <div>
-                                            <strong>Tu mensaje anterior:</strong>
+                                            <strong>Tu mensaje:</strong>
                                             <p class="mb-0 mt-1"><t t-esc="billing_request.message_from_client"/></p>
                                         </div>
                                     </div>
@@ -252,24 +297,28 @@
 
                             <!-- Formulario para enviar mensaje -->
                             <t t-if="billing_request.state in ('pending_stamp', 'error')">
-                                <form id="messageForm" class="mt-3">
+                                <form id="messageForm">
                                     <div class="mb-3">
-                                        <label for="clientMessage" class="form-label">
-                                            Enviar mensaje al contador
-                                        </label>
                                         <textarea class="form-control" id="clientMessage" rows="3"
-                                                  placeholder="Escriba su mensaje o consulta aquí..."></textarea>
+                                                  placeholder="Escriba su mensaje o consulta aqui... Ejemplo: 'Necesito cambiar el uso de CFDI' o '¿Cuando estara lista mi factura?'"></textarea>
                                     </div>
-                                    <button type="submit" class="btn btn-primary" id="btnSendMessage">
-                                        <i class="fa fa-paper-plane me-1"></i> Enviar Mensaje
+                                    <button type="submit" class="btn btn-primary w-100" id="btnSendMessage">
+                                        <i class="fa fa-paper-plane me-1"></i> Enviar Mensaje a Contabilidad
                                     </button>
                                 </form>
                             </t>
-                            <t t-else="">
-                                <p class="text-muted mb-0">
-                                    <i class="fa fa-info-circle me-1"></i>
-                                    La mensajería estará disponible cuando la solicitud esté pendiente de timbrado.
-                                </p>
+                            <t t-if="billing_request.state == 'done'">
+                                <div class="text-center text-success py-3">
+                                    <i class="fa fa-check-circle fa-2x mb-2 d-block"></i>
+                                    <p class="mb-0">Su factura ha sido timbrada y enviada.</p>
+                                    <small class="text-muted">Revise su correo electronico.</small>
+                                </div>
+                            </t>
+                            <t t-if="billing_request.state not in ('pending_stamp', 'error', 'done')">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fa fa-hourglass-half fa-2x mb-2 d-block"></i>
+                                    <p class="mb-0">El chat estara disponible una vez que su solicitud este en revision.</p>
+                                </div>
                             </t>
                         </div>
                     </div>
