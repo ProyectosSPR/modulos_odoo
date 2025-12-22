@@ -23,21 +23,22 @@
 
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group string="Categoria MercadoLibre">
-                        <field name="category_id"
-                               domain="[('site_id', '=', site_id)]"
+                        <field name="category_level_1"
                                options="{'no_create': True, 'no_quick_create': True}"/>
+                        <field name="has_level_2" invisible="1"/>
+                        <field name="category_level_2"
+                               attrs="{'invisible': [('has_level_2', '=', False)]}"
+                               options="{'no_create': True, 'no_quick_create': True}"/>
+                        <field name="has_level_3" invisible="1"/>
+                        <field name="category_level_3"
+                               attrs="{'invisible': [('has_level_3', '=', False)]}"
+                               options="{'no_create': True, 'no_quick_create': True}"/>
+                    </group>
+                    <group string="Categoria Seleccionada"
+                           attrs="{'invisible': [('category_id', '=', False)]}">
+                        <field name="category_id" readonly="1" options="{'no_open': True}"/>
                         <field name="ml_category_id" readonly="1"/>
-                        <label for="search_category_id"/>
-                        <div class="o_row">
-                            <field name="search_category_id" placeholder="Ej: MLM1055"/>
-                            <button name="action_sync_categories" type="object"
-                                    string="Recargar" icon="fa-refresh"
-                                    class="btn-link" title="Sincronizar categorias raiz de MercadoLibre"/>
-                        </div>
-                        <div class="text-muted small">
-                            Las categorias se sincronizan automaticamente. Seleccione una categoria
-                            o escriba el ID directamente (ej: MLM1055).
-                        </div>
+                        <field name="category_path" readonly="1"/>
                     </group>
                 </group>
 

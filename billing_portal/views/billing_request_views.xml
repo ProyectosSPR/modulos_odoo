@@ -103,7 +103,7 @@
                             </group>
                             <group string="CSF">
                                 <field name="csf_attachment_id"/>
-                                <field name="csf_validation_method"/>
+                                <field name="csf_extraction_method"/>
                             </group>
                             <group string="Datos Extraídos (JSON)" attrs="{'invisible': [('csf_data', '=', False)]}">
                                 <field name="csf_data" widget="text" nolabel="1" colspan="2"/>
@@ -234,7 +234,6 @@
                 <field name="email"/>
                 <field name="state"/>
                 <field name="progress"/>
-                <field name="color"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div t-attf-class="oe_kanban_card oe_kanban_global_click">

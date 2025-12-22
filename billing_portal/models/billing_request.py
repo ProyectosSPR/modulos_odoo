@@ -572,15 +572,17 @@ class BillingRequest(models.Model):
 
     def _notify_accounting_team(self, subject):
         """Notifica al equipo de contabilidad"""
-        settings = self.env['billing.settings'].sudo().search([], limit=1)
-        if not settings or not settings.notify_accounting_on_pending:
+        # Verificar si las notificaciones están habilitadas
+        notify_enabled = self.env['ir.config_parameter'].sudo().get_param(
+            'billing_portal.notify_on_request', 'True'
+        )
+        if notify_enabled != 'True':
             return
 
-        users = settings.accounting_user_ids
-        if not users:
-            users = self.env['res.users'].search([
-                ('groups_id', 'in', self.env.ref('account.group_account_manager').id)
-            ], limit=3)
+        # Buscar usuarios del grupo de contabilidad
+        users = self.env['res.users'].search([
+            ('groups_id', 'in', self.env.ref('account.group_account_manager').id)
+        ], limit=3)
 
         for user in users:
             self.activity_schedule(

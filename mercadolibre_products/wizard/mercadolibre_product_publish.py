@@ -60,11 +60,32 @@ class MercadolibreProductPublish(models.TransientModel):
         ('buy_it_now', 'Compra Inmediata'),
     ], string='Modo Compra', default='buy_it_now', required=True)
 
-    # Categoria ML
+    # Categoria ML - Sistema en cascada (3 niveles)
+    category_level_1 = fields.Many2one(
+        'mercadolibre.category',
+        string='Categoria Principal',
+        domain="[('site_id', '=', site_id), ('parent_id', '=', False)]",
+        help='Seleccione la categoria principal'
+    )
+    category_level_2 = fields.Many2one(
+        'mercadolibre.category',
+        string='Subcategoria',
+        domain="[('parent_id', '=', category_level_1)]",
+        help='Seleccione la subcategoria'
+    )
+    category_level_3 = fields.Many2one(
+        'mercadolibre.category',
+        string='Subcategoria Final',
+        domain="[('parent_id', '=', category_level_2)]",
+        help='Seleccione la subcategoria final (si aplica)'
+    )
+    # Categoria final seleccionada (la mas especifica elegida)
     category_id = fields.Many2one(
         'mercadolibre.category',
-        string='Categoria ML',
-        help='Categoria de MercadoLibre para la publicacion'
+        string='Categoria Seleccionada',
+        compute='_compute_category_id',
+        store=True,
+        help='Categoria final que se usara para publicar'
     )
     ml_category_id = fields.Char(
         string='ID Categoria ML',
@@ -72,16 +93,20 @@ class MercadolibreProductPublish(models.TransientModel):
         readonly=True,
         store=False
     )
-    category_name = fields.Char(
-        string='Nombre Categoria',
+    category_path = fields.Char(
+        string='Ruta Categoria',
         related='category_id.path_from_root',
         readonly=True,
         store=False
     )
-    # Campo para busqueda manual de categoria por ID
-    search_category_id = fields.Char(
-        string='Buscar por ID',
-        help='Ingrese el ID de categoria ML para buscar (ej: MLM1055)'
+    # Indicadores para saber si hay mas niveles
+    has_level_2 = fields.Boolean(
+        compute='_compute_has_sublevels',
+        string='Tiene Nivel 2'
+    )
+    has_level_3 = fields.Boolean(
+        compute='_compute_has_sublevels',
+        string='Tiene Nivel 3'
     )
 
     # Opciones
@@ -148,6 +173,40 @@ class MercadolibreProductPublish(models.TransientModel):
         for record in self:
             record.product_count = len(record.product_tmpl_ids)
 
+    @api.depends('category_level_1', 'category_level_2', 'category_level_3')
+    def _compute_category_id(self):
+        """Determina la categoria final (la mas especifica seleccionada)"""
+        for record in self:
+            if record.category_level_3:
+                record.category_id = record.category_level_3
+            elif record.category_level_2:
+                record.category_id = record.category_level_2
+            elif record.category_level_1:
+                record.category_id = record.category_level_1
+            else:
+                record.category_id = False
+
+    @api.depends('category_level_1', 'category_level_2')
+    def _compute_has_sublevels(self):
+        """Verifica si hay subcategorias disponibles para cada nivel"""
+        CategoryModel = self.env['mercadolibre.category']
+        for record in self:
+            # Verificar nivel 2
+            if record.category_level_1:
+                record.has_level_2 = CategoryModel.search_count([
+                    ('parent_id', '=', record.category_level_1.id)
+                ]) > 0
+            else:
+                record.has_level_2 = False
+
+            # Verificar nivel 3
+            if record.category_level_2:
+                record.has_level_3 = CategoryModel.search_count([
+                    ('parent_id', '=', record.category_level_2.id)
+                ]) > 0
+            else:
+                record.has_level_3 = False
+
     @api.model
     def default_get(self, fields_list):
         """Sincroniza categorias automaticamente al abrir el wizard"""
@@ -172,7 +231,7 @@ class MercadolibreProductPublish(models.TransientModel):
 
     @api.onchange('site_id')
     def _onchange_site_id(self):
-        """Sincroniza categorias cuando cambia el sitio"""
+        """Sincroniza categorias cuando cambia el sitio y limpia seleccion"""
         if self.site_id:
             CategoryModel = self.env['mercadolibre.category']
             existing = CategoryModel.search_count([
@@ -184,54 +243,69 @@ class MercadolibreProductPublish(models.TransientModel):
                     CategoryModel.action_sync_root_categories(site_id=self.site_id)
                 except Exception:
                     pass
-            # Limpiar categoria seleccionada si es de otro sitio
-            if self.category_id and self.category_id.site_id != self.site_id:
-                self.category_id = False
+            # Limpiar selecciones
+            self.category_level_1 = False
+            self.category_level_2 = False
+            self.category_level_3 = False
 
-    @api.onchange('search_category_id')
-    def _onchange_search_category_id(self):
-        """Busca o crea la categoria por ID de ML"""
-        if self.search_category_id:
+    @api.onchange('category_level_1')
+    def _onchange_category_level_1(self):
+        """Carga subcategorias del nivel 1 y limpia niveles inferiores"""
+        self.category_level_2 = False
+        self.category_level_3 = False
+
+        if self.category_level_1:
+            # Cargar subcategorias automaticamente
             CategoryModel = self.env['mercadolibre.category']
-            site_id = self.site_id or 'MLM'
-
-            # Buscar si ya existe
-            existing = CategoryModel.search([
-                ('ml_category_id', '=', self.search_category_id),
-                ('site_id', '=', site_id)
-            ], limit=1)
-
-            if existing:
-                self.category_id = existing.id
-                self.search_category_id = False
-            else:
-                # Intentar obtener de ML y crear
+            existing_children = CategoryModel.search_count([
+                ('parent_id', '=', self.category_level_1.id)
+            ])
+            if existing_children == 0:
                 try:
-                    category = CategoryModel.get_or_create_from_ml(
-                        self.search_category_id,
-                        site_id=site_id
+                    CategoryModel.action_sync_subcategories(
+                        self.category_level_1.ml_category_id,
+                        self.site_id or 'MLM'
                     )
-                    if category:
-                        self.category_id = category.id
-                        self.search_category_id = False
                 except Exception:
                     pass
 
-    def action_sync_categories(self):
-        """Sincroniza categorias raiz de MercadoLibre"""
-        CategoryModel = self.env['mercadolibre.category']
-        site_id = self.site_id or 'MLM'
+    @api.onchange('category_level_2')
+    def _onchange_category_level_2(self):
+        """Carga subcategorias del nivel 2 y limpia nivel 3"""
+        self.category_level_3 = False
 
-        CategoryModel.action_sync_root_categories(site_id=site_id)
+        if self.category_level_2:
+            # Cargar subcategorias automaticamente
+            CategoryModel = self.env['mercadolibre.category']
+            existing_children = CategoryModel.search_count([
+                ('parent_id', '=', self.category_level_2.id)
+            ])
+            if existing_children == 0:
+                try:
+                    CategoryModel.action_sync_subcategories(
+                        self.category_level_2.ml_category_id,
+                        self.site_id or 'MLM'
+                    )
+                except Exception:
+                    pass
 
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Publicar en MercadoLibre'),
-            'res_model': 'mercadolibre.product.publish',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
-        }
+    @api.onchange('category_level_3')
+    def _onchange_category_level_3(self):
+        """Carga subcategorias del nivel 3 si las hay"""
+        if self.category_level_3:
+            # Verificar si hay mas niveles (para futuras extensiones)
+            CategoryModel = self.env['mercadolibre.category']
+            existing_children = CategoryModel.search_count([
+                ('parent_id', '=', self.category_level_3.id)
+            ])
+            if existing_children == 0:
+                try:
+                    CategoryModel.action_sync_subcategories(
+                        self.category_level_3.ml_category_id,
+                        self.site_id or 'MLM'
+                    )
+                except Exception:
+                    pass
 
     def action_preview(self):
         """Muestra vista previa de la publicacion"""
