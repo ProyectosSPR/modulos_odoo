@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Parámetros de configuración para la base de datos externa
+            noupdate="1" significa que si ya existen no se sobrescribirán en actualizaciones
+            Los valores se deben configurar en: Ajustes > Técnico > Parámetros del Sistema
+        -->
+
+        <record id="external_db_host" model="ir.config_parameter">
+            <field name="key">billing_portal.external_db_host</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="external_db_port" model="ir.config_parameter">
+            <field name="key">billing_portal.external_db_port</field>
+            <field name="value">5432</field>
+        </record>
+
+        <record id="external_db_name" model="ir.config_parameter">
+            <field name="key">billing_portal.external_db_name</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="external_db_user" model="ir.config_parameter">
+            <field name="key">billing_portal.external_db_user</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="external_db_password" model="ir.config_parameter">
+            <field name="key">billing_portal.external_db_password</field>
+            <field name="value"></field>
+        </record>
+
+    </data>
+</odoo>

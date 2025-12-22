@@ -38,6 +38,7 @@ Características:
         'security/billing_portal_security.xml',
         'security/ir.model.access.csv',
         # Datos
+        'data/external_db_config.xml',
         'data/csf_fields_data.xml',
         'data/billing_status_data.xml',
         # Vistas Backend
