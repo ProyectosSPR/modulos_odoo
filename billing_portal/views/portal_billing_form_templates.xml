@@ -180,6 +180,13 @@
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('📝 Billing Form JS loaded');
 
+                // Inicializar CSFUploader si existe
+                if (typeof initCSFUploader === 'function') {
+                    initCSFUploader();
+                } else if (typeof CSFUploader !== 'undefined') {
+                    CSFUploader.init();
+                }
+
                 var btnSubmit = document.getElementById('btnSubmit');
                 var stepDatos = document.getElementById('stepDatos');
 

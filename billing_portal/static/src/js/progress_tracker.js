@@ -1,10 +1,10 @@
-/** @odoo-module **/
-
 /**
  * Progress Tracker Component
  *
  * Handles real-time progress tracking for billing requests,
  * including auto-refresh and status updates.
+ *
+ * This is a vanilla JS component, not an Odoo module.
  */
 
 const ProgressTracker = {

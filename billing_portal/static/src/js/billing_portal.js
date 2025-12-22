@@ -1,5 +1,3 @@
-/** @odoo-module **/
-
 /**
  * Billing Portal - Main JavaScript Module
  *
@@ -7,6 +5,8 @@
  * - RPC communication with Odoo backend
  * - Common utilities and helpers
  * - Event management
+ *
+ * This is a vanilla JS component, not an Odoo module.
  */
 
 const BillingPortal = {

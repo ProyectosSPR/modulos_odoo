@@ -1,10 +1,10 @@
-/** @odoo-module **/
-
 /**
  * CSF Uploader Component
  *
  * Handles PDF upload, validation, and data extraction
  * for Constancia de Situación Fiscal (CSF) documents.
+ *
+ * This is a vanilla JS component, not an Odoo module.
  */
 
 const CSFUploader = {
@@ -446,13 +446,30 @@ const CSFUploader = {
     },
 };
 
-// Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Only initialize if dropzone exists
-    if (document.querySelector('#csf-dropzone')) {
+// Auto-initialize function
+function initCSFUploader() {
+    // Only initialize if dropzone exists and not already initialized
+    const dropzone = document.querySelector('#csf-dropzone');
+    if (dropzone && !dropzone.dataset.initialized) {
+        console.log('🔧 CSFUploader: Initializing...');
+        dropzone.dataset.initialized = 'true';
         CSFUploader.init();
+        console.log('✅ CSFUploader: Initialized successfully');
     }
-});
+}
+
+// Try to initialize immediately if DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCSFUploader);
+} else {
+    // DOM already loaded, initialize now
+    initCSFUploader();
+}
+
+// Also try after a short delay (for Odoo's async loading)
+setTimeout(initCSFUploader, 500);
+setTimeout(initCSFUploader, 1500);
 
 // Export for use in other modules
 window.CSFUploader = CSFUploader;
+window.initCSFUploader = initCSFUploader;
