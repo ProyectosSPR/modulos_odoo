@@ -144,9 +144,10 @@
                                     </form>
 
                                     <script type="text/javascript">
+                                        //<![CDATA[
                                         // Inline validation function - ALWAYS fires
                                         function validateGuestForm(event) {
-                                            console.log('🎯 INLINE validateGuestForm() EJECUTADO!');
+                                            console.log('INLINE validateGuestForm() EJECUTADO!');
                                             console.log('  Event:', event);
 
                                             var input = document.getElementById('order_ref');
@@ -155,27 +156,28 @@
                                             console.log('  Input value (trimmed):', input ? input.value.trim() : 'NULL');
 
                                             if (!input) {
-                                                console.error('  ❌ Input NO encontrado!');
+                                                console.error('  ERROR: Input NO encontrado!');
                                                 alert('Error: Campo de búsqueda no encontrado');
                                                 event.preventDefault();
                                                 return false;
                                             }
 
                                             var value = input.value.trim();
-                                            console.log('  📏 Longitud del valor:', value.length);
+                                            console.log('  Longitud del valor:', value.length);
 
                                             if (!value || value.length < 3) {
-                                                console.error('  ❌ VALIDACIÓN FALLIDA - Valor vacío o muy corto');
+                                                console.error('  VALIDACION FALLIDA - Valor vacio o muy corto');
                                                 alert('Por favor ingrese al menos 3 caracteres para buscar');
                                                 event.preventDefault();
                                                 input.focus();
                                                 return false;
                                             }
 
-                                            console.log('  ✅ VALIDACIÓN EXITOSA - Permitiendo submit');
-                                            console.log('  📤 Valor a enviar:', value);
+                                            console.log('  VALIDACION EXITOSA - Permitiendo submit');
+                                            console.log('  Valor a enviar:', value);
                                             return true;
                                         }
+                                        //]]>
                                     </script>
 
 
