@@ -199,38 +199,5 @@
             <field name="active">True</field>
         </record>
 
-        <!-- Create Activity Task Tool (enhanced version) -->
-        <record id="ai_tool_create_activity_task_odoo" model="ai.agent.tool">
-            <field name="name">Create Activity Task</field>
-            <field name="technical_name">create_activity_task</field>
-            <field name="description">Create a pending task for human review. Use when customer requests something that needs manual processing like: requesting an invoice, asking for a quote, reporting a problem, requesting a callback, or any action that requires human intervention.</field>
-            <field name="tool_type">builtin</field>
-            <field name="category">general</field>
-            <field name="parameters_schema">{
-    "type": "object",
-    "properties": {
-        "task_type": {
-            "type": "string",
-            "description": "Type of task to create",
-            "enum": ["create_invoice", "create_lead", "create_ticket", "send_quote", "create_task", "schedule_call", "send_email", "custom"]
-        },
-        "description": {
-            "type": "string",
-            "description": "Clear description of what needs to be done"
-        },
-        "extracted_data": {
-            "type": "object",
-            "description": "Relevant data extracted from conversation: customer_ref, amounts, product names, dates, etc."
-        },
-        "priority": {
-            "type": "string",
-            "description": "Priority level: 0=low, 1=normal, 2=high, 3=urgent",
-            "default": "1"
-        }
-    },
-    "required": ["task_type", "description"]
-}</field>
-            <field name="active">True</field>
-        </record>
     </data>
 </odoo>

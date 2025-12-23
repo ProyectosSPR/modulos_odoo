@@ -11,182 +11,399 @@
             <div id="wrap" class="billing-portal-wrap">
                 <div class="container py-5">
                     <div class="row justify-content-center">
-                        <div class="col-md-8">
+                        <div class="col-lg-10">
                             <!-- Header -->
                             <div class="text-center mb-5">
                                 <i class="fa fa-file-invoice-dollar fa-4x text-primary mb-3"></i>
                                 <h1>Portal de Facturación</h1>
-                                <p class="lead text-muted">Busque su pedido para solicitar factura</p>
+                                <p class="lead text-muted">Busque sus pedidos para solicitar factura</p>
                             </div>
 
-                            <!-- Formulario de búsqueda -->
-                            <div class="card shadow">
-                                <div class="card-body p-4">
-                                    <form method="post" action="/portal/billing">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <div class="row">
+                                <!-- Columna izquierda: Búsqueda y resultados -->
+                                <div class="col-lg-7">
+                                    <!-- Formulario de búsqueda -->
+                                    <div class="card shadow mb-4">
+                                        <div class="card-body p-4">
+                                            <form method="post" action="/portal/billing" id="searchForm">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <input type="hidden" name="selected_orders" id="selectedOrdersInput"
+                                                       t-att-value="','.join([str(o.id) for o in selected_orders]) if selected_orders else ''"/>
 
-                                        <div class="mb-4">
-                                            <label for="order_ref" class="form-label fw-bold">
-                                                <i class="fa fa-search me-2"></i>
-                                                Número de Pedido o Referencia
-                                            </label>
-                                            <input type="text"
-                                                   class="form-control form-control-lg"
-                                                   id="order_ref"
-                                                   name="order_ref"
-                                                   t-att-value="order_ref or ''"
-                                                   placeholder="Ej: SO001 o 2000014377529150"
-                                                   required="required"
-                                                   minlength="2"
-                                                   autofocus="autofocus"/>
-                                            <small class="text-muted">
-                                                Ingrese el número de pedido o referencia de MercadoLibre
-                                            </small>
+                                                <div class="mb-3">
+                                                    <label for="order_ref" class="form-label fw-bold">
+                                                        <i class="fa fa-search me-2"></i>
+                                                        Número de Pedido o Referencia
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <input type="text"
+                                                               class="form-control form-control-lg"
+                                                               id="order_ref"
+                                                               name="order_ref"
+                                                               t-att-value="order_ref or ''"
+                                                               placeholder="Ej: SO001 o 2000014377529150"
+                                                               required="required"
+                                                               minlength="2"/>
+                                                        <button type="submit" class="btn btn-primary btn-lg">
+                                                            <i class="fa fa-search"></i>
+                                                        </button>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        Busque y agregue varias órdenes para facturarlas juntas
+                                                    </small>
+                                                </div>
+                                            </form>
                                         </div>
-
-                                        <div class="d-grid">
-                                            <button type="submit" class="btn btn-primary btn-lg">
-                                                <i class="fa fa-search me-2"></i>
-                                                Buscar Pedido
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- Error -->
-                            <t t-if="error">
-                                <div class="alert alert-warning mt-4">
-                                    <i class="fa fa-exclamation-triangle me-2"></i>
-                                    <t t-esc="error"/>
-                                </div>
-                            </t>
-
-                            <!-- Resultado de búsqueda -->
-                            <t t-if="order">
-                                <div class="card mt-4 border-success">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">
-                                            <i class="fa fa-check-circle me-2"></i>
-                                            Pedido Encontrado
-                                        </h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <p><strong>Número:</strong> <t t-esc="order.name"/></p>
-                                                <p t-if="order.client_order_ref">
-                                                    <strong>Referencia:</strong> <t t-esc="order.client_order_ref"/>
-                                                </p>
-                                                <p><strong>Fecha:</strong>
-                                                    <t t-esc="order.date_order" t-options="{'widget': 'date'}"/>
-                                                </p>
+
+                                    <!-- Error -->
+                                    <t t-if="error">
+                                        <div class="alert alert-warning">
+                                            <i class="fa fa-exclamation-triangle me-2"></i>
+                                            <t t-esc="error"/>
+                                        </div>
+                                    </t>
+
+                                    <!-- Resultados de búsqueda -->
+                                    <t t-if="orders">
+                                        <div class="card border-success mb-4">
+                                            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                                <h5 class="mb-0">
+                                                    <i class="fa fa-check-circle me-2"></i>
+                                                    <t t-esc="len(orders)"/> Pedido(s) Encontrado(s)
+                                                </h5>
                                             </div>
-                                            <div class="col-md-6">
-                                                <p><strong>Cliente:</strong> <t t-esc="order.partner_id.name"/></p>
-                                                <p><strong>Total:</strong>
-                                                    <t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
-                                                </p>
-                                                <p><strong>Estado:</strong>
-                                                    <span t-if="order.is_portal_billable" class="badge bg-success">
-                                                        Facturable
-                                                    </span>
-                                                    <span t-else="" class="badge bg-secondary">
-                                                        No facturable
-                                                    </span>
-                                                </p>
+                                            <div class="card-body p-0">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover mb-0">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th style="width: 50px;"></th>
+                                                                <th>Pedido</th>
+                                                                <th>Referencia</th>
+                                                                <th>Total</th>
+                                                                <th>Estado</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <t t-foreach="orders" t-as="order">
+                                                                <tr t-att-class="'table-secondary' if not order.is_portal_billable else ''">
+                                                                    <td class="text-center">
+                                                                        <t t-if="order.is_portal_billable">
+                                                                            <button type="button"
+                                                                                    class="btn btn-sm btn-outline-success add-order-btn"
+                                                                                    t-att-data-order-id="order.id"
+                                                                                    t-att-data-order-name="order.name"
+                                                                                    t-att-data-order-ref="order.client_order_ref or ''"
+                                                                                    t-att-data-order-total="order.amount_total"
+                                                                                    title="Agregar a facturación">
+                                                                                <i class="fa fa-plus"></i>
+                                                                            </button>
+                                                                        </t>
+                                                                        <t t-else="">
+                                                                            <i class="fa fa-ban text-muted" title="No facturable"></i>
+                                                                        </t>
+                                                                    </td>
+                                                                    <td>
+                                                                        <strong t-esc="order.name"/>
+                                                                        <br/>
+                                                                        <small class="text-muted" t-esc="order.date_order" t-options="{'widget': 'date'}"/>
+                                                                    </td>
+                                                                    <td>
+                                                                        <t t-esc="order.client_order_ref or '-'"/>
+                                                                    </td>
+                                                                    <td>
+                                                                        <t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span t-if="order.is_portal_billable" class="badge bg-success">
+                                                                            Facturable
+                                                                        </span>
+                                                                        <span t-elif="order.invoice_status == 'invoiced'" class="badge bg-info">
+                                                                            Ya facturado
+                                                                        </span>
+                                                                        <span t-else="" class="badge bg-secondary">
+                                                                            No facturable
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </t>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </div>
+                                    </t>
 
-                                        <hr/>
+                                    <!-- Requisitos -->
+                                    <div class="card border-info">
+                                        <div class="card-header bg-info text-white">
+                                            <i class="fa fa-info-circle me-2"></i>
+                                            Requisitos para facturar
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="mb-0">
+                                                <li>El pedido debe estar <strong>entregado</strong></li>
+                                                <li>Debe tener su <strong>Constancia de Situación Fiscal (CSF)</strong> del SAT</li>
+                                                <li>Debe <strong>iniciar sesión o crear una cuenta</strong> para solicitar factura</li>
+                                                <li>Puede <strong>agregar varias órdenes</strong> para facturarlas juntas</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                        <!-- Botones de acción -->
-                                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                                            <t t-if="order.is_portal_billable">
+                                <!-- Columna derecha: Carrito de facturación -->
+                                <div class="col-lg-5">
+                                    <div class="card shadow-lg border-primary sticky-top" style="top: 20px;" id="billingCart">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-shopping-cart me-2"></i>
+                                                Órdenes a Facturar
+                                                <span class="badge bg-light text-primary ms-2" id="cartCount">
+                                                    <t t-esc="len(selected_orders) if selected_orders else 0"/>
+                                                </span>
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- Lista de órdenes seleccionadas -->
+                                            <div id="selectedOrdersList">
+                                                <t t-if="selected_orders">
+                                                    <t t-foreach="selected_orders" t-as="sel_order">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded selected-order-item"
+                                                             t-att-data-order-id="sel_order.id">
+                                                            <div>
+                                                                <strong t-esc="sel_order.name"/>
+                                                                <t t-if="sel_order.client_order_ref">
+                                                                    <br/><small class="text-muted" t-esc="sel_order.client_order_ref"/>
+                                                                </t>
+                                                            </div>
+                                                            <div class="d-flex align-items-center">
+                                                                <span class="me-2" t-esc="sel_order.amount_total" t-options="{'widget': 'monetary', 'display_currency': sel_order.currency_id}"/>
+                                                                <button type="button" class="btn btn-sm btn-outline-danger remove-order-btn"
+                                                                        t-att-data-order-id="sel_order.id">
+                                                                    <i class="fa fa-times"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </t>
+                                                <div id="emptyCartMessage" t-att-class="'text-center text-muted py-4' if not selected_orders else 'd-none text-center text-muted py-4'">
+                                                    <i class="fa fa-inbox fa-3x mb-3"></i>
+                                                    <p>No hay órdenes seleccionadas</p>
+                                                    <small>Busque y agregue órdenes usando el botón <i class="fa fa-plus text-success"></i></small>
+                                                </div>
+                                            </div>
+
+                                            <!-- Total -->
+                                            <hr/>
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <strong>Total a facturar:</strong>
+                                                <strong class="text-primary fs-5" id="cartTotal">
+                                                    $<t t-esc="sum(o.amount_total for o in selected_orders) if selected_orders else 0" t-options="{'widget': 'float', 'precision': 2}"/>
+                                                </strong>
+                                            </div>
+
+                                            <!-- Botón de facturar -->
+                                            <div class="d-grid gap-2">
                                                 <t t-if="is_logged_in">
-                                                    <a t-attf-href="/portal/billing/request/#{order.id}"
-                                                       class="btn btn-success btn-lg">
+                                                    <button type="button" class="btn btn-success btn-lg" id="btnFacturar"
+                                                            t-att-disabled="'disabled' if not selected_orders else None">
                                                         <i class="fa fa-file-invoice me-2"></i>
                                                         Solicitar Factura
-                                                    </a>
+                                                    </button>
                                                 </t>
                                                 <t t-else="">
-                                                    <a t-attf-href="/web/login?redirect=/portal/billing/request/#{order.id}"
-                                                       class="btn btn-primary btn-lg">
+                                                    <a href="/web/login?redirect=/portal/billing" class="btn btn-primary btn-lg">
                                                         <i class="fa fa-sign-in-alt me-2"></i>
                                                         Iniciar Sesión para Facturar
                                                     </a>
-                                                    <a href="/web/signup" class="btn btn-outline-primary btn-lg">
+                                                    <a href="/web/signup" class="btn btn-outline-primary">
                                                         <i class="fa fa-user-plus me-2"></i>
                                                         Crear Cuenta
                                                     </a>
                                                 </t>
-                                            </t>
-                                            <t t-else="">
-                                                <button class="btn btn-secondary btn-lg" disabled="disabled">
-                                                    <i class="fa fa-ban me-2"></i>
-                                                    No disponible para facturación
-                                                </button>
-                                            </t>
-                                        </div>
-
-                                        <t t-if="not order.is_portal_billable">
-                                            <div class="alert alert-info mt-3 mb-0">
-                                                <i class="fa fa-info-circle me-2"></i>
-                                                <t t-if="order.invoice_status == 'invoiced'">
-                                                    Esta orden ya está completamente facturada.
-                                                </t>
-                                                <t t-elif="order.state not in ('sale', 'done')">
-                                                    La orden aún no está confirmada.
-                                                </t>
-                                                <t t-elif="order.ml_shipment_status and order.ml_shipment_status != 'delivered'">
-                                                    El envío aún no ha sido entregado.
-                                                </t>
-                                                <t t-else="">
-                                                    Esta orden no puede facturarse actualmente.
-                                                </t>
                                             </div>
-                                        </t>
+                                        </div>
                                     </div>
-                                </div>
-                            </t>
 
-                            <!-- Información para usuarios logueados -->
-                            <t t-if="is_logged_in">
-                                <div class="card mt-4">
-                                    <div class="card-body">
-                                        <h6><i class="fa fa-user me-2"></i>Sesión Activa</h6>
-                                        <p class="mb-2">Estás logueado como: <strong t-esc="request.env.user.name"/></p>
-                                        <a href="/portal/billing/orders" class="btn btn-outline-primary btn-sm me-2">
-                                            <i class="fa fa-shopping-cart me-1"></i>
-                                            Mis Órdenes
-                                        </a>
-                                        <a href="/portal/billing/history" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fa fa-history me-1"></i>
-                                            Historial
-                                        </a>
-                                    </div>
-                                </div>
-                            </t>
-
-                            <!-- Requisitos -->
-                            <div class="card mt-4 border-info">
-                                <div class="card-header bg-info text-white">
-                                    <i class="fa fa-info-circle me-2"></i>
-                                    Requisitos para facturar
-                                </div>
-                                <div class="card-body">
-                                    <ul class="mb-0">
-                                        <li>El pedido debe estar <strong>entregado</strong></li>
-                                        <li>Debe tener su <strong>Constancia de Situación Fiscal (CSF)</strong> del SAT</li>
-                                        <li>Debe <strong>iniciar sesión o crear una cuenta</strong> para solicitar factura</li>
-                                    </ul>
+                                    <!-- Información para usuarios logueados -->
+                                    <t t-if="is_logged_in">
+                                        <div class="card mt-3">
+                                            <div class="card-body">
+                                                <h6><i class="fa fa-user me-2"></i>Sesión Activa</h6>
+                                                <p class="mb-2 small">Conectado como: <strong t-esc="request.env.user.name"/></p>
+                                                <div class="d-flex gap-2">
+                                                    <a href="/my/billing/orders" class="btn btn-outline-primary btn-sm">
+                                                        <i class="fa fa-list me-1"></i>
+                                                        Mis Órdenes
+                                                    </a>
+                                                    <a href="/my/billing/requests" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fa fa-history me-1"></i>
+                                                        Historial
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- JavaScript para manejo del carrito -->
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function() {
+                    var selectedOrders = {};
+                    var currencySymbol = '$';
+
+                    // Inicializar con órdenes ya seleccionadas
+                    document.querySelectorAll('.selected-order-item').forEach(function(item) {
+                        var orderId = item.dataset.orderId;
+                        var totalText = item.querySelector('.me-2').textContent;
+                        var total = parseFloat(totalText.replace(/[^0-9.-]+/g, '')) || 0;
+                        selectedOrders[orderId] = {
+                            id: orderId,
+                            name: item.querySelector('strong').textContent,
+                            ref: item.querySelector('small') ? item.querySelector('small').textContent : '',
+                            total: total
+                        };
+                    });
+
+                    // Agregar orden al carrito
+                    document.querySelectorAll('.add-order-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var orderId = this.dataset.orderId;
+                            if (selectedOrders[orderId]) {
+                                alert('Esta orden ya está en el carrito');
+                                return;
+                            }
+
+                            var orderData = {
+                                id: orderId,
+                                name: this.dataset.orderName,
+                                ref: this.dataset.orderRef,
+                                total: parseFloat(this.dataset.orderTotal) || 0
+                            };
+
+                            selectedOrders[orderId] = orderData;
+                            addOrderToCart(orderData);
+                            updateCart();
+
+                            // Cambiar botón a check
+                            this.classList.remove('btn-outline-success');
+                            this.classList.add('btn-success');
+                            this.innerHTML = '<i class="fa fa-check"></i>';
+                            this.disabled = true;
+                        });
+                    });
+
+                    // Función para agregar orden visualmente al carrito
+                    function addOrderToCart(order) {
+                        var list = document.getElementById('selectedOrdersList');
+                        var emptyMsg = document.getElementById('emptyCartMessage');
+                        emptyMsg.classList.add('d-none');
+
+                        var html = '<div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded selected-order-item" data-order-id="' + order.id + '">' +
+                            '<div><strong>' + order.name + '</strong>' +
+                            (order.ref ? '<br/><small class="text-muted">' + order.ref + '</small>' : '') +
+                            '</div>' +
+                            '<div class="d-flex align-items-center">' +
+                            '<span class="me-2">' + currencySymbol + order.total.toFixed(2) + '</span>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger remove-order-btn" data-order-id="' + order.id + '">' +
+                            '<i class="fa fa-times"></i></button>' +
+                            '</div></div>';
+
+                        emptyMsg.insertAdjacentHTML('beforebegin', html);
+
+                        // Agregar evento al nuevo botón de eliminar
+                        var newBtn = list.querySelector('.remove-order-btn[data-order-id="' + order.id + '"]');
+                        newBtn.addEventListener('click', function() {
+                            removeOrder(order.id);
+                        });
+                    }
+
+                    // Eliminar orden del carrito
+                    function removeOrder(orderId) {
+                        delete selectedOrders[orderId];
+
+                        var item = document.querySelector('.selected-order-item[data-order-id="' + orderId + '"]');
+                        if (item) item.remove();
+
+                        // Restaurar botón de agregar si está visible
+                        var addBtn = document.querySelector('.add-order-btn[data-order-id="' + orderId + '"]');
+                        if (addBtn) {
+                            addBtn.classList.remove('btn-success');
+                            addBtn.classList.add('btn-outline-success');
+                            addBtn.innerHTML = '<i class="fa fa-plus"></i>';
+                            addBtn.disabled = false;
+                        }
+
+                        updateCart();
+                    }
+
+                    // Eventos para botones de eliminar existentes
+                    document.querySelectorAll('.remove-order-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            removeOrder(this.dataset.orderId);
+                        });
+                    });
+
+                    // Actualizar contador y total
+                    function updateCart() {
+                        var count = Object.keys(selectedOrders).length;
+                        var total = 0;
+
+                        for (var id in selectedOrders) {
+                            total += selectedOrders[id].total;
+                        }
+
+                        document.getElementById('cartCount').textContent = count;
+                        document.getElementById('cartTotal').textContent = currencySymbol + total.toFixed(2);
+
+                        // Actualizar input hidden
+                        var ids = Object.keys(selectedOrders).join(',');
+                        document.getElementById('selectedOrdersInput').value = ids;
+
+                        // Habilitar/deshabilitar botón de facturar
+                        var btnFacturar = document.getElementById('btnFacturar');
+                        if (btnFacturar) {
+                            btnFacturar.disabled = count === 0;
+                        }
+
+                        // Mostrar/ocultar mensaje vacío
+                        var emptyMsg = document.getElementById('emptyCartMessage');
+                        if (count === 0) {
+                            emptyMsg.classList.remove('d-none');
+                        } else {
+                            emptyMsg.classList.add('d-none');
+                        }
+                    }
+
+                    // Botón facturar - redirigir con IDs
+                    var btnFacturar = document.getElementById('btnFacturar');
+                    if (btnFacturar) {
+                        btnFacturar.addEventListener('click', function() {
+                            var ids = Object.keys(selectedOrders).join(',');
+                            if (ids) {
+                                window.location.href = '/portal/billing/request?order_ids=' + ids;
+                            }
+                        });
+                    }
+
+                    // Marcar botones de órdenes ya seleccionadas como agregadas
+                    for (var id in selectedOrders) {
+                        var addBtn = document.querySelector('.add-order-btn[data-order-id="' + id + '"]');
+                        if (addBtn) {
+                            addBtn.classList.remove('btn-outline-success');
+                            addBtn.classList.add('btn-success');
+                            addBtn.innerHTML = '<i class="fa fa-check"></i>';
+                            addBtn.disabled = true;
+                        }
+                    }
+                });
+            </script>
         </t>
     </template>
 

@@ -32,6 +32,9 @@ class BillingPortalPrivate(http.Controller):
 
         GET: Muestra formulario de facturación
         POST: Crea solicitud de facturación
+
+        IMPORTANTE: Al acceder a esta ruta, se asigna billing_partner_id
+        a las órdenes para que aparezcan en "Mis Órdenes" del usuario.
         """
         # Obtener IDs de órdenes
         if order_id:
@@ -74,14 +77,30 @@ class BillingPortalPrivate(http.Controller):
                 'error_message': _('Las siguientes órdenes no pueden facturarse: %s') % ', '.join(non_billable.mapped('name'))
             })
 
+        # ASIGNAR billing_partner_id al usuario actual
+        # Esto vincula las órdenes al usuario para que aparezcan en "Mis Órdenes"
+        user = request.env.user
+        partner = user.partner_id
+
+        # Filtrar órdenes que no tienen billing_partner_id o ya pertenecen al usuario
+        orders_to_claim = orders.filtered(
+            lambda o: not o.billing_partner_id or o.billing_partner_id.id == partner.id
+        )
+
+        if orders_to_claim:
+            orders_to_claim.write({'billing_partner_id': partner.id})
+            _logger.info(
+                "Usuario %s (partner_id=%d) reclamó %d órdenes para facturación: %s",
+                user.login, partner.id, len(orders_to_claim),
+                ', '.join(orders_to_claim.mapped('name'))
+            )
+
         if request.httprequest.method == 'GET':
             # Mostrar formulario
             usos_cfdi = request.env['catalogo.uso.cfdi'].sudo().search([])
             formas_pago = request.env['catalogo.forma.pago'].sudo().search([])
 
-            # Datos del usuario logueado
-            user = request.env.user
-            partner = user.partner_id
+            # user y partner ya están definidos arriba
 
             # Preparar order_ids como string para el formulario
             order_ids_str = ','.join(str(o.id) for o in orders)
