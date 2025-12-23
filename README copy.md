@@ -19,7 +19,7 @@ odoo -i base --without-demo=all --xmlrpc-port=8067 --stop-after-init
 odoo -c /etc/odoo/odoo.conf --xmlrpc-port=8067
 odoo -i base --xmlrpc-port=8067 --stop-after-init --database=dml
 
-odoo -d odoo16c -u mercadolibre_connector,mercadolibre_payments,mercadolibre_claims,mercadolibre_sales,mercadolibre_reputation,mercadolibre_shipments,mercadolibre_messaging,mercadolibre_products,billing_portal,ai_agent_core,ai_chatbot_base,ai_activity_pipeline,ai_tools_odoo,ai_playground --without-demo=all --xmlrpc-port=8067 --stop-after-init
+odoo -d odoo16c -u mercadolibre_connector,mercadolibre_payments,mercadolibre_claims,mercadolibre_sales,mercadolibre_reputation,mercadolibre_shipments,mercadolibre_messaging,mercadolibre_products,mercadolibre_label_editor,billing_portal,ai_agent_core,ai_chatbot_base,ai_activity_pipeline,ai_tools_odoo,ai_playground --without-demo=all --xmlrpc-port=8067 --stop-after-init
 
 
 odoo -d odoo17 -u saa\_s\_\_access\_management --without-demo=all --xmlrpc-port=8067 --stop-after-init
