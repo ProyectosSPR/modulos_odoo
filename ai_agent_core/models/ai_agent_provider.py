@@ -478,30 +478,27 @@ class AIAgentProvider(models.Model):
             return []
 
     def action_test_connection(self):
-        """Test connection to the LLM provider"""
+        """Test connection to the LLM provider using simple API call"""
         self.ensure_one()
+        import requests
 
         try:
-            llm = self._get_llm_client(model=self.default_model)
-
-            # Simple test message
-            response = llm.invoke("Say 'Connection successful' in exactly those words.")
+            result = self._test_api_connection()
 
             self.write({
                 'last_test_date': fields.Datetime.now(),
                 'last_test_status': 'success',
-                'last_test_message': f"Connected successfully. Response: {str(response.content)[:200]}"
+                'last_test_message': result
             })
 
+            # Reload form to show updated status
             return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Connection Test',
-                    'message': 'Connection successful!',
-                    'type': 'success',
-                    'sticky': False,
-                }
+                'type': 'ir.actions.act_window',
+                'res_model': 'ai.agent.provider',
+                'res_id': self.id,
+                'view_mode': 'form',
+                'view_type': 'form',
+                'target': 'current',
             }
 
         except Exception as e:
@@ -511,16 +508,137 @@ class AIAgentProvider(models.Model):
                 'last_test_message': str(e)
             })
 
+            # Reload form to show updated status
             return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Connection Test Failed',
-                    'message': str(e)[:200],
-                    'type': 'danger',
-                    'sticky': True,
-                }
+                'type': 'ir.actions.act_window',
+                'res_model': 'ai.agent.provider',
+                'res_id': self.id,
+                'view_mode': 'form',
+                'view_type': 'form',
+                'target': 'current',
             }
+
+    def _test_api_connection(self):
+        """Test API connection without LangChain - simple HTTP request"""
+        import requests
+
+        api_key = self._get_api_key()
+
+        if self.provider_type == 'gemini':
+            if not api_key:
+                raise ValueError("Gemini API Key is required")
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+            response = requests.get(url, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                model_count = len(data.get('models', []))
+                return f"✓ Connected to Google Gemini. Found {model_count} models available."
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        elif self.provider_type == 'openai':
+            if not api_key:
+                raise ValueError("OpenAI API Key is required")
+
+            url = "https://api.openai.com/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                model_count = len(data.get('data', []))
+                return f"✓ Connected to OpenAI. Found {model_count} models available."
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        elif self.provider_type == 'anthropic':
+            if not api_key:
+                raise ValueError("Anthropic API Key is required")
+
+            # Anthropic doesn't have a list models endpoint, so we test with a minimal request
+            url = "https://api.anthropic.com/v1/messages"
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            data = {
+                "model": self.default_model or "claude-3-5-haiku-20241022",
+                "max_tokens": 10,
+                "messages": [{"role": "user", "content": "Hi"}]
+            }
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+
+            if response.status_code == 200:
+                return f"✓ Connected to Anthropic Claude. API key is valid."
+            elif response.status_code == 401:
+                raise ValueError("Invalid API key")
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        elif self.provider_type == 'groq':
+            if not api_key:
+                raise ValueError("Groq API Key is required")
+
+            url = "https://api.groq.com/openai/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                model_count = len(data.get('data', []))
+                return f"✓ Connected to Groq. Found {model_count} models available."
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        elif self.provider_type == 'mistral':
+            if not api_key:
+                raise ValueError("Mistral API Key is required")
+
+            url = "https://api.mistral.ai/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                model_count = len(data.get('data', []))
+                return f"✓ Connected to Mistral AI. Found {model_count} models available."
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        elif self.provider_type == 'ollama':
+            host = self.ollama_host or 'http://localhost:11434'
+            url = f"{host}/api/tags"
+            response = requests.get(url, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                model_count = len(data.get('models', []))
+                return f"✓ Connected to Ollama at {host}. Found {model_count} models installed."
+            else:
+                raise ValueError(f"Cannot connect to Ollama at {host}: {response.status_code}")
+
+        elif self.provider_type == 'azure_openai':
+            if not api_key:
+                raise ValueError("Azure API Key is required")
+            if not self.azure_endpoint:
+                raise ValueError("Azure Endpoint is required")
+            if not self.azure_deployment:
+                raise ValueError("Azure Deployment Name is required")
+
+            url = f"{self.azure_endpoint.rstrip('/')}/openai/deployments?api-version={self.azure_api_version or '2024-02-15-preview'}"
+            headers = {"api-key": api_key}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                return f"✓ Connected to Azure OpenAI at {self.azure_endpoint}"
+            else:
+                raise ValueError(f"API Error {response.status_code}: {response.text[:200]}")
+
+        else:
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     def _get_llm_client(self, model=None, temperature=0.7, max_tokens=2000):
         """
