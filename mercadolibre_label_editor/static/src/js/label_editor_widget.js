@@ -17,6 +17,7 @@ export class LabelEditorWidget extends Component {
             mouseX: 0,
             mouseY: 0,
             showCoordinates: false,
+            fieldsUpdateKey: 0, // Key para forzar actualización del overlay
         });
 
         this.canvasRef = useRef("pdfCanvas");
@@ -35,6 +36,16 @@ export class LabelEditorWidget extends Component {
                 console.log('LabelEditorWidget - PDF data changed, reloading...');
                 // Usar setTimeout para asegurar que el DOM esté actualizado
                 setTimeout(() => this.loadPDF(), 100);
+            }
+
+            // Detectar cambios en los campos para actualizar el overlay en tiempo real
+            const currentFields = this.props.record.data.field_ids;
+            const nextFields = nextProps.record.data.field_ids;
+
+            if (currentFields !== nextFields) {
+                console.log('LabelEditorWidget - Fields changed, updating overlay in real-time...');
+                // Incrementar key para forzar re-renderizado del overlay
+                this.state.fieldsUpdateKey++;
             }
         });
     }
@@ -166,10 +177,13 @@ export class LabelEditorWidget extends Component {
     get displayInfo() {
         const data = this.props.record.data;
 
+        // Contar campos activos en tiempo real
+        const activeFieldsCount = this.configuredFields.length;
+
         return {
             width: data.pdf_width || 'N/A',
             height: data.pdf_height || 'N/A',
-            fieldCount: data.field_count || 0,
+            fieldCount: activeFieldsCount,
         };
     }
 
@@ -220,21 +234,35 @@ export class LabelEditorWidget extends Component {
     }
 
     get configuredFields() {
+        // El fieldsUpdateKey se usa para forzar re-cálculo cuando cambian los campos
+        const _updateKey = this.state.fieldsUpdateKey;
+
         // Obtener los campos configurados desde el record
         const fieldIds = this.props.record.data.field_ids;
-        if (!fieldIds || !fieldIds.records) return [];
+        if (!fieldIds || !fieldIds.records) {
+            console.log('LabelEditorWidget - No hay campos configurados');
+            return [];
+        }
 
-        return fieldIds.records
+        const fields = fieldIds.records
             .filter(field => field.data.active !== false)
-            .map(field => ({
-                name: field.data.name || '',
-                value: field.data.value || '',
-                x: field.data.position_x || 0,
-                y: field.data.position_y || 0,
-                fontSize: field.data.font_size || 12,
-                color: field.data.color || '#000000',
-                align: field.data.align || 'left',
-            }));
+            .map((field, index) => {
+                const fieldData = {
+                    id: field.id || index,
+                    name: field.data.name || '',
+                    value: field.data.value || '',
+                    x: field.data.position_x || 0,
+                    y: field.data.position_y || 0,
+                    fontSize: field.data.font_size || 12,
+                    color: field.data.color || '#000000',
+                    align: field.data.align || 'left',
+                    fontFamily: field.data.font_family || 'Helvetica',
+                };
+                return fieldData;
+            });
+
+        console.log(`LabelEditorWidget - Campos configurados (${fields.length}):`, fields);
+        return fields;
     }
 }
 

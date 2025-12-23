@@ -38,30 +38,35 @@
                          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
 
                         <!-- Renderizar cada campo configurado -->
-                        <t t-foreach="configuredFields" t-as="field" t-key="field_index">
-                            <!-- Círculo marcador -->
-                            <circle t-att-cx="field.x" t-att-cy="field.y" r="4"
-                                    fill="red" opacity="0.7"/>
+                        <t t-foreach="configuredFields" t-as="field" t-key="field.id">
+                            <!-- Grupo para cada campo -->
+                            <g t-att-id="'field_' + field.id">
+                                <!-- Círculo marcador -->
+                                <circle t-att-cx="field.x" t-att-cy="field.y" r="5"
+                                        fill="red" opacity="0.8" stroke="white" stroke-width="1"/>
 
-                            <!-- Texto del campo -->
-                            <text t-att-x="field.x" t-att-y="field.y - 8"
-                                  t-att-fill="field.color"
-                                  t-att-font-size="field.fontSize"
-                                  t-att-text-anchor="field.align === 'center' ? 'middle' : (field.align === 'right' ? 'end' : 'start')"
-                                  font-family="Arial, sans-serif"
-                                  opacity="0.8">
-                                <t t-esc="field.value"/>
-                            </text>
+                                <!-- Texto del campo (renderizado en tiempo real) -->
+                                <text t-att-x="field.x" t-att-y="field.y - 10"
+                                      t-att-fill="field.color"
+                                      t-att-font-size="field.fontSize"
+                                      t-att-font-family="field.fontFamily"
+                                      t-att-text-anchor="field.align === 'center' ? 'middle' : (field.align === 'right' ? 'end' : 'start')"
+                                      opacity="0.9"
+                                      stroke="white" stroke-width="0.5">
+                                    <t t-esc="field.value"/>
+                                </text>
 
-                            <!-- Etiqueta con nombre del campo -->
-                            <text t-att-x="field.x + 6" t-att-y="field.y + 4"
-                                  fill="white" font-size="10"
-                                  font-family="Arial, sans-serif"
-                                  font-weight="bold"
-                                  stroke="red" stroke-width="3"
-                                  paint-order="stroke">
-                                <t t-esc="field.name"/>
-                            </text>
+                                <!-- Etiqueta con nombre del campo (identificador) -->
+                                <text t-att-x="field.x + 8" t-att-y="field.y + 5"
+                                      fill="white" font-size="11"
+                                      font-family="Arial, sans-serif"
+                                      font-weight="bold"
+                                      stroke="red" stroke-width="2.5"
+                                      paint-order="stroke"
+                                      opacity="0.95">
+                                    <t t-esc="field.name"/>
+                                </text>
+                            </g>
                         </t>
                     </svg>
 
