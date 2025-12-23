@@ -27,36 +27,31 @@
 }
 
 /* MercadoLibre - Yellow */
-.ai-chat-header[data-channel="mercadolibre"],
-.ai-chat-main-wrapper[data-channel="mercadolibre"] .ai-chat-header {
+.ai-chat-main-wrapper.ai-channel-mercadolibre .ai-chat-header {
     background: linear-gradient(135deg, #ffe600 0%, #ffd500 100%);
     color: #333;
 }
 
 /* WhatsApp - Green (default) */
-.ai-chat-header[data-channel="whatsapp"],
-.ai-chat-main-wrapper[data-channel="whatsapp"] .ai-chat-header {
+.ai-chat-main-wrapper.ai-channel-whatsapp .ai-chat-header {
     background: linear-gradient(135deg, #00a884 0%, #128c7e 100%);
     color: white;
 }
 
 /* Telegram - Blue */
-.ai-chat-header[data-channel="telegram"],
-.ai-chat-main-wrapper[data-channel="telegram"] .ai-chat-header {
+.ai-chat-main-wrapper.ai-channel-telegram .ai-chat-header {
     background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%);
     color: white;
 }
 
 /* Email - Red */
-.ai-chat-header[data-channel="email"],
-.ai-chat-main-wrapper[data-channel="email"] .ai-chat-header {
+.ai-chat-main-wrapper.ai-channel-email .ai-chat-header {
     background: linear-gradient(135deg, #ea4335 0%, #d33426 100%);
     color: white;
 }
 
 /* Web - Gray */
-.ai-chat-header[data-channel="web"],
-.ai-chat-main-wrapper[data-channel="web"] .ai-chat-header {
+.ai-chat-main-wrapper.ai-channel-web .ai-chat-header {
     background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
     color: white;
 }
@@ -212,7 +207,7 @@
     min-width: 80px;
 }
 
-/* User messages (right side - green) */
+/* User messages (right side - color by channel) */
 .ai-chat-bubble-user {
     justify-content: flex-end;
     align-self: flex-end;
@@ -227,6 +222,42 @@
 .ai-chat-bubble-user .ai-chat-role {
     color: #075e54;
     text-align: right;
+}
+
+/* User bubble colors by channel - MercadoLibre (Yellow) */
+.ai-chat-main-wrapper.ai-channel-mercadolibre .ai-chat-bubble-user .ai-chat-bubble-content {
+    background: linear-gradient(135deg, #fff9cc 0%, #ffe600 100%);
+}
+
+.ai-chat-main-wrapper.ai-channel-mercadolibre .ai-chat-bubble-user .ai-chat-role {
+    color: #856404;
+}
+
+/* User bubble colors by channel - Telegram (Blue) */
+.ai-chat-main-wrapper.ai-channel-telegram .ai-chat-bubble-user .ai-chat-bubble-content {
+    background: linear-gradient(135deg, #cfe9ff 0%, #b3d9ff 100%);
+}
+
+.ai-chat-main-wrapper.ai-channel-telegram .ai-chat-bubble-user .ai-chat-role {
+    color: #004085;
+}
+
+/* User bubble colors by channel - Email (Red/Pink) */
+.ai-chat-main-wrapper.ai-channel-email .ai-chat-bubble-user .ai-chat-bubble-content {
+    background: linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%);
+}
+
+.ai-chat-main-wrapper.ai-channel-email .ai-chat-bubble-user .ai-chat-role {
+    color: #721c24;
+}
+
+/* User bubble colors by channel - Web (Gray) */
+.ai-chat-main-wrapper.ai-channel-web .ai-chat-bubble-user .ai-chat-bubble-content {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.ai-chat-main-wrapper.ai-channel-web .ai-chat-bubble-user .ai-chat-role {
+    color: #495057;
 }
 
 /* Assistant messages (left side - white) */
@@ -371,6 +402,30 @@
 .ai-chat-send-btn i {
     color: white !important;
     font-size: 18px;
+}
+
+/* Send button colors by channel - MercadoLibre */
+.ai-chat-main-wrapper.ai-channel-mercadolibre .ai-chat-send-btn {
+    background: linear-gradient(135deg, #ffe600 0%, #ffd500 100%) !important;
+}
+
+.ai-chat-main-wrapper.ai-channel-mercadolibre .ai-chat-send-btn i {
+    color: #333 !important;
+}
+
+/* Send button colors by channel - Telegram */
+.ai-chat-main-wrapper.ai-channel-telegram .ai-chat-send-btn {
+    background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%) !important;
+}
+
+/* Send button colors by channel - Email */
+.ai-chat-main-wrapper.ai-channel-email .ai-chat-send-btn {
+    background: linear-gradient(135deg, #ea4335 0%, #d33426 100%) !important;
+}
+
+/* Send button colors by channel - Web */
+.ai-chat-main-wrapper.ai-channel-web .ai-chat-send-btn {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
 }
 
 /* ============================================
