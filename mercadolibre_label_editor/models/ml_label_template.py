@@ -71,11 +71,13 @@ class MlLabelTemplate(models.Model):
     # Estadísticas
     field_count = fields.Integer(
         string='N° Campos',
-        compute='_compute_field_count'
+        compute='_compute_field_count',
+        store=True
     )
     usage_count = fields.Integer(
         string='Usos',
         compute='_compute_usage_count',
+        store=True,
         help='Cantidad de tipos logísticos que usan esta plantilla'
     )
 

@@ -203,9 +203,6 @@
                 <field name="description"/>
                 <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
                 <filter string="Archivadas" name="inactive" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter string="Con Campos" name="with_fields" domain="[('field_count', '>', 0)]"/>
-                <filter string="En Uso" name="in_use" domain="[('usage_count', '>', 0)]"/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Compañía" name="company" context="{'group_by': 'company_id'}"/>
                 </group>
