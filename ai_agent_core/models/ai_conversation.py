@@ -87,13 +87,6 @@ class AIConversation(models.Model):
         help='Additional JSON metadata'
     )
 
-    # Related records created
-    activity_task_ids = fields.One2many(
-        'ai.activity.task',
-        'conversation_id',
-        string='Activity Tasks'
-    )
-
     # Analytics
     total_tokens = fields.Integer(string='Total Tokens', default=0)
     avg_response_time = fields.Float(string='Avg Response Time (s)', default=0)
