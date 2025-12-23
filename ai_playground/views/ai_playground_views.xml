@@ -8,7 +8,10 @@
             <tree string="Playground Sessions">
                 <field name="name"/>
                 <field name="agent_id"/>
-                <field name="simulated_channel" widget="badge" decoration-success="simulated_channel == 'whatsapp'" decoration-warning="simulated_channel == 'mercadolibre'" decoration-info="simulated_channel == 'telegram'"/>
+                <field name="simulated_channel" widget="badge"
+                       decoration-success="simulated_channel == 'whatsapp'"
+                       decoration-warning="simulated_channel == 'mercadolibre'"
+                       decoration-info="simulated_channel == 'telegram'"/>
                 <field name="test_partner_id"/>
                 <field name="message_count" string="Messages"/>
                 <field name="create_date"/>
@@ -23,12 +26,16 @@
         <field name="arch" type="xml">
             <form string="AI Playground">
                 <header>
-                    <button name="action_clear_chat" string="Clear Chat" type="object" class="btn-secondary" icon="fa-trash" confirm="Clear all messages?"/>
-                    <button name="action_preview_prompt" string="Preview Prompt" type="object" class="btn-secondary" icon="fa-eye"/>
-                    <button name="action_view_conversation" string="View Conversation" type="object" class="btn-secondary" icon="fa-comments" attrs="{'invisible': [('conversation_id', '=', False)]}"/>
+                    <button name="action_clear_chat" string="Clear Chat" type="object"
+                            class="btn-secondary" icon="fa-trash" confirm="Clear all messages?"/>
+                    <button name="action_preview_prompt" string="Preview Prompt" type="object"
+                            class="btn-secondary" icon="fa-eye"/>
+                    <button name="action_view_conversation" string="View Conversation" type="object"
+                            class="btn-secondary" icon="fa-comments"
+                            attrs="{'invisible': [('conversation_id', '=', False)]}"/>
                 </header>
                 <sheet>
-                    <!-- Configuration Section -->
+                    <!-- Configuration Section (Collapsible) -->
                     <group>
                         <group string="Agent Configuration">
                             <field name="name"/>
@@ -38,83 +45,117 @@
                         <group string="Test Context">
                             <field name="test_partner_id"/>
                             <field name="show_debug"/>
-                            <field name="conversation_id" readonly="1" attrs="{'invisible': [('conversation_id', '=', False)]}"/>
+                            <field name="conversation_id" readonly="1"
+                                   attrs="{'invisible': [('conversation_id', '=', False)]}"/>
                         </group>
                     </group>
 
                     <notebook>
                         <!-- Chat Tab - WhatsApp Style -->
                         <page string="Chat" name="chat">
-                            <!-- Chat Header -->
-                            <div class="o_ai_chat_header">
-                                <div class="o_ai_chat_header_avatar">
-                                    <i class="fa fa-robot"/>
-                                </div>
-                                <div class="o_ai_chat_header_info">
-                                    <div class="o_ai_chat_header_name">
-                                        <field name="agent_id" readonly="1" nolabel="1" class="d-inline" options="{'no_open': True}"/>
+                            <!-- Chat Main Container -->
+                            <div class="ai-chat-main-wrapper">
+                                <!-- Chat Header -->
+                                <div class="ai-chat-header">
+                                    <div class="ai-chat-header-avatar">
+                                        <i class="fa fa-robot"/>
                                     </div>
-                                    <div class="o_ai_chat_header_status">
-                                        AI Assistant - <field name="simulated_channel" readonly="1" nolabel="1" class="d-inline"/>
+                                    <div class="ai-chat-header-info">
+                                        <div class="ai-chat-header-name">
+                                            <field name="agent_id" readonly="1" nolabel="1"
+                                                   class="d-inline" options="{'no_open': True}"/>
+                                        </div>
+                                        <div class="ai-chat-header-status">
+                                            AI Assistant
+                                        </div>
+                                    </div>
+                                    <div class="ai-chat-header-channel">
+                                        <field name="simulated_channel" readonly="1" nolabel="1"
+                                               widget="badge" class="d-inline"/>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Chat Messages Container -->
-                            <field name="message_ids" nolabel="1" class="o_ai_chat_container" mode="tree" readonly="1">
-                                <tree create="0" delete="0" decoration-info="role == 'user'" decoration-success="role == 'assistant'" decoration-warning="role == 'system'" editable="bottom" default_order="create_date asc, id asc">
-                                    <field name="role" column_invisible="1"/>
-                                    <field name="content" widget="html"/>
-                                    <field name="create_date" widget="datetime" string="Time"/>
-                                    <field name="processing_time" string="Time (s)" attrs="{'column_invisible': [('role', '!=', 'assistant')]}"/>
-                                </tree>
-                            </field>
+                                <!-- Chat Messages (HTML Rendered Bubbles) -->
+                                <div class="ai-chat-wrapper">
+                                    <field name="chat_html" readonly="1" nolabel="1"/>
+                                </div>
 
-                            <!-- Message Input Area -->
-                            <group class="mt-3">
-                                <field name="input_message" widget="text" placeholder="Type a message..." nolabel="1"/>
-                            </group>
-                            <div class="text-center mt-2 mb-3">
-                                <button name="action_send_inline" string="Send Message" type="object" class="btn btn-primary" icon="fa-paper-plane"/>
-                            </div>
+                                <!-- Message Input Area -->
+                                <div class="ai-chat-compose-bar">
+                                    <field name="input_message"
+                                           class="ai-chat-input"
+                                           placeholder="Escribe tu mensaje..."
+                                           nolabel="1"/>
+                                    <button name="action_send_inline" type="object"
+                                            class="btn btn-primary ai-chat-send-btn"
+                                            title="Enviar mensaje">
+                                        <i class="fa fa-paper-plane"/>
+                                    </button>
+                                </div>
 
-                            <!-- Quick Messages -->
-                            <div class="o_ai_quick_messages" attrs="{'invisible': [('agent_id', '=', False)]}">
-                                <span class="text-muted me-2">Quick:</span>
-                                <button name="action_quick_greeting" string="Hello" type="object" class="o_ai_quick_msg_btn"/>
-                                <button name="action_quick_product" string="Product Info" type="object" class="o_ai_quick_msg_btn"/>
-                                <button name="action_quick_order" string="Order Status" type="object" class="o_ai_quick_msg_btn"/>
-                                <button name="action_quick_help" string="Help" type="object" class="o_ai_quick_msg_btn"/>
+                                <!-- Quick Messages -->
+                                <div class="ai-chat-quick-messages">
+                                    <button name="action_quick_greeting" string="Hola"
+                                            type="object" class="ai-chat-quick-btn"/>
+                                    <button name="action_quick_product" string="Productos"
+                                            type="object" class="ai-chat-quick-btn"/>
+                                    <button name="action_quick_order" string="Pedido"
+                                            type="object" class="ai-chat-quick-btn"/>
+                                    <button name="action_quick_help" string="Ayuda"
+                                            type="object" class="ai-chat-quick-btn"/>
+                                </div>
                             </div>
                         </page>
 
                         <!-- Debug Tab -->
-                        <page string="Debug Info" name="debug" attrs="{'invisible': [('show_debug', '=', False)]}">
+                        <page string="Debug Info" name="debug"
+                              attrs="{'invisible': [('show_debug', '=', False)]}">
                             <group col="4">
                                 <field name="last_processing_time" widget="float_time"/>
                                 <field name="last_triggered_rules"/>
                             </group>
                             <group string="System Prompt">
-                                <field name="last_system_prompt" widget="ace" options="{'mode': 'text'}" nolabel="1" readonly="1"/>
+                                <field name="last_system_prompt" widget="ace"
+                                       options="{'mode': 'text'}" nolabel="1" readonly="1"/>
                             </group>
                             <group string="Tools Called">
-                                <field name="last_tools_called" widget="ace" options="{'mode': 'json'}" nolabel="1" readonly="1"/>
+                                <field name="last_tools_called" widget="ace"
+                                       options="{'mode': 'json'}" nolabel="1" readonly="1"/>
                             </group>
                             <group string="Raw Response">
-                                <field name="last_raw_response" widget="ace" options="{'mode': 'json'}" nolabel="1" readonly="1"/>
+                                <field name="last_raw_response" widget="ace"
+                                       options="{'mode': 'json'}" nolabel="1" readonly="1"/>
                             </group>
                         </page>
 
                         <!-- Context Tab -->
                         <page string="Additional Context" name="context">
                             <group>
-                                <field name="test_context" widget="ace" options="{'mode': 'json'}" placeholder='{"custom_var": "value"}' nolabel="1"/>
+                                <field name="test_context" widget="ace"
+                                       options="{'mode': 'json'}"
+                                       placeholder='{"custom_var": "value"}' nolabel="1"/>
                             </group>
                             <div class="alert alert-info" role="alert">
                                 <strong>Context Variables:</strong> Add custom variables to test different scenarios.
                                 <br/>These will be available as {{variable}} in prompts.
                                 <br/>Example: {"order_id": "SO001", "urgency": "high"}
                             </div>
+                        </page>
+
+                        <!-- Message History (Table) -->
+                        <page string="Message History" name="messages_list">
+                            <field name="message_ids" mode="tree">
+                                <tree create="0" delete="0"
+                                      decoration-info="role == 'user'"
+                                      decoration-success="role == 'assistant'"
+                                      decoration-warning="role == 'system'"
+                                      default_order="create_date desc">
+                                    <field name="create_date" string="Time"/>
+                                    <field name="role" widget="badge"/>
+                                    <field name="content"/>
+                                    <field name="processing_time" string="Time (s)"/>
+                                </tree>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
@@ -164,16 +205,19 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="role" widget="badge" decoration-info="role == 'user'" decoration-success="role == 'assistant'" decoration-warning="role == 'system'"/>
+                            <field name="role" widget="badge"/>
                             <field name="create_date"/>
-                            <field name="processing_time" attrs="{'invisible': [('role', '!=', 'assistant')]}"/>
+                            <field name="processing_time"
+                                   attrs="{'invisible': [('role', '!=', 'assistant')]}"/>
                         </group>
                     </group>
                     <group string="Content">
                         <field name="content" nolabel="1"/>
                     </group>
-                    <group string="Tools Called" attrs="{'invisible': [('tools_called', '=', False)]}">
-                        <field name="tools_called" widget="ace" options="{'mode': 'json'}" nolabel="1"/>
+                    <group string="Tools Called"
+                           attrs="{'invisible': [('tools_called', '=', False)]}">
+                        <field name="tools_called" widget="ace"
+                               options="{'mode': 'json'}" nolabel="1"/>
                     </group>
                 </sheet>
             </form>

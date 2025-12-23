@@ -65,6 +65,13 @@ class AIPlayground(models.Model):
         help='Type your message here'
     )
 
+    # HTML rendered chat (WhatsApp style bubbles)
+    chat_html = fields.Html(
+        string='Chat',
+        compute='_compute_chat_html',
+        sanitize=False
+    )
+
     # Linked conversation
     conversation_id = fields.Many2one(
         'ai.conversation',
@@ -104,6 +111,91 @@ class AIPlayground(models.Model):
     def _compute_message_count(self):
         for record in self:
             record.message_count = len(record.message_ids)
+
+    @api.depends('message_ids', 'message_ids.content', 'message_ids.role', 'message_ids.create_date')
+    def _compute_chat_html(self):
+        """Render chat messages as WhatsApp-style HTML bubbles"""
+        for record in self:
+            if not record.message_ids:
+                record.chat_html = '''
+                    <div class="ai-chat-container">
+                        <div class="ai-chat-empty">
+                            <div class="ai-chat-empty-icon">
+                                <i class="fa fa-comments-o"></i>
+                            </div>
+                            <div class="ai-chat-empty-text">
+                                No hay mensajes aún.<br/>
+                                Escribe un mensaje para comenzar la conversación.
+                            </div>
+                        </div>
+                    </div>
+                '''
+                continue
+
+            html_parts = ['<div class="ai-chat-container">']
+            current_date = None
+
+            for msg in record.message_ids.sorted(key=lambda m: (m.create_date or fields.Datetime.now(), m.id)):
+                # Date separator
+                msg_date = msg.create_date.date() if msg.create_date else None
+                if msg_date and msg_date != current_date:
+                    current_date = msg_date
+                    date_str = msg_date.strftime('%d/%m/%Y')
+                    html_parts.append(f'''
+                        <div class="ai-chat-date-separator">
+                            <span>{date_str}</span>
+                        </div>
+                    ''')
+
+                # Determine message type
+                if msg.role == 'user':
+                    bubble_class = 'ai-chat-bubble-user'
+                    role_label = 'Tú'
+                    role_icon = 'fa-user'
+                elif msg.role == 'assistant':
+                    bubble_class = 'ai-chat-bubble-assistant'
+                    role_label = 'AI'
+                    role_icon = 'fa-robot'
+                else:
+                    bubble_class = 'ai-chat-bubble-system'
+                    role_label = 'Sistema'
+                    role_icon = 'fa-cog'
+
+                # Time
+                time_str = msg.create_date.strftime('%H:%M') if msg.create_date else ''
+
+                # Processing time badge (only for assistant messages)
+                processing_badge = ''
+                if msg.role == 'assistant' and msg.processing_time:
+                    processing_badge = f'<span class="ai-chat-processing-time">{msg.processing_time:.2f}s</span>'
+
+                # Escape content and preserve line breaks
+                import html
+                content = html.escape(msg.content or '')
+                content = content.replace('\n', '<br/>')
+
+                # Build bubble
+                html_parts.append(f'''
+                    <div class="ai-chat-bubble {bubble_class}">
+                        <div class="ai-chat-bubble-content">
+                            <div class="ai-chat-bubble-header">
+                                <span class="ai-chat-role">
+                                    <i class="fa {role_icon}"></i> {role_label}
+                                </span>
+                            </div>
+                            <div class="ai-chat-bubble-body">
+                                {content}
+                            </div>
+                            <div class="ai-chat-bubble-footer">
+                                <span class="ai-chat-time">{time_str}</span>
+                                {processing_badge}
+                            </div>
+                        </div>
+                    </div>
+                ''')
+
+            html_parts.append('</div>')
+            record.chat_html = ''.join(html_parts)
 
     def action_send_message(self):
         """Open wizard to send a message"""
