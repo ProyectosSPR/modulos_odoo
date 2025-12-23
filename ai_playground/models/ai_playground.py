@@ -31,7 +31,7 @@ class AIPlayground(models.Model):
         ('telegram', 'Telegram'),
         ('email', 'Email'),
         ('web', 'Web'),
-    ], string='Simulate Channel', default='web')
+    ], string='Simulate Channel', default='whatsapp')
 
     # Test context
     test_partner_id = fields.Many2one(
@@ -51,6 +51,18 @@ class AIPlayground(models.Model):
         'ai.playground.message',
         'playground_id',
         string='Messages'
+    )
+
+    # Message count for tree view
+    message_count = fields.Integer(
+        string='Messages',
+        compute='_compute_message_count'
+    )
+
+    # Inline message input
+    input_message = fields.Text(
+        string='Message',
+        help='Type your message here'
     )
 
     # Linked conversation
@@ -87,6 +99,11 @@ class AIPlayground(models.Model):
         string='Processing Time (s)',
         readonly=True
     )
+
+    @api.depends('message_ids')
+    def _compute_message_count(self):
+        for record in self:
+            record.message_count = len(record.message_ids)
 
     def action_send_message(self):
         """Open wizard to send a message"""
@@ -252,6 +269,83 @@ class AIPlayground(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'ai.conversation',
             'res_id': self.conversation_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_send_inline(self):
+        """Send message from inline input field"""
+        self.ensure_one()
+        if not self.input_message:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Empty Message',
+                    'message': 'Please type a message first',
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+
+        # Send the message
+        self.send_message(self.input_message)
+
+        # Clear input and reload form
+        self.input_message = False
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'ai.playground',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_quick_greeting(self):
+        """Quick message: Greeting"""
+        self.ensure_one()
+        self.send_message("Hola, buenos dias!")
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'ai.playground',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_quick_product(self):
+        """Quick message: Product inquiry"""
+        self.ensure_one()
+        self.send_message("Me interesa saber mas sobre sus productos. Que tienen disponible?")
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'ai.playground',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_quick_order(self):
+        """Quick message: Order status"""
+        self.ensure_one()
+        self.send_message("Cual es el estado de mi pedido?")
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'ai.playground',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_quick_help(self):
+        """Quick message: Help request"""
+        self.ensure_one()
+        self.send_message("Necesito ayuda, pueden asistirme?")
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'ai.playground',
+            'res_id': self.id,
             'view_mode': 'form',
             'target': 'current',
         }
