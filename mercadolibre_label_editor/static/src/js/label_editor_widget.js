@@ -276,6 +276,8 @@ export class LabelEditorWidget extends Component {
         const canvas = this.canvasRef.el;
         if (!canvas) return;
 
+        console.log('════════════════ CLICK DEBUG ════════════════');
+
         const rect = canvas.getBoundingClientRect();
 
         // Obtener coordenadas relativas al canvas en su tamaño de renderizado
@@ -284,19 +286,28 @@ export class LabelEditorWidget extends Component {
         const canvasX = (ev.clientX - rect.left) * scaleX;
         const canvasY = (ev.clientY - rect.top) * scaleY;
 
+        console.log('1. Mouse event:', { clientX: ev.clientX, clientY: ev.clientY });
+        console.log('2. Canvas rect:', { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+        console.log('3. Canvas interno:', { width: canvas.width, height: canvas.height });
+        console.log('4. Scale factors:', { scaleX, scaleY, renderScale: this.state.scale });
+        console.log('5. Canvas coords:', { canvasX, canvasY });
+
         // Convertir a coordenadas del PDF real (sin el scale de renderizado)
         const pdfX = Math.round(canvasX / this.state.scale);
         const pdfYCanvas = Math.round(canvasY / this.state.scale);
+
+        console.log('6. PDF coords (sin escala):', { pdfX, pdfYCanvas });
 
         // INVERTIR Y: En PyPDF2, Y=0 está abajo, pero en canvas HTML está arriba
         const pdfHeight = this.state.pdfHeight || this.props.record.data.pdf_height || 0;
         const pdfY = pdfHeight - pdfYCanvas;
 
-        console.log(`Posición clickeada (PDF PyPDF2): X=${pdfX}, Y=${pdfY}`);
-        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Canvas Y: ${pdfYCanvas}, PDF Height: ${pdfHeight}`);
+        console.log('7. PDF Height:', pdfHeight);
+        console.log('8. PyPDF2 coords (Y invertida):', { pdfX, pdfY });
+        console.log('════════════════════════════════════════════');
 
         // Copiar al portapapeles las coordenadas del PDF real (formato PyPDF2)
-        const coords = `X: ${pdfX}, Y: ${pdfY}`;
+        const coords = `${pdfX}, ${pdfY}`;
         navigator.clipboard.writeText(coords).then(() => {
             console.log('Coordenadas copiadas al portapapeles:', coords);
             // Mostrar notificación
@@ -314,7 +325,6 @@ export class LabelEditorWidget extends Component {
         // Obtener los campos configurados desde el record
         const fieldIds = this.props.record.data.field_ids;
         if (!fieldIds || !fieldIds.records) {
-            console.log('LabelEditorWidget - No hay campos configurados');
             return [];
         }
 
@@ -322,7 +332,9 @@ export class LabelEditorWidget extends Component {
         const pdfHeight = this.state.pdfHeight || this.props.record.data.pdf_height || 0;
 
         if (!pdfHeight) {
-            console.warn('LabelEditorWidget - PDF height no disponible, no se pueden renderizar campos');
+            console.warn('⚠️ LabelEditorWidget - PDF height no disponible');
+            console.warn('   state.pdfHeight:', this.state.pdfHeight);
+            console.warn('   record.pdf_height:', this.props.record.data.pdf_height);
             return [];
         }
 
@@ -344,11 +356,24 @@ export class LabelEditorWidget extends Component {
                     color: field.data.color || '#000000',
                     align: field.data.align || 'left',
                     fontFamily: field.data.font_family || 'Helvetica',
+                    // Debug info
+                    _debug: {
+                        bdX: field.data.position_x,
+                        bdY_PyPDF2: pdfYPyPDF2,
+                        canvasY: canvasY,
+                        pdfHeight: pdfHeight
+                    }
                 };
                 return fieldData;
             });
 
-        console.log(`LabelEditorWidget - Campos configurados (${fields.length}), PDF Height: ${pdfHeight}:`, fields);
+        if (fields.length > 0) {
+            console.log(`✓ Campos renderizados (${fields.length}), PDF Height: ${pdfHeight}`);
+            fields.forEach(f => {
+                console.log(`  - ${f.name}: BD(${f._debug.bdX}, ${f._debug.bdY_PyPDF2}) → Canvas(${f.x}, ${f.y})`);
+            });
+        }
+
         return fields;
     }
 }
