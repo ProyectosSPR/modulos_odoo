@@ -14,34 +14,22 @@
                        attrs="{'invisible': [('download_shipping_label', '=', False)]}"
                        options="{'no_create': True}"/>
                 <field name="use_custom_label" invisible="1"/>
+                <field name="label_template_preview" invisible="1"/>
             </field>
 
-            <!-- Agregar nueva sección después del grupo de impresora -->
-            <xpath expr="//group[@string='Configuracion Impresora HTTP']/.." position="after">
-                <group string="Plantilla Personalizada"
-                       attrs="{'invisible': ['|', ('download_shipping_label', '=', False), ('label_template_id', '=', False)]}">
-                    <group>
-                        <field name="label_template_preview" widget="image"
-                               options="{'size': [300, 400]}" nolabel="1"/>
-                    </group>
-                    <group>
-                        <button name="action_edit_label_template" type="object"
-                                string="Editar Plantilla" icon="fa-edit"
-                                class="oe_highlight"/>
-                        <button name="action_preview_label_template" type="object"
-                                string="Vista Previa con Datos" icon="fa-eye"
-                                class="btn-secondary"/>
-                        <button name="action_create_label_template" type="object"
-                                string="Crear Nueva Plantilla" icon="fa-plus"
-                                class="btn-secondary"
-                                attrs="{'invisible': [('label_template_id', '!=', False)]}"/>
-                        <div class="alert alert-info mt-2" role="alert">
-                            <strong>Plantilla Activa:</strong><br/>
-                            Se aplicará automáticamente al descargar etiquetas ML.
-                        </div>
-                    </group>
+            <!-- Agregar nueva sección después de printer_copies -->
+            <field name="printer_copies" position="after">
+                <separator string="Plantilla Personalizada"
+                          attrs="{'invisible': ['|', ('download_shipping_label', '=', False), ('label_template_id', '=', False)]}"/>
+                <group attrs="{'invisible': ['|', ('download_shipping_label', '=', False), ('label_template_id', '=', False)]}">
+                    <button name="action_edit_label_template" type="object"
+                            string="Editar Plantilla" icon="fa-edit"
+                            class="btn-secondary"/>
+                    <button name="action_preview_label_template" type="object"
+                            string="Vista Previa" icon="fa-eye"
+                            class="btn-secondary"/>
                 </group>
-            </xpath>
+            </field>
 
         </field>
     </record>
