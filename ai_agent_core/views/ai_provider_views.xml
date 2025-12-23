@@ -132,22 +132,20 @@
                     <!-- Model Configuration -->
                     <group string="Model Configuration">
                         <group>
-                            <label for="default_model" string="Default Model"/>
-                            <div class="o_row">
-                                <field name="default_model" placeholder="Click 'Fetch Models' first"/>
-                                <field name="available_models_list" invisible="1"/>
-                            </div>
+                            <field name="default_model" string="Default Model"
+                                   placeholder="Click 'Fetch Models' first"/>
                             <field name="available_models" widget="text"
                                    placeholder="Click 'Fetch Models' to load available models"
-                                   string="Available Models (select one and copy to Default Model)"/>
+                                   string="Available Models" readonly="1"
+                                   groups="base.group_no_one"/>
                         </group>
                         <group>
                             <field name="active"/>
                             <field name="sequence" groups="base.group_no_one"/>
                         </group>
                     </group>
-                    <div class="alert alert-secondary" role="alert" attrs="{'invisible': [('available_models', '!=', False)]}">
-                        <strong>Tip:</strong> Click "Fetch Models" button to load available models from the API, then select one from the list.
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('available_models', '!=', False)]}">
+                        <i class="fa fa-info-circle"/> Click <strong>"Fetch Models"</strong> button to load available models from the provider API.
                     </div>
 
                     <notebook>

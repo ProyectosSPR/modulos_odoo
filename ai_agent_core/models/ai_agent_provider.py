@@ -113,32 +113,62 @@ class AIAgentProvider(models.Model):
     # Model Configuration
     # ========================================
 
-    default_model = fields.Char(
-        string='Default Model',
-        help='Model to use for this provider'
-    )
     available_models = fields.Text(
-        string='Available Models',
+        string='Available Models (Raw)',
         help='Comma-separated list of models (fetched from API)'
     )
 
-    # List of models for selection widget
-    available_models_list = fields.Char(
-        string='Models List',
-        compute='_compute_available_models_list',
-        help='JSON list of available models for selection widget'
+    # Selection field populated from available_models
+    default_model = fields.Selection(
+        selection='_get_model_selection',
+        string='Default Model',
+        help='Select the model to use for this provider'
     )
 
-    @api.depends('available_models')
-    def _compute_available_models_list(self):
-        """Convert available_models text to list for selection widget"""
-        import json
-        for record in self:
-            if record.available_models:
-                models = [m.strip() for m in record.available_models.split(',') if m.strip()]
-                record.available_models_list = json.dumps(models)
-            else:
-                record.available_models_list = '[]'
+    @api.model
+    def _get_model_selection(self):
+        """Get dynamic selection options from available_models"""
+        # Get the current record being edited (if any)
+        result = []
+
+        # Try to get models from context or active record
+        if self._context.get('active_id'):
+            record = self.browse(self._context.get('active_id'))
+            if record.exists() and record.available_models:
+                for model in record.available_models.split(','):
+                    model = model.strip()
+                    if model:
+                        result.append((model, model))
+
+        # Also add all models from all providers to ensure selection works
+        all_providers = self.sudo().search([])
+        for provider in all_providers:
+            if provider.available_models:
+                for model in provider.available_models.split(','):
+                    model = model.strip()
+                    if model and (model, model) not in result:
+                        result.append((model, model))
+
+        # If no models found, add defaults for all provider types
+        if not result:
+            default_models = [
+                # Gemini
+                'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp',
+                # OpenAI
+                'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo',
+                # Anthropic
+                'claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest',
+                # Groq
+                'llama-3.3-70b-versatile', 'mixtral-8x7b-32768',
+                # Mistral
+                'mistral-large-latest', 'mistral-small-latest',
+                # Ollama
+                'llama3.2', 'mistral', 'codellama',
+            ]
+            for model in default_models:
+                result.append((model, model))
+
+        return result
 
     # ========================================
     # Connection Status
@@ -267,9 +297,17 @@ class AIAgentProvider(models.Model):
         if self.provider_type:
             self.available_models = self._get_default_models(self.provider_type)
 
-            # Set default model
+            # Set default model - use first from the defaults
             models_list = self.available_models.split(',') if self.available_models else []
-            self.default_model = models_list[0].strip() if models_list else ''
+            if models_list:
+                first_model = models_list[0].strip()
+                # Check if this model is in the selection options
+                selection_options = self._get_model_selection()
+                valid_options = [opt[0] for opt in selection_options]
+                if first_model in valid_options:
+                    self.default_model = first_model
+                else:
+                    self.default_model = False
 
             # Set default host for Ollama
             if self.provider_type == 'ollama' and not self.ollama_host:
@@ -307,14 +345,17 @@ class AIAgentProvider(models.Model):
                 # Set first model as default
                 self.default_model = models[0]
 
+                # Reload the form to refresh the selection options
                 return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'title': 'Models Fetched',
-                        'message': f'Found {len(models)} models. Selected: {models[0]}',
-                        'type': 'success',
-                        'sticky': False,
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'ai.agent.provider',
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'view_type': 'form',
+                    'target': 'current',
+                    'context': {
+                        'form_view_initial_mode': 'edit',
+                        'default_notification': f'Found {len(models)} models. Selected: {models[0]}',
                     }
                 }
             else:
