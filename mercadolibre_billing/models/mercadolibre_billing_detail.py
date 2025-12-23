@@ -29,6 +29,13 @@ class MercadoliBillingDetail(models.Model):
         ondelete='cascade',
         index=True
     )
+    invoice_group_id = fields.Many2one(
+        'mercadolibre.billing.invoice',
+        string='Factura ML',
+        ondelete='cascade',
+        index=True,
+        help='Agrupa detalles por número de factura legal'
+    )
     account_id = fields.Many2one(
         'mercadolibre.account',
         string='Cuenta ML/MP',
@@ -339,6 +346,7 @@ class MercadoliBillingDetail(models.Model):
     def create_from_api_data(self, data, period):
         """
         Crea o actualiza un detalle de facturación desde datos de la API
+        También crea/actualiza el agrupador de factura
 
         Args:
             data: Diccionario con datos de la API
@@ -360,12 +368,44 @@ class MercadoliBillingDetail(models.Model):
         # Preparar valores según el grupo (ML o MP)
         values = self._prepare_values_from_api_data(data, period)
 
+        # Obtener o crear la factura agrupadora
+        legal_doc_number = charge_info.get('legal_document_number')
+        if legal_doc_number:
+            invoice_group = self._get_or_create_invoice_group(
+                period, legal_doc_number, data
+            )
+            values['invoice_group_id'] = invoice_group.id
+
         if existing:
             existing.write(values)
             return existing, False
         else:
             detail = self.create(values)
             return detail, True
+
+    def _get_or_create_invoice_group(self, period, legal_document_number, data):
+        """
+        Obtiene o crea el agrupador de factura
+        """
+        Invoice = self.env['mercadolibre.billing.invoice']
+
+        invoice_group = Invoice.sudo().search([
+            ('legal_document_number', '=', legal_document_number),
+            ('period_id', '=', period.id)
+        ], limit=1)
+
+        if not invoice_group:
+            document_info = data.get('document_info', {})
+            charge_info = data.get('charge_info', {})
+
+            invoice_group = Invoice.create({
+                'period_id': period.id,
+                'legal_document_number': legal_document_number,
+                'ml_document_id': str(document_info.get('document_id', '')),
+                'legal_document_status': charge_info.get('legal_document_status'),
+            })
+
+        return invoice_group
 
     @api.model
     def _prepare_values_from_api_data(self, data, period):
@@ -581,6 +621,63 @@ class MercadoliBillingDetail(models.Model):
         )
 
         return po
+
+    def _create_purchase_order_line(self, purchase_order):
+        """
+        Crea una línea de PO adicional en una orden existente
+        Usado cuando múltiples detalles pertenecen a la misma factura
+        """
+        self.ensure_one()
+
+        # Obtener configuración
+        config = self.env['mercadolibre.billing.sync.config'].sudo().search([
+            ('account_id', '=', self.account_id.id)
+        ], limit=1)
+
+        # Obtener producto de comisión
+        commission_product = config.commission_product_id if config else None
+        if not commission_product:
+            commission_product = self.env.ref(
+                'mercadolibre_billing.product_ml_commission',
+                raise_if_not_found=False
+            )
+            if not commission_product:
+                raise UserError(_(
+                    'No se ha configurado un producto para comisiones.'
+                ))
+
+        # Determinar precio unitario
+        if self.is_credit_note:
+            price_unit = -abs(self.detail_amount)
+        else:
+            price_unit = abs(self.detail_amount)
+
+        # Crear descripción de la línea
+        description_parts = []
+        if self.transaction_detail:
+            description_parts.append(self.transaction_detail)
+        if self.ml_order_id:
+            description_parts.append(f'Orden ML: {self.ml_order_id}')
+        if self.ml_pack_id:
+            description_parts.append(f'Pack: {self.ml_pack_id}')
+        if self.reference_id:
+            description_parts.append(f'Ref MP: {self.reference_id}')
+
+        line_name = '\n'.join(description_parts) if description_parts else self.transaction_detail or 'Comisión ML'
+
+        # Crear línea
+        po_line_vals = {
+            'order_id': purchase_order.id,
+            'product_id': commission_product.id,
+            'name': line_name,
+            'product_qty': 1,
+            'price_unit': price_unit,
+            'date_planned': self.creation_date or fields.Datetime.now(),
+        }
+
+        self.env['purchase.order.line'].create(po_line_vals)
+
+        return True
 
     def _get_or_create_ml_vendor(self):
         """

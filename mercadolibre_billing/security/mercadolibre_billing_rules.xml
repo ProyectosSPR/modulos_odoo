@@ -8,6 +8,12 @@
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
 
+    <record id="mercadolibre_billing_invoice_company_rule" model="ir.rule">
+        <field name="name">Billing Invoice: multi-company</field>
+        <field name="model_id" ref="model_mercadolibre_billing_invoice"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
     <record id="mercadolibre_billing_detail_company_rule" model="ir.rule">
         <field name="name">Billing Detail: multi-company</field>
         <field name="model_id" ref="model_mercadolibre_billing_detail"/>

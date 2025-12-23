@@ -371,7 +371,7 @@ class MercadoliBillingPeriod(models.Model):
 
     def action_create_purchase_orders(self):
         """
-        Crea órdenes de compra desde los detalles de facturación pendientes
+        Crea 1 orden de compra por cada detalle de facturación pendiente
         """
         self.ensure_one()
 
