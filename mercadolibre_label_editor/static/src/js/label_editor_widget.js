@@ -70,16 +70,33 @@ export class LabelEditorWidget extends Component {
 
             console.log('LabelEditorWidget - Cargando PDF con PDF.js...');
 
+            // Depuración: mostrar tipo y muestra del PDF data
+            console.log('LabelEditorWidget - Tipo de pdfData:', typeof pdfData);
+            console.log('LabelEditorWidget - Muestra de datos (primeros 100 chars):', pdfData.substring(0, 100));
+            console.log('LabelEditorWidget - Últimos 50 chars:', pdfData.substring(pdfData.length - 50));
+
             // Limpiar y validar base64
             let cleanedPdfData = pdfData;
 
             // Si tiene prefijo data:application/pdf;base64, quitarlo
             if (pdfData.includes('base64,')) {
+                console.log('LabelEditorWidget - Detectado prefijo data URI, removiendo...');
                 cleanedPdfData = pdfData.split('base64,')[1];
             }
 
-            // Limpiar espacios en blanco y saltos de línea
-            cleanedPdfData = cleanedPdfData.replace(/\s/g, '');
+            // Limpiar espacios en blanco, saltos de línea y caracteres no válidos
+            cleanedPdfData = cleanedPdfData.replace(/[\s\n\r]/g, '');
+
+            // Validar que solo contenga caracteres base64 válidos
+            const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+            if (!base64Regex.test(cleanedPdfData)) {
+                console.error('LabelEditorWidget - Base64 contiene caracteres inválidos');
+                console.log('LabelEditorWidget - Muestra del base64 limpiado:', cleanedPdfData.substring(0, 100));
+
+                // Intentar limpiar caracteres no base64
+                cleanedPdfData = cleanedPdfData.replace(/[^A-Za-z0-9+/=]/g, '');
+                console.log('LabelEditorWidget - Base64 después de limpieza adicional:', cleanedPdfData.substring(0, 100));
+            }
 
             console.log('LabelEditorWidget - Base64 limpiado, longitud:', cleanedPdfData.length);
 
@@ -93,8 +110,17 @@ export class LabelEditorWidget extends Component {
                     pdfBytes[i] = binaryString.charCodeAt(i);
                 }
                 console.log('LabelEditorWidget - PDF convertido a bytes, tamaño:', pdfBytes.length);
+
+                // Verificar que sea un PDF válido (debe empezar con %PDF)
+                const header = String.fromCharCode(...pdfBytes.slice(0, 5));
+                console.log('LabelEditorWidget - Header del archivo:', header);
+                if (!header.startsWith('%PDF')) {
+                    console.warn('LabelEditorWidget - ADVERTENCIA: El archivo no parece ser un PDF válido');
+                }
             } catch (decodeError) {
                 console.error('LabelEditorWidget - Error decodificando base64:', decodeError);
+                console.error('LabelEditorWidget - Longitud del base64:', cleanedPdfData.length);
+                console.error('LabelEditorWidget - Primeros 200 caracteres:', cleanedPdfData.substring(0, 200));
                 this.state.error = 'Error decodificando PDF: ' + decodeError.message;
                 return;
             }
