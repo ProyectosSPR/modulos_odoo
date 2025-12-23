@@ -31,19 +31,17 @@
                         <!-- Panel derecho: Campos configurados -->
                         <div class="col-lg-4">
                             <group string="Campos Configurados">
-                                <button name="%(action_add_template_field)d" string="+ Agregar Campo"
-                                        type="action" class="btn btn-primary mb-2"
-                                        context="{'default_template_id': active_id}"/>
+                                <p class="text-muted">Use la pestaña "Campos de Texto" en el formulario principal para agregar campos.</p>
                             </group>
 
-                            <field name="field_ids" nolabel="1" context="{'tree_view_ref': 'mercadolibre_label_editor.view_ml_label_template_field_tree_simple'}">
+                            <field name="field_ids" nolabel="1">
                                 <tree editable="bottom" create="true" delete="true">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
+                                    <field name="value"/>
+                                    <field name="position_x"/>
+                                    <field name="position_y"/>
                                     <field name="active" widget="boolean_toggle"/>
-                                    <button name="%(action_edit_template_field)d" type="action"
-                                            icon="fa-edit" title="Editar Campo"
-                                            context="{'default_id': id}"/>
                                 </tree>
                             </field>
 
@@ -96,36 +94,5 @@
         </field>
     </record>
 
-    <!-- Simplified Tree View for Fields in Editor -->
-    <record id="view_ml_label_template_field_tree_simple" model="ir.ui.view">
-        <field name="name">ml.label.template.field.tree.simple</field>
-        <field name="model">ml.label.template.field</field>
-        <field name="arch" type="xml">
-            <tree editable="bottom">
-                <field name="sequence" widget="handle"/>
-                <field name="name"/>
-                <field name="value"/>
-                <field name="position_x"/>
-                <field name="position_y"/>
-                <field name="active" widget="boolean_toggle"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- Action: Add Field (dummy for context) -->
-    <record id="action_add_template_field" model="ir.actions.act_window">
-        <field name="name">Agregar Campo</field>
-        <field name="res_model">ml.label.template.field</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
-    <!-- Action: Edit Field (dummy for context) -->
-    <record id="action_edit_template_field" model="ir.actions.act_window">
-        <field name="name">Editar Campo</field>
-        <field name="res_model">ml.label.template.field</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
 
 </odoo>
