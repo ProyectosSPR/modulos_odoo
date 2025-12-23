@@ -136,16 +136,15 @@
                                    placeholder="Click 'Fetch Models' first"/>
                             <field name="available_models" widget="text"
                                    placeholder="Click 'Fetch Models' to load available models"
-                                   string="Available Models" readonly="1"
-                                   groups="base.group_no_one"/>
+                                   string="Available Models" readonly="1" invisible="1"/>
                         </group>
                         <group>
                             <field name="active"/>
                             <field name="sequence" groups="base.group_no_one"/>
                         </group>
                     </group>
-                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('available_models', '!=', False)]}">
-                        <i class="fa fa-info-circle"/> Click <strong>"Fetch Models"</strong> button to load available models from the provider API.
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('default_model', '!=', False)]}">
+                        <i class="fa fa-info-circle" title="Info"/> Click <strong>"Fetch Models"</strong> button to load available models from the provider API.
                     </div>
 
                     <notebook>
