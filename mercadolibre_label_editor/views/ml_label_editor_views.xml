@@ -17,43 +17,49 @@
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
 
-                    <div class="row">
-                        <!-- Panel izquierdo: Canvas del PDF -->
-                        <div class="col-lg-8">
-                            <group string="Vista Previa del PDF">
-                                <field name="sample_pdf" widget="label_editor" nolabel="1"/>
-                                <field name="pdf_width" invisible="1"/>
-                                <field name="pdf_height" invisible="1"/>
-                                <field name="field_count" invisible="1"/>
-                            </group>
-                        </div>
+                    <!-- Sección 1: Cargar PDF -->
+                    <group string="1️⃣ Cargar PDF de Etiqueta">
+                        <field name="sample_pdf" filename="sample_pdf_filename" widget="binary"/>
+                        <field name="sample_pdf_filename" invisible="1"/>
+                        <field name="pdf_width" string="Ancho (px)"/>
+                        <field name="pdf_height" string="Alto (px)"/>
+                    </group>
 
-                        <!-- Panel derecho: Campos configurados -->
-                        <div class="col-lg-4">
-                            <group string="Campos Configurados">
-                                <p class="text-muted">Use la pestaña "Campos de Texto" en el formulario principal para agregar campos.</p>
-                            </group>
+                    <separator string="2️⃣ Vista Previa del PDF"/>
 
-                            <field name="field_ids" nolabel="1">
-                                <tree editable="bottom" create="true" delete="true">
-                                    <field name="sequence" widget="handle"/>
-                                    <field name="name"/>
-                                    <field name="value"/>
-                                    <field name="position_x"/>
-                                    <field name="position_y"/>
-                                    <field name="active" widget="boolean_toggle"/>
-                                </tree>
-                            </field>
+                    <!-- Vista previa del PDF - Ocupa todo el ancho -->
+                    <div style="width: 100%; min-height: 500px;">
+                        <field name="sample_pdf" widget="label_editor" nolabel="1"/>
+                        <field name="field_count" invisible="1"/>
+                    </div>
 
-                            <div class="alert alert-info mt-3" role="alert">
-                                <h6><i class="fa fa-info-circle"/> Atajos:</h6>
-                                <ul class="mb-0 small">
-                                    <li>Click en un campo para editarlo</li>
-                                    <li>Use el handle (☰) para reordenar</li>
-                                    <li>Toggle activo/inactivo para ocultar campos temporalmente</li>
-                                </ul>
-                            </div>
-                        </div>
+                    <separator string="3️⃣ Campos Configurados"/>
+
+                    <!-- Lista de campos - Debajo de la vista previa, todo el ancho -->
+                    <group>
+                        <field name="field_ids" nolabel="1">
+                            <tree editable="bottom" create="true" delete="true">
+                                <field name="sequence" widget="handle"/>
+                                <field name="name"/>
+                                <field name="field_type"/>
+                                <field name="value"/>
+                                <field name="position_x"/>
+                                <field name="position_y"/>
+                                <field name="font_size"/>
+                                <field name="active" widget="boolean_toggle"/>
+                            </tree>
+                        </field>
+                    </group>
+
+                    <div class="alert alert-info" role="alert" style="margin: 20px 0;">
+                        <strong><i class="fa fa-info-circle"/> Instrucciones:</strong>
+                        <ul style="margin-bottom: 0; padding-left: 20px; margin-top: 10px;">
+                            <li>Carga un PDF arriba si aún no lo has hecho</li>
+                            <li>La vista previa se actualizará automáticamente</li>
+                            <li>Agrega o edita campos en la lista de abajo</li>
+                            <li>Usa el handle (☰) para reordenar campos</li>
+                            <li>Toggle activo/inactivo para ocultar campos temporalmente</li>
+                        </ul>
                     </div>
 
                 </sheet>
