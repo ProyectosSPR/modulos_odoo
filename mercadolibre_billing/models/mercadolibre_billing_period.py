@@ -186,6 +186,10 @@ class MercadoliBillingPeriod(models.Model):
             'sync_log': '',
             'error_message': ''
         })
+        self.env.cr.commit()
+
+        log_lines = []
+        total_synced = 0
 
         try:
             # Obtener token válido
@@ -194,8 +198,6 @@ class MercadoliBillingPeriod(models.Model):
             offset = 0
             limit = 50
             display = None
-            total_synced = 0
-            log_lines = []
 
             log_lines.append(f'[INFO] Iniciando sincronización para periodo {self.period_key}')
             log_lines.append(f'[INFO] Grupo: {self.billing_group}')
@@ -214,15 +216,17 @@ class MercadoliBillingPeriod(models.Model):
                     )
 
                     offset += limit
-                    self.last_offset = offset
 
-                    # Commit parcial cada 5 lotes para evitar perder progreso
-                    if offset % (limit * 5) == 0:
-                        self.env.cr.commit()
+                    # Commit después de cada lote exitoso
+                    self.env.cr.commit()
 
                 except Exception as e:
+                    # Rollback en caso de error
+                    self.env.cr.rollback()
+
                     log_lines.append(f'[ERROR] Error en offset {offset}: {str(e)}')
                     _logger.error(f'Error sincronizando periodo {self.id} offset {offset}: {e}')
+
                     # Continuar con siguiente lote
                     offset += limit
                     continue
@@ -235,6 +239,7 @@ class MercadoliBillingPeriod(models.Model):
                 'sync_log': '\n'.join(log_lines),
                 'last_offset': 0
             })
+            self.env.cr.commit()
 
             self.message_post(
                 body=_(f'Sincronización completada: {total_synced} detalles procesados.')
@@ -252,22 +257,30 @@ class MercadoliBillingPeriod(models.Model):
             }
 
         except Exception as e:
+            # Rollback en caso de error fatal
+            self.env.cr.rollback()
+
             error_msg = str(e)
             _logger.error(f'Error fatal en sincronización periodo {self.id}: {e}', exc_info=True)
 
-            self.write({
-                'state': 'error',
-                'error_message': error_msg,
-                'sync_log': '\n'.join(log_lines) if log_lines else error_msg
-            })
+            try:
+                self.write({
+                    'state': 'error',
+                    'error_message': error_msg,
+                    'sync_log': '\n'.join(log_lines) if log_lines else error_msg
+                })
+                self.env.cr.commit()
 
-            # Crear log en mercadolibre.log
-            self.env['mercadolibre.log'].sudo().create({
-                'log_type': 'api_request',
-                'level': 'error',
-                'account_id': self.account_id.id,
-                'message': f'Error sincronizando periodo {self.name}: {error_msg}',
-            })
+                # Crear log en mercadolibre.log
+                self.env['mercadolibre.log'].sudo().create({
+                    'log_type': 'api_request',
+                    'level': 'error',
+                    'account_id': self.account_id.id,
+                    'message': f'Error sincronizando periodo {self.name}: {error_msg}',
+                })
+                self.env.cr.commit()
+            except:
+                pass
 
             raise UserError(_(
                 'Error al sincronizar el periodo:\n%s'
