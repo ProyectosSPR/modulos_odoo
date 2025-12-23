@@ -14,6 +14,8 @@ export class LabelEditorWidget extends Component {
             pdfLoaded: false,
             error: null,
             scale: 1.0,
+            pdfWidth: 0,  // Ancho real del PDF (sin escala)
+            pdfHeight: 0, // Alto real del PDF (sin escala)
             mouseX: 0,
             mouseY: 0,
             showCoordinates: false,
@@ -162,8 +164,24 @@ export class LabelEditorWidget extends Component {
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
 
-                // Guardar el scale en el state para cálculos de coordenadas
+                // Guardar el scale y dimensiones reales del PDF para cálculos de coordenadas
                 this.state.scale = renderScale;
+
+                // Obtener dimensiones reales del PDF (sin escala)
+                const realPdfWidth = viewport.width / renderScale;
+                const realPdfHeight = viewport.height / renderScale;
+
+                // Guardar en el state
+                this.state.pdfWidth = Math.round(realPdfWidth);
+                this.state.pdfHeight = Math.round(realPdfHeight);
+
+                // Guardar en el record si no existen
+                if (!this.props.record.data.pdf_width || !this.props.record.data.pdf_height) {
+                    this.props.record.update({
+                        pdf_width: Math.round(realPdfWidth),
+                        pdf_height: Math.round(realPdfHeight)
+                    });
+                }
 
                 const context = canvas.getContext('2d');
                 const renderContext = {
@@ -176,6 +194,7 @@ export class LabelEditorWidget extends Component {
                 this.state.error = null;
                 console.log('LabelEditorWidget - PDF renderizado exitosamente con scale:', renderScale);
                 console.log('LabelEditorWidget - Canvas dimensions:', canvas.width, 'x', canvas.height);
+                console.log('LabelEditorWidget - PDF real dimensions:', realPdfWidth, 'x', realPdfHeight);
             } else {
                 console.error('LabelEditorWidget - Canvas no disponible');
                 this.state.error = 'Canvas no disponible';
@@ -236,9 +255,12 @@ export class LabelEditorWidget extends Component {
         const canvasY = (ev.clientY - rect.top) * scaleY;
 
         // Convertir a coordenadas del PDF real (dividir por el scale de renderizado)
-        // Esto da las coordenadas que necesitas para position_x y position_y
         const pdfX = Math.round(canvasX / this.state.scale);
-        const pdfY = Math.round(canvasY / this.state.scale);
+        const pdfYCanvas = Math.round(canvasY / this.state.scale);
+
+        // INVERTIR Y: En PyPDF2, Y=0 está abajo, pero en canvas HTML está arriba
+        // Necesitamos invertir para que sea compatible con PyPDF2
+        const pdfY = this.state.pdfHeight - pdfYCanvas;
 
         this.state.mouseX = pdfX;
         this.state.mouseY = pdfY;
@@ -263,12 +285,15 @@ export class LabelEditorWidget extends Component {
 
         // Convertir a coordenadas del PDF real (sin el scale de renderizado)
         const pdfX = Math.round(canvasX / this.state.scale);
-        const pdfY = Math.round(canvasY / this.state.scale);
+        const pdfYCanvas = Math.round(canvasY / this.state.scale);
 
-        console.log(`Posición clickeada (PDF real): X=${pdfX}, Y=${pdfY}`);
-        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Scale: ${this.state.scale}`);
+        // INVERTIR Y: En PyPDF2, Y=0 está abajo, pero en canvas HTML está arriba
+        const pdfY = this.state.pdfHeight - pdfYCanvas;
 
-        // Copiar al portapapeles las coordenadas del PDF real
+        console.log(`Posición clickeada (PDF PyPDF2): X=${pdfX}, Y=${pdfY}`);
+        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Canvas Y: ${pdfYCanvas}, PDF Height: ${this.state.pdfHeight}`);
+
+        // Copiar al portapapeles las coordenadas del PDF real (formato PyPDF2)
         const coords = `X: ${pdfX}, Y: ${pdfY}`;
         navigator.clipboard.writeText(coords).then(() => {
             console.log('Coordenadas copiadas al portapapeles:', coords);
@@ -294,12 +319,17 @@ export class LabelEditorWidget extends Component {
         const fields = fieldIds.records
             .filter(field => field.data.active !== false)
             .map((field, index) => {
+                // Las coordenadas en la BD están en formato PyPDF2 (Y=0 abajo)
+                // Necesitamos invertir Y para el canvas HTML (Y=0 arriba)
+                const pdfYPyPDF2 = field.data.position_y || 0;
+                const canvasY = this.state.pdfHeight - pdfYPyPDF2;
+
                 const fieldData = {
                     id: field.id || index,
                     name: field.data.name || '',
                     value: field.data.value || '',
                     x: field.data.position_x || 0,
-                    y: field.data.position_y || 0,
+                    y: canvasY,  // Y invertida para el canvas
                     fontSize: field.data.font_size || 12,
                     color: field.data.color || '#000000',
                     align: field.data.align || 'left',
