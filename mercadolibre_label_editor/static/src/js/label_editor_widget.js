@@ -70,9 +70,38 @@ export class LabelEditorWidget extends Component {
 
             console.log('LabelEditorWidget - Cargando PDF con PDF.js...');
 
-            // Cargar PDF (el pdfData ya está en base64, usamos atob para convertir a binary)
+            // Limpiar y validar base64
+            let cleanedPdfData = pdfData;
+
+            // Si tiene prefijo data:application/pdf;base64, quitarlo
+            if (pdfData.includes('base64,')) {
+                cleanedPdfData = pdfData.split('base64,')[1];
+            }
+
+            // Limpiar espacios en blanco y saltos de línea
+            cleanedPdfData = cleanedPdfData.replace(/\s/g, '');
+
+            console.log('LabelEditorWidget - Base64 limpiado, longitud:', cleanedPdfData.length);
+
+            // Convertir base64 a Uint8Array de manera segura
+            let pdfBytes;
+            try {
+                const binaryString = atob(cleanedPdfData);
+                const len = binaryString.length;
+                pdfBytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    pdfBytes[i] = binaryString.charCodeAt(i);
+                }
+                console.log('LabelEditorWidget - PDF convertido a bytes, tamaño:', pdfBytes.length);
+            } catch (decodeError) {
+                console.error('LabelEditorWidget - Error decodificando base64:', decodeError);
+                this.state.error = 'Error decodificando PDF: ' + decodeError.message;
+                return;
+            }
+
+            // Cargar PDF con los bytes
             const loadingTask = pdfjsLib.getDocument({
-                data: atob(pdfData),
+                data: pdfBytes,
                 verbosity: 0
             });
 
