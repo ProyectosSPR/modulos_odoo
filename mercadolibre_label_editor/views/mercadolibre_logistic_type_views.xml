@@ -8,16 +8,16 @@
         <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_logistic_type_form"/>
         <field name="arch" type="xml">
 
-            <!-- Agregar campo de plantilla después de label_format -->
-            <field name="label_format" position="after">
+            <!-- Agregar campo de plantilla después de auto_print_label -->
+            <field name="auto_print_label" position="after">
                 <field name="label_template_id"
                        attrs="{'invisible': [('download_shipping_label', '=', False)]}"
                        options="{'no_create': True}"/>
                 <field name="use_custom_label" invisible="1"/>
             </field>
 
-            <!-- Agregar nueva sección después del grupo de Etiquetas de Envio ML -->
-            <group string="Etiquetas de Envio ML" position="after">
+            <!-- Agregar nueva sección después del grupo de impresora -->
+            <xpath expr="//group[@string='Configuracion Impresora HTTP']/.." position="after">
                 <group string="Plantilla Personalizada"
                        attrs="{'invisible': ['|', ('download_shipping_label', '=', False), ('label_template_id', '=', False)]}">
                     <group>
@@ -41,7 +41,7 @@
                         </div>
                     </group>
                 </group>
-            </group>
+            </xpath>
 
         </field>
     </record>
