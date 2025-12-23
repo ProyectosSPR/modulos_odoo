@@ -21,13 +21,13 @@
             <!-- Canvas para renderizar PDF -->
             <div class="o_label_editor_canvas_container" style="background: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
                 <!-- Contenedor con posición relativa para el overlay -->
-                <div t-if="state.pdfLoaded" style="position: relative; display: inline-block;">
-                    <!-- Canvas siempre presente -->
+                <div style="position: relative; display: inline-block;">
+                    <!-- Canvas siempre presente en DOM -->
                     <canvas t-ref="pdfCanvas"
                             t-on-mousemove="onCanvasMouseMove"
                             t-on-mouseleave="onCanvasMouseLeave"
                             t-on-click="onCanvasClick"
-                            style="border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto; cursor: crosshair; display: block;"/>
+                            t-att-style="state.pdfLoaded ? 'border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto; cursor: crosshair; display: block;' : 'display: none;'"/>
 
                     <!-- Overlay para mostrar campos configurados -->
                     <svg t-ref="fieldOverlay"
