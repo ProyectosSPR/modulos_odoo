@@ -36,20 +36,21 @@
                     <separator string="3️⃣ Campos Configurados"/>
 
                     <!-- Lista de campos - Debajo de la vista previa, todo el ancho -->
-                    <group>
-                        <field name="field_ids" nolabel="1">
-                            <tree editable="bottom" create="true" delete="true">
-                                <field name="sequence" widget="handle"/>
-                                <field name="name"/>
-                                <field name="field_type"/>
-                                <field name="value"/>
-                                <field name="position_x"/>
-                                <field name="position_y"/>
-                                <field name="font_size"/>
-                                <field name="active" widget="boolean_toggle"/>
-                            </tree>
-                        </field>
-                    </group>
+                    <field name="field_ids" nolabel="1">
+                        <tree editable="bottom" create="true" delete="true">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="field_type"/>
+                            <field name="value"/>
+                            <field name="position_x"/>
+                            <field name="position_y"/>
+                            <field name="font_size"/>
+                            <field name="font_family"/>
+                            <field name="color" widget="color"/>
+                            <field name="align"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </tree>
+                    </field>
 
                     <div class="alert alert-info" role="alert" style="margin: 20px 0;">
                         <strong><i class="fa fa-info-circle"/> Instrucciones:</strong>
