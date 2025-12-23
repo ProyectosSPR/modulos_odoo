@@ -166,18 +166,39 @@ class MlLabelTemplate(models.Model):
             return
 
         try:
-            from PyPDF2 import PdfReader
+            # Intentar importar PdfReader (PyPDF2 >= 3.0)
+            try:
+                from PyPDF2 import PdfReader
+            except ImportError:
+                # Fallback para PyPDF2 < 3.0
+                from PyPDF2 import PdfFileReader as PdfReader
 
             pdf_bytes = base64.b64decode(self.sample_pdf)
             pdf_reader = PdfReader(io.BytesIO(pdf_bytes))
 
-            if len(pdf_reader.pages) > 0:
-                page = pdf_reader.pages[0]
+            # Compatibilidad con diferentes versiones de PyPDF2
+            try:
+                pages = pdf_reader.pages  # PyPDF2 >= 3.0
+            except AttributeError:
+                pages = [pdf_reader.getPage(i) for i in range(pdf_reader.numPages)]  # PyPDF2 < 3.0
+
+            if len(pages) > 0:
+                page = pages[0]
                 # Convertir de puntos a píxeles (72 DPI es estándar PDF)
                 # Para visualización usamos 150 DPI
                 dpi_scale = 150 / 72
-                self.pdf_width = int(float(page.mediabox.width) * dpi_scale)
-                self.pdf_height = int(float(page.mediabox.height) * dpi_scale)
+
+                # Compatibilidad con diferentes versiones
+                try:
+                    width = float(page.mediabox.width)
+                    height = float(page.mediabox.height)
+                except AttributeError:
+                    # PyPDF2 < 3.0
+                    width = float(page.mediaBox[2])
+                    height = float(page.mediaBox[3])
+
+                self.pdf_width = int(width * dpi_scale)
+                self.pdf_height = int(height * dpi_scale)
             else:
                 self.pdf_width = 0
                 self.pdf_height = 0
@@ -193,17 +214,28 @@ class MlLabelTemplate(models.Model):
         for record in self:
             if record.sample_pdf:
                 try:
-                    from PyPDF2 import PdfReader
+                    # Intentar importar PdfReader (PyPDF2 >= 3.0)
+                    try:
+                        from PyPDF2 import PdfReader
+                    except ImportError:
+                        # Fallback para PyPDF2 < 3.0
+                        from PyPDF2 import PdfFileReader as PdfReader
 
                     pdf_bytes = base64.b64decode(record.sample_pdf)
                     pdf_reader = PdfReader(io.BytesIO(pdf_bytes))
 
-                    if len(pdf_reader.pages) == 0:
+                    # Compatibilidad con diferentes versiones de PyPDF2
+                    try:
+                        num_pages = len(pdf_reader.pages)  # PyPDF2 >= 3.0
+                    except AttributeError:
+                        num_pages = pdf_reader.numPages  # PyPDF2 < 3.0
+
+                    if num_pages == 0:
                         raise ValidationError(_('El PDF no contiene páginas.'))
 
-                    if len(pdf_reader.pages) > 1:
+                    if num_pages > 1:
                         _logger.warning(
-                            f'Plantilla {record.name}: PDF tiene {len(pdf_reader.pages)} páginas, '
+                            f'Plantilla {record.name}: PDF tiene {num_pages} páginas, '
                             'solo se usará la primera.'
                         )
 
