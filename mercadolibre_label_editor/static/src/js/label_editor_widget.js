@@ -24,28 +24,49 @@ export class LabelEditorWidget extends Component {
     }
 
     async loadPDF() {
-        const pdfData = this.props.value;
+        // Obtener el valor del PDF desde props
+        const pdfData = this.props.record.data[this.props.name];
+
+        console.log('LabelEditorWidget - Intentando cargar PDF...');
+        console.log('LabelEditorWidget - Props completos:', this.props);
+        console.log('LabelEditorWidget - Record data:', this.props.record.data);
+        console.log('LabelEditorWidget - Field name:', this.props.name);
+        console.log('PDF Data:', pdfData ? `${pdfData.substring(0, 50)}...` : 'null');
 
         if (!pdfData) {
-            this.state.error = "No hay PDF cargado";
+            console.warn('LabelEditorWidget - No hay PDF cargado');
+            this.state.error = null; // No mostrar error si simplemente no hay PDF
+            this.state.pdfLoaded = false;
             return;
         }
 
         try {
             // Verificar si PDF.js está disponible
             if (typeof pdfjsLib === 'undefined') {
-                console.warn('PDF.js no está cargado, mostrando vista simplificada');
-                this.state.pdfLoaded = false;
-                return;
+                console.warn('LabelEditorWidget - PDF.js no está disponible, cargándolo...');
+                // Intentar cargar PDF.js dinámicamente
+                await this.loadPDFJS();
+                if (typeof pdfjsLib === 'undefined') {
+                    this.state.error = 'PDF.js no está disponible';
+                    return;
+                }
             }
 
             // Configurar worker de PDF.js
             pdfjsLib.GlobalWorkerOptions.workerSrc =
                 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-            // Cargar PDF
-            const loadingTask = pdfjsLib.getDocument({ data: atob(pdfData) });
+            console.log('LabelEditorWidget - Cargando PDF con PDF.js...');
+
+            // Cargar PDF (el pdfData ya está en base64, usamos atob para convertir a binary)
+            const loadingTask = pdfjsLib.getDocument({
+                data: atob(pdfData),
+                verbosity: 0
+            });
+
             const pdf = await loadingTask.promise;
+            console.log('LabelEditorWidget - PDF cargado, páginas:', pdf.numPages);
+
             const page = await pdf.getPage(1);
 
             // Preparar canvas
@@ -64,17 +85,44 @@ export class LabelEditorWidget extends Component {
 
                 await page.render(renderContext).promise;
                 this.state.pdfLoaded = true;
+                this.state.error = null;
+                console.log('LabelEditorWidget - PDF renderizado exitosamente');
+            } else {
+                console.error('LabelEditorWidget - Canvas no disponible');
+                this.state.error = 'Canvas no disponible';
             }
 
         } catch (error) {
-            console.error('Error cargando PDF:', error);
-            this.state.error = error.message;
+            console.error('LabelEditorWidget - Error cargando PDF:', error);
+            this.state.error = error.message || 'Error desconocido al cargar PDF';
+            this.state.pdfLoaded = false;
+        }
+    }
+
+    async loadPDFJS() {
+        // Cargar PDF.js si no está disponible
+        if (typeof pdfjsLib !== 'undefined') {
+            return;
+        }
+
+        try {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+
+            console.log('PDF.js cargado dinámicamente');
+        } catch (error) {
+            console.error('Error cargando PDF.js:', error);
         }
     }
 
     get displayInfo() {
-        const record = this.props.record;
-        const data = record.data;
+        const data = this.props.record.data;
 
         return {
             width: data.pdf_width || 'N/A',
