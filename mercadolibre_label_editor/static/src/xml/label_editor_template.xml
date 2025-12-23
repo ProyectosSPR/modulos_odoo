@@ -2,50 +2,63 @@
 <templates xml:space="preserve">
 
     <t t-name="mercadolibre_label_editor.LabelEditorWidget" owl="1">
-        <div class="o_label_editor_widget">
+        <div class="o_label_editor_widget" style="max-width: 1200px; margin: 0 auto;">
+
             <!-- Información del PDF -->
-            <div class="o_label_editor_info alert alert-info mb-3">
-                <strong>Dimensiones del PDF:</strong>
-                <t t-esc="displayInfo.width"/> x <t t-esc="displayInfo.height"/> px
-                <span class="ms-3">
-                    <strong>Campos configurados:</strong>
-                    <t t-esc="displayInfo.fieldCount"/>
-                </span>
+            <div class="o_label_editor_info" style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                    <div style="margin: 5px 10px;">
+                        <strong>Dimensiones:</strong>
+                        <span style="font-family: monospace;"><t t-esc="displayInfo.width"/> x <t t-esc="displayInfo.height"/> px</span>
+                    </div>
+                    <div style="margin: 5px 10px;">
+                        <strong>Campos configurados:</strong>
+                        <span style="font-family: monospace;"><t t-esc="displayInfo.fieldCount"/></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Canvas para renderizar PDF -->
-            <div class="o_label_editor_canvas_container border rounded p-3 bg-light text-center">
+            <div class="o_label_editor_canvas_container" style="background: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
                 <t t-if="state.pdfLoaded">
-                    <canvas t-ref="pdfCanvas" class="border shadow-sm bg-white"/>
+                    <canvas t-ref="pdfCanvas" style="border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto;"/>
                 </t>
                 <t t-else="">
-                    <div class="alert alert-warning">
-                        <i class="fa fa-file-pdf-o fa-3x mb-2"/>
-                        <p>
-                            Vista previa del PDF no disponible.<br/>
-                            Use la pestaña "Campos de Texto" para configurar los campos.
-                        </p>
-                        <small class="text-muted">
-                            Para habilitar la vista previa, asegúrese de que PDF.js esté cargado.
-                        </small>
+                    <div style="max-width: 600px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="text-align: center;">
+                            <i class="fa fa-file-pdf-o" style="font-size: 64px; color: #999; margin-bottom: 20px;"/>
+                            <h4 style="color: #333; margin-bottom: 10px;">Vista Previa No Disponible</h4>
+                            <p style="color: #666; margin-bottom: 20px;">
+                                El editor visual requiere que primero cargues un PDF en la pestaña principal.<br/>
+                                Vuelve al formulario principal y sube un PDF de ejemplo de etiqueta ML.
+                            </p>
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                                <p style="margin: 0; color: #856404; font-size: 14px;">
+                                    <strong>Sugerencia:</strong> Mientras tanto, puedes usar la pestaña "Campos de Texto"
+                                    en el formulario principal para configurar los campos.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </t>
 
                 <t t-if="state.error">
-                    <div class="alert alert-danger mt-2">
-                        <strong>Error:</strong> <t t-esc="state.error"/>
+                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #f5c6cb;">
+                        <strong>Error al cargar PDF:</strong> <t t-esc="state.error"/>
                     </div>
                 </t>
             </div>
 
             <!-- Instrucciones -->
-            <div class="o_label_editor_instructions alert alert-success mt-3">
-                <h6><i class="fa fa-lightbulb-o"/> Instrucciones:</h6>
-                <ol class="mb-0">
-                    <li>Use la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados</li>
-                    <li>Configure la posición (X, Y) en píxeles desde la esquina superior izquierda</li>
-                    <li>Use variables como <code>${sale_order.name}</code> para datos dinámicos</li>
-                    <li>Ajuste fuente, tamaño, color y rotación según necesite</li>
+            <div class="o_label_editor_instructions" style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #28a745;">
+                <h6 style="margin-top: 0; color: #155724;">
+                    <i class="fa fa-lightbulb-o"/> Cómo usar el editor:
+                </h6>
+                <ol style="margin-bottom: 0; padding-left: 20px; color: #155724;">
+                    <li style="margin-bottom: 8px;">Ve a la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados</li>
+                    <li style="margin-bottom: 8px;">Configura la posición (X, Y) en píxeles desde la esquina superior izquierda</li>
+                    <li style="margin-bottom: 8px;">Usa variables como <code style="background: white; padding: 2px 6px; border-radius: 3px;">${sale_order.name}</code> para datos dinámicos</li>
+                    <li style="margin-bottom: 0;">Ajusta fuente, tamaño, color y rotación según necesites</li>
                 </ol>
             </div>
         </div>
