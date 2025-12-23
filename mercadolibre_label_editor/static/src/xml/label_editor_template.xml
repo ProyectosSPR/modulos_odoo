@@ -29,8 +29,9 @@
                             t-on-click="onCanvasClick"
                             t-att-style="state.pdfLoaded ? 'border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto; cursor: crosshair; display: block;' : 'display: none;'"/>
 
-                    <!-- Overlay para mostrar campos configurados -->
-                    <svg t-ref="fieldOverlay"
+                    <!-- Overlay para mostrar campos configurados (solo visible cuando PDF está cargado) -->
+                    <svg t-if="state.pdfLoaded"
+                         t-ref="fieldOverlay"
                          t-att-width="props.record.data.pdf_width"
                          t-att-height="props.record.data.pdf_height"
                          t-att-viewBox="`0 0 ${props.record.data.pdf_width} ${props.record.data.pdf_height}`"
@@ -64,8 +65,8 @@
                         </t>
                     </svg>
 
-                    <!-- Indicador de coordenadas del mouse -->
-                    <div t-if="state.showCoordinates"
+                    <!-- Indicador de coordenadas del mouse (solo visible cuando PDF está cargado) -->
+                    <div t-if="state.pdfLoaded and state.showCoordinates"
                          style="position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 14px; pointer-events: none; z-index: 1000;">
                         X: <t t-esc="state.mouseX"/> px | Y: <t t-esc="state.mouseY"/> px
                     </div>
