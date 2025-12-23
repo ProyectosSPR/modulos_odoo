@@ -20,9 +20,59 @@
 
             <!-- Canvas para renderizar PDF -->
             <div class="o_label_editor_canvas_container" style="background: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
-                <!-- Canvas siempre presente, pero oculto si no hay PDF -->
-                <canvas t-ref="pdfCanvas"
-                        t-att-style="state.pdfLoaded ? 'border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto;' : 'display: none;'"/>
+                <!-- Contenedor con posición relativa para el overlay -->
+                <div t-if="state.pdfLoaded" style="position: relative; display: inline-block;">
+                    <!-- Canvas siempre presente -->
+                    <canvas t-ref="pdfCanvas"
+                            t-on-mousemove="onCanvasMouseMove"
+                            t-on-mouseleave="onCanvasMouseLeave"
+                            t-on-click="onCanvasClick"
+                            style="border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto; cursor: crosshair; display: block;"/>
+
+                    <!-- Overlay para mostrar campos configurados -->
+                    <svg t-ref="fieldOverlay"
+                         t-att-width="props.record.data.pdf_width"
+                         t-att-height="props.record.data.pdf_height"
+                         t-att-viewBox="`0 0 ${props.record.data.pdf_width} ${props.record.data.pdf_height}`"
+                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+
+                        <!-- Renderizar cada campo configurado -->
+                        <t t-foreach="configuredFields" t-as="field" t-key="field_index">
+                            <!-- Círculo marcador -->
+                            <circle t-att-cx="field.x" t-att-cy="field.y" r="4"
+                                    fill="red" opacity="0.7"/>
+
+                            <!-- Texto del campo -->
+                            <text t-att-x="field.x" t-att-y="field.y - 8"
+                                  t-att-fill="field.color"
+                                  t-att-font-size="field.fontSize"
+                                  t-att-text-anchor="field.align === 'center' ? 'middle' : (field.align === 'right' ? 'end' : 'start')"
+                                  font-family="Arial, sans-serif"
+                                  opacity="0.8">
+                                <t t-esc="field.value"/>
+                            </text>
+
+                            <!-- Etiqueta con nombre del campo -->
+                            <text t-att-x="field.x + 6" t-att-y="field.y + 4"
+                                  fill="white" font-size="10"
+                                  font-family="Arial, sans-serif"
+                                  font-weight="bold"
+                                  stroke="red" stroke-width="3"
+                                  paint-order="stroke">
+                                <t t-esc="field.name"/>
+                            </text>
+                        </t>
+                    </svg>
+
+                    <!-- Indicador de coordenadas del mouse -->
+                    <div t-if="state.showCoordinates"
+                         style="position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 14px; pointer-events: none; z-index: 1000;">
+                        X: <t t-esc="state.mouseX"/> px | Y: <t t-esc="state.mouseY"/> px
+                    </div>
+                </div>
+
+                <!-- Canvas oculto cuando no hay PDF -->
+                <canvas t-if="!state.pdfLoaded" t-ref="pdfCanvas" style="display: none;"/>
 
                 <!-- Mensaje cuando no hay PDF cargado -->
                 <div t-if="!state.pdfLoaded and !state.error" style="max-width: 600px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -51,13 +101,15 @@
             <!-- Instrucciones -->
             <div class="o_label_editor_instructions" style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #28a745;">
                 <h6 style="margin-top: 0; color: #155724;">
-                    <i class="fa fa-lightbulb-o"/> Cómo usar el editor:
+                    <i class="fa fa-lightbulb-o"/> Cómo usar el editor interactivo:
                 </h6>
                 <ol style="margin-bottom: 0; padding-left: 20px; color: #155724;">
-                    <li style="margin-bottom: 8px;">Ve a la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados</li>
-                    <li style="margin-bottom: 8px;">Configura la posición (X, Y) en píxeles desde la esquina superior izquierda</li>
+                    <li style="margin-bottom: 8px;"><strong>Mueve el mouse</strong> sobre el PDF para ver las coordenadas X,Y en tiempo real (esquina superior derecha)</li>
+                    <li style="margin-bottom: 8px;"><strong>Haz click</strong> en cualquier punto del PDF para copiar las coordenadas al portapapeles</li>
+                    <li style="margin-bottom: 8px;">Los <strong>campos configurados</strong> aparecen automáticamente sobre el PDF con un punto rojo y su nombre</li>
+                    <li style="margin-bottom: 8px;">Ve a la sección <strong>"Campos Configurados"</strong> abajo para agregar o editar campos</li>
                     <li style="margin-bottom: 8px;">Usa variables como <code style="background: white; padding: 2px 6px; border-radius: 3px;">${sale_order.name}</code> para datos dinámicos</li>
-                    <li style="margin-bottom: 0;">Ajusta fuente, tamaño, color y rotación según necesites</li>
+                    <li style="margin-bottom: 0;">Los cambios se reflejan <strong>inmediatamente</strong> en el preview del PDF</li>
                 </ol>
             </div>
         </div>

@@ -14,9 +14,13 @@ export class LabelEditorWidget extends Component {
             pdfLoaded: false,
             error: null,
             scale: 1.0,
+            mouseX: 0,
+            mouseY: 0,
+            showCoordinates: false,
         });
 
         this.canvasRef = useRef("pdfCanvas");
+        this.overlayRef = useRef("fieldOverlay");
 
         onMounted(() => {
             this.loadPDF();
@@ -167,6 +171,70 @@ export class LabelEditorWidget extends Component {
             height: data.pdf_height || 'N/A',
             fieldCount: data.field_count || 0,
         };
+    }
+
+    onCanvasMouseMove(ev) {
+        const canvas = this.canvasRef.el;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        // Coordenadas relativas al canvas en píxeles reales
+        const x = Math.round((ev.clientX - rect.left) * scaleX);
+        const y = Math.round((ev.clientY - rect.top) * scaleY);
+
+        this.state.mouseX = x;
+        this.state.mouseY = y;
+        this.state.showCoordinates = true;
+    }
+
+    onCanvasMouseLeave() {
+        this.state.showCoordinates = false;
+    }
+
+    onCanvasClick(ev) {
+        const canvas = this.canvasRef.el;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const x = Math.round((ev.clientX - rect.left) * scaleX);
+        const y = Math.round((ev.clientY - rect.top) * scaleY);
+
+        console.log(`Posición clickeada: X=${x}, Y=${y}`);
+
+        // Copiar al portapapeles
+        const coords = `X: ${x}, Y: ${y}`;
+        navigator.clipboard.writeText(coords).then(() => {
+            console.log('Coordenadas copiadas al portapapeles:', coords);
+            // Mostrar notificación
+            this.env.services.notification.add(
+                `Coordenadas copiadas: ${coords}`,
+                { type: 'success' }
+            );
+        });
+    }
+
+    get configuredFields() {
+        // Obtener los campos configurados desde el record
+        const fieldIds = this.props.record.data.field_ids;
+        if (!fieldIds || !fieldIds.records) return [];
+
+        return fieldIds.records
+            .filter(field => field.data.active !== false)
+            .map(field => ({
+                name: field.data.name || '',
+                value: field.data.value || '',
+                x: field.data.position_x || 0,
+                y: field.data.position_y || 0,
+                fontSize: field.data.font_size || 12,
+                color: field.data.color || '#000000',
+                align: field.data.align || 'left',
+            }));
     }
 }
 
