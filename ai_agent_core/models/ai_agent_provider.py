@@ -275,6 +275,147 @@ class AIAgentProvider(models.Model):
             return []
         return [m.strip() for m in self.available_models.split(',') if m.strip()]
 
+    def action_fetch_models(self):
+        """Fetch available models from the provider API"""
+        self.ensure_one()
+
+        try:
+            models = self._fetch_models_from_api()
+            if models:
+                self.available_models = ','.join(models)
+                # Set first model as default if not set
+                if not self.default_model and models:
+                    self.default_model = models[0]
+
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Models Fetched',
+                        'message': f'Found {len(models)} models available',
+                        'type': 'success',
+                        'sticky': False,
+                    }
+                }
+            else:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'No Models Found',
+                        'message': 'Could not fetch models from API',
+                        'type': 'warning',
+                        'sticky': False,
+                    }
+                }
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error Fetching Models',
+                    'message': str(e)[:200],
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
+
+    def _fetch_models_from_api(self):
+        """Fetch models list from provider API"""
+        self.ensure_one()
+        import requests
+
+        api_key = self._get_api_key()
+
+        if self.provider_type == 'gemini':
+            if not api_key:
+                raise ValueError("Gemini API Key is required")
+
+            # Google AI Studio API - List models
+            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+            response = requests.get(url, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                models = []
+                for model in data.get('models', []):
+                    name = model.get('name', '').replace('models/', '')
+                    # Filter only models that support generateContent
+                    supported_methods = model.get('supportedGenerationMethods', [])
+                    if 'generateContent' in supported_methods:
+                        models.append(name)
+                return models
+            else:
+                raise ValueError(f"API Error: {response.status_code} - {response.text}")
+
+        elif self.provider_type == 'openai':
+            if not api_key:
+                raise ValueError("OpenAI API Key is required")
+
+            url = "https://api.openai.com/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                # Filter chat models
+                models = [m['id'] for m in data.get('data', [])
+                         if 'gpt' in m['id'].lower()]
+                return sorted(models, reverse=True)
+            else:
+                raise ValueError(f"API Error: {response.status_code} - {response.text}")
+
+        elif self.provider_type == 'anthropic':
+            # Anthropic doesn't have a list models endpoint, return known models
+            return ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022',
+                    'claude-3-opus-20240229', 'claude-3-sonnet-20240229',
+                    'claude-3-haiku-20240307']
+
+        elif self.provider_type == 'groq':
+            if not api_key:
+                raise ValueError("Groq API Key is required")
+
+            url = "https://api.groq.com/openai/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                models = [m['id'] for m in data.get('data', [])]
+                return models
+            else:
+                raise ValueError(f"API Error: {response.status_code} - {response.text}")
+
+        elif self.provider_type == 'mistral':
+            if not api_key:
+                raise ValueError("Mistral API Key is required")
+
+            url = "https://api.mistral.ai/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                models = [m['id'] for m in data.get('data', [])]
+                return models
+            else:
+                raise ValueError(f"API Error: {response.status_code} - {response.text}")
+
+        elif self.provider_type == 'ollama':
+            host = self.ollama_host or 'http://localhost:11434'
+            url = f"{host}/api/tags"
+            response = requests.get(url, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                models = [m['name'] for m in data.get('models', [])]
+                return models
+            else:
+                raise ValueError(f"Ollama Error: {response.status_code} - {response.text}")
+
+        else:
+            return []
+
     def action_test_connection(self):
         """Test connection to the LLM provider"""
         self.ensure_one()

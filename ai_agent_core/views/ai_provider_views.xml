@@ -62,6 +62,7 @@
         <field name="arch" type="xml">
             <form string="LLM Provider">
                 <header>
+                    <button name="action_fetch_models" string="Fetch Models" type="object" class="btn-secondary" icon="fa-refresh"/>
                     <button name="action_test_connection" string="Test Connection" type="object" class="btn-primary" icon="fa-plug"/>
                 </header>
                 <sheet>
