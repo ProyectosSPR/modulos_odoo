@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useRef, onMounted, useState } from "@odoo/owl";
+import { Component, useRef, onMounted, onWillUpdateProps, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
@@ -20,6 +20,18 @@ export class LabelEditorWidget extends Component {
 
         onMounted(() => {
             this.loadPDF();
+        });
+
+        // Recargar PDF cuando cambie el valor
+        onWillUpdateProps((nextProps) => {
+            const currentPdfData = this.props.record.data[this.props.name];
+            const nextPdfData = nextProps.record.data[nextProps.name];
+
+            if (currentPdfData !== nextPdfData) {
+                console.log('LabelEditorWidget - PDF data changed, reloading...');
+                // Usar setTimeout para asegurar que el DOM esté actualizado
+                setTimeout(() => this.loadPDF(), 100);
+            }
         });
     }
 

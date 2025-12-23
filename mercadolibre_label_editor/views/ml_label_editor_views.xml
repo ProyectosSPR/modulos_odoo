@@ -40,11 +40,11 @@
                     <field name="field_ids" nolabel="1">
                         <tree editable="bottom" create="true" delete="true">
                             <field name="sequence" widget="handle"/>
-                            <field name="name"/>
-                            <field name="field_type"/>
-                            <field name="value"/>
-                            <field name="position_x"/>
-                            <field name="position_y"/>
+                            <field name="name" required="1"/>
+                            <field name="field_type" required="1"/>
+                            <field name="value" required="1"/>
+                            <field name="position_x" required="1"/>
+                            <field name="position_y" required="1"/>
                             <field name="font_size"/>
                             <field name="font_family"/>
                             <field name="color" widget="color"/>
