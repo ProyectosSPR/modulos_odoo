@@ -25,14 +25,27 @@ class BillingPortalPublic(http.Controller):
         PÚBLICO - No requiere login.
 
         GET: Muestra formulario de búsqueda
-        POST: Busca orden por client_order_ref o name
+        POST: Busca órdenes por client_order_ref, name, ml_order_id o ml_pack_id
+
+        Retorna MÚLTIPLES órdenes para permitir selección.
         """
         error = None
-        order = None
+        orders = []
         order_ref = kwargs.get('order_ref', '').strip()
 
         # Verificar si el usuario está logueado
         is_logged_in = request.env.user.id != request.env.ref('base.public_user').id
+
+        # Obtener órdenes ya seleccionadas (del carrito de facturación)
+        selected_ids = kwargs.get('selected_orders', '').strip()
+        selected_order_ids = []
+        if selected_ids:
+            selected_order_ids = [int(x) for x in selected_ids.split(',') if x.strip().isdigit()]
+
+        # Cargar órdenes seleccionadas previamente
+        selected_orders = []
+        if selected_order_ids:
+            selected_orders = request.env['sale.order'].sudo().browse(selected_order_ids).exists()
 
         if request.httprequest.method == 'POST' and order_ref:
             _logger.info("Búsqueda de orden: '%s'", order_ref)
@@ -50,16 +63,18 @@ class BillingPortalPublic(http.Controller):
                 ('ml_pack_id', '=', order_ref),
             ]
 
-            order = request.env['sale.order'].sudo().search(domain, limit=1)
+            # Buscar hasta 20 órdenes coincidentes
+            orders = request.env['sale.order'].sudo().search(domain, limit=20, order='date_order desc')
 
-            if order:
-                _logger.info("Orden encontrada: %s (ID: %d)", order.name, order.id)
+            if orders:
+                _logger.info("Órdenes encontradas: %d", len(orders))
             else:
                 error = _('No se encontró ningún pedido con esa referencia: %s') % order_ref
                 _logger.info("Orden NO encontrada para: '%s'", order_ref)
 
         return request.render('billing_portal.portal_search', {
-            'order': order,
+            'orders': orders,
+            'selected_orders': selected_orders,
             'order_ref': order_ref,
             'error': error,
             'is_logged_in': is_logged_in,

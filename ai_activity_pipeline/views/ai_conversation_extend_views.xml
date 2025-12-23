@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Conversation Form to add Activity Tasks button -->
+    <record id="view_ai_conversation_form_extend" model="ir.ui.view">
+        <field name="name">ai.conversation.form.activity.extend</field>
+        <field name="model">ai.conversation</field>
+        <field name="inherit_id" ref="ai_agent_core.view_ai_conversation_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_view_activity_tasks"
+                        class="oe_stat_button" icon="fa-tasks">
+                    <field name="activity_task_count" widget="statinfo" string="Tasks"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

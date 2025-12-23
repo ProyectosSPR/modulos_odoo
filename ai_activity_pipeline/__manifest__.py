@@ -34,6 +34,7 @@ Features:
         'security/ir.model.access.csv',
         'data/cron_data.xml',
         'views/ai_activity_task_views.xml',
+        'views/ai_conversation_extend_views.xml',
         'views/ai_activity_menu.xml',
     ],
     'installable': True,
