@@ -83,18 +83,17 @@ export class LabelEditorWidget extends Component {
     }
 
     async loadPDF() {
+        console.log('═══════════════════════════════════════════════');
         console.log('LabelEditorWidget - Intentando cargar PDF...');
-        console.log('LabelEditorWidget - Props completos:', this.props);
-        console.log('LabelEditorWidget - Record data:', this.props.record.data);
+        console.log('LabelEditorWidget - Record ID:', this.props.record.resId);
+        console.log('LabelEditorWidget - Record Model:', this.props.record.resModel);
         console.log('LabelEditorWidget - Field name:', this.props.name);
+        console.log('═══════════════════════════════════════════════');
 
         // En Odoo, los campos Binary necesitan descargarse explícitamente
         // No podemos usar props.record.data directamente para binarios grandes
         const recordId = this.props.record.resId;
         const fieldName = this.props.name;
-
-        console.log('LabelEditorWidget - Record ID:', recordId);
-        console.log('LabelEditorWidget - Field name:', fieldName);
 
         if (!recordId) {
             console.warn('LabelEditorWidget - No hay record ID (registro nuevo sin guardar)');
@@ -154,13 +153,17 @@ export class LabelEditorWidget extends Component {
 
             const page = await pdf.getPage(1);
 
-            // Preparar canvas
-            const viewport = page.getViewport({ scale: 1.5 });
+            // Preparar canvas - usar scale 1.5 para mejor calidad visual
+            const renderScale = 1.5;
+            const viewport = page.getViewport({ scale: renderScale });
             const canvas = this.canvasRef.el;
 
             if (canvas) {
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+
+                // Guardar el scale en el state para cálculos de coordenadas
+                this.state.scale = renderScale;
 
                 const context = canvas.getContext('2d');
                 const renderContext = {
@@ -171,7 +174,8 @@ export class LabelEditorWidget extends Component {
                 await page.render(renderContext).promise;
                 this.state.pdfLoaded = true;
                 this.state.error = null;
-                console.log('LabelEditorWidget - PDF renderizado exitosamente');
+                console.log('LabelEditorWidget - PDF renderizado exitosamente con scale:', renderScale);
+                console.log('LabelEditorWidget - Canvas dimensions:', canvas.width, 'x', canvas.height);
             } else {
                 console.error('LabelEditorWidget - Canvas no disponible');
                 this.state.error = 'Canvas no disponible';
@@ -224,15 +228,20 @@ export class LabelEditorWidget extends Component {
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
+
+        // Obtener coordenadas relativas al canvas en su tamaño de renderizado
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
+        const canvasX = (ev.clientX - rect.left) * scaleX;
+        const canvasY = (ev.clientY - rect.top) * scaleY;
 
-        // Coordenadas relativas al canvas en píxeles reales
-        const x = Math.round((ev.clientX - rect.left) * scaleX);
-        const y = Math.round((ev.clientY - rect.top) * scaleY);
+        // Convertir a coordenadas del PDF real (dividir por el scale de renderizado)
+        // Esto da las coordenadas que necesitas para position_x y position_y
+        const pdfX = Math.round(canvasX / this.state.scale);
+        const pdfY = Math.round(canvasY / this.state.scale);
 
-        this.state.mouseX = x;
-        this.state.mouseY = y;
+        this.state.mouseX = pdfX;
+        this.state.mouseY = pdfY;
         this.state.showCoordinates = true;
     }
 
@@ -245,16 +254,22 @@ export class LabelEditorWidget extends Component {
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
+
+        // Obtener coordenadas relativas al canvas en su tamaño de renderizado
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
+        const canvasX = (ev.clientX - rect.left) * scaleX;
+        const canvasY = (ev.clientY - rect.top) * scaleY;
 
-        const x = Math.round((ev.clientX - rect.left) * scaleX);
-        const y = Math.round((ev.clientY - rect.top) * scaleY);
+        // Convertir a coordenadas del PDF real (sin el scale de renderizado)
+        const pdfX = Math.round(canvasX / this.state.scale);
+        const pdfY = Math.round(canvasY / this.state.scale);
 
-        console.log(`Posición clickeada: X=${x}, Y=${y}`);
+        console.log(`Posición clickeada (PDF real): X=${pdfX}, Y=${pdfY}`);
+        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Scale: ${this.state.scale}`);
 
-        // Copiar al portapapeles
-        const coords = `X: ${x}, Y: ${y}`;
+        // Copiar al portapapeles las coordenadas del PDF real
+        const coords = `X: ${pdfX}, Y: ${pdfY}`;
         navigator.clipboard.writeText(coords).then(() => {
             console.log('Coordenadas copiadas al portapapeles:', coords);
             // Mostrar notificación
