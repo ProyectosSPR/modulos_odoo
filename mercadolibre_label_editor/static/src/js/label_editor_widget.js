@@ -260,7 +260,8 @@ export class LabelEditorWidget extends Component {
 
         // INVERTIR Y: En PyPDF2, Y=0 está abajo, pero en canvas HTML está arriba
         // Necesitamos invertir para que sea compatible con PyPDF2
-        const pdfY = this.state.pdfHeight - pdfYCanvas;
+        const pdfHeight = this.state.pdfHeight || this.props.record.data.pdf_height || 0;
+        const pdfY = pdfHeight - pdfYCanvas;
 
         this.state.mouseX = pdfX;
         this.state.mouseY = pdfY;
@@ -288,10 +289,11 @@ export class LabelEditorWidget extends Component {
         const pdfYCanvas = Math.round(canvasY / this.state.scale);
 
         // INVERTIR Y: En PyPDF2, Y=0 está abajo, pero en canvas HTML está arriba
-        const pdfY = this.state.pdfHeight - pdfYCanvas;
+        const pdfHeight = this.state.pdfHeight || this.props.record.data.pdf_height || 0;
+        const pdfY = pdfHeight - pdfYCanvas;
 
         console.log(`Posición clickeada (PDF PyPDF2): X=${pdfX}, Y=${pdfY}`);
-        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Canvas Y: ${pdfYCanvas}, PDF Height: ${this.state.pdfHeight}`);
+        console.log(`Canvas renderizado: ${canvasX}x${canvasY}, Canvas Y: ${pdfYCanvas}, PDF Height: ${pdfHeight}`);
 
         // Copiar al portapapeles las coordenadas del PDF real (formato PyPDF2)
         const coords = `X: ${pdfX}, Y: ${pdfY}`;
@@ -316,13 +318,21 @@ export class LabelEditorWidget extends Component {
             return [];
         }
 
+        // Obtener altura del PDF (preferir state, luego record)
+        const pdfHeight = this.state.pdfHeight || this.props.record.data.pdf_height || 0;
+
+        if (!pdfHeight) {
+            console.warn('LabelEditorWidget - PDF height no disponible, no se pueden renderizar campos');
+            return [];
+        }
+
         const fields = fieldIds.records
             .filter(field => field.data.active !== false)
             .map((field, index) => {
                 // Las coordenadas en la BD están en formato PyPDF2 (Y=0 abajo)
                 // Necesitamos invertir Y para el canvas HTML (Y=0 arriba)
                 const pdfYPyPDF2 = field.data.position_y || 0;
-                const canvasY = this.state.pdfHeight - pdfYPyPDF2;
+                const canvasY = pdfHeight - pdfYPyPDF2;
 
                 const fieldData = {
                     id: field.id || index,
@@ -338,7 +348,7 @@ export class LabelEditorWidget extends Component {
                 return fieldData;
             });
 
-        console.log(`LabelEditorWidget - Campos configurados (${fields.length}):`, fields);
+        console.log(`LabelEditorWidget - Campos configurados (${fields.length}), PDF Height: ${pdfHeight}:`, fields);
         return fields;
     }
 }
