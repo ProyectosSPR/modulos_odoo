@@ -12,8 +12,13 @@ _logger = logging.getLogger(__name__)
 class MlLabelTemplate(models.Model):
     _name = 'ml.label.template'
     _description = 'Plantilla de Etiqueta MercadoLibre'
-    _order = 'name'
+    _order = 'sequence, name'
 
+    sequence = fields.Integer(
+        string='Secuencia',
+        default=10,
+        help='Orden de visualización'
+    )
     name = fields.Char(
         string='Nombre',
         required=True,
