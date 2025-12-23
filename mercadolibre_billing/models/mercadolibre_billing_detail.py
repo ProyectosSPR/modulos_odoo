@@ -534,8 +534,7 @@ class MercadoliBillingDetail(models.Model):
             raise UserError(_('Este detalle ya tiene una orden de compra asociada.'))
 
         # Obtener configuración
-        config = self.account_id.sudo().search([
-            ('model', '=', 'mercadolibre.billing.sync.config'),
+        config = self.env['mercadolibre.billing.sync.config'].sudo().search([
             ('account_id', '=', self.account_id.id)
         ], limit=1)
 
