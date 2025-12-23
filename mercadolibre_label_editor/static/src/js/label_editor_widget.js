@@ -27,27 +27,59 @@ export class LabelEditorWidget extends Component {
             this.loadPDF();
         });
 
-        // Recargar PDF cuando cambie el valor
+        // Recargar PDF cuando cambie el valor o el record ID
         onWillUpdateProps((nextProps) => {
+            const currentResId = this.props.record.resId;
+            const nextResId = nextProps.record.resId;
             const currentPdfData = this.props.record.data[this.props.name];
             const nextPdfData = nextProps.record.data[nextProps.name];
 
-            if (currentPdfData !== nextPdfData) {
+            // Detectar cambio de resId (después de guardar un registro nuevo)
+            if (currentResId !== nextResId) {
+                console.log('LabelEditorWidget - Record ID changed (saved):', currentResId, '->', nextResId);
+                setTimeout(() => this.loadPDF(), 100);
+            }
+            // Detectar cambio en el PDF
+            else if (currentPdfData !== nextPdfData) {
                 console.log('LabelEditorWidget - PDF data changed, reloading...');
-                // Usar setTimeout para asegurar que el DOM esté actualizado
                 setTimeout(() => this.loadPDF(), 100);
             }
 
             // Detectar cambios en los campos para actualizar el overlay en tiempo real
-            const currentFields = this.props.record.data.field_ids;
-            const nextFields = nextProps.record.data.field_ids;
+            // Necesitamos comparar a nivel profundo, no solo la referencia
+            const currentFieldsData = this._serializeFields(this.props.record.data.field_ids);
+            const nextFieldsData = this._serializeFields(nextProps.record.data.field_ids);
 
-            if (currentFields !== nextFields) {
-                console.log('LabelEditorWidget - Fields changed, updating overlay in real-time...');
+            if (currentFieldsData !== nextFieldsData) {
+                console.log('LabelEditorWidget - Fields data changed, updating overlay in real-time...');
                 // Incrementar key para forzar re-renderizado del overlay
                 this.state.fieldsUpdateKey++;
             }
         });
+    }
+
+    _serializeFields(fieldIds) {
+        /**
+         * Serializa los campos a un string para detectar cambios
+         * Compara: valor, posición, estilo, activo
+         */
+        if (!fieldIds || !fieldIds.records) return 'empty';
+
+        return fieldIds.records.map(field => {
+            const data = field.data;
+            return JSON.stringify({
+                id: field.id,
+                name: data.name,
+                value: data.value,
+                x: data.position_x,
+                y: data.position_y,
+                size: data.font_size,
+                color: data.color,
+                align: data.align,
+                font: data.font_family,
+                active: data.active
+            });
+        }).join('|');
     }
 
     async loadPDF() {
