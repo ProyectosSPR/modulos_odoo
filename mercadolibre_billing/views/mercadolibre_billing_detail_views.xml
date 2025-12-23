@@ -7,9 +7,10 @@
             <tree string="Detalles de Facturación" decoration-info="is_credit_note==True">
                 <field name="creation_date"/>
                 <field name="billing_group"/>
+                <field name="ml_pack_id" string="Pack ID"/>
+                <field name="ml_order_id" string="Order ID"/>
                 <field name="legal_document_number"/>
                 <field name="transaction_detail"/>
-                <field name="ml_order_id"/>
                 <field name="detail_amount" widget="monetary"/>
                 <field name="is_credit_note"/>
                 <field name="state" widget="badge"/>
@@ -61,6 +62,7 @@
                     </group>
                     <group string="Información de Operación">
                         <group>
+                            <field name="ml_pack_id" string="Pack ID" attrs="{'invisible': [('billing_group', '!=', 'ML')]}"/>
                             <field name="ml_order_id" attrs="{'invisible': [('billing_group', '!=', 'ML')]}"/>
                             <field name="reference_id" attrs="{'invisible': [('billing_group', '!=', 'MP')]}"/>
                             <field name="ml_operation_id"/>

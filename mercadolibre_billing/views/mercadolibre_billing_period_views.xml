@@ -74,11 +74,14 @@
                             <field name="detail_ids">
                                 <tree>
                                     <field name="creation_date"/>
+                                    <field name="ml_pack_id" string="Pack ID"/>
+                                    <field name="ml_order_id" string="Order ID"/>
                                     <field name="legal_document_number"/>
                                     <field name="transaction_detail"/>
                                     <field name="detail_amount" widget="monetary"/>
                                     <field name="is_credit_note"/>
                                     <field name="state" widget="badge"/>
+                                    <field name="currency_id" invisible="1"/>
                                 </tree>
                             </field>
                         </page>

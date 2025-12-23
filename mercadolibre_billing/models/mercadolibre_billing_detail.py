@@ -331,8 +331,8 @@ class MercadoliBillingDetail(models.Model):
             _logger.warning('Detalle sin detail_id, saltando')
             return None, False
 
-        # Buscar detalle existente
-        existing = self.search([('ml_detail_id', '=', detail_id)], limit=1)
+        # Buscar detalle existente (usar sudo para evitar filtros de seguridad)
+        existing = self.sudo().search([('ml_detail_id', '=', detail_id)], limit=1)
 
         # Preparar valores según el grupo (ML o MP)
         values = self._prepare_values_from_api_data(data, period)
@@ -393,11 +393,11 @@ class MercadoliBillingDetail(models.Model):
     @api.model
     def _prepare_ml_specific_values(self, data):
         """Valores específicos para MercadoLibre"""
-        discount_info = data.get('discount_info', {})
-        sales_info_list = data.get('sales_info', [])
+        discount_info = data.get('discount_info') or {}
+        sales_info_list = data.get('sales_info') or []
         sales_info = sales_info_list[0] if sales_info_list else {}
-        shipping_info = data.get('shipping_info', {})
-        items_info_list = data.get('items_info', [])
+        shipping_info = data.get('shipping_info') or {}
+        items_info_list = data.get('items_info') or []
         items_info = items_info_list[0] if items_info_list else {}
 
         values = {
@@ -436,9 +436,9 @@ class MercadoliBillingDetail(models.Model):
     @api.model
     def _prepare_mp_specific_values(self, data):
         """Valores específicos para MercadoPago"""
-        operation_info = data.get('operation_info', {})
-        perception_info = data.get('perception_info', {})
-        charge_info = data.get('charge_info', {})
+        operation_info = data.get('operation_info') or {}
+        perception_info = data.get('perception_info') or {}
+        charge_info = data.get('charge_info') or {}
 
         values = {
             # Operation Info
