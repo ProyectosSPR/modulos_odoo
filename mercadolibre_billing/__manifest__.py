@@ -45,6 +45,9 @@ Dependencias:
         'data/product_data.xml',
         'data/mercadolibre_billing_cron.xml',
 
+        # Wizard (debe ir antes de los menús)
+        'wizard/mercadolibre_billing_sync_views.xml',
+
         # Views
         'views/mercadolibre_billing_period_views.xml',
         'views/mercadolibre_billing_detail_views.xml',
@@ -52,9 +55,6 @@ Dependencias:
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',
         'views/mercadolibre_billing_menus.xml',
-
-        # Wizard
-        'wizard/mercadolibre_billing_sync_views.xml',
     ],
     'installable': True,
     'application': False,
