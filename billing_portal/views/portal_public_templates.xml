@@ -305,23 +305,47 @@
                         var emptyMsg = document.getElementById('emptyCartMessage');
                         emptyMsg.classList.add('d-none');
 
-                        var html = '<div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded selected-order-item" data-order-id="' + order.id + '">' +
-                            '<div><strong>' + order.name + '</strong>' +
-                            (order.ref ? '<br/><small class="text-muted">' + order.ref + '</small>' : '') +
-                            '</div>' +
-                            '<div class="d-flex align-items-center">' +
-                            '<span class="me-2">' + currencySymbol + order.total.toFixed(2) + '</span>' +
-                            '<button type="button" class="btn btn-sm btn-outline-danger remove-order-btn" data-order-id="' + order.id + '">' +
-                            '<i class="fa fa-times"></i></button>' +
-                            '</div></div>';
+                        // Crear elemento div en lugar de usar innerHTML
+                        var div = document.createElement('div');
+                        div.className = 'd-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded selected-order-item';
+                        div.setAttribute('data-order-id', order.id);
 
-                        emptyMsg.insertAdjacentHTML('beforebegin', html);
+                        var infoDiv = document.createElement('div');
+                        var strong = document.createElement('strong');
+                        strong.textContent = order.name;
+                        infoDiv.appendChild(strong);
 
-                        // Agregar evento al nuevo botón de eliminar
-                        var newBtn = list.querySelector('.remove-order-btn[data-order-id="' + order.id + '"]');
-                        newBtn.addEventListener('click', function() {
+                        if (order.ref) {
+                            infoDiv.appendChild(document.createElement('br'));
+                            var small = document.createElement('small');
+                            small.className = 'text-muted';
+                            small.textContent = order.ref;
+                            infoDiv.appendChild(small);
+                        }
+
+                        var actionsDiv = document.createElement('div');
+                        actionsDiv.className = 'd-flex align-items-center';
+
+                        var priceSpan = document.createElement('span');
+                        priceSpan.className = 'me-2';
+                        priceSpan.textContent = currencySymbol + order.total.toFixed(2);
+                        actionsDiv.appendChild(priceSpan);
+
+                        var removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'btn btn-sm btn-outline-danger remove-order-btn';
+                        removeBtn.setAttribute('data-order-id', order.id);
+                        removeBtn.innerHTML = '<i class="fa fa-times"></i>';
+                        removeBtn.addEventListener('click', function() {
                             removeOrder(order.id);
                         });
+                        actionsDiv.appendChild(removeBtn);
+
+                        div.appendChild(infoDiv);
+                        div.appendChild(actionsDiv);
+
+                        // Insertar antes del mensaje vacío
+                        list.insertBefore(div, emptyMsg);
                     }
 
                     // Eliminar orden del carrito
