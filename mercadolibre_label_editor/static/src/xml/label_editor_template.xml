@@ -71,9 +71,6 @@
                     </div>
                 </div>
 
-                <!-- Canvas oculto cuando no hay PDF -->
-                <canvas t-if="!state.pdfLoaded" t-ref="pdfCanvas" style="display: none;"/>
-
                 <!-- Mensaje cuando no hay PDF cargado -->
                 <div t-if="!state.pdfLoaded and !state.error" style="max-width: 600px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="text-align: center;">
