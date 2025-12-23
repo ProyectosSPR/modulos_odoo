@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ml_label_template_user,ml.label.template user,model_ml_label_template,group_ml_label_user,1,0,0,0
+access_ml_label_template_manager,ml.label.template manager,model_ml_label_template,group_ml_label_manager,1,1,1,1
+access_ml_label_template_field_user,ml.label.template.field user,model_ml_label_template_field,group_ml_label_user,1,0,0,0
+access_ml_label_template_field_manager,ml.label.template.field manager,model_ml_label_template_field,group_ml_label_manager,1,1,1,1
+access_ml_label_preview_wizard_user,ml.label.preview.wizard user,model_ml_label_preview_wizard,group_ml_label_user,1,1,1,1
+access_ml_label_preview_wizard_manager,ml.label.preview.wizard manager,model_ml_label_preview_wizard,group_ml_label_manager,1,1,1,1

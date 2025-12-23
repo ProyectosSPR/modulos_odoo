@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Editor Visual Form View (Fullscreen) -->
+    <record id="view_ml_label_template_editor" model="ir.ui.view">
+        <field name="name">ml.label.template.editor</field>
+        <field name="model">ml.label.template</field>
+        <field name="arch" type="xml">
+            <form string="Editor Visual de Plantilla">
+                <header>
+                    <button string="Guardar y Cerrar" class="oe_highlight"
+                            special="save" data-hotkey="s"/>
+                    <button string="Cerrar sin Guardar" special="cancel"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <div class="row">
+                        <!-- Panel izquierdo: Canvas del PDF -->
+                        <div class="col-lg-8">
+                            <group string="Vista Previa del PDF">
+                                <field name="sample_pdf" widget="label_editor" nolabel="1"/>
+                                <field name="pdf_width" invisible="1"/>
+                                <field name="pdf_height" invisible="1"/>
+                                <field name="field_count" invisible="1"/>
+                            </group>
+                        </div>
+
+                        <!-- Panel derecho: Campos configurados -->
+                        <div class="col-lg-4">
+                            <group string="Campos Configurados">
+                                <button name="%(action_add_template_field)d" string="+ Agregar Campo"
+                                        type="action" class="btn btn-primary mb-2"
+                                        context="{'default_template_id': active_id}"/>
+                            </group>
+
+                            <field name="field_ids" nolabel="1" context="{'tree_view_ref': 'mercadolibre_label_editor.view_ml_label_template_field_tree_simple'}">
+                                <tree editable="bottom" create="true" delete="true">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                    <button name="%(action_edit_template_field)d" type="action"
+                                            icon="fa-edit" title="Editar Campo"
+                                            context="{'default_id': id}"/>
+                                </tree>
+                            </field>
+
+                            <div class="alert alert-info mt-3" role="alert">
+                                <h6><i class="fa fa-info-circle"/> Atajos:</h6>
+                                <ul class="mb-0 small">
+                                    <li>Click en un campo para editarlo</li>
+                                    <li>Use el handle (☰) para reordenar</li>
+                                    <li>Toggle activo/inactivo para ocultar campos temporalmente</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel inferior: Edición del campo seleccionado -->
+                    <separator string="Edición Rápida de Campos"/>
+                    <field name="field_ids" mode="form" nolabel="1">
+                        <form>
+                            <group>
+                                <group>
+                                    <field name="name"/>
+                                    <field name="field_type"/>
+                                    <field name="value" widget="text"/>
+                                    <field name="active"/>
+                                </group>
+                                <group>
+                                    <field name="sequence"/>
+                                    <label for="position_x" string="Posición"/>
+                                    <div class="o_row">
+                                        <field name="position_x" placeholder="X"/> px
+                                        <field name="position_y" placeholder="Y"/> px
+                                    </div>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Estilo">
+                                    <field name="font_family"/>
+                                    <field name="font_size"/>
+                                    <field name="color" widget="color"/>
+                                </group>
+                                <group string="Transformación">
+                                    <field name="rotation"/>
+                                    <field name="align"/>
+                                </group>
+                            </group>
+                        </form>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Simplified Tree View for Fields in Editor -->
+    <record id="view_ml_label_template_field_tree_simple" model="ir.ui.view">
+        <field name="name">ml.label.template.field.tree.simple</field>
+        <field name="model">ml.label.template.field</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="value"/>
+                <field name="position_x"/>
+                <field name="position_y"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action: Add Field (dummy for context) -->
+    <record id="action_add_template_field" model="ir.actions.act_window">
+        <field name="name">Agregar Campo</field>
+        <field name="res_model">ml.label.template.field</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Action: Edit Field (dummy for context) -->
+    <record id="action_edit_template_field" model="ir.actions.act_window">
+        <field name="name">Editar Campo</field>
+        <field name="res_model">ml.label.template.field</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MercadoLibre Label Editor</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #FFE600; background: #2D3277; padding: 20px; border-radius: 5px; }
+        h2 { color: #2D3277; border-bottom: 2px solid #FFE600; padding-bottom: 10px; }
+        .feature { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; }
+        .variable-example { background: #d4edda; padding: 10px; margin: 5px 0; border-left: 4px solid #28a745; }
+    </style>
+</head>
+<body>
+    <h1>📦 MercadoLibre Label Editor</h1>
+    
+    <p>Personaliza tus etiquetas de envío de MercadoLibre agregando información adicional como número de orden, datos del cliente, fechas, y más.</p>
+
+    <h2>✨ Características</h2>
+    <div class="feature">
+        <strong>✅ Editor de Plantillas</strong><br>
+        Crea plantillas reutilizables para diferentes tipos logísticos
+    </div>
+    <div class="feature">
+        <strong>✅ Campos Dinámicos</strong><br>
+        Usa variables como <code>${sale_order.name}</code> para insertar datos en tiempo real
+    </div>
+    <div class="feature">
+        <strong>✅ Configuración Visual</strong><br>
+        Posiciona campos con coordenadas X,Y en píxeles
+    </div>
+    <div class="feature">
+        <strong>✅ Estilos Personalizados</strong><br>
+        Configura fuente, tamaño, color y rotación de cada campo
+    </div>
+    <div class="feature">
+        <strong>✅ Integración Automática</strong><br>
+        Se aplica automáticamente al descargar etiquetas de MercadoLibre
+    </div>
+
+    <h2>🚀 Uso Rápido</h2>
+    <ol>
+        <li>Ve a <strong>MercadoLibre > Configuración > Plantillas de Etiqueta</strong></li>
+        <li>Crea una plantilla y sube un PDF de ejemplo</li>
+        <li>Agrega campos personalizados con posición y estilo</li>
+        <li>Asigna la plantilla a un tipo logístico</li>
+        <li>¡Listo! Las etiquetas se personalizarán automáticamente</li>
+    </ol>
+
+    <h2>📝 Variables Disponibles</h2>
+    <div class="variable-example">
+        <code>${sale_order.name}</code> - Número de orden (SO001)
+    </div>
+    <div class="variable-example">
+        <code>${sale_order.partner_id.name}</code> - Nombre del cliente
+    </div>
+    <div class="variable-example">
+        <code>${ml_order.ml_order_id}</code> - ID orden MercadoLibre
+    </div>
+    <div class="variable-example">
+        <code>${today}</code> - Fecha de hoy
+    </div>
+    <div class="variable-example">
+        <code>${company.name}</code> - Nombre de la compañía
+    </div>
+
+    <h2>🔧 Requisitos</h2>
+    <ul>
+        <li>Odoo 16.0</li>
+        <li>Módulo: mercadolibre_sales</li>
+        <li>Python: PyPDF2, reportlab</li>
+        <li>Opcional: pdf2image (para vista previa)</li>
+    </ul>
+
+    <h2>📞 Soporte</h2>
+    <p>Para más información, consulta el README.md del módulo.</p>
+</body>
+</html>

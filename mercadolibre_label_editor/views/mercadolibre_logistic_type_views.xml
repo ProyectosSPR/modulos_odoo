@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend Logistic Type Form View -->
+    <record id="view_mercadolibre_logistic_type_form_inherit" model="ir.ui.view">
+        <field name="name">mercadolibre.logistic.type.form.inherit</field>
+        <field name="model">mercadolibre.logistic.type</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_logistic_type_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar campo de plantilla después de label_format -->
+            <field name="label_format" position="after">
+                <field name="label_template_id"
+                       attrs="{'invisible': [('download_shipping_label', '=', False)]}"
+                       options="{'no_create': True}"/>
+                <field name="use_custom_label" invisible="1"/>
+            </field>
+
+            <!-- Agregar nueva sección después del grupo de Etiquetas de Envio ML -->
+            <group string="Etiquetas de Envio ML" position="after">
+                <group string="Plantilla Personalizada"
+                       attrs="{'invisible': ['|', ('download_shipping_label', '=', False), ('label_template_id', '=', False)]}">
+                    <group>
+                        <field name="label_template_preview" widget="image"
+                               options="{'size': [300, 400]}" nolabel="1"/>
+                    </group>
+                    <group>
+                        <button name="action_edit_label_template" type="object"
+                                string="Editar Plantilla" icon="fa-edit"
+                                class="oe_highlight"/>
+                        <button name="action_preview_label_template" type="object"
+                                string="Vista Previa con Datos" icon="fa-eye"
+                                class="btn-secondary"/>
+                        <button name="action_create_label_template" type="object"
+                                string="Crear Nueva Plantilla" icon="fa-plus"
+                                class="btn-secondary"
+                                attrs="{'invisible': [('label_template_id', '!=', False)]}"/>
+                        <div class="alert alert-info mt-2" role="alert">
+                            <strong>Plantilla Activa:</strong><br/>
+                            Se aplicará automáticamente al descargar etiquetas ML.
+                        </div>
+                    </group>
+                </group>
+            </group>
+
+        </field>
+    </record>
+
+</odoo>

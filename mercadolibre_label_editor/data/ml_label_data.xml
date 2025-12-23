@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Plantilla de ejemplo (se creará solo si no existe) -->
+        <record id="ml_label_template_example" model="ml.label.template">
+            <field name="name">Plantilla Ejemplo - Etiqueta Full ML</field>
+            <field name="active">True</field>
+            <field name="description">Plantilla de ejemplo para etiquetas de Full MercadoLibre.
+Incluye número de orden y nombre del cliente en posiciones predeterminadas.</field>
+        </record>
+
+        <!-- Campos de ejemplo para la plantilla -->
+        <record id="ml_label_field_order_name" model="ml.label.template.field">
+            <field name="template_id" ref="ml_label_template_example"/>
+            <field name="sequence">10</field>
+            <field name="name">Número de Orden</field>
+            <field name="field_type">dynamic</field>
+            <field name="value">${sale_order.name}</field>
+            <field name="position_x">50</field>
+            <field name="position_y">30</field>
+            <field name="font_family">Helvetica-Bold</field>
+            <field name="font_size">16</field>
+            <field name="color">#000000</field>
+            <field name="rotation">0</field>
+            <field name="align">left</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ml_label_field_customer_name" model="ml.label.template.field">
+            <field name="template_id" ref="ml_label_template_example"/>
+            <field name="sequence">20</field>
+            <field name="name">Cliente</field>
+            <field name="field_type">dynamic</field>
+            <field name="value">${sale_order.partner_id.name}</field>
+            <field name="position_x">50</field>
+            <field name="position_y">60</field>
+            <field name="font_family">Helvetica</field>
+            <field name="font_size">12</field>
+            <field name="color">#333333</field>
+            <field name="rotation">0</field>
+            <field name="align">left</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ml_label_field_date" model="ml.label.template.field">
+            <field name="template_id" ref="ml_label_template_example"/>
+            <field name="sequence">30</field>
+            <field name="name">Fecha</field>
+            <field name="field_type">dynamic</field>
+            <field name="value">${today}</field>
+            <field name="position_x">50</field>
+            <field name="position_y">90</field>
+            <field name="font_family">Courier</field>
+            <field name="font_size">10</field>
+            <field name="color">#666666</field>
+            <field name="rotation">0</field>
+            <field name="align">left</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

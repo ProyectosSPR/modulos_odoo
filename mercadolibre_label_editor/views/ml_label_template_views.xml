@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_ml_label_template_tree" model="ir.ui.view">
+        <field name="name">ml.label.template.tree</field>
+        <field name="model">ml.label.template</field>
+        <field name="arch" type="xml">
+            <tree string="Plantillas de Etiqueta">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="field_count"/>
+                <field name="usage_count"/>
+                <field name="pdf_width"/>
+                <field name="pdf_height"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_ml_label_template_form" model="ir.ui.view">
+        <field name="name">ml.label.template.form</field>
+        <field name="model">ml.label.template</field>
+        <field name="arch" type="xml">
+            <form string="Plantilla de Etiqueta">
+                <header>
+                    <button name="action_open_editor" string="Abrir Editor Visual"
+                            type="object" class="oe_highlight" icon="fa-edit"/>
+                    <button name="action_preview_with_sample_data" string="Vista Previa"
+                            type="object" class="btn-secondary" icon="fa-eye"/>
+                    <button name="action_duplicate_template" string="Duplicar"
+                            type="object" class="btn-secondary" icon="fa-copy"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_usage" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="usage_count" widget="statinfo" string="Usos"/>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="Nombre de la plantilla..."/></h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="active" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="field_count"/>
+                        </group>
+                        <group>
+                            <field name="pdf_width" readonly="1"/>
+                            <field name="pdf_height" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="PDF Ejemplo" name="pdf_sample">
+                            <group>
+                                <group string="Archivo PDF">
+                                    <field name="sample_pdf" filename="sample_pdf_filename"
+                                           widget="binary"/>
+                                    <field name="sample_pdf_filename" invisible="1"/>
+                                </group>
+                                <group string="Vista Previa">
+                                    <field name="preview_image" widget="image"
+                                           options="{'size': [400, 600]}"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <strong>Importante:</strong> Suba un PDF de ejemplo de etiqueta MercadoLibre
+                                para usar como base al diseñar los campos personalizados.
+                                Las dimensiones se detectarán automáticamente.
+                            </div>
+                        </page>
+
+                        <page string="Campos de Texto" name="fields">
+                            <field name="field_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="field_type"/>
+                                    <field name="value"/>
+                                    <field name="position_x"/>
+                                    <field name="position_y"/>
+                                    <field name="font_size"/>
+                                    <field name="font_family"/>
+                                    <field name="color" widget="color"/>
+                                    <field name="rotation"/>
+                                    <field name="align"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </tree>
+                                <form>
+                                    <group>
+                                        <group>
+                                            <field name="name"/>
+                                            <field name="field_type"/>
+                                            <field name="value"/>
+                                            <field name="active"/>
+                                        </group>
+                                        <group>
+                                            <field name="sequence"/>
+                                            <field name="template_pdf_width" invisible="1"/>
+                                            <field name="template_pdf_height" invisible="1"/>
+                                        </group>
+                                    </group>
+                                    <group string="Posición">
+                                        <group>
+                                            <field name="position_x"/>
+                                            <field name="position_y"/>
+                                        </group>
+                                        <group>
+                                            <div class="alert alert-info" role="alert">
+                                                Coordenadas en píxeles desde la esquina superior izquierda
+                                            </div>
+                                        </group>
+                                    </group>
+                                    <group string="Estilo">
+                                        <group>
+                                            <field name="font_family"/>
+                                            <field name="font_size"/>
+                                            <field name="color" widget="color"/>
+                                        </group>
+                                        <group>
+                                            <field name="rotation"/>
+                                            <field name="align"/>
+                                        </group>
+                                    </group>
+                                    <group string="Ayuda de Variables" attrs="{'invisible': [('field_type', '!=', 'dynamic')]}">
+                                        <div class="alert alert-success" role="alert">
+                                            <strong>Variables disponibles:</strong><br/>
+                                            <code>${sale_order.name}</code> - Número de orden (SO001)<br/>
+                                            <code>${sale_order.partner_id.name}</code> - Nombre del cliente<br/>
+                                            <code>${ml_order.ml_order_id}</code> - ID orden ML<br/>
+                                            <code>${ml_order.ml_pack_id}</code> - Pack ID<br/>
+                                            <code>${today}</code> - Fecha de hoy<br/>
+                                            <code>${company.name}</code> - Nombre de la compañía<br/>
+                                        </div>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+
+                        <page string="Descripción" name="description">
+                            <field name="description" placeholder="Notas sobre esta plantilla..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Kanban View -->
+    <record id="view_ml_label_template_kanban" model="ir.ui.view">
+        <field name="name">ml.label.template.kanban</field>
+        <field name="model">ml.label.template</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="id"/>
+                <field name="name"/>
+                <field name="field_count"/>
+                <field name="usage_count"/>
+                <field name="preview_image"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_image">
+                                <img t-att-src="kanban_image('ml.label.template', 'preview_image', record.id.raw_value)"
+                                     alt="Preview" class="o_image_64_contain"/>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                <div class="o_kanban_tags_section">
+                                    <span class="badge badge-pill badge-info">
+                                        <i class="fa fa-font"/> <field name="field_count"/> campos
+                                    </span>
+                                    <span class="badge badge-pill badge-success">
+                                        <i class="fa fa-shopping-cart"/> <field name="usage_count"/> usos
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_ml_label_template_search" model="ir.ui.view">
+        <field name="name">ml.label.template.search</field>
+        <field name="model">ml.label.template</field>
+        <field name="arch" type="xml">
+            <search string="Plantillas de Etiqueta">
+                <field name="name"/>
+                <field name="description"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivadas" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Con Campos" name="with_fields" domain="[('field_count', '>', 0)]"/>
+                <filter string="En Uso" name="in_use" domain="[('usage_count', '>', 0)]"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Compañía" name="company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_ml_label_template" model="ir.actions.act_window">
+        <field name="name">Plantillas de Etiqueta</field>
+        <field name="res_model">ml.label.template</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una Plantilla de Etiqueta
+            </p>
+            <p>
+                Las plantillas permiten personalizar las etiquetas de MercadoLibre
+                agregando información adicional como número de orden, cliente, etc.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_ml_label_template"
+              name="Plantillas de Etiqueta"
+              parent="mercadolibre_sales.menu_mercadolibre_config"
+              action="action_ml_label_template"
+              sequence="50"/>
+
+</odoo>

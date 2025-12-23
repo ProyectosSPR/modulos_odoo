@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mercadolibre_label_editor.LabelEditorWidget" owl="1">
+        <div class="o_label_editor_widget">
+            <!-- Información del PDF -->
+            <div class="o_label_editor_info alert alert-info mb-3">
+                <strong>Dimensiones del PDF:</strong>
+                <t t-esc="displayInfo.width"/> x <t t-esc="displayInfo.height"/> px
+                <span class="ms-3">
+                    <strong>Campos configurados:</strong>
+                    <t t-esc="displayInfo.fieldCount"/>
+                </span>
+            </div>
+
+            <!-- Canvas para renderizar PDF -->
+            <div class="o_label_editor_canvas_container border rounded p-3 bg-light text-center">
+                <t t-if="state.pdfLoaded">
+                    <canvas t-ref="pdfCanvas" class="border shadow-sm bg-white"/>
+                </t>
+                <t t-else="">
+                    <div class="alert alert-warning">
+                        <i class="fa fa-file-pdf-o fa-3x mb-2"/>
+                        <p>
+                            Vista previa del PDF no disponible.<br/>
+                            Use la pestaña "Campos de Texto" para configurar los campos.
+                        </p>
+                        <small class="text-muted">
+                            Para habilitar la vista previa, asegúrese de que PDF.js esté cargado.
+                        </small>
+                    </div>
+                </t>
+
+                <t t-if="state.error">
+                    <div class="alert alert-danger mt-2">
+                        <strong>Error:</strong> <t t-esc="state.error"/>
+                    </div>
+                </t>
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="o_label_editor_instructions alert alert-success mt-3">
+                <h6><i class="fa fa-lightbulb-o"/> Instrucciones:</h6>
+                <ol class="mb-0">
+                    <li>Use la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados</li>
+                    <li>Configure la posición (X, Y) en píxeles desde la esquina superior izquierda</li>
+                    <li>Use variables como <code>${sale_order.name}</code> para datos dinámicos</li>
+                    <li>Ajuste fuente, tamaño, color y rotación según necesite</li>
+                </ol>
+            </div>
+        </div>
+    </t>
+
+</templates>

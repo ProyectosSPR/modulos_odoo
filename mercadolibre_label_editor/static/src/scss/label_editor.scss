@@ -1,0 +1,36 @@
+.o_label_editor_widget {
+    .o_label_editor_info {
+        font-size: 0.9rem;
+    }
+
+    .o_label_editor_canvas_container {
+        min-height: 400px;
+        max-height: 800px;
+        overflow: auto;
+        position: relative;
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    }
+
+    .o_label_editor_instructions {
+        font-size: 0.85rem;
+
+        h6 {
+            margin-bottom: 0.5rem;
+        }
+
+        ol {
+            padding-left: 1.5rem;
+        }
+
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d63384;
+        }
+    }
+}

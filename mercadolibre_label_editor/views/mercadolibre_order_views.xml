@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend MercadoLibre Order Form View -->
+    <record id="view_mercadolibre_order_form_inherit" model="ir.ui.view">
+        <field name="name">mercadolibre.order.form.inherit</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar botón de regenerar etiqueta después del botón de imprimir -->
+            <button name="action_print_shipping_label" position="after">
+                <button name="action_regenerate_label_with_template" type="object"
+                        string="Regenerar con Plantilla"
+                        class="btn-secondary" icon="fa-refresh"
+                        attrs="{'invisible': ['|', ('ml_shipment_id', '=', False), ('has_sale_order', '=', False)]}"/>
+            </button>
+
+        </field>
+    </record>
+
+</odoo>

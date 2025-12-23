@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_ml_label_preview_wizard_form" model="ir.ui.view">
+        <field name="name">ml.label.preview.wizard.form</field>
+        <field name="model">ml.label.preview.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Vista Previa de Plantilla">
+                <field name="state" invisible="1"/>
+
+                <group attrs="{'invisible': [('state', '=', 'preview')]}">
+                    <group>
+                        <field name="template_id" readonly="1"/>
+                        <field name="logistic_type_id" readonly="1"/>
+                    </group>
+                </group>
+
+                <group string="Datos de Muestra" attrs="{'invisible': [('state', '=', 'preview')]}">
+                    <group>
+                        <field name="sample_order_name" placeholder="SO0001"/>
+                        <field name="sample_customer_name" placeholder="Juan Pérez"/>
+                        <field name="sample_company_name" placeholder="Mi Compañía"/>
+                    </group>
+                    <group>
+                        <field name="sample_ml_order_id" placeholder="1234567890"/>
+                        <field name="sample_ml_pack_id" placeholder="PACK-001"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-info" role="alert" attrs="{'invisible': [('state', '=', 'preview')]}">
+                    <p><strong>Instrucciones:</strong></p>
+                    <ul>
+                        <li>Complete los datos de muestra que se usarán para generar la vista previa</li>
+                        <li>Estos datos reemplazarán las variables configuradas en los campos de la plantilla</li>
+                        <li>Ejemplo: <code>${sale_order.name}</code> se reemplazará por el valor de "Número de Orden"</li>
+                    </ul>
+                </div>
+
+                <group attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <field name="preview_pdf" filename="preview_pdf_filename" widget="pdf_viewer"/>
+                    <field name="preview_pdf_filename" invisible="1"/>
+                </group>
+
+                <footer>
+                    <button string="Generar Vista Previa"
+                            name="action_generate_preview" type="object"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('state', '=', 'preview')]}"/>
+                    <button string="Descargar PDF"
+                            name="action_download_preview" type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'preview')]}"/>
+                    <button string="Volver a Configurar"
+                            name="action_back_to_config" type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '!=', 'preview')]}"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
