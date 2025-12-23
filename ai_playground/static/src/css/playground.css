@@ -15,7 +15,7 @@
 }
 
 /* ============================================
-   Chat Header (WhatsApp Green)
+   Chat Header (Dynamic by Channel)
    ============================================ */
 .ai-chat-header {
     display: flex;
@@ -23,6 +23,41 @@
     gap: 12px;
     padding: 12px 16px;
     background: linear-gradient(135deg, #00a884 0%, #128c7e 100%);
+    color: white;
+}
+
+/* MercadoLibre - Yellow */
+.ai-chat-header[data-channel="mercadolibre"],
+.ai-chat-main-wrapper[data-channel="mercadolibre"] .ai-chat-header {
+    background: linear-gradient(135deg, #ffe600 0%, #ffd500 100%);
+    color: #333;
+}
+
+/* WhatsApp - Green (default) */
+.ai-chat-header[data-channel="whatsapp"],
+.ai-chat-main-wrapper[data-channel="whatsapp"] .ai-chat-header {
+    background: linear-gradient(135deg, #00a884 0%, #128c7e 100%);
+    color: white;
+}
+
+/* Telegram - Blue */
+.ai-chat-header[data-channel="telegram"],
+.ai-chat-main-wrapper[data-channel="telegram"] .ai-chat-header {
+    background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%);
+    color: white;
+}
+
+/* Email - Red */
+.ai-chat-header[data-channel="email"],
+.ai-chat-main-wrapper[data-channel="email"] .ai-chat-header {
+    background: linear-gradient(135deg, #ea4335 0%, #d33426 100%);
+    color: white;
+}
+
+/* Web - Gray */
+.ai-chat-header[data-channel="web"],
+.ai-chat-main-wrapper[data-channel="web"] .ai-chat-header {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
     color: white;
 }
 
