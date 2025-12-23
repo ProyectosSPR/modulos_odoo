@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_mercadolibre_billing_root"
+              name="Facturación ML/MP"
+              parent="mercadolibre_connector.menu_mercadolibre_root"
+              sequence="30"/>
+
+    <!-- Periodos -->
+    <menuitem id="menu_mercadolibre_billing_periods"
+              name="Periodos de Facturación"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_period"
+              sequence="10"/>
+
+    <!-- Detalles -->
+    <menuitem id="menu_mercadolibre_billing_details"
+              name="Detalles de Facturación"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_detail"
+              sequence="20"/>
+
+    <!-- Sincronización Manual -->
+    <menuitem id="menu_mercadolibre_billing_sync"
+              name="Sincronizar"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_sync"
+              sequence="80"/>
+
+    <!-- Configuración -->
+    <menuitem id="menu_mercadolibre_billing_config"
+              name="Configuración"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_sync_config"
+              sequence="90"
+              groups="mercadolibre_connector.group_mercadolibre_manager"/>
+
+</odoo>

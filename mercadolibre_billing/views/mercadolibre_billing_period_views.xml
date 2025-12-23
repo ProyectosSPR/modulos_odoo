@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_billing_period_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.period.tree</field>
+        <field name="model">mercadolibre.billing.period</field>
+        <field name="arch" type="xml">
+            <tree string="Periodos de Facturación" decoration-success="state=='synced'" decoration-info="state=='processed'" decoration-danger="state=='error'">
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="billing_group"/>
+                <field name="period_key"/>
+                <field name="synced_count"/>
+                <field name="bill_count"/>
+                <field name="credit_note_count"/>
+                <field name="net_amount" widget="monetary"/>
+                <field name="state" widget="badge"/>
+                <field name="sync_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_billing_period_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.period.form</field>
+        <field name="model">mercadolibre.billing.period</field>
+        <field name="arch" type="xml">
+            <form string="Periodo de Facturación">
+                <header>
+                    <button name="action_sync_details" type="object" string="Sincronizar Detalles"
+                            class="oe_highlight" icon="fa-refresh"
+                            attrs="{'invisible': [('state', 'in', ['syncing'])]}"/>
+                    <button name="action_create_purchase_orders" type="object" string="Crear Órdenes de Compra"
+                            class="oe_highlight" icon="fa-shopping-cart"
+                            attrs="{'invisible': [('state', 'not in', ['synced'])]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,syncing,synced,processed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_details" type="object" class="oe_stat_button" icon="fa-list-alt">
+                            <field name="synced_count" widget="statinfo" string="Detalles"/>
+                        </button>
+                        <button name="action_view_purchase_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart"
+                                attrs="{'invisible': [('purchase_order_count', '=', 0)]}">
+                            <field name="purchase_order_count" widget="statinfo" string="POs"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="account_id"/>
+                            <field name="billing_group"/>
+                            <field name="period_key"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="sync_date"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Contadores">
+                            <field name="bill_count"/>
+                            <field name="credit_note_count"/>
+                        </group>
+                        <group string="Totales">
+                            <field name="total_charges" widget="monetary"/>
+                            <field name="total_credit_notes" widget="monetary"/>
+                            <field name="net_amount" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Detalles" name="details">
+                            <field name="detail_ids">
+                                <tree>
+                                    <field name="creation_date"/>
+                                    <field name="legal_document_number"/>
+                                    <field name="transaction_detail"/>
+                                    <field name="detail_amount" widget="monetary"/>
+                                    <field name="is_credit_note"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Órdenes de Compra" name="purchase_orders">
+                            <field name="purchase_order_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="date_order"/>
+                                    <field name="amount_total" widget="monetary"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Log" name="log">
+                            <group>
+                                <field name="sync_log" widget="text" nolabel="1"/>
+                            </group>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_period" model="ir.actions.act_window">
+        <field name="name">Periodos de Facturación</field>
+        <field name="res_model">mercadolibre.billing.period</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>

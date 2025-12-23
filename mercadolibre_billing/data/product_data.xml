@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Producto para Comisiones MercadoLibre -->
+        <record id="product_ml_commission" model="product.product">
+            <field name="name">Comisión MercadoLibre</field>
+            <field name="type">service</field>
+            <field name="purchase_ok">True</field>
+            <field name="sale_ok">False</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="standard_price">0.0</field>
+            <field name="list_price">0.0</field>
+            <field name="description">Producto para registrar comisiones de MercadoLibre</field>
+        </record>
+
+        <!-- Producto para Comisiones MercadoPago -->
+        <record id="product_mp_commission" model="product.product">
+            <field name="name">Comisión MercadoPago</field>
+            <field name="type">service</field>
+            <field name="purchase_ok">True</field>
+            <field name="sale_ok">False</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="standard_price">0.0</field>
+            <field name="list_price">0.0</field>
+            <field name="description">Producto para registrar comisiones de MercadoPago</field>
+        </record>
+
+    </data>
+</odoo>

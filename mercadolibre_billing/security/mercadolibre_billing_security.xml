@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- No se necesitan grupos adicionales, usamos los de mercadolibre_connector -->
+</odoo>

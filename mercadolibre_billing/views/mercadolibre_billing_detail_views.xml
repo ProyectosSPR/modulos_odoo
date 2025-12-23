@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mercadolibre_billing_detail_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.detail.tree</field>
+        <field name="model">mercadolibre.billing.detail</field>
+        <field name="arch" type="xml">
+            <tree string="Detalles de Facturación" decoration-info="is_credit_note==True">
+                <field name="creation_date"/>
+                <field name="billing_group"/>
+                <field name="legal_document_number"/>
+                <field name="transaction_detail"/>
+                <field name="ml_order_id"/>
+                <field name="detail_amount" widget="monetary"/>
+                <field name="is_credit_note"/>
+                <field name="state" widget="badge"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_billing_detail_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.detail.form</field>
+        <field name="model">mercadolibre.billing.detail</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de Facturación">
+                <header>
+                    <button name="action_create_purchase_order" type="object" string="Crear Orden de Compra"
+                            class="oe_highlight" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period_id"/>
+                            <field name="account_id"/>
+                            <field name="billing_group"/>
+                            <field name="is_credit_note"/>
+                        </group>
+                        <group>
+                            <field name="ml_detail_id"/>
+                            <field name="ml_document_id"/>
+                            <field name="creation_date"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <group string="Información del Cargo">
+                        <group>
+                            <field name="legal_document_number"/>
+                            <field name="legal_document_status"/>
+                            <field name="detail_amount" widget="monetary"/>
+                            <field name="detail_type"/>
+                        </group>
+                        <group>
+                            <field name="charge_status"/>
+                            <field name="charge_bonified_id"/>
+                            <field name="transaction_detail"/>
+                        </group>
+                    </group>
+                    <group string="Información de Operación">
+                        <group>
+                            <field name="ml_order_id" attrs="{'invisible': [('billing_group', '!=', 'ML')]}"/>
+                            <field name="reference_id" attrs="{'invisible': [('billing_group', '!=', 'MP')]}"/>
+                            <field name="ml_operation_id"/>
+                            <field name="transaction_amount" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="sales_channel"/>
+                            <field name="payer_nickname"/>
+                            <field name="sale_date"/>
+                            <field name="store_name" attrs="{'invisible': [('billing_group', '!=', 'MP')]}"/>
+                        </group>
+                    </group>
+                    <group string="Relaciones">
+                        <field name="purchase_order_id"/>
+                        <field name="invoice_id"/>
+                    </group>
+                    <notebook>
+                        <page string="Datos Crudos" name="raw_data">
+                            <field name="raw_data" widget="ace" options="{'mode': 'json'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_billing_detail" model="ir.actions.act_window">
+        <field name="name">Detalles de Facturación</field>
+        <field name="res_model">mercadolibre.billing.detail</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>

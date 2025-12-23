@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mercadolibre_billing_sync_config_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.sync.config.tree</field>
+        <field name="model">mercadolibre.billing.sync.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuraciones de Sincronización">
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="billing_group"/>
+                <field name="auto_sync"/>
+                <field name="last_sync_date"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mercadolibre_billing_sync_config_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.sync.config.form</field>
+        <field name="model">mercadolibre.billing.sync.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración de Sincronización">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_sync_now" type="object" class="oe_stat_button" icon="fa-refresh"
+                                string="Sincronizar Ahora"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="account_id"/>
+                            <field name="billing_group"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="last_sync_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Configuración de Sincronización">
+                        <group>
+                            <field name="auto_sync"/>
+                            <field name="sync_last_n_periods"/>
+                            <field name="document_types"/>
+                        </group>
+                        <group>
+                            <field name="interval_number"/>
+                            <field name="interval_type"/>
+                        </group>
+                    </group>
+                    <group string="Configuración de Purchase Orders">
+                        <group>
+                            <field name="auto_create_purchase_orders"/>
+                            <field name="auto_validate_purchase_orders"/>
+                            <field name="auto_create_invoices"/>
+                        </group>
+                    </group>
+                    <group string="Configuración Contable">
+                        <group>
+                            <field name="vendor_id"/>
+                            <field name="commission_product_id"/>
+                        </group>
+                        <group>
+                            <field name="expense_account_id"/>
+                            <field name="journal_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mercadolibre_billing_sync_config" model="ir.actions.act_window">
+        <field name="name">Configuración de Sincronización</field>
+        <field name="res_model">mercadolibre.billing.sync.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_mercadolibre_billing_sync_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.sync.form</field>
+        <field name="model">mercadolibre.billing.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Facturación ML/MP">
+                <field name="state" invisible="1"/>
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Cuenta y Periodo">
+                        <field name="account_id"/>
+                        <field name="period_from"/>
+                        <field name="period_to"/>
+                    </group>
+                    <group string="Opciones">
+                        <field name="billing_group"/>
+                        <field name="document_types"/>
+                        <field name="auto_create_pos"/>
+                        <field name="auto_validate_pos" attrs="{'invisible': [('auto_create_pos', '=', False)]}"/>
+                    </group>
+                </group>
+                <group string="Resultado" attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <group>
+                        <field name="periods_created"/>
+                        <field name="details_synced"/>
+                        <field name="error_count"/>
+                    </group>
+                </group>
+                <group string="Log de Sincronización" attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <field name="sync_log" readonly="1" nolabel="1" widget="text"/>
+                </group>
+                <footer>
+                    <button name="action_sync" type="object" string="Sincronizar"
+                            class="btn-primary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_view_periods" type="object"
+                            string="Ver Periodos"
+                            class="btn-secondary" icon="fa-list"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button name="action_new_sync" type="object"
+                            string="Nueva Sincronización"
+                            class="btn-secondary" icon="fa-plus"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_sync" model="ir.actions.act_window">
+        <field name="name">Sincronizar Facturación</field>
+        <field name="res_model">mercadolibre.billing.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
