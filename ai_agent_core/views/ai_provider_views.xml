@@ -132,14 +132,23 @@
                     <!-- Model Configuration -->
                     <group string="Model Configuration">
                         <group>
-                            <field name="default_model" placeholder="Select or type model name"/>
-                            <field name="available_models" placeholder="model1, model2, model3"/>
+                            <label for="default_model" string="Default Model"/>
+                            <div class="o_row">
+                                <field name="default_model" placeholder="Click 'Fetch Models' first"/>
+                                <field name="available_models_list" invisible="1"/>
+                            </div>
+                            <field name="available_models" widget="text"
+                                   placeholder="Click 'Fetch Models' to load available models"
+                                   string="Available Models (select one and copy to Default Model)"/>
                         </group>
                         <group>
                             <field name="active"/>
                             <field name="sequence" groups="base.group_no_one"/>
                         </group>
                     </group>
+                    <div class="alert alert-secondary" role="alert" attrs="{'invisible': [('available_models', '!=', False)]}">
+                        <strong>Tip:</strong> Click "Fetch Models" button to load available models from the API, then select one from the list.
+                    </div>
 
                     <notebook>
                         <page string="Connection Status" name="status">

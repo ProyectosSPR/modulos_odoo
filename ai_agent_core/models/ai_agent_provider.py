@@ -113,11 +113,32 @@ class AIAgentProvider(models.Model):
     # Model Configuration
     # ========================================
 
-    default_model = fields.Char(string='Default Model')
+    default_model = fields.Char(
+        string='Default Model',
+        help='Model to use for this provider'
+    )
     available_models = fields.Text(
         string='Available Models',
-        help='Comma-separated list of models'
+        help='Comma-separated list of models (fetched from API)'
     )
+
+    # List of models for selection widget
+    available_models_list = fields.Char(
+        string='Models List',
+        compute='_compute_available_models_list',
+        help='JSON list of available models for selection widget'
+    )
+
+    @api.depends('available_models')
+    def _compute_available_models_list(self):
+        """Convert available_models text to list for selection widget"""
+        import json
+        for record in self:
+            if record.available_models:
+                models = [m.strip() for m in record.available_models.split(',') if m.strip()]
+                record.available_models_list = json.dumps(models)
+            else:
+                record.available_models_list = '[]'
 
     # ========================================
     # Connection Status
@@ -283,16 +304,15 @@ class AIAgentProvider(models.Model):
             models = self._fetch_models_from_api()
             if models:
                 self.available_models = ','.join(models)
-                # Set first model as default if not set
-                if not self.default_model and models:
-                    self.default_model = models[0]
+                # Set first model as default
+                self.default_model = models[0]
 
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Models Fetched',
-                        'message': f'Found {len(models)} models available',
+                        'message': f'Found {len(models)} models. Selected: {models[0]}',
                         'type': 'success',
                         'sticky': False,
                     }
