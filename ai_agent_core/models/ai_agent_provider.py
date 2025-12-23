@@ -38,7 +38,6 @@ class AIAgentProvider(models.Model):
     # Google Gemini
     gemini_api_key = fields.Char(
         string='API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Get your free API key from: https://aistudio.google.com/apikey (starts with AIza...)'
     )
     gemini_project_id = fields.Char(
@@ -49,7 +48,6 @@ class AIAgentProvider(models.Model):
     # OpenAI
     openai_api_key = fields.Char(
         string='OpenAI API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Get your API key from: https://platform.openai.com/api-keys'
     )
     openai_org_id = fields.Char(
@@ -60,14 +58,12 @@ class AIAgentProvider(models.Model):
     # Anthropic
     anthropic_api_key = fields.Char(
         string='Anthropic API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Get your API key from: https://console.anthropic.com/settings/keys'
     )
 
     # Azure OpenAI
     azure_api_key = fields.Char(
         string='Azure API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Azure OpenAI resource key'
     )
     azure_endpoint = fields.Char(
@@ -86,14 +82,12 @@ class AIAgentProvider(models.Model):
     # Groq
     groq_api_key = fields.Char(
         string='Groq API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Get your API key from: https://console.groq.com/keys'
     )
 
     # Mistral
     mistral_api_key = fields.Char(
         string='Mistral API Key',
-        groups='ai_agent_core.group_ai_admin',
         help='Get your API key from: https://console.mistral.ai/api-keys'
     )
 
