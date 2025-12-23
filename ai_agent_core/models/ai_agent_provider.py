@@ -37,13 +37,13 @@ class AIAgentProvider(models.Model):
 
     # Google Gemini
     gemini_api_key = fields.Char(
-        string='Gemini API Key',
+        string='API Key',
         groups='ai_agent_core.group_ai_admin',
-        help='Get your API key from: https://aistudio.google.com/apikey'
+        help='Get your free API key from: https://aistudio.google.com/apikey (starts with AIza...)'
     )
     gemini_project_id = fields.Char(
-        string='Project ID',
-        help='Optional: Google Cloud Project ID (for Vertex AI)'
+        string='Project ID (Vertex AI)',
+        help='Only for Vertex AI users. Leave empty if using Google AI Studio API Key.'
     )
 
     # OpenAI
@@ -152,10 +152,12 @@ class AIAgentProvider(models.Model):
                     <h5><i class="fa fa-google"></i> Google Gemini Setup</h5>
                     <ol>
                         <li>Go to <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></li>
-                        <li>Click "Create API Key"</li>
-                        <li>Copy and paste the key above</li>
+                        <li>Click "Create API Key" (it's FREE!)</li>
+                        <li>Copy the key (starts with <code>AIza...</code>)</li>
+                        <li>Paste it in the "API Key" field above</li>
                     </ol>
-                    <p><strong>Recommended models:</strong> gemini-1.5-flash (fast), gemini-1.5-pro (powerful)</p>
+                    <p><strong>Note:</strong> You only need the API Key. Leave "Project ID" empty unless you're using Vertex AI.</p>
+                    <p><strong>Recommended models:</strong> gemini-1.5-flash (fast), gemini-1.5-pro (powerful), gemini-2.0-flash-exp (newest)</p>
                 </div>
             ''',
             'openai': '''

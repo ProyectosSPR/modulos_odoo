@@ -87,9 +87,9 @@
                     <!-- Provider Specific Configuration -->
                     <group string="API Configuration">
                         <!-- Google Gemini -->
-                        <group attrs="{'invisible': [('provider_type', '!=', 'gemini')]}" string="Google Gemini Credentials">
-                            <field name="gemini_api_key" password="True" placeholder="AIza..."/>
-                            <field name="gemini_project_id" placeholder="Optional: my-project-id"/>
+                        <group attrs="{'invisible': [('provider_type', '!=', 'gemini')]}" string="Google Gemini">
+                            <field name="gemini_api_key" password="True" placeholder="AIzaSy..." string="API Key (required)"/>
+                            <field name="gemini_project_id" placeholder="Leave empty for AI Studio" string="Project ID (only for Vertex AI)"/>
                         </group>
 
                         <!-- OpenAI -->
