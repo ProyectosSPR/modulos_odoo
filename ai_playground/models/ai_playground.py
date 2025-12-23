@@ -72,6 +72,12 @@ class AIPlayground(models.Model):
         sanitize=False
     )
 
+    # Channel CSS class for dynamic styling
+    channel_css_class = fields.Char(
+        string='Channel CSS Class',
+        compute='_compute_channel_css_class'
+    )
+
     # Linked conversation
     conversation_id = fields.Many2one(
         'ai.conversation',
@@ -111,6 +117,15 @@ class AIPlayground(models.Model):
     def _compute_message_count(self):
         for record in self:
             record.message_count = len(record.message_ids)
+
+    @api.depends('simulated_channel')
+    def _compute_channel_css_class(self):
+        """Generate CSS class based on simulated channel"""
+        for record in self:
+            if record.simulated_channel:
+                record.channel_css_class = f'ai-channel-{record.simulated_channel}'
+            else:
+                record.channel_css_class = 'ai-channel-web'
 
     @api.depends('message_ids', 'message_ids.content', 'message_ids.role', 'message_ids.create_date')
     def _compute_chat_html(self):

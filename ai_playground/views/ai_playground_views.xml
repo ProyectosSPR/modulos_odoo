@@ -53,11 +53,12 @@
                     <notebook>
                         <!-- Chat Tab - WhatsApp Style -->
                         <page string="Chat" name="chat">
-                            <!-- Hidden field to pass channel value -->
+                            <!-- Hidden fields for dynamic styling -->
                             <field name="simulated_channel" invisible="1"/>
+                            <field name="channel_css_class" invisible="1"/>
 
-                            <!-- Chat Main Container with dynamic channel data -->
-                            <div class="ai-chat-main-wrapper ai-chat-channel-{simulated_channel}">
+                            <!-- Chat Main Container with dynamic channel class -->
+                            <div class="ai-chat-main-wrapper" t-attf-class="{{channel_css_class}}">
                                 <!-- Chat Header -->
                                 <div class="ai-chat-header">
                                     <div class="ai-chat-header-avatar">
