@@ -103,11 +103,13 @@ class MlLabelTemplateField(models.Model):
     # Campos relacionados para mostrar en el editor
     template_pdf_width = fields.Integer(
         related='template_id.pdf_width',
-        string='Ancho PDF'
+        string='Ancho PDF',
+        readonly=True
     )
     template_pdf_height = fields.Integer(
         related='template_id.pdf_height',
-        string='Alto PDF'
+        string='Alto PDF',
+        readonly=True
     )
 
     @api.constrains('position_x', 'position_y')

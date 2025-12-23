@@ -56,39 +56,6 @@
                         </div>
                     </div>
 
-                    <!-- Panel inferior: Edición del campo seleccionado -->
-                    <separator string="Edición Rápida de Campos"/>
-                    <field name="field_ids" mode="form" nolabel="1">
-                        <form>
-                            <group>
-                                <group>
-                                    <field name="name"/>
-                                    <field name="field_type"/>
-                                    <field name="value" widget="text"/>
-                                    <field name="active"/>
-                                </group>
-                                <group>
-                                    <field name="sequence"/>
-                                    <label for="position_x" string="Posición"/>
-                                    <div class="o_row">
-                                        <field name="position_x" placeholder="X"/> px
-                                        <field name="position_y" placeholder="Y"/> px
-                                    </div>
-                                </group>
-                            </group>
-                            <group>
-                                <group string="Estilo">
-                                    <field name="font_family"/>
-                                    <field name="font_size"/>
-                                    <field name="color" widget="color"/>
-                                </group>
-                                <group string="Transformación">
-                                    <field name="rotation"/>
-                                    <field name="align"/>
-                                </group>
-                            </group>
-                        </form>
-                    </field>
                 </sheet>
             </form>
         </field>
