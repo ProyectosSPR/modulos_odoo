@@ -63,48 +63,54 @@
 
                     <notebook>
                         <page string="📄 PDF Ejemplo" name="pdf_sample">
-                            <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
-                                <h5><i class="fa fa-info-circle"/> ¿Cómo empezar?</h5>
-                                <ol class="mb-0">
-                                    <li><strong>Descarga una etiqueta ML de ejemplo</strong> desde MercadoLibre</li>
-                                    <li><strong>Súbela aquí abajo</strong> usando el botón "Seleccionar archivo"</li>
-                                    <li>El sistema detectará automáticamente las dimensiones</li>
-                                    <li>Luego ve a la pestaña <strong>"Campos de Texto"</strong> para agregar información personalizada</li>
+                            <div class="alert alert-warning" role="alert" style="margin: 20px 0;">
+                                <h5 style="margin-top: 0;"><i class="fa fa-info-circle"/> ¿Cómo empezar?</h5>
+                                <ol style="margin-bottom: 0; padding-left: 20px;">
+                                    <li style="margin-bottom: 8px;"><strong>Descarga una etiqueta ML de ejemplo</strong> desde MercadoLibre</li>
+                                    <li style="margin-bottom: 8px;"><strong>Súbela aquí abajo</strong> usando el botón "Seleccionar archivo"</li>
+                                    <li style="margin-bottom: 8px;">El sistema detectará automáticamente las dimensiones</li>
+                                    <li style="margin-bottom: 0;">Luego ve a la pestaña <strong>"Campos de Texto"</strong> para agregar información personalizada</li>
                                 </ol>
                             </div>
 
-                            <group string="📂 1. Cargar PDF de Etiqueta ML">
-                                <field name="sample_pdf" filename="sample_pdf_filename"
-                                       widget="binary" class="oe_avatar"/>
+                            <separator string="Paso 1: Cargar PDF de Etiqueta MercadoLibre"/>
+                            <group>
+                                <field name="sample_pdf" filename="sample_pdf_filename" widget="binary"/>
                                 <field name="sample_pdf_filename" invisible="1"/>
                             </group>
 
-                            <group string="🖼️ 2. Vista Previa Generada Automáticamente" attrs="{'invisible': [('sample_pdf', '=', False)]}">
+                            <separator string="Paso 2: Vista Previa del PDF" attrs="{'invisible': [('sample_pdf', '=', False)]}"/>
+                            <div attrs="{'invisible': [('sample_pdf', '=', False)]}" style="text-align: center; padding: 20px;">
                                 <field name="preview_image" widget="image" nolabel="1"
-                                       options="{'size': [800, 1200]}" class="text-center"/>
-                            </group>
+                                       options="{'size': [600, 800]}" style="max-width: 100%; height: auto;"/>
+                            </div>
 
-                            <div class="alert alert-success" role="alert" attrs="{'invisible': [('sample_pdf', '=', False)]}">
-                                <i class="fa fa-check-circle"/> <strong>¡PDF cargado correctamente!</strong><br/>
-                                Dimensiones detectadas: <field name="pdf_width" readonly="1"/> x <field name="pdf_height" readonly="1"/> píxeles<br/>
-                                Ahora puedes ir a la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados.
+                            <div class="alert alert-success" role="alert" attrs="{'invisible': [('sample_pdf', '=', False)]}" style="margin: 20px 0;">
+                                <p style="margin: 0;">
+                                    <i class="fa fa-check-circle"/> <strong>¡PDF cargado correctamente!</strong><br/>
+                                    <strong>Dimensiones:</strong> <field name="pdf_width" readonly="1" class="oe_inline"/> x <field name="pdf_height" readonly="1" class="oe_inline"/> píxeles<br/>
+                                    <br/>
+                                    <strong>Siguiente paso:</strong> Ve a la pestaña <strong>"Campos de Texto"</strong> para agregar campos personalizados.
+                                </p>
                             </div>
                         </page>
 
                         <page string="✏️ Campos de Texto" name="fields">
-                            <div class="alert alert-info" role="alert" style="margin-bottom: 15px;" attrs="{'invisible': [('sample_pdf', '!=', False)]}">
-                                <i class="fa fa-warning"/> <strong>Primero debes cargar un PDF de ejemplo</strong><br/>
-                                Ve a la pestaña <strong>"PDF Ejemplo"</strong> y sube una etiqueta ML antes de agregar campos.
+                            <div class="alert alert-info" role="alert" style="margin: 20px 0;" attrs="{'invisible': [('sample_pdf', '!=', False)]}">
+                                <p style="margin: 0;">
+                                    <i class="fa fa-warning"/> <strong>Primero debes cargar un PDF de ejemplo</strong><br/>
+                                    Ve a la pestaña <strong>"PDF Ejemplo"</strong> y sube una etiqueta ML antes de agregar campos.
+                                </p>
                             </div>
 
-                            <div class="alert alert-success" role="alert" style="margin-bottom: 15px;" attrs="{'invisible': [('sample_pdf', '=', False)]}">
-                                <strong><i class="fa fa-lightbulb-o"/> Instrucciones:</strong>
-                                <ul class="mb-0">
-                                    <li>Haz clic en <strong>"Agregar una línea"</strong> para crear un nuevo campo</li>
-                                    <li>Configura el <strong>tipo</strong>: Estático (texto fijo) o Dinámico (con variables)</li>
-                                    <li>Define la <strong>posición X,Y</strong> en píxeles (puedes ajustar después)</li>
-                                    <li>Personaliza el <strong>estilo</strong>: fuente, tamaño, color</li>
-                                    <li>Usa el botón <strong>"Abrir Editor Visual"</strong> arriba para ver el resultado en tiempo real</li>
+                            <div class="alert alert-success" role="alert" style="margin: 20px 0;" attrs="{'invisible': [('sample_pdf', '=', False)]}">
+                                <p style="margin-top: 0;"><strong><i class="fa fa-lightbulb-o"/> Instrucciones:</strong></p>
+                                <ul style="margin-bottom: 0; padding-left: 20px;">
+                                    <li style="margin-bottom: 5px;">Haz clic en <strong>"Agregar una línea"</strong> para crear un nuevo campo</li>
+                                    <li style="margin-bottom: 5px;">Configura el <strong>tipo</strong>: Estático (texto fijo) o Dinámico (con variables)</li>
+                                    <li style="margin-bottom: 5px;">Define la <strong>posición X,Y</strong> en píxeles (puedes ajustar después)</li>
+                                    <li style="margin-bottom: 5px;">Personaliza el <strong>estilo</strong>: fuente, tamaño, color</li>
+                                    <li style="margin-bottom: 0;">Usa el botón <strong>"Abrir Editor Visual"</strong> arriba para ver el resultado</li>
                                 </ul>
                             </div>
 
@@ -124,104 +130,58 @@
                                     <field name="active" widget="boolean_toggle"/>
                                 </tree>
                                 <form>
-                                    <sheet>
+                                    <group>
                                         <group>
-                                            <group string="📝 Información Básica">
-                                                <field name="name" placeholder="Ej: Número de Orden"/>
-                                                <field name="field_type"/>
-                                                <field name="value" placeholder="Ej: ${sale_order.name} o texto fijo"
-                                                       widget="text"/>
-                                                <field name="active"/>
-                                            </group>
-                                            <group string="⚙️ Configuración">
-                                                <field name="sequence"/>
-                                                <field name="template_pdf_width" invisible="1"/>
-                                                <field name="template_pdf_height" invisible="1"/>
-                                                <div class="alert alert-info" role="alert" style="margin-top: 10px;">
-                                                    <small>
-                                                        <strong>Tipo de campo:</strong><br/>
-                                                        • <strong>Estático:</strong> Texto fijo que siempre será igual<br/>
-                                                        • <strong>Dinámico:</strong> Usa variables que cambian por cada orden
-                                                    </small>
-                                                </div>
-                                            </group>
+                                            <field name="name" placeholder="Ej: Número de Orden"/>
+                                            <field name="field_type"/>
+                                            <field name="value" placeholder="Ej: ${sale_order.name}"
+                                                   widget="text"/>
+                                            <field name="active"/>
                                         </group>
+                                        <group>
+                                            <field name="sequence"/>
+                                            <field name="template_pdf_width" invisible="1"/>
+                                            <field name="template_pdf_height" invisible="1"/>
+                                        </group>
+                                    </group>
 
-                                        <group string="📍 Posición en la Etiqueta">
-                                            <group>
-                                                <label for="position_x" string="Coordenadas (X, Y)"/>
-                                                <div class="o_row">
-                                                    <field name="position_x" placeholder="100"/> px (horizontal)
-                                                </div>
-                                                <div class="o_row">
-                                                    <field name="position_y" placeholder="200"/> px (vertical)
-                                                </div>
-                                            </group>
-                                            <group>
-                                                <div class="alert alert-warning" role="alert">
-                                                    <i class="fa fa-info-circle"/> Las coordenadas son desde la <strong>esquina superior izquierda</strong> del PDF.<br/><br/>
-                                                    <strong>Tip:</strong> Empieza con valores aproximados y ajústalos viendo la vista previa.
-                                                </div>
-                                            </group>
+                                    <group string="Posición">
+                                        <group>
+                                            <field name="position_x" placeholder="100"/>
+                                            <field name="position_y" placeholder="200"/>
                                         </group>
+                                        <group>
+                                            <p class="text-muted">
+                                                Coordenadas en píxeles desde la esquina superior izquierda del PDF.
+                                            </p>
+                                        </group>
+                                    </group>
 
-                                        <group string="🎨 Estilo del Texto">
-                                            <group>
-                                                <field name="font_family"/>
-                                                <field name="font_size" placeholder="12"/>
-                                                <field name="color" widget="color"/>
-                                            </group>
-                                            <group>
-                                                <field name="rotation" placeholder="0"/>
-                                                <field name="align"/>
-                                                <div class="alert alert-info" role="alert" style="margin-top: 10px;">
-                                                    <small>
-                                                        <strong>Rotación:</strong> 0° = horizontal, 90° = vertical<br/>
-                                                        <strong>Alineación:</strong> para textos largos
-                                                    </small>
-                                                </div>
-                                            </group>
+                                    <group string="Estilo">
+                                        <group>
+                                            <field name="font_family"/>
+                                            <field name="font_size" placeholder="12"/>
+                                            <field name="color" widget="color"/>
                                         </group>
+                                        <group>
+                                            <field name="rotation" placeholder="0"/>
+                                            <field name="align"/>
+                                        </group>
+                                    </group>
 
-                                        <group string="💡 Variables Dinámicas Disponibles" attrs="{'invisible': [('field_type', '!=', 'dynamic')]}">
-                                            <div class="alert alert-success" role="alert">
-                                                <p><strong>Copia y pega estas variables en el campo "Valor":</strong></p>
-                                                <table class="table table-sm" style="margin-bottom: 0;">
-                                                    <tr>
-                                                        <td><code>${sale_order.name}</code></td>
-                                                        <td>Número de orden (Ej: SO001)</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${sale_order.partner_id.name}</code></td>
-                                                        <td>Nombre del cliente</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${sale_order.partner_id.phone}</code></td>
-                                                        <td>Teléfono del cliente</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${ml_order.ml_order_id}</code></td>
-                                                        <td>ID de orden MercadoLibre</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${ml_order.ml_pack_id}</code></td>
-                                                        <td>Pack ID de ML</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${today}</code></td>
-                                                        <td>Fecha de hoy</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><code>${company.name}</code></td>
-                                                        <td>Nombre de tu empresa</td>
-                                                    </tr>
-                                                </table>
-                                                <p style="margin-top: 10px; margin-bottom: 0;">
-                                                    <strong>Ejemplo:</strong> <code>Orden: ${sale_order.name}</code>
-                                                </p>
-                                            </div>
-                                        </group>
-                                    </sheet>
+                                    <separator string="Variables Disponibles (para campos dinámicos)" attrs="{'invisible': [('field_type', '!=', 'dynamic')]}"/>
+                                    <div attrs="{'invisible': [('field_type', '!=', 'dynamic')]}">
+                                        <p style="margin: 10px 0;"><strong>Copia y pega estas variables:</strong></p>
+                                        <ul style="list-style: none; padding-left: 0; margin: 10px 20px;">
+                                            <li style="margin-bottom: 5px;"><code>${sale_order.name}</code> - Número de orden</li>
+                                            <li style="margin-bottom: 5px;"><code>${sale_order.partner_id.name}</code> - Cliente</li>
+                                            <li style="margin-bottom: 5px;"><code>${sale_order.partner_id.phone}</code> - Teléfono</li>
+                                            <li style="margin-bottom: 5px;"><code>${ml_order.ml_order_id}</code> - ID ML</li>
+                                            <li style="margin-bottom: 5px;"><code>${ml_order.ml_pack_id}</code> - Pack ID</li>
+                                            <li style="margin-bottom: 5px;"><code>${today}</code> - Fecha</li>
+                                            <li style="margin-bottom: 0;"><code>${company.name}</code> - Empresa</li>
+                                        </ul>
+                                    </div>
                                 </form>
                             </field>
                         </page>
