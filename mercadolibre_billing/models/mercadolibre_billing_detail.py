@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import datetime
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 
@@ -287,6 +288,28 @@ class MercadoliBillingDetail(models.Model):
          'Este detalle de facturación ya existe.')
     ]
 
+    @staticmethod
+    def _parse_datetime(datetime_str):
+        """
+        Convierte fecha ISO 8601 a formato Odoo
+        Entrada: '2025-12-01T02:56:34' o '2025-12-01 02:56:34'
+        Salida: '2025-12-01 02:56:34'
+        """
+        if not datetime_str:
+            return None
+
+        try:
+            # Si ya está en formato correcto, retornar
+            if ' ' in str(datetime_str):
+                return datetime_str
+
+            # Convertir de ISO 8601 a formato Odoo
+            dt = datetime.fromisoformat(str(datetime_str).replace('Z', '+00:00'))
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception as e:
+            _logger.warning(f'Error parseando fecha {datetime_str}: {e}')
+            return None
+
     @api.depends('legal_document_number', 'ml_detail_id')
     def _compute_name(self):
         for record in self:
@@ -358,12 +381,13 @@ class MercadoliBillingDetail(models.Model):
         # Valores comunes
         values = {
             'period_id': period.id,
+            'company_id': period.company_id.id if period.company_id else None,
             'ml_detail_id': str(charge_info.get('detail_id')),
             'ml_document_id': str(document_info.get('document_id', '')),
             'legal_document_number': charge_info.get('legal_document_number'),
             'legal_document_status': charge_info.get('legal_document_status'),
             'legal_document_status_description': charge_info.get('legal_document_status_description'),
-            'creation_date': charge_info.get('creation_date_time'),
+            'creation_date': self._parse_datetime(charge_info.get('creation_date_time')),
             'transaction_detail': charge_info.get('transaction_detail'),
             'debited_from_operation': charge_info.get('debited_from_operation'),
             'debited_from_operation_description': charge_info.get('debited_from_operation_description'),
@@ -409,7 +433,7 @@ class MercadoliBillingDetail(models.Model):
             # Sales Info
             'ml_order_id': str(sales_info.get('order_id', '')),
             'ml_operation_id': str(sales_info.get('operation_id', '')),
-            'sale_date': sales_info.get('sale_date_time'),
+            'sale_date': self._parse_datetime(sales_info.get('sale_date_time')),
             'sales_channel': sales_info.get('sales_channel'),
             'payer_nickname': sales_info.get('payer_nickname'),
             'state_name': sales_info.get('state_name'),
