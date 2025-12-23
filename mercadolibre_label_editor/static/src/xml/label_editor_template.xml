@@ -20,33 +20,32 @@
 
             <!-- Canvas para renderizar PDF -->
             <div class="o_label_editor_canvas_container" style="background: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
-                <t t-if="state.pdfLoaded">
-                    <canvas t-ref="pdfCanvas" style="border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto;"/>
-                </t>
-                <t t-else="">
-                    <div style="max-width: 600px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="text-align: center;">
-                            <i class="fa fa-file-pdf-o" style="font-size: 64px; color: #999; margin-bottom: 20px;"/>
-                            <h4 style="color: #333; margin-bottom: 10px;">Vista Previa No Disponible</h4>
-                            <p style="color: #666; margin-bottom: 20px;">
-                                El editor visual requiere que primero cargues un PDF en la pestaña principal.<br/>
-                                Vuelve al formulario principal y sube un PDF de ejemplo de etiqueta ML.
+                <!-- Canvas siempre presente, pero oculto si no hay PDF -->
+                <canvas t-ref="pdfCanvas"
+                        t-att-style="state.pdfLoaded ? 'border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; max-width: 100%; height: auto;' : 'display: none;'"/>
+
+                <!-- Mensaje cuando no hay PDF cargado -->
+                <div t-if="!state.pdfLoaded and !state.error" style="max-width: 600px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="text-align: center;">
+                        <i class="fa fa-file-pdf-o" style="font-size: 64px; color: #999; margin-bottom: 20px;"/>
+                        <h4 style="color: #333; margin-bottom: 10px;">Vista Previa No Disponible</h4>
+                        <p style="color: #666; margin-bottom: 20px;">
+                            El editor visual requiere que primero cargues un PDF en la pestaña principal.<br/>
+                            Vuelve al formulario principal y sube un PDF de ejemplo de etiqueta ML.
+                        </p>
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                            <p style="margin: 0; color: #856404; font-size: 14px;">
+                                <strong>Sugerencia:</strong> Mientras tanto, puedes usar la pestaña "Campos de Texto"
+                                en el formulario principal para configurar los campos.
                             </p>
-                            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
-                                <p style="margin: 0; color: #856404; font-size: 14px;">
-                                    <strong>Sugerencia:</strong> Mientras tanto, puedes usar la pestaña "Campos de Texto"
-                                    en el formulario principal para configurar los campos.
-                                </p>
-                            </div>
                         </div>
                     </div>
-                </t>
+                </div>
 
-                <t t-if="state.error">
-                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #f5c6cb;">
-                        <strong>Error al cargar PDF:</strong> <t t-esc="state.error"/>
-                    </div>
-                </t>
+                <!-- Mensaje de error -->
+                <div t-if="state.error" style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; border: 1px solid #f5c6cb; max-width: 600px;">
+                    <strong>Error al cargar PDF:</strong> <t t-esc="state.error"/>
+                </div>
             </div>
 
             <!-- Instrucciones -->
