@@ -230,7 +230,7 @@
     <!-- Menu -->
     <menuitem id="menu_ml_label_template"
               name="Plantillas de Etiqueta"
-              parent="mercadolibre_sales.menu_mercadolibre_config"
+              parent="mercadolibre_sales.menu_mercadolibre_sales_config"
               action="action_ml_label_template"
               sequence="50"/>
 
