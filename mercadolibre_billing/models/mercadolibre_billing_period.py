@@ -342,7 +342,8 @@ class MercadoliBillingPeriod(models.Model):
             Detail = self.env['mercadolibre.billing.detail']
             for result_data in results:
                 try:
-                    Detail.create_from_api_data(result_data, self)
+                    with self.env.cr.savepoint():
+                        Detail.create_from_api_data(result_data, self)
                 except Exception as e:
                     _logger.warning(f'Error procesando detalle: {e}')
                     continue
