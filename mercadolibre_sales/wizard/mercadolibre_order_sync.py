@@ -30,8 +30,8 @@ class MercadolibreOrderSync(models.TransientModel):
         default=False
     )
     specific_order_id = fields.Char(
-        string='ID de Orden',
-        help='ID de la orden de MercadoLibre a sincronizar'
+        string='Order ID o Pack ID',
+        help='ID de la orden o Pack ID de MercadoLibre a sincronizar'
     )
 
     # Filtros
@@ -318,13 +318,13 @@ class MercadolibreOrderSync(models.TransientModel):
         }
 
     def _sync_specific_order(self):
-        """Sincroniza una orden especifica por su ID"""
+        """Sincroniza una orden especifica por su ID o Pack ID"""
         self.ensure_one()
 
         if not self.specific_order_id:
             raise ValidationError(_('Debe ingresar el ID de la orden a buscar.'))
 
-        order_id = self.specific_order_id.strip()
+        search_id = self.specific_order_id.strip()
 
         log_lines = []
         log_lines.append('=' * 50)
@@ -332,7 +332,7 @@ class MercadolibreOrderSync(models.TransientModel):
         log_lines.append('=' * 50)
         log_lines.append('')
         log_lines.append(f'  Cuenta:    {self.account_id.name}')
-        log_lines.append(f'  ID Orden:  {order_id}')
+        log_lines.append(f'  ID Busqueda: {search_id}')
         log_lines.append('')
 
         try:
@@ -346,15 +346,17 @@ class MercadolibreOrderSync(models.TransientModel):
 
         import requests
 
-        url = f'https://api.mercadolibre.com/orders/{order_id}'
+        LogModel = self.env['mercadolibre.log'].sudo()
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json',
         }
-
-        LogModel = self.env['mercadolibre.log'].sudo()
         headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
+
+        # Primero intentar buscar por order_id directamente
+        url = f'https://api.mercadolibre.com/orders/{search_id}'
         start_time = time.time()
+        order_data = None
 
         try:
             response = requests.get(url, headers=headers, timeout=60)
@@ -365,7 +367,7 @@ class MercadolibreOrderSync(models.TransientModel):
                 'log_type': 'api_request',
                 'level': 'success' if response.status_code == 200 else 'error',
                 'account_id': self.account_id.id,
-                'message': f'Order Sync Specific: GET /orders/{order_id} - {response.status_code}',
+                'message': f'Order Sync Specific: GET /orders/{search_id} - {response.status_code}',
                 'request_url': url,
                 'request_method': 'GET',
                 'request_headers': json.dumps(headers_log, indent=2),
@@ -375,15 +377,67 @@ class MercadolibreOrderSync(models.TransientModel):
                 'duration': duration,
             })
 
-            if response.status_code == 404:
-                log_lines.append(f'  ERROR: Orden {order_id} no encontrada')
-                self.write({
-                    'state': 'error',
-                    'sync_log': '\n'.join(log_lines),
-                })
-                raise ValidationError(_(f'Orden {order_id} no encontrada en MercadoLibre.'))
+            if response.status_code == 200:
+                order_data = response.json()
+                log_lines.append(f'  Encontrado por Order ID: {search_id}')
+            elif response.status_code == 404:
+                # Si no se encuentra por order_id, intentar buscar por pack_id
+                log_lines.append(f'  No encontrado por Order ID, buscando por Pack ID...')
 
-            if response.status_code != 200:
+                search_url = 'https://api.mercadolibre.com/orders/search'
+                params = {
+                    'seller': self.account_id.ml_user_id,
+                    'q': search_id,
+                }
+
+                start_time = time.time()
+                search_response = requests.get(search_url, params=params, headers=headers, timeout=60)
+                duration = time.time() - start_time
+
+                response_body_log = search_response.text[:10000] if search_response.text else ''
+                LogModel.create({
+                    'log_type': 'api_request',
+                    'level': 'success' if search_response.status_code == 200 else 'error',
+                    'account_id': self.account_id.id,
+                    'message': f'Order Sync Specific: GET /orders/search?q={search_id} - {search_response.status_code}',
+                    'request_url': search_response.url,
+                    'request_method': 'GET',
+                    'request_headers': json.dumps(headers_log, indent=2),
+                    'request_body': json.dumps(params, indent=2),
+                    'response_code': search_response.status_code,
+                    'response_headers': json.dumps(dict(search_response.headers), indent=2),
+                    'response_body': response_body_log,
+                    'duration': duration,
+                })
+
+                if search_response.status_code == 200:
+                    search_data = search_response.json()
+                    results = search_data.get('results', [])
+
+                    # Buscar en los resultados una orden que tenga este pack_id
+                    for result in results:
+                        if result.get('pack_id') == search_id:
+                            order_data = result
+                            log_lines.append(f'  Encontrado por Pack ID: {search_id}')
+                            log_lines.append(f'  Order ID: {result.get("id")}')
+                            break
+
+                    if not order_data:
+                        log_lines.append(f'  ERROR: No se encontro ningun Order ID o Pack ID = {search_id}')
+                        self.write({
+                            'state': 'error',
+                            'sync_log': '\n'.join(log_lines),
+                        })
+                        raise ValidationError(_(f'No se encontro orden con ID o Pack ID: {search_id}'))
+                else:
+                    error_msg = f'Error en busqueda: {search_response.status_code}'
+                    log_lines.append(f'  ERROR: {error_msg}')
+                    self.write({
+                        'state': 'error',
+                        'sync_log': '\n'.join(log_lines),
+                    })
+                    raise ValidationError(error_msg)
+            else:
                 error_msg = f'Error API: {response.status_code}'
                 log_lines.append(f'  ERROR: {error_msg}')
                 self.write({
@@ -392,8 +446,6 @@ class MercadolibreOrderSync(models.TransientModel):
                 })
                 raise ValidationError(error_msg)
 
-            order_data = response.json()
-
         except requests.exceptions.RequestException as e:
             log_lines.append(f'  ERROR conexion: {str(e)}')
             self.write({
@@ -401,6 +453,14 @@ class MercadolibreOrderSync(models.TransientModel):
                 'sync_log': '\n'.join(log_lines),
             })
             raise ValidationError(_(f'Error de conexion: {str(e)}'))
+
+        if not order_data:
+            log_lines.append(f'  ERROR: No se pudo obtener datos de la orden')
+            self.write({
+                'state': 'error',
+                'sync_log': '\n'.join(log_lines),
+            })
+            raise ValidationError(_(f'No se pudo obtener datos de la orden {search_id}'))
 
         log_lines.append('-' * 50)
         log_lines.append('  ORDEN ENCONTRADA')
