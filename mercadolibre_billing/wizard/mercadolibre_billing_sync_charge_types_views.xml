@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_mercadolibre_billing_sync_charge_types_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.sync.charge.types.form</field>
+        <field name="model">mercadolibre.billing.sync.charge.types</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Tipos de Cargos">
+                <group>
+                    <group>
+                        <field name="sync_source" widget="radio"/>
+                    </group>
+                </group>
+                <group>
+                    <group>
+                        <field name="account_id"
+                               attrs="{'required': [('sync_source', '=', 'api')]}"/>
+                        <field name="period_key"
+                               attrs="{'invisible': [('sync_source', '=', 'details')]}"/>
+                    </group>
+                </group>
+                <div class="alert alert-info" role="alert">
+                    <p><strong>Desde Detalles Descargados:</strong> Extrae los tipos de cargos únicos de los detalles que ya fueron sincronizados. Más rápido pero requiere tener datos previos.</p>
+                    <p><strong>Desde API de MercadoLibre:</strong> Consulta directamente la API para obtener los tipos de cargos del mes especificado. Útil para obtener tipos antes de sincronizar detalles completos.</p>
+                </div>
+                <footer>
+                    <button name="action_sync" type="object" string="Sincronizar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_sync_charge_types" model="ir.actions.act_window">
+        <field name="name">Sincronizar Tipos de Cargos</field>
+        <field name="res_model">mercadolibre.billing.sync.charge.types</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

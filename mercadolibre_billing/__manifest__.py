@@ -47,11 +47,13 @@ Dependencias:
 
         # Wizard (debe ir antes de los menús)
         'wizard/mercadolibre_billing_sync_views.xml',
+        'wizard/mercadolibre_billing_sync_charge_types_views.xml',
 
         # Views
         'views/mercadolibre_billing_period_views.xml',
         'views/mercadolibre_billing_detail_views.xml',
         'views/mercadolibre_billing_invoice_views.xml',
+        'views/mercadolibre_billing_product_mapping_views.xml',
         'views/mercadolibre_billing_sync_config_views.xml',
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',

@@ -568,18 +568,28 @@ class MercadoliBillingDetail(models.Model):
         # Obtener/crear proveedor MercadoLibre
         vendor = self._get_or_create_ml_vendor()
 
-        # Obtener producto de comisión
-        commission_product = config.commission_product_id
+        # Obtener producto según mapeo de tipo de cargo
+        ProductMapping = self.env['mercadolibre.billing.product.mapping']
+        commission_product = ProductMapping.get_product_for_charge(
+            transaction_detail=self.transaction_detail,
+            account_id=self.account_id.id,
+            billing_group=self.billing_group
+        )
+
+        # Si no hay mapeo, usar producto de configuración
         if not commission_product:
-            commission_product = self.env.ref(
-                'mercadolibre_billing.product_ml_commission',
-                raise_if_not_found=False
-            )
+            commission_product = config.commission_product_id
             if not commission_product:
-                raise UserError(_(
-                    'No se ha configurado un producto para comisiones. '
-                    'Por favor configure el producto en la configuración de sincronización.'
-                ))
+                commission_product = self.env.ref(
+                    'mercadolibre_billing.product_ml_commission',
+                    raise_if_not_found=False
+                )
+                if not commission_product:
+                    raise UserError(_(
+                        'No se ha configurado un producto para comisiones.\n'
+                        'Por favor configure el mapeo de cargos o el producto por defecto '
+                        'en la configuración de sincronización.'
+                    ))
 
         # Determinar precio unitario (negativo para notas de crédito)
         if self.is_credit_note:
@@ -669,17 +679,26 @@ class MercadoliBillingDetail(models.Model):
             ('account_id', '=', self.account_id.id)
         ], limit=1)
 
-        # Obtener producto de comisión
-        commission_product = config.commission_product_id if config else None
+        # Obtener producto según mapeo de tipo de cargo
+        ProductMapping = self.env['mercadolibre.billing.product.mapping']
+        commission_product = ProductMapping.get_product_for_charge(
+            transaction_detail=self.transaction_detail,
+            account_id=self.account_id.id,
+            billing_group=self.billing_group
+        )
+
+        # Si no hay mapeo, usar producto de configuración
         if not commission_product:
-            commission_product = self.env.ref(
-                'mercadolibre_billing.product_ml_commission',
-                raise_if_not_found=False
-            )
+            commission_product = config.commission_product_id if config else None
             if not commission_product:
-                raise UserError(_(
-                    'No se ha configurado un producto para comisiones.'
-                ))
+                commission_product = self.env.ref(
+                    'mercadolibre_billing.product_ml_commission',
+                    raise_if_not_found=False
+                )
+                if not commission_product:
+                    raise UserError(_(
+                        'No se ha configurado un producto para comisiones.'
+                    ))
 
         # Determinar precio unitario
         if self.is_credit_note:

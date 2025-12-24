@@ -27,12 +27,28 @@
               action="action_mercadolibre_billing_detail"
               sequence="20"/>
 
+    <!-- Mapeo de Cargos -->
+    <menuitem id="menu_mercadolibre_billing_product_mapping"
+              name="Mapeo de Cargos"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_product_mapping"
+              sequence="30"
+              groups="mercadolibre_connector.group_mercadolibre_manager"/>
+
     <!-- Sincronización Manual -->
     <menuitem id="menu_mercadolibre_billing_sync"
-              name="Sincronizar"
+              name="Sincronizar Detalles"
               parent="menu_mercadolibre_billing_root"
               action="action_mercadolibre_billing_sync"
               sequence="80"/>
+
+    <!-- Sincronizar Tipos de Cargos -->
+    <menuitem id="menu_mercadolibre_billing_sync_charge_types"
+              name="Sincronizar Tipos de Cargos"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_sync_charge_types"
+              sequence="85"
+              groups="mercadolibre_connector.group_mercadolibre_manager"/>
 
     <!-- Configuración -->
     <menuitem id="menu_mercadolibre_billing_config"

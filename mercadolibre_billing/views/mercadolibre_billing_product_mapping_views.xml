@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_billing_product_mapping_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.product.mapping.tree</field>
+        <field name="model">mercadolibre.billing.product.mapping</field>
+        <field name="arch" type="xml">
+            <tree string="Mapeo de Cargos"
+                  decoration-warning="not product_id"
+                  decoration-success="product_id">
+                <field name="charge_type"/>
+                <field name="charge_code"/>
+                <field name="billing_group"/>
+                <field name="product_id"/>
+                <field name="account_id" optional="hide"/>
+                <field name="usage_count"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_billing_product_mapping_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.product.mapping.form</field>
+        <field name="model">mercadolibre.billing.product.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Mapeo de Cargo ML/MP">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_details" type="object"
+                                class="oe_stat_button" icon="fa-list-alt">
+                            <field name="usage_count" widget="statinfo" string="Detalles"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Cargo de MercadoLibre">
+                            <field name="charge_type"/>
+                            <field name="charge_code"/>
+                            <field name="billing_group"/>
+                        </group>
+                        <group string="Producto Odoo">
+                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Notas sobre este tipo de cargo..."/>
+                    </group>
+                    <group>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_billing_product_mapping_search" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.product.mapping.search</field>
+        <field name="model">mercadolibre.billing.product.mapping</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Mapeos">
+                <field name="charge_type"/>
+                <field name="charge_code"/>
+                <field name="product_id"/>
+                <filter string="Sin Producto" name="no_product" domain="[('product_id', '=', False)]"/>
+                <filter string="Con Producto" name="has_product" domain="[('product_id', '!=', False)]"/>
+                <separator/>
+                <filter string="MercadoLibre" name="ml" domain="[('billing_group', 'in', ['ML', 'both'])]"/>
+                <filter string="MercadoPago" name="mp" domain="[('billing_group', 'in', ['MP', 'both'])]"/>
+                <separator/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Grupo" name="group_billing" context="{'group_by': 'billing_group'}"/>
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_product_mapping" model="ir.actions.act_window">
+        <field name="name">Mapeo de Cargos</field>
+        <field name="res_model">mercadolibre.billing.product.mapping</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_no_product': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay mapeos de cargos configurados
+            </p>
+            <p>
+                Use el botón "Sincronizar Tipos de Cargos" para extraer los tipos
+                de cargos desde MercadoLibre y configurar qué producto usar para cada uno.
+            </p>
+        </field>
+    </record>
+
+</odoo>
