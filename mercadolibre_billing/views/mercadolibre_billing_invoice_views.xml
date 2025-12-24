@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mercadolibre_billing_invoice_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.invoice.tree</field>
+        <field name="model">mercadolibre.billing.invoice</field>
+        <field name="arch" type="xml">
+            <tree string="Facturas MercadoLibre/MercadoPago"
+                  decoration-success="state=='done'"
+                  decoration-warning="state=='processing'"
+                  decoration-info="state=='complete'">
+                <field name="legal_document_number"/>
+                <field name="period_id"/>
+                <field name="account_id"/>
+                <field name="billing_group"/>
+                <field name="detail_count"/>
+                <field name="total_amount" widget="monetary"/>
+                <field name="vendor_bill_id"/>
+                <field name="state" widget="badge"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mercadolibre_billing_invoice_form" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.invoice.form</field>
+        <field name="model">mercadolibre.billing.invoice</field>
+        <field name="arch" type="xml">
+            <form string="Factura MercadoLibre/MercadoPago">
+                <header>
+                    <button name="action_create_grouped_invoice" type="object"
+                            string="Crear Factura de Proveedor"
+                            class="oe_highlight" icon="fa-file-invoice"
+                            attrs="{'invisible': [('state', '=', 'done')]}"/>
+                    <button name="action_mark_complete" type="object"
+                            string="Marcar Completo"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,complete,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_details" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="detail_count" widget="statinfo" string="Detalles"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="legal_document_number"/>
+                            <field name="ml_document_id"/>
+                            <field name="legal_document_status"/>
+                        </group>
+                        <group>
+                            <field name="period_id"/>
+                            <field name="account_id"/>
+                            <field name="billing_group"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Información Financiera">
+                            <field name="total_amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Factura de Proveedor">
+                            <field name="vendor_bill_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="PDF de MercadoLibre">
+                        <group>
+                            <field name="ml_pdf_file_id"/>
+                            <field name="ml_pdf_attachment_id" widget="many2one_binary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Detalles de Facturación" name="details">
+                            <field name="detail_ids">
+                                <tree>
+                                    <field name="ml_detail_id"/>
+                                    <field name="creation_date"/>
+                                    <field name="transaction_detail"/>
+                                    <field name="ml_order_id"/>
+                                    <field name="reference_id"/>
+                                    <field name="detail_amount" widget="monetary"/>
+                                    <field name="is_credit_note"/>
+                                    <field name="purchase_order_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mercadolibre_billing_invoice_search" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.invoice.search</field>
+        <field name="model">mercadolibre.billing.invoice</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Facturas ML/MP">
+                <field name="legal_document_number"/>
+                <field name="account_id"/>
+                <field name="period_id"/>
+                <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Completo" name="complete" domain="[('state', '=', 'complete')]"/>
+                <filter string="Procesado" name="done" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Periodo" name="group_period" context="{'group_by': 'period_id'}"/>
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Grupo" name="group_billing" context="{'group_by': 'billing_group'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_invoice" model="ir.actions.act_window">
+        <field name="name">Facturas ML/MP (Agrupadas)</field>
+        <field name="res_model">mercadolibre.billing.invoice</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_draft': 1}</field>
+    </record>
+
+</odoo>

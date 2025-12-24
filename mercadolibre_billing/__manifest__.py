@@ -51,6 +51,7 @@ Dependencias:
         # Views
         'views/mercadolibre_billing_period_views.xml',
         'views/mercadolibre_billing_detail_views.xml',
+        'views/mercadolibre_billing_invoice_views.xml',
         'views/mercadolibre_billing_sync_config_views.xml',
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',

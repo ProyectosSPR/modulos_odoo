@@ -398,12 +398,32 @@ class MercadoliBillingDetail(models.Model):
             document_info = data.get('document_info', {})
             charge_info = data.get('charge_info', {})
 
+            # Extraer file_id del PDF si existe
+            ml_pdf_file_id = None
+            legal_document_files = document_info.get('legal_document_files', [])
+            if legal_document_files and isinstance(legal_document_files, list):
+                for doc_file in legal_document_files:
+                    if isinstance(doc_file, dict) and doc_file.get('file_id'):
+                        ml_pdf_file_id = str(doc_file.get('file_id'))
+                        break
+
             invoice_group = Invoice.create({
                 'period_id': period.id,
                 'legal_document_number': legal_document_number,
                 'ml_document_id': str(document_info.get('document_id', '')),
                 'legal_document_status': charge_info.get('legal_document_status'),
+                'ml_pdf_file_id': ml_pdf_file_id,
             })
+        else:
+            # Actualizar file_id si no existe y viene en los datos
+            if not invoice_group.ml_pdf_file_id:
+                document_info = data.get('document_info', {})
+                legal_document_files = document_info.get('legal_document_files', [])
+                if legal_document_files and isinstance(legal_document_files, list):
+                    for doc_file in legal_document_files:
+                        if isinstance(doc_file, dict) and doc_file.get('file_id'):
+                            invoice_group.ml_pdf_file_id = str(doc_file.get('file_id'))
+                            break
 
         return invoice_group
 
@@ -569,6 +589,17 @@ class MercadoliBillingDetail(models.Model):
             price_unit = abs(self.detail_amount)
             po_name = f'Comisión {self.billing_group} - {self.legal_document_number or self.ml_detail_id}'
 
+        # Preparar partner_ref con información de trazabilidad
+        partner_ref_parts = []
+        if self.legal_document_number:
+            partner_ref_parts.append(f'Fact: {self.legal_document_number}')
+        if self.reference_id:  # MercadoPago
+            partner_ref_parts.append(f'Ref: {self.reference_id}')
+        elif self.ml_order_id:  # MercadoLibre
+            partner_ref_parts.append(f'Orden: {self.ml_order_id}')
+
+        partner_ref = ' | '.join(partner_ref_parts) if partner_ref_parts else None
+
         # Crear Purchase Order
         po_vals = {
             'partner_id': vendor.id,
@@ -577,6 +608,7 @@ class MercadoliBillingDetail(models.Model):
             'company_id': self.company_id.id,
             'origin': po_name,
             'currency_id': self.currency_id.id,
+            'partner_ref': partner_ref,
         }
 
         po = self.env['purchase.order'].create(po_vals)
@@ -602,6 +634,10 @@ class MercadoliBillingDetail(models.Model):
             'price_unit': price_unit,
             'date_planned': self.creation_date or fields.Datetime.now(),
         }
+
+        # Aplicar impuesto si está configurado
+        if config.purchase_tax_id:
+            po_line_vals['taxes_id'] = [(6, 0, [config.purchase_tax_id.id])]
 
         self.env['purchase.order.line'].create(po_line_vals)
 

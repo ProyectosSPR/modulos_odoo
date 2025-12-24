@@ -96,7 +96,31 @@ class MercadoliBillingSyncConfig(models.Model):
         string='Crear Facturas Automáticamente',
         default=False,
         tracking=True,
-        help='Crear facturas de proveedor desde las POs confirmadas'
+        help='Crear facturas de proveedor agrupadas por documento legal'
+    )
+    auto_post_invoices = fields.Boolean(
+        string='Publicar Facturas Automáticamente',
+        default=False,
+        tracking=True,
+        help='Publicar (validar) las facturas automáticamente al crearlas'
+    )
+    group_invoices_by_legal_document = fields.Boolean(
+        string='Agrupar Facturas por Documento Legal',
+        default=True,
+        tracking=True,
+        help='Crear una sola factura por cada número de documento legal de ML/MP'
+    )
+    skip_if_invoice_exists = fields.Boolean(
+        string='Omitir si Factura Existe',
+        default=True,
+        tracking=True,
+        help='No crear factura si ya existe una con la misma referencia'
+    )
+    attach_ml_pdf = fields.Boolean(
+        string='Adjuntar PDF de MercadoLibre',
+        default=False,
+        tracking=True,
+        help='Descargar y adjuntar el PDF de la factura legal de MercadoLibre'
     )
 
     # Configuración Contable
@@ -111,6 +135,12 @@ class MercadoliBillingSyncConfig(models.Model):
         string='Producto para Comisiones',
         domain=[('purchase_ok', '=', True)],
         help='Producto a usar en las líneas de las órdenes de compra'
+    )
+    purchase_tax_id = fields.Many2one(
+        'account.tax',
+        string='Impuesto de Compra',
+        domain=[('type_tax_use', '=', 'purchase')],
+        help='Impuesto a aplicar en las líneas de las órdenes de compra (ej: IVA 16%)'
     )
     expense_account_id = fields.Many2one(
         'account.account',
@@ -202,6 +232,10 @@ class MercadoliBillingSyncConfig(models.Model):
                         # Crear POs si está configurado
                         if self.auto_create_purchase_orders:
                             period.action_create_purchase_orders()
+
+                        # Crear facturas si está configurado
+                        if self.auto_create_invoices:
+                            period.action_create_grouped_invoices()
 
                 except Exception as e:
                     error_msg = f'Periodo {period_key} ({group}): {str(e)}'

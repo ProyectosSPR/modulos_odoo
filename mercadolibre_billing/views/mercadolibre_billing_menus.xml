@@ -13,6 +13,13 @@
               action="action_mercadolibre_billing_period"
               sequence="10"/>
 
+    <!-- Facturas Agrupadas -->
+    <menuitem id="menu_mercadolibre_billing_invoices"
+              name="Facturas ML/MP"
+              parent="menu_mercadolibre_billing_root"
+              action="action_mercadolibre_billing_invoice"
+              sequence="15"/>
+
     <!-- Detalles -->
     <menuitem id="menu_mercadolibre_billing_details"
               name="Detalles de Facturación"

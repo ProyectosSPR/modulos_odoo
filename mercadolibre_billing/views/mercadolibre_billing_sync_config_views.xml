@@ -51,14 +51,25 @@
                     <group string="Configuración de Purchase Orders">
                         <group>
                             <field name="auto_create_purchase_orders"/>
-                            <field name="auto_validate_purchase_orders"/>
+                            <field name="auto_validate_purchase_orders" attrs="{'invisible': [('auto_create_purchase_orders', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <group string="Configuración de Facturación">
+                        <group>
                             <field name="auto_create_invoices"/>
+                            <field name="auto_post_invoices" attrs="{'invisible': [('auto_create_invoices', '=', False)]}"/>
+                            <field name="group_invoices_by_legal_document"/>
+                            <field name="skip_if_invoice_exists"/>
+                        </group>
+                        <group>
+                            <field name="attach_ml_pdf"/>
                         </group>
                     </group>
                     <group string="Configuración Contable">
                         <group>
                             <field name="vendor_id"/>
                             <field name="commission_product_id"/>
+                            <field name="purchase_tax_id"/>
                         </group>
                         <group>
                             <field name="expense_account_id"/>

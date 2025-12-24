@@ -442,6 +442,127 @@ class MercadoliBillingPeriod(models.Model):
             'context': {'default_period_id': self.id}
         }
 
+    def action_create_grouped_invoices(self):
+        """
+        Crea facturas de proveedor agrupadas por documento legal
+        Este método procesa todos los invoice_groups del periodo
+        """
+        self.ensure_one()
+
+        # Obtener configuración
+        config = self.env['mercadolibre.billing.sync.config'].sudo().search([
+            ('account_id', '=', self.account_id.id)
+        ], limit=1)
+
+        if not config:
+            raise UserError(_(
+                'No existe configuración de sincronización para esta cuenta.\n'
+                'Por favor cree una configuración primero.'
+            ))
+
+        # Obtener todos los invoice_groups del periodo
+        invoice_groups = self.env['mercadolibre.billing.invoice'].search([
+            ('period_id', '=', self.id),
+            ('state', '!=', 'done')
+        ])
+
+        if not invoice_groups:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sin Documentos'),
+                    'message': _('No hay documentos legales pendientes de procesar en este periodo.'),
+                    'type': 'warning',
+                }
+            }
+
+        created_invoices = []
+        skipped = []
+        errors = []
+
+        for invoice_group in invoice_groups:
+            try:
+                # Verificar que todos los detalles tengan PO
+                details_without_po = invoice_group.detail_ids.filtered(
+                    lambda d: not d.purchase_order_id
+                )
+
+                if details_without_po:
+                    error_msg = _(
+                        'Documento %s: Faltan %d órdenes de compra'
+                    ) % (invoice_group.legal_document_number, len(details_without_po))
+                    errors.append(error_msg)
+                    _logger.warning(error_msg)
+                    continue
+
+                # Validar que todas las POs estén confirmadas
+                purchase_orders = invoice_group.detail_ids.mapped('purchase_order_id')
+                draft_pos = purchase_orders.filtered(
+                    lambda po: po.state in ('draft', 'sent', 'to approve')
+                )
+
+                if draft_pos:
+                    error_msg = _(
+                        'Documento %s: %d POs sin confirmar'
+                    ) % (invoice_group.legal_document_number, len(draft_pos))
+                    errors.append(error_msg)
+                    _logger.warning(error_msg)
+                    continue
+
+                # Verificar si ya existe factura
+                if config.skip_if_invoice_exists:
+                    existing = self.env['account.move'].search([
+                        ('ref', '=', invoice_group.legal_document_number),
+                        ('move_type', '=', 'in_invoice'),
+                        ('company_id', '=', self.company_id.id)
+                    ], limit=1)
+
+                    if existing:
+                        invoice_group.write({
+                            'vendor_bill_id': existing.id,
+                            'state': 'done'
+                        })
+                        skipped.append(invoice_group.legal_document_number)
+                        continue
+
+                # Crear factura agrupada
+                invoice = invoice_group.action_create_grouped_invoice()
+                created_invoices.append(invoice)
+
+            except Exception as e:
+                error_msg = f'Documento {invoice_group.legal_document_number}: {str(e)}'
+                errors.append(error_msg)
+                _logger.error(f'Error creando factura: {error_msg}', exc_info=True)
+                continue
+
+        # Preparar mensaje de resultado
+        message_parts = []
+        if created_invoices:
+            message_parts.append(f'✓ {len(created_invoices)} facturas creadas')
+        if skipped:
+            message_parts.append(f'⊘ {len(skipped)} documentos omitidos (ya existen)')
+        if errors:
+            message_parts.append(f'✗ {len(errors)} errores')
+
+        message = '\n'.join(message_parts)
+
+        if errors:
+            message += '\n\nErrores:\n' + '\n'.join(errors[:5])
+            if len(errors) > 5:
+                message += f'\n... y {len(errors) - 5} más'
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Proceso de Facturación Completado'),
+                'message': message,
+                'type': 'danger' if (errors and not created_invoices) else 'warning' if errors else 'success',
+                'sticky': bool(errors),
+            }
+        }
+
     @api.model
     def _generate_period_keys(self, date_from, date_to):
         """
