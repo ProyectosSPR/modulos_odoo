@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard principal de migracion - Self Service -->
+    <template id="portal_dashboard" name="Migration Dashboard">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <div class="container py-4">
+                <!-- Header con acciones rapidas -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <h2 class="mb-1">
+                            <i class="fa fa-exchange me-2 text-primary"/>
+                            Centro de Migracion
+                        </h2>
+                        <p class="text-muted mb-0">
+                            Gestiona tus proyectos de migracion de datos hacia Odoo
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group">
+                            <a href="/my/migration/new" class="btn btn-primary">
+                                <i class="fa fa-plus me-1"/> Nuevo Proyecto
+                            </a>
+                            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                                    data-bs-toggle="dropdown">
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/my/migration/new?type=odoo">
+                                    <i class="fa fa-exchange me-2"/> Migrar desde otro Odoo
+                                </a></li>
+                                <li><a class="dropdown-item" href="/my/migration/new?type=postgresql">
+                                    <i class="fa fa-database me-2"/> Migrar desde PostgreSQL
+                                </a></li>
+                                <li><a class="dropdown-item" href="/my/migration/new?type=mysql">
+                                    <i class="fa fa-database me-2"/> Migrar desde MySQL
+                                </a></li>
+                                <li><hr class="dropdown-divider"/></li>
+                                <li><a class="dropdown-item" href="/my/migration/connections">
+                                    <i class="fa fa-plug me-2"/> Gestionar Conexiones
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadisticas mejoradas -->
+                <div class="row mb-4 g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="display-6 text-secondary">
+                                    <t t-esc="stats.get('total_projects', 0)"/>
+                                </div>
+                                <small class="text-muted">Proyectos Totales</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card h-100 border-0 shadow-sm bg-info bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="display-6 text-info">
+                                    <t t-esc="stats.get('running', 0)"/>
+                                </div>
+                                <small class="text-muted">En Ejecucion</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card h-100 border-0 shadow-sm bg-success bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="display-6 text-success">
+                                    <t t-esc="stats.get('completed', 0)"/>
+                                </div>
+                                <small class="text-muted">Completados</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card h-100 border-0 shadow-sm bg-primary bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="display-6 text-primary">
+                                    <t t-esc="'{:,}'.format(stats.get('total_records_migrated', 0))"/>
+                                </div>
+                                <small class="text-muted">Registros Migrados</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guia rapida para nuevos usuarios -->
+                <t t-if="not projects">
+                    <div class="card border-0 shadow-sm mb-4 bg-gradient"
+                         style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="card-body text-white py-4">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h4><i class="fa fa-rocket me-2"/> Comienza tu primera migracion</h4>
+                                    <p class="mb-0 opacity-75">
+                                        En 4 simples pasos podras migrar todos tus datos a Odoo.
+                                        Nuestro sistema detectara automaticamente tablas y relaciones.
+                                    </p>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <a href="/my/migration/new" class="btn btn-light btn-lg">
+                                        <i class="fa fa-plus me-1"/> Crear Proyecto
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- Lista de proyectos mejorada -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fa fa-folder-open me-2 text-warning"/>
+                            Mis Proyectos
+                        </h5>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary active" data-view="list">
+                                <i class="fa fa-list"/>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-view="cards">
+                                <i class="fa fa-th-large"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <t t-if="projects">
+                            <div class="list-group list-group-flush">
+                                <t t-foreach="projects" t-as="project">
+                                    <div class="list-group-item border-0 border-bottom">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="me-3">
+                                                        <t t-if="project.state == 'running'">
+                                                            <div class="spinner-border spinner-border-sm text-info"/>
+                                                        </t>
+                                                        <t t-elif="project.state == 'completed'">
+                                                            <i class="fa fa-check-circle fa-2x text-success"/>
+                                                        </t>
+                                                        <t t-elif="project.state == 'error'">
+                                                            <i class="fa fa-exclamation-circle fa-2x text-danger"/>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <i class="fa fa-folder fa-2x text-warning"/>
+                                                        </t>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-0">
+                                                            <a t-attf-href="/my/migration/#{project.id}"
+                                                               class="text-decoration-none">
+                                                                <t t-esc="project.name"/>
+                                                            </a>
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            <i class="fa fa-database me-1"/>
+                                                            <t t-esc="project.source_type or 'Sin configurar'"/>
+                                                            <t t-if="project.source_connection_id">
+                                                                - <t t-esc="project.source_connection_id.database"/>
+                                                            </t>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <t t-call="kafka_migration_hub.portal_state_badge">
+                                                    <t t-set="state" t-value="project.state"/>
+                                                </t>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <t t-if="project.state in ('running', 'completed', 'paused')">
+                                                    <div class="progress mb-1" style="height: 8px;">
+                                                        <div class="progress-bar bg-success"
+                                                             t-attf-style="width: #{project.progress_percentage}%"/>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <t t-esc="'{:,}'.format(project.total_migrated_records)"/> /
+                                                        <t t-esc="'{:,}'.format(project.total_source_records)"/>
+                                                        <span class="ms-1">(<t t-esc="'%.0f' % project.progress_percentage"/>%)</span>
+                                                    </small>
+                                                </t>
+                                                <t t-else="">
+                                                    <div class="d-flex gap-3">
+                                                        <div>
+                                                            <strong t-esc="project.total_source_tables"/>
+                                                            <small class="text-muted d-block">tablas</small>
+                                                        </div>
+                                                        <div>
+                                                            <strong t-esc="project.total_mapped_tables"/>
+                                                            <small class="text-muted d-block">mapeadas</small>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                            <div class="col-md-3 text-end">
+                                                <t t-if="project.state == 'draft'">
+                                                    <a t-attf-href="/my/migration/#{project.id}/wizard"
+                                                       class="btn btn-sm btn-primary">
+                                                        <i class="fa fa-cog me-1"/> Configurar
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state in ('analyzing', 'mapping')">
+                                                    <a t-attf-href="/my/migration/#{project.id}/mapper"
+                                                       class="btn btn-sm btn-info me-1">
+                                                        <i class="fa fa-project-diagram"/> Mapear
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state == 'ready'">
+                                                    <a t-attf-href="/my/migration/#{project.id}"
+                                                       class="btn btn-sm btn-success">
+                                                        <i class="fa fa-play me-1"/> Iniciar
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state == 'running'">
+                                                    <a t-attf-href="/my/migration/#{project.id}/monitor"
+                                                       class="btn btn-sm btn-outline-info">
+                                                        <i class="fa fa-eye"/> Monitor
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state == 'paused'">
+                                                    <a t-attf-href="/my/migration/#{project.id}/monitor"
+                                                       class="btn btn-sm btn-warning">
+                                                        <i class="fa fa-play"/> Reanudar
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state == 'completed'">
+                                                    <a t-attf-href="/my/migration/#{project.id}"
+                                                       class="btn btn-sm btn-outline-success">
+                                                        <i class="fa fa-chart-bar me-1"/> Reporte
+                                                    </a>
+                                                </t>
+                                                <t t-elif="project.state == 'error'">
+                                                    <a t-attf-href="/my/migration/#{project.id}"
+                                                       class="btn btn-sm btn-outline-danger">
+                                                        <i class="fa fa-wrench me-1"/> Revisar
+                                                    </a>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="text-center py-5">
+                                <i class="fa fa-inbox fa-4x text-muted mb-3 opacity-50"/>
+                                <h5 class="text-muted">No hay proyectos de migracion</h5>
+                                <p class="text-muted mb-4">
+                                    Crea tu primer proyecto para comenzar a migrar datos a Odoo
+                                </p>
+                                <a href="/my/migration/new" class="btn btn-primary btn-lg">
+                                    <i class="fa fa-plus me-1"/> Crear mi primer proyecto
+                                </a>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Seccion de ayuda -->
+                <div class="row mt-4 g-3">
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fa fa-book fa-2x text-info mb-3"/>
+                                <h6>Documentacion</h6>
+                                <p class="small text-muted mb-2">
+                                    Aprende como usar el sistema de migracion
+                                </p>
+                                <a href="#" class="btn btn-sm btn-outline-info">Ver guia</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fa fa-headset fa-2x text-success mb-3"/>
+                                <h6>Soporte</h6>
+                                <p class="small text-muted mb-2">
+                                    Necesitas ayuda? Contacta a nuestro equipo
+                                </p>
+                                <a href="#" class="btn btn-sm btn-outline-success">Contactar</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fa fa-video fa-2x text-warning mb-3"/>
+                                <h6>Video Tutorial</h6>
+                                <p class="small text-muted mb-2">
+                                    Mira como migrar en 5 minutos
+                                </p>
+                                <a href="#" class="btn btn-sm btn-outline-warning">Ver video</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Pagina para nuevo proyecto - Mejorada -->
+    <template id="portal_new_project" name="New Migration Project">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <t t-call="kafka_migration_hub.portal_migration_breadcrumb">
+                    <t t-set="current_page">Nuevo Proyecto</t>
+                </t>
+
+                <!-- Wizard de pasos -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body py-4">
+                        <div class="d-flex justify-content-between position-relative">
+                            <div class="progress position-absolute" style="height: 4px; top: 25px; left: 10%; right: 10%;">
+                                <div class="progress-bar bg-primary" style="width: 0%"/>
+                            </div>
+                            <div class="text-center position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fa fa-plug"/>
+                                </div>
+                                <div class="small mt-2"><strong>1. Conexion</strong></div>
+                            </div>
+                            <div class="text-center position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fa fa-search"/>
+                                </div>
+                                <div class="small mt-2 text-muted">2. Analisis</div>
+                            </div>
+                            <div class="text-center position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fa fa-link"/>
+                                </div>
+                                <div class="small mt-2 text-muted">3. Mapeo</div>
+                            </div>
+                            <div class="text-center position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fa fa-play"/>
+                                </div>
+                                <div class="small mt-2 text-muted">4. Migrar</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0">
+                            <i class="fa fa-database me-2 text-primary"/>
+                            Configura la conexion a tu base de datos origen
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="/my/migration/create" method="post" id="new_project_form">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                            <div class="row">
+                                <!-- Info del proyecto -->
+                                <div class="col-lg-5 mb-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fa fa-info-circle me-1"/> Informacion del Proyecto
+                                            </h6>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Nombre del Proyecto *</label>
+                                                <input type="text" name="project_name" class="form-control"
+                                                       required="" placeholder="Ej: Migracion ERP a Odoo 2024"/>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Descripcion (opcional)</label>
+                                                <textarea name="description" class="form-control" rows="2"
+                                                          placeholder="Notas o contexto del proyecto"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Conexion -->
+                                <div class="col-lg-7">
+                                    <t t-if="connections">
+                                        <div class="mb-3">
+                                            <label class="form-label">
+                                                <i class="fa fa-plug me-1"/> Conexion
+                                            </label>
+                                            <select name="connection_id" class="form-select form-select-lg"
+                                                    id="existing_connection">
+                                                <option value="new">-- Crear nueva conexion --</option>
+                                                <t t-foreach="connections" t-as="conn">
+                                                    <option t-att-value="conn.id">
+                                                        <t t-esc="conn.name"/>
+                                                        (<t t-esc="conn.db_type"/> - <t t-esc="conn.database"/>)
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                    </t>
+
+                                    <div id="new_connection_form">
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label class="form-label">Tipo de Base de Datos *</label>
+                                                <div class="row g-2">
+                                                    <t t-foreach="db_types" t-as="db">
+                                                        <div class="col-6 col-md-4">
+                                                            <input type="radio" class="btn-check"
+                                                                   name="db_type" t-att-id="'db_' + db[0]"
+                                                                   t-att-value="db[0]"
+                                                                   t-att-checked="db[0] == 'postgresql' and 'checked'"/>
+                                                            <label class="btn btn-outline-secondary w-100"
+                                                                   t-att-for="'db_' + db[0]">
+                                                                <i class="fa fa-database me-1"/>
+                                                                <t t-esc="db[1]"/>
+                                                            </label>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-8">
+                                                <label class="form-label">Host *</label>
+                                                <input type="text" name="host" class="form-control"
+                                                       placeholder="192.168.1.100 o nombre.servidor.com"/>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Puerto *</label>
+                                                <input type="number" name="port" class="form-control"
+                                                       value="5432" id="db_port"/>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <label class="form-label">Base de Datos *</label>
+                                                <input type="text" name="database" class="form-control"
+                                                       placeholder="nombre_base_datos"/>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label">Usuario *</label>
+                                                <input type="text" name="username" class="form-control"
+                                                       placeholder="usuario_db"/>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Contrasena *</label>
+                                                <div class="input-group">
+                                                    <input type="password" name="password" class="form-control"
+                                                           id="db_password"/>
+                                                    <button class="btn btn-outline-secondary" type="button"
+                                                            onclick="togglePassword()">
+                                                        <i class="fa fa-eye"/>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <button type="button" class="btn btn-outline-info"
+                                                        id="test_connection_btn">
+                                                    <i class="fa fa-plug me-1"/> Probar Conexion
+                                                </button>
+                                                <span id="connection_status" class="ms-2"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4"/>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="/my/migration" class="btn btn-outline-secondary">
+                                    <i class="fa fa-arrow-left me-1"/> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    Crear y Analizar <i class="fa fa-arrow-right ms-1"/>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function togglePassword() {
+                    var input = document.getElementById('db_password');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                }
+
+                // Cambiar puerto segun tipo de DB
+                document.querySelectorAll('input[name="db_type"]').forEach(function(radio) {
+                    radio.addEventListener('change', function() {
+                        var ports = {
+                            'postgresql': 5432,
+                            'mysql': 3306,
+                            'mssql': 1433,
+                            'oracle': 1521,
+                            'odoo': 8069
+                        };
+                        document.getElementById('db_port').value = ports[this.value] || 5432;
+                    });
+                });
+            </script>
+        </t>
+    </template>
+</odoo>

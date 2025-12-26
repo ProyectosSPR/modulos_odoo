@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard de configuración paso a paso -->
+    <template id="portal_wizard" name="Migration Wizard">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <t t-call="kafka_migration_hub.portal_migration_breadcrumb">
+                    <t t-set="current_page">Configuración</t>
+                </t>
+
+                <!-- Indicador de pasos -->
+                <div class="card mb-4">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between">
+                            <t t-foreach="steps" t-as="step">
+                                <div class="text-center flex-fill">
+                                    <div t-attf-class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2 #{
+                                        'bg-success text-white' if step[0] &lt; current_step else
+                                        'bg-primary text-white' if step[0] == current_step else
+                                        'bg-light text-muted'
+                                    }" style="width: 40px; height: 40px;">
+                                        <t t-if="step[0] &lt; current_step">
+                                            <i class="fa fa-check"/>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-esc="step_index + 1"/>
+                                        </t>
+                                    </div>
+                                    <div>
+                                        <strong t-attf-class="#{
+                                            'text-success' if step[0] &lt; current_step else
+                                            'text-primary' if step[0] == current_step else
+                                            'text-muted'
+                                        }">
+                                            <t t-esc="step[1]"/>
+                                        </strong>
+                                        <br/>
+                                        <small class="text-muted">
+                                            <t t-esc="step[2]"/>
+                                        </small>
+                                    </div>
+                                </div>
+                                <t t-if="step_index &lt; len(steps) - 1">
+                                    <div class="flex-fill d-flex align-items-center px-3">
+                                        <hr class="w-100" t-attf-style="border-color: #{
+                                            '#28a745' if step[0] &lt; current_step else '#dee2e6'
+                                        }"/>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenido del paso actual -->
+                <div class="card">
+                    <div class="card-body">
+                        <!-- Paso 1: Conexión -->
+                        <t t-if="current_step == '1_connection'">
+                            <h5 class="mb-4">
+                                <i class="fa fa-plug me-2"/>
+                                Configurar Conexión a Base de Datos Origen
+                            </h5>
+                            <form t-attf-action="/my/migration/#{project.id}/wizard/step/1_connection" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Tipo de Base de Datos</label>
+                                            <select name="db_type" class="form-select" required="">
+                                                <t t-foreach="db_types" t-as="db">
+                                                    <option t-att-value="db[0]"
+                                                            t-att-selected="connection and connection.db_type == db[0]">
+                                                        <t t-esc="db[1]"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-8">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Host</label>
+                                                    <input type="text" name="host" class="form-control"
+                                                           t-att-value="connection.host if connection else ''"
+                                                           placeholder="localhost o IP" required=""/>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Puerto</label>
+                                                    <input type="number" name="port" class="form-control"
+                                                           t-att-value="connection.port if connection else 5432"
+                                                           required=""/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Base de Datos</label>
+                                            <input type="text" name="database" class="form-control"
+                                                   t-att-value="connection.database if connection else ''"
+                                                   required=""/>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Usuario</label>
+                                            <input type="text" name="username" class="form-control"
+                                                   t-att-value="connection.username if connection else ''"
+                                                   required=""/>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Contraseña</label>
+                                            <input type="password" name="password" class="form-control"
+                                                   placeholder="Dejar vacío para mantener actual"/>
+                                        </div>
+
+                                        <t t-if="connection and connection.state == 'connected'">
+                                            <div class="alert alert-success">
+                                                <i class="fa fa-check-circle me-1"/>
+                                                Conexión verificada
+                                            </div>
+                                        </t>
+                                        <t t-elif="connection and connection.state == 'error'">
+                                            <div class="alert alert-danger">
+                                                <i class="fa fa-times-circle me-1"/>
+                                                Error: <t t-esc="connection.last_test_message"/>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <hr/>
+                                <div class="d-flex justify-content-between">
+                                    <a href="/my/migration" class="btn btn-outline-secondary">
+                                        <i class="fa fa-arrow-left me-1"/> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        Probar y Continuar <i class="fa fa-arrow-right ms-1"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </t>
+
+                        <!-- Paso 2: Análisis de Esquema -->
+                        <t t-if="current_step == '2_schema'">
+                            <h5 class="mb-4">
+                                <i class="fa fa-database me-2"/>
+                                Análisis de Esquema
+                            </h5>
+
+                            <t t-if="table_mappings">
+                                <div class="alert alert-success">
+                                    <strong><t t-esc="total_tables"/> tablas</strong> detectadas con
+                                    <strong><t t-esc="'{:,}'.format(total_records)"/></strong> registros totales
+                                </div>
+
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-sm">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>Tabla</th>
+                                                <th>Columnas</th>
+                                                <th>Registros</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="table_mappings" t-as="mapping">
+                                                <tr>
+                                                    <td><code><t t-esc="mapping.source_table"/></code></td>
+                                                    <td><t t-esc="mapping.column_count"/></td>
+                                                    <td><t t-esc="'{:,}'.format(mapping.row_count)"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <form t-attf-action="/my/migration/#{project.id}/wizard/step/2_schema" method="post">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <input type="hidden" name="action" value="continue"/>
+                                    <hr/>
+                                    <div class="d-flex justify-content-between">
+                                        <a t-attf-href="/my/migration/#{project.id}/wizard?step=1_connection"
+                                           class="btn btn-outline-secondary">
+                                            <i class="fa fa-arrow-left me-1"/> Anterior
+                                        </a>
+                                        <button type="submit" class="btn btn-primary">
+                                            Continuar <i class="fa fa-arrow-right ms-1"/>
+                                        </button>
+                                    </div>
+                                </form>
+                            </t>
+                            <t t-else="">
+                                <div class="text-center py-5">
+                                    <i class="fa fa-search fa-3x text-muted mb-3"/>
+                                    <h5>Analizar Base de Datos</h5>
+                                    <p class="text-muted">
+                                        Haz clic en el botón para analizar la estructura de la base de datos origen
+                                    </p>
+                                    <form t-attf-action="/my/migration/#{project.id}/wizard/step/2_schema" method="post">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="action" value="analyze"/>
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fa fa-search me-1"/> Analizar Esquema
+                                        </button>
+                                    </form>
+                                </div>
+                            </t>
+                        </t>
+
+                        <!-- Paso 3: Asignación de Tópicos -->
+                        <t t-if="current_step == '3_topics'">
+                            <h5 class="mb-4">
+                                <i class="fa fa-tags me-2"/>
+                                Asignar Tópicos a las Tablas
+                            </h5>
+
+                            <div class="alert alert-info">
+                                <i class="fa fa-lightbulb me-1"/>
+                                <strong>Sugerencia:</strong> Usa la IA para asignar automáticamente los tópicos
+                                basándose en los nombres de tablas y columnas.
+                                <button type="button" class="btn btn-sm btn-info ms-2"
+                                        onclick="requestAISuggestions()">
+                                    <i class="fa fa-magic"/> Sugerencias IA
+                                </button>
+                            </div>
+
+                            <form t-attf-action="/my/migration/#{project.id}/wizard/step/3_topics" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Tabla Origen</th>
+                                                <th>Registros</th>
+                                                <th>Sugerencia IA</th>
+                                                <th>Tópico Asignado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="table_mappings" t-as="mapping">
+                                                <tr t-att-class="'table-success' if mapping.state == 'mapped' else ''">
+                                                    <td>
+                                                        <strong><t t-esc="mapping.source_table"/></strong>
+                                                    </td>
+                                                    <td>
+                                                        <t t-esc="'{:,}'.format(mapping.row_count)"/>
+                                                    </td>
+                                                    <td>
+                                                        <t t-if="mapping.suggested_topic_id">
+                                                            <span class="badge bg-warning text-dark">
+                                                                <t t-esc="mapping.suggested_topic_id.icon"/>
+                                                                <t t-esc="mapping.suggested_topic_id.name"/>
+                                                                (<t t-esc="'%.0f' % mapping.ai_confidence"/>%)
+                                                            </span>
+                                                        </t>
+                                                    </td>
+                                                    <td>
+                                                        <select t-attf-name="topic_#{mapping.id}"
+                                                                class="form-select form-select-sm">
+                                                            <option value="">-- Seleccionar --</option>
+                                                            <option value="ignore">Ignorar tabla</option>
+                                                            <t t-foreach="topics" t-as="topic">
+                                                                <option t-att-value="topic.id"
+                                                                        t-att-selected="mapping.topic_id.id == topic.id">
+                                                                    <t t-esc="topic.icon"/>
+                                                                    <t t-esc="topic.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <hr/>
+                                <div class="d-flex justify-content-between">
+                                    <a t-attf-href="/my/migration/#{project.id}/wizard?step=2_schema"
+                                       class="btn btn-outline-secondary">
+                                        <i class="fa fa-arrow-left me-1"/> Anterior
+                                    </a>
+                                    <div>
+                                        <button type="submit" name="accept_all" value="1"
+                                                class="btn btn-success me-2">
+                                            <i class="fa fa-check-double me-1"/> Aceptar Todas las Sugerencias
+                                        </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            Continuar <i class="fa fa-arrow-right ms-1"/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </t>
+
+                        <!-- Paso 4: Mapeo de Campos -->
+                        <t t-if="current_step == '4_fields'">
+                            <h5 class="mb-4">
+                                <i class="fa fa-columns me-2"/>
+                                Mapeo de Campos
+                            </h5>
+
+                            <p class="text-muted">
+                                Revisa y ajusta el mapeo de campos para cada tabla.
+                                El sistema ha generado sugerencias automáticas.
+                            </p>
+
+                            <div class="accordion" id="fieldMappingAccordion">
+                                <t t-foreach="mapped_tables" t-as="mapping">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button"
+                                                    t-attf-data-bs-toggle="collapse"
+                                                    t-attf-data-bs-target="#collapse_#{mapping.id}">
+                                                <span class="me-2">
+                                                    <t t-if="mapping.topic_id">
+                                                        <t t-esc="mapping.topic_id.icon"/>
+                                                    </t>
+                                                </span>
+                                                <strong><t t-esc="mapping.source_table"/></strong>
+                                                <i class="fa fa-arrow-right mx-2"/>
+                                                <code><t t-esc="mapping.target_model"/></code>
+                                                <span class="badge bg-secondary ms-2">
+                                                    <t t-esc="len(mapping.field_mapping_ids)"/> campos
+                                                </span>
+                                            </button>
+                                        </h2>
+                                        <div t-attf-id="collapse_#{mapping.id}"
+                                             class="accordion-collapse collapse"
+                                             data-bs-parent="#fieldMappingAccordion">
+                                            <div class="accordion-body p-0">
+                                                <table class="table table-sm mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Campo Origen</th>
+                                                            <th>Tipo</th>
+                                                            <th>→</th>
+                                                            <th>Campo Odoo</th>
+                                                            <th>Transformación</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <t t-foreach="mapping.field_mapping_ids" t-as="field">
+                                                            <tr t-att-class="'table-secondary' if field.state == 'ignored' else ''">
+                                                                <td>
+                                                                    <code><t t-esc="field.source_column"/></code>
+                                                                </td>
+                                                                <td>
+                                                                    <small class="text-muted">
+                                                                        <t t-esc="field.source_type"/>
+                                                                    </small>
+                                                                </td>
+                                                                <td>
+                                                                    <i t-attf-class="fa fa-#{
+                                                                        'check text-success' if field.target_field_id else
+                                                                        'times text-danger'
+                                                                    }"/>
+                                                                </td>
+                                                                <td>
+                                                                    <t t-if="field.target_field_id">
+                                                                        <code><t t-esc="field.target_field_name"/></code>
+                                                                    </t>
+                                                                    <t t-else="">
+                                                                        <span class="text-muted">Sin mapear</span>
+                                                                    </t>
+                                                                </td>
+                                                                <td>
+                                                                    <small>
+                                                                        <t t-esc="field.mapping_type"/>
+                                                                    </small>
+                                                                </td>
+                                                            </tr>
+                                                        </t>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <form t-attf-action="/my/migration/#{project.id}/wizard/step/4_fields" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <hr/>
+                                <div class="d-flex justify-content-between">
+                                    <a t-attf-href="/my/migration/#{project.id}/wizard?step=3_topics"
+                                       class="btn btn-outline-secondary">
+                                        <i class="fa fa-arrow-left me-1"/> Anterior
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        Revisar y Ejecutar <i class="fa fa-arrow-right ms-1"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </t>
+
+                        <!-- Paso 5: Revisión y Ejecución -->
+                        <t t-if="current_step == '5_review'">
+                            <h5 class="mb-4">
+                                <i class="fa fa-rocket me-2"/>
+                                Revisar y Ejecutar Migración
+                            </h5>
+
+                            <!-- Resumen -->
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h3 class="text-primary">
+                                                <t t-esc="stats.get('tables_mapped', 0)"/>
+                                            </h3>
+                                            <small class="text-muted">Tablas a Migrar</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h3 class="text-secondary">
+                                                <t t-esc="stats.get('tables_ignored', 0)"/>
+                                            </h3>
+                                            <small class="text-muted">Tablas Ignoradas</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h3 class="text-success">
+                                                <t t-esc="'{:,}'.format(stats.get('total_records', 0))"/>
+                                            </h3>
+                                            <small class="text-muted">Registros a Migrar</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advertencias -->
+                            <t t-if="issues">
+                                <div class="alert alert-warning">
+                                    <h6><i class="fa fa-exclamation-triangle me-1"/> Advertencias</h6>
+                                    <ul class="mb-0">
+                                        <t t-foreach="issues" t-as="issue">
+                                            <li><t t-esc="issue.get('message')"/></li>
+                                        </t>
+                                    </ul>
+                                </div>
+                            </t>
+
+                            <!-- Orden de migración -->
+                            <h6>Orden de Migración</h6>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Tabla Origen</th>
+                                            <th>Modelo Odoo</th>
+                                            <th>Registros</th>
+                                            <th>Dependencias</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="migration_order" t-as="step">
+                                            <tr>
+                                                <td><t t-esc="step.get('sequence')"/></td>
+                                                <td><code><t t-esc="step.get('source_table')"/></code></td>
+                                                <td><code><t t-esc="step.get('target_model')"/></code></td>
+                                                <td><t t-esc="'{:,}'.format(step.get('row_count', 0))"/></td>
+                                                <td>
+                                                    <t t-if="step.get('dependencies')">
+                                                        <t t-foreach="step.get('dependencies')" t-as="dep">
+                                                            <span class="badge bg-light text-dark me-1">
+                                                                <t t-esc="dep.get('relation')"/>
+                                                            </span>
+                                                        </t>
+                                                    </t>
+                                                    <t t-else="">-</t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <hr/>
+                            <div class="d-flex justify-content-between">
+                                <a t-attf-href="/my/migration/#{project.id}/wizard?step=4_fields"
+                                   class="btn btn-outline-secondary">
+                                    <i class="fa fa-arrow-left me-1"/> Anterior
+                                </a>
+                                <form t-attf-action="/my/migration/#{project.id}/start" method="post">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fa fa-rocket me-1"/> Iniciar Migración
+                                    </button>
+                                </form>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Agregar menú al portal -->
+    <template id="portal_my_home_migration" name="Show Migration Hub" inherit_id="portal.portal_my_home" priority="30">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Migraciones</t>
+                <t t-set="url" t-value="'/my/migration'"/>
+                <t t-set="text">Ver mis proyectos de migración</t>
+                <t t-set="placeholder_count" t-value="'migration_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Layout base del portal de migración -->
+    <template id="portal_migration_layout" name="Migration Portal Layout">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <div class="migration-portal-content">
+                <t t-raw="0"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- Breadcrumbs para migración -->
+    <template id="portal_migration_breadcrumb" name="Migration Breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="/my/home">
+                    <i class="fa fa-home"/>
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="/my/migration">Migraciones</a>
+            </li>
+            <t t-if="project">
+                <li class="breadcrumb-item">
+                    <a t-attf-href="/my/migration/project/#{project.id}">
+                        <t t-esc="project.name"/>
+                    </a>
+                </li>
+            </t>
+            <t t-if="current_page">
+                <li class="breadcrumb-item active">
+                    <t t-esc="current_page"/>
+                </li>
+            </t>
+        </ol>
+    </template>
+
+    <!-- Card de estadísticas -->
+    <template id="portal_stat_card" name="Stat Card">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body py-3">
+                    <h2 class="mb-0" t-attf-style="color: #{color or '#6c757d'}">
+                        <t t-esc="value"/>
+                    </h2>
+                    <small class="text-muted">
+                        <t t-esc="label"/>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Barra de progreso -->
+    <template id="portal_progress_bar" name="Progress Bar">
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar"
+                 role="progressbar"
+                 t-attf-style="width: #{progress}%; background-color: #{color or '#28a745'};"
+                 t-att-aria-valuenow="progress"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+                <span t-if="show_label">
+                    <t t-esc="'%.1f' % progress"/>%
+                </span>
+            </div>
+        </div>
+    </template>
+
+    <!-- Badge de estado -->
+    <template id="portal_state_badge" name="State Badge">
+        <span t-attf-class="badge bg-#{
+            'success' if state == 'completed' else
+            'primary' if state == 'running' else
+            'warning' if state == 'paused' else
+            'danger' if state in ('error', 'cancelled') else
+            'info' if state == 'ready' else
+            'secondary'
+        }">
+            <t t-if="state == 'draft'">Borrador</t>
+            <t t-elif="state == 'connecting'">Conectando</t>
+            <t t-elif="state == 'analyzing'">Analizando</t>
+            <t t-elif="state == 'mapping'">Configurando</t>
+            <t t-elif="state == 'ready'">Listo</t>
+            <t t-elif="state == 'running'">En Ejecución</t>
+            <t t-elif="state == 'paused'">Pausado</t>
+            <t t-elif="state == 'completed'">Completado</t>
+            <t t-elif="state == 'error'">Error</t>
+            <t t-elif="state == 'cancelled'">Cancelado</t>
+            <t t-else=""><t t-esc="state"/></t>
+        </span>
+    </template>
+</odoo>

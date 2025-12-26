@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Tópicos predefinidos del sistema -->
+
+        <record id="topic_contacts" model="migration.topic">
+            <field name="name">Contactos</field>
+            <field name="icon">👥</field>
+            <field name="description">Clientes, proveedores y contactos</field>
+            <field name="keywords">customer,client,vendor,supplier,contact,partner,cliente,proveedor,contacto,tercero</field>
+            <field name="sequence">1</field>
+            <field name="is_system_template">True</field>
+        </record>
+
+        <record id="topic_products" model="migration.topic">
+            <field name="name">Productos</field>
+            <field name="icon">📦</field>
+            <field name="description">Productos, servicios y categorías</field>
+            <field name="keywords">product,item,article,producto,articulo,sku,material,servicio,service</field>
+            <field name="sequence">2</field>
+            <field name="is_system_template">True</field>
+        </record>
+
+        <record id="topic_sales" model="migration.topic">
+            <field name="name">Ventas</field>
+            <field name="icon">🛒</field>
+            <field name="description">Pedidos de venta y cotizaciones</field>
+            <field name="keywords">sale,order,quote,venta,pedido,cotizacion,presupuesto,orden</field>
+            <field name="sequence">3</field>
+            <field name="is_system_template">True</field>
+            <field name="depends_on_topic_ids" eval="[(4, ref('topic_contacts')), (4, ref('topic_products'))]"/>
+        </record>
+
+        <record id="topic_purchases" model="migration.topic">
+            <field name="name">Compras</field>
+            <field name="icon">🛍️</field>
+            <field name="description">Órdenes de compra</field>
+            <field name="keywords">purchase,compra,procurement,orden compra,po,proveedor</field>
+            <field name="sequence">4</field>
+            <field name="is_system_template">True</field>
+            <field name="depends_on_topic_ids" eval="[(4, ref('topic_contacts')), (4, ref('topic_products'))]"/>
+        </record>
+
+        <record id="topic_invoicing" model="migration.topic">
+            <field name="name">Facturación</field>
+            <field name="icon">🧾</field>
+            <field name="description">Facturas, notas de crédito y débito</field>
+            <field name="keywords">invoice,bill,factura,nota,credit,debit,documento,comprobante,cfdi</field>
+            <field name="sequence">5</field>
+            <field name="is_system_template">True</field>
+            <field name="depends_on_topic_ids" eval="[(4, ref('topic_contacts')), (4, ref('topic_products'))]"/>
+        </record>
+
+        <record id="topic_accounting" model="migration.topic">
+            <field name="name">Contabilidad</field>
+            <field name="icon">💰</field>
+            <field name="description">Plan de cuentas, diarios e impuestos</field>
+            <field name="keywords">account,ledger,cuenta,puc,chart,journal,diario,tax,impuesto,iva</field>
+            <field name="sequence">6</field>
+            <field name="is_system_template">True</field>
+        </record>
+
+        <record id="topic_inventory" model="migration.topic">
+            <field name="name">Inventario</field>
+            <field name="icon">📋</field>
+            <field name="description">Stock, almacenes y movimientos</field>
+            <field name="keywords">stock,inventory,warehouse,almacen,existencia,bodega,movimiento,location</field>
+            <field name="sequence">7</field>
+            <field name="is_system_template">True</field>
+            <field name="depends_on_topic_ids" eval="[(4, ref('topic_products'))]"/>
+        </record>
+
+        <record id="topic_crm" model="migration.topic">
+            <field name="name">CRM</field>
+            <field name="icon">📊</field>
+            <field name="description">Leads, oportunidades y pipeline</field>
+            <field name="keywords">lead,opportunity,crm,oportunidad,prospecto,pipeline,comercial</field>
+            <field name="sequence">8</field>
+            <field name="is_system_template">True</field>
+            <field name="depends_on_topic_ids" eval="[(4, ref('topic_contacts'))]"/>
+        </record>
+
+        <record id="topic_hr" model="migration.topic">
+            <field name="name">Recursos Humanos</field>
+            <field name="icon">👔</field>
+            <field name="description">Empleados, departamentos y nómina</field>
+            <field name="keywords">employee,hr,rrhh,empleado,nomina,payroll,department,departamento</field>
+            <field name="sequence">9</field>
+            <field name="is_system_template">True</field>
+        </record>
+    </data>
+</odoo>

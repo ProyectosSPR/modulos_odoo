@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Tree de Logs -->
+    <record id="migration_log_view_tree" model="ir.ui.view">
+        <field name="name">migration.log.tree</field>
+        <field name="model">migration.log</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0"
+                  decoration-danger="level == 'error'"
+                  decoration-warning="level == 'warning'"
+                  decoration-info="level == 'debug'">
+                <field name="timestamp"/>
+                <field name="project_id"/>
+                <field name="level" widget="badge"
+                       decoration-success="level == 'info'"
+                       decoration-warning="level == 'warning'"
+                       decoration-danger="level == 'error'"/>
+                <field name="source_table"/>
+                <field name="message"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Acción de Logs -->
+    <record id="migration_log_action" model="ir.actions.act_window">
+        <field name="name">Logs de Migración</field>
+        <field name="res_model">migration.log</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('project_id', '=', active_id)]</field>
+    </record>
+
+    <!-- Vista Tree de Errores -->
+    <record id="migration_error_view_tree" model="ir.ui.view">
+        <field name="name">migration.error.tree</field>
+        <field name="model">migration.error</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'pending'"
+                  decoration-muted="state in ('resolved', 'ignored')">
+                <field name="create_date"/>
+                <field name="project_id"/>
+                <field name="source_table"/>
+                <field name="source_record_id"/>
+                <field name="error_type"/>
+                <field name="error_message"/>
+                <field name="retry_count"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state == 'pending'"
+                       decoration-success="state == 'resolved'"
+                       decoration-muted="state == 'ignored'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Errores -->
+    <record id="migration_error_view_form" model="ir.ui.view">
+        <field name="name">migration.error.form</field>
+        <field name="model">migration.error</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_retry" type="object" string="Reintentar"
+                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <button name="action_ignore" type="object" string="Ignorar"
+                            class="btn-secondary" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <button name="action_mark_resolved" type="object" string="Marcar Resuelto"
+                            class="btn-success" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="source_table"/>
+                            <field name="source_record_id"/>
+                            <field name="error_type"/>
+                        </group>
+                        <group>
+                            <field name="retry_count"/>
+                            <field name="max_retries"/>
+                            <field name="last_retry_date"/>
+                        </group>
+                    </group>
+                    <group string="Mensaje de Error">
+                        <field name="error_message" nolabel="1"/>
+                    </group>
+                    <group string="Datos Origen">
+                        <field name="source_data" nolabel="1"/>
+                    </group>
+                    <group string="Resolución" attrs="{'invisible': [('state', 'not in', ['resolved', 'ignored'])]}">
+                        <field name="resolved_by"/>
+                        <field name="resolved_date"/>
+                        <field name="resolution_notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción de Errores -->
+    <record id="migration_error_action" model="ir.actions.act_window">
+        <field name="name">Errores de Migración</field>
+        <field name="res_model">migration.error</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('project_id', '=', active_id)]</field>
+    </record>
+</odoo>

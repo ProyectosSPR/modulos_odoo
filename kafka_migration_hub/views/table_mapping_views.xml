@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Tree de Mapeo de Tablas -->
+    <record id="table_mapping_view_tree" model="ir.ui.view">
+        <field name="name">migration.table.mapping.tree</field>
+        <field name="model">migration.table.mapping</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="source_table"/>
+                <field name="topic_id"/>
+                <field name="target_model"/>
+                <field name="row_count"/>
+                <field name="migrated_records"/>
+                <field name="progress_percentage" widget="progressbar"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Mapeo de Tablas -->
+    <record id="table_mapping_view_form" model="ir.ui.view">
+        <field name="name">migration.table.mapping.form</field>
+        <field name="model">migration.table.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_accept_suggestion" type="object"
+                            string="Aceptar Sugerencia" class="btn-primary"
+                            attrs="{'invisible': [('suggested_topic_id', '=', False)]}"/>
+                    <button name="action_ignore" type="object"
+                            string="Ignorar Tabla" class="btn-secondary"/>
+                    <button name="action_reset" type="object"
+                            string="Resetear" class="btn-warning"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Origen">
+                            <field name="project_id"/>
+                            <field name="source_table"/>
+                            <field name="source_schema"/>
+                            <field name="row_count"/>
+                            <field name="column_count"/>
+                        </group>
+                        <group string="Destino">
+                            <field name="topic_id"/>
+                            <field name="target_model_id"/>
+                            <field name="target_model"/>
+                        </group>
+                    </group>
+                    <group string="Sugerencias IA" attrs="{'invisible': [('suggested_topic_id', '=', False)]}">
+                        <field name="suggested_topic_id"/>
+                        <field name="suggested_model"/>
+                        <field name="ai_confidence" widget="progressbar"/>
+                        <field name="ai_reason"/>
+                    </group>
+                    <group string="Progreso">
+                        <field name="migrated_records"/>
+                        <field name="error_records"/>
+                        <field name="progress_percentage" widget="progressbar"/>
+                        <field name="migration_state"/>
+                    </group>
+                    <notebook>
+                        <page string="Mapeo de Campos" name="field_mappings">
+                            <field name="field_mapping_ids" nolabel="1">
+                                <tree editable="bottom">
+                                    <field name="source_column"/>
+                                    <field name="source_type"/>
+                                    <field name="target_field_id"/>
+                                    <field name="mapping_type"/>
+                                    <field name="transform_function"/>
+                                    <field name="ai_confidence" widget="progressbar"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

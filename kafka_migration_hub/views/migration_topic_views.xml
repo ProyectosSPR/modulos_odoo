@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Accion para ver modelos de un topico (debe ir ANTES de la vista que la usa) -->
+    <record id="migration_topic_models_action" model="ir.actions.act_window">
+        <field name="name">Modelos del Topico</field>
+        <field name="res_model">ir.model</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- Vista Tree de Tópicos -->
+    <record id="migration_topic_view_tree" model="ir.ui.view">
+        <field name="name">migration.topic.tree</field>
+        <field name="model">migration.topic</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="icon"/>
+                <field name="name"/>
+                <field name="model_count" string="Modelos"/>
+                <field name="priority" widget="priority"/>
+                <field name="batch_size"/>
+                <field name="is_system_template" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Kanban de Tópicos -->
+    <record id="migration_topic_view_kanban" model="ir.ui.view">
+        <field name="name">migration.topic.kanban</field>
+        <field name="model">migration.topic</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="icon"/>
+                <field name="model_count"/>
+                <field name="priority"/>
+                <field name="color"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click o_kanban_record_has_image_fill"
+                             t-attf-style="border-left: 4px solid #{kanban_color(record.color.raw_value)}">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top mb-0">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <span t-esc="record.icon.value" style="font-size: 1.5em;"/>
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                    <field name="priority" widget="priority"/>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <span class="badge badge-pill badge-primary">
+                                        <field name="model_count"/> modelos
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Vista Form de Tópicos - Mejorada -->
+    <record id="migration_topic_view_form" model="ir.ui.view">
+        <field name="name">migration.topic.form</field>
+        <field name="model">migration.topic</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_auto_populate_models"
+                            type="object"
+                            string="Auto-Poblar Modelos"
+                            class="btn-primary"
+                            icon="fa-magic"
+                            help="Detecta y agrega automáticamente modelos relacionados"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="%(migration_topic_models_action)d"
+                                type="action"
+                                class="oe_stat_button"
+                                icon="fa-database">
+                            <field name="model_count" widget="statinfo" string="Modelos"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Sistema" bg_color="bg-info"
+                            attrs="{'invisible': [('is_system_template', '=', False)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="icon" class="oe_inline" style="font-size: 2em;"/>
+                            <field name="name" placeholder="Nombre del Tópico" class="oe_inline"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Configuración">
+                            <field name="icon"/>
+                            <field name="sequence"/>
+                            <field name="priority" widget="priority"/>
+                            <field name="color" widget="color_picker"/>
+                        </group>
+                        <group string="Procesamiento">
+                            <field name="batch_size"/>
+                            <field name="is_system_template"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <group string="Palabras Clave para Detección Automática">
+                        <field name="keywords" nolabel="1"
+                               placeholder="customer, client, partner, vendor, contact..."
+                               help="Palabras separadas por coma que ayudan a identificar este tópico"/>
+                    </group>
+
+                    <group string="Descripción">
+                        <field name="description" nolabel="1"
+                               placeholder="Describe qué tipo de datos agrupa este tópico..."/>
+                    </group>
+
+                    <notebook>
+                        <page string="Modelos de Odoo" name="models">
+                            <div class="alert alert-info" role="alert">
+                                <i class="fa fa-info-circle"/>
+                                Los modelos se ordenan automáticamente por dependencias.
+                                Los primeros deben migrarse antes que los siguientes.
+                            </div>
+                            <field name="model_ids" nolabel="1" widget="many2many_tags"
+                                   options="{'color_field': 'color'}"
+                                   domain="[('transient', '=', False)]"
+                                   context="{'show_model': True}"/>
+
+                            <group string="Lista Detallada de Modelos">
+                                <field name="model_ids" nolabel="1" mode="tree">
+                                    <tree editable="bottom" create="1" delete="1">
+                                        <field name="model" string="Nombre Técnico"/>
+                                        <field name="name" string="Descripción"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+
+                        <page string="Dependencias de Tópicos" name="topic_dependencies">
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fa fa-exclamation-triangle"/>
+                                Los tópicos listados aquí deben completar su migración ANTES que este tópico.
+                            </div>
+                            <field name="depends_on_topic_ids" nolabel="1">
+                                <tree>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="icon"/>
+                                    <field name="name"/>
+                                    <field name="model_count" string="Modelos"/>
+                                    <field name="priority" widget="priority"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Configuración Avanzada" name="advanced">
+                            <group>
+                                <group string="Prioridad y Orden">
+                                    <field name="sequence" string="Secuencia de Migración"/>
+                                    <field name="priority"/>
+                                </group>
+                                <group string="Lotes">
+                                    <field name="batch_size" string="Registros por Lote"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción principal de Tópicos -->
+    <record id="migration_topic_action" model="ir.actions.act_window">
+        <field name="name">Tópicos de Migración</field>
+        <field name="res_model">migration.topic</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un nuevo tópico de migración
+            </p>
+            <p>
+                Los tópicos agrupan modelos de Odoo relacionados.
+                <br/>
+                Usa <b>Auto-Poblar</b> para detectar automáticamente los modelos relacionados.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción Server para refrescar todos los tópicos -->
+    <record id="action_refresh_all_topics_server" model="ir.actions.server">
+        <field name="name">Actualizar Todos los Tópicos</field>
+        <field name="model_id" ref="model_migration_topic"/>
+        <field name="binding_model_id" ref="model_migration_topic"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = env['migration.topic'].action_refresh_all_topics()
+        </field>
+    </record>
+
+    <!-- Vista para MigrationTopicModelInfo -->
+    <record id="migration_topic_model_info_view_tree" model="ir.ui.view">
+        <field name="name">migration.topic.model.info.tree</field>
+        <field name="model">migration.topic.model.info</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="topic_id"/>
+                <field name="model_id"/>
+                <field name="model_name"/>
+                <field name="is_primary" widget="boolean_toggle"/>
+                <field name="key_fields"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="migration_topic_model_info_view_form" model="ir.ui.view">
+        <field name="name">migration.topic.model.info.form</field>
+        <field name="model">migration.topic.model.info</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="topic_id"/>
+                            <field name="model_id"/>
+                            <field name="model_name"/>
+                        </group>
+                        <group>
+                            <field name="is_primary"/>
+                            <field name="sequence"/>
+                            <field name="key_fields"/>
+                        </group>
+                    </group>
+                    <group string="Dependencias">
+                        <field name="depends_on_model_ids" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

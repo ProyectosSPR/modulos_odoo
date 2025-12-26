@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Template: Visual Mapper para mapeo de campos -->
+    <template id="portal_visual_mapper" name="Visual Mapper">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="False"/>
+
+            <div class="container-fluid py-3">
+                <!-- Header -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="mb-0">
+                                    <i class="fa fa-project-diagram"/> Designer de Mapeo
+                                </h2>
+                                <p class="text-muted mb-0">
+                                    <t t-esc="project.name"/>
+                                </p>
+                            </div>
+                            <div>
+                                <a t-attf-href="/my/migration/#{project.id}" class="btn btn-outline-secondary">
+                                    <i class="fa fa-arrow-left"/> Volver
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Mapper Container -->
+                <div class="visual-mapper-container" t-att-data-project-id="project.id">
+                    <!-- Toolbar -->
+                    <div class="mapper-toolbar">
+                        <div class="toolbar-left">
+                            <span class="toolbar-title">Mapeo Visual</span>
+                            <span class="badge badge-secondary" t-esc="len(project.table_mapping_ids)"/> tablas
+                        </div>
+                        <div class="toolbar-center">
+                            <div class="zoom-controls">
+                                <button class="zoom-out" title="Alejar">
+                                    <i class="fa fa-minus"/>
+                                </button>
+                                <span class="zoom-level">100%</span>
+                                <button class="zoom-in" title="Acercar">
+                                    <i class="fa fa-plus"/>
+                                </button>
+                                <button class="fit-screen" title="Ajustar a pantalla">
+                                    <i class="fa fa-expand"/>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn btn-outline-secondary auto-map-btn">
+                                <i class="fa fa-magic"/> Auto-Mapear
+                            </button>
+                            <button class="btn btn-outline-warning clear-mappings-btn">
+                                <i class="fa fa-eraser"/> Limpiar
+                            </button>
+                            <button class="btn btn-primary save-mappings-btn">
+                                <i class="fa fa-save"/> Guardar Mapeos
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Area -->
+                    <div class="canvas-container">
+                        <!-- Source Panel (Left) -->
+                        <div class="source-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">&#128451;</span>
+                                <h3>Origen (Base de Datos)</h3>
+                                <span class="badge badge-info source-count">0</span>
+                            </div>
+                            <div class="tables-container">
+                                <!-- Tables will be rendered by JS -->
+                                <div class="empty-panel" id="source-empty">
+                                    <span class="empty-panel-icon">&#128269;</span>
+                                    <span class="empty-panel-text">Cargando tablas...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas for connections -->
+                        <canvas class="connections-canvas"></canvas>
+
+                        <!-- Divider -->
+                        <div class="mapper-divider"></div>
+
+                        <!-- Target Panel (Right) -->
+                        <div class="target-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">&#127968;</span>
+                                <h3>Destino (Odoo)</h3>
+                                <span class="badge badge-success target-count">0</span>
+                            </div>
+                            <div class="tables-container">
+                                <!-- Models will be rendered by JS -->
+                                <div class="empty-panel" id="target-empty">
+                                    <span class="empty-panel-icon">&#128269;</span>
+                                    <span class="empty-panel-text">Cargando modelos...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="mapper-legend">
+                        <div class="legend-item">
+                            <span class="legend-color source"></span>
+                            <span>Tabla Origen</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color target"></span>
+                            <span>Modelo Odoo</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color mapped"></span>
+                            <span>Conexion Mapeada</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="text-muted small">
+                                <i class="fa fa-info-circle"/> Arrastra desde un campo origen hacia un campo destino para crear mapeo
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Area -->
+                    <div class="notifications-area"></div>
+                </div>
+
+                <!-- Help Panel -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-question-circle"/> Como usar el Designer
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <h6><i class="fa fa-mouse-pointer text-primary"/> Crear Mapeos</h6>
+                                        <p class="small text-muted">
+                                            Arrastra desde un campo del panel izquierdo (origen)
+                                            hacia un campo del panel derecho (destino) para crear
+                                            una conexion de mapeo.
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h6><i class="fa fa-magic text-warning"/> Auto-Mapeo</h6>
+                                        <p class="small text-muted">
+                                            Usa el boton "Auto-Mapear" para que el sistema sugiera
+                                            automaticamente conexiones basadas en nombres similares.
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h6><i class="fa fa-arrows text-info"/> Mover Nodos</h6>
+                                        <p class="small text-muted">
+                                            Arrastra los headers de las tablas/modelos para
+                                            reorganizar el canvas visualmente.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Agregar ruta para Visual Mapper -->
+    <template id="portal_mapper_route" inherit_id="kafka_migration_hub.portal_project_detail">
+        <xpath expr="//div[hasclass('card-header')]" position="after">
+            <div class="alert alert-info mt-3" role="alert">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fa fa-magic"/> Mapea tus campos visualmente con el Designer
+                    </div>
+                    <a t-attf-href="/my/migration/#{project.id}/mapper" class="btn btn-primary btn-sm">
+                        <i class="fa fa-project-diagram"/> Abrir Visual Mapper
+                    </a>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

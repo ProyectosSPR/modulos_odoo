@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Tree de Conexiones -->
+    <record id="source_connection_view_tree" model="ir.ui.view">
+        <field name="name">migration.source.connection.tree</field>
+        <field name="model">migration.source.connection</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="db_type"/>
+                <field name="host"/>
+                <field name="database"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'connected'"
+                       decoration-danger="state == 'error'"/>
+                <field name="project_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Form de Conexiones -->
+    <record id="source_connection_view_form" model="ir.ui.view">
+        <field name="name">migration.source.connection.form</field>
+        <field name="model">migration.source.connection</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="test_connection" type="object" string="Probar Conexión"
+                            class="btn-primary"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_projects" type="object"
+                                class="oe_stat_button" icon="fa-folder-open">
+                            <field name="project_count" widget="statinfo" string="Proyectos"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre de la Conexión"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Tipo de Conexión">
+                            <field name="db_type"/>
+                            <field name="odoo_version" attrs="{'invisible': [('db_type', '!=', 'odoo')]}"/>
+                        </group>
+                        <group string="Propietario">
+                            <field name="partner_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group attrs="{'invisible': [('db_type', 'in', ['csv', 'excel', 'json'])]}">
+                        <group string="Servidor">
+                            <field name="host"/>
+                            <field name="port"/>
+                            <field name="database"/>
+                        </group>
+                        <group string="Credenciales">
+                            <field name="username"/>
+                            <field name="password" password="True"/>
+                            <field name="ssl_enabled"/>
+                        </group>
+                    </group>
+                    <group attrs="{'invisible': [('db_type', '!=', 'odoo')]}">
+                        <group string="Odoo">
+                            <field name="odoo_url"/>
+                        </group>
+                    </group>
+                    <group attrs="{'invisible': [('db_type', 'not in', ['csv', 'excel', 'json'])]}">
+                        <group string="Archivos">
+                            <field name="file_ids" widget="many2many_binary"/>
+                            <field name="file_path"/>
+                        </group>
+                    </group>
+                    <group string="Última Prueba">
+                        <field name="last_test_date"/>
+                        <field name="last_test_message" readonly="1"/>
+                    </group>
+                    <group string="Descripción">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción de Conexiones -->
+    <record id="source_connection_action" model="ir.actions.act_window">
+        <field name="name">Conexiones</field>
+        <field name="res_model">migration.source.connection</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

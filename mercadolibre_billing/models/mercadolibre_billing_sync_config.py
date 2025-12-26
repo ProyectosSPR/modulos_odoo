@@ -160,10 +160,30 @@ class MercadoliBillingSyncConfig(models.Model):
          'Ya existe una configuración con este nombre en esta compañía.')
     ]
 
+    def _should_sync_now(self):
+        """
+        Verifica si ha pasado suficiente tiempo desde la última sincronización
+        según el intervalo configurado
+        """
+        self.ensure_one()
+
+        if not self.last_sync_date:
+            return True  # Nunca se ha sincronizado
+
+        now = fields.Datetime.now()
+
+        if self.interval_type == 'hours':
+            next_sync = self.last_sync_date + relativedelta(hours=self.interval_number)
+        else:  # days
+            next_sync = self.last_sync_date + relativedelta(days=self.interval_number)
+
+        return now >= next_sync
+
     @api.model
     def _cron_execute_all_syncs(self):
         """
         Método ejecutado por cron para procesar todas las configuraciones activas
+        Respeta el intervalo configurado en cada config individual
         """
         configs = self.search([
             ('active', '=', True),
@@ -172,19 +192,30 @@ class MercadoliBillingSyncConfig(models.Model):
 
         for config in configs:
             try:
+                # Verificar si es tiempo de sincronizar según el intervalo de la config
+                if not config._should_sync_now():
+                    _logger.info(
+                        f'Config {config.name}: Saltando sync, '
+                        f'próxima en {config.interval_number} {config.interval_type} desde {config.last_sync_date}'
+                    )
+                    continue
+
                 config._execute_sync()
             except Exception as e:
                 _logger.error(f'Error en sync automático config {config.id}: {e}', exc_info=True)
                 # Continuar con siguiente configuración
                 continue
 
-    def _execute_sync(self):
+    def _execute_sync(self, force=False):
         """
         Ejecuta la sincronización para esta configuración
+
+        Args:
+            force: Si True, ignora la verificación de auto_sync (para sync manual)
         """
         self.ensure_one()
 
-        if not self.active or not self.auto_sync:
+        if not force and (not self.active or not self.auto_sync):
             return
 
         _logger.info(f'Ejecutando sincronización automática para config {self.name}')
@@ -226,16 +257,30 @@ class MercadoliBillingSyncConfig(models.Model):
 
                     # Sincronizar solo si está en draft o error
                     if period.state in ('draft', 'error'):
-                        period.action_sync_details()
+                        # Pasar configuración de document_types al periodo
+                        period.with_context(
+                            sync_document_types=self.document_types,
+                            sync_attach_pdf=self.attach_ml_pdf
+                        ).action_sync_details()
                         periods_synced += 1
 
                         # Crear POs si está configurado
                         if self.auto_create_purchase_orders:
-                            period.action_create_purchase_orders()
+                            period.with_context(
+                                force_vendor_id=self.vendor_id.id if self.vendor_id else False,
+                                auto_validate_po=self.auto_validate_purchase_orders
+                            ).action_create_purchase_orders()
 
                         # Crear facturas si está configurado
                         if self.auto_create_invoices:
                             period.action_create_grouped_invoices()
+
+                        # Descargar PDFs si está configurado
+                        if self.attach_ml_pdf and period.state == 'synced':
+                            try:
+                                period.action_download_pending_pdfs()
+                            except Exception as pdf_error:
+                                _logger.warning(f'Error descargando PDFs: {pdf_error}')
 
                 except Exception as e:
                     error_msg = f'Periodo {period_key} ({group}): {str(e)}'
@@ -269,7 +314,8 @@ class MercadoliBillingSyncConfig(models.Model):
         self.ensure_one()
 
         try:
-            self._execute_sync()
+            # force=True para ejecutar aunque auto_sync esté desactivado
+            self._execute_sync(force=True)
 
             return {
                 'type': 'ir.actions.client',

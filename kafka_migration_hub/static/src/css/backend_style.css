@@ -1,0 +1,395 @@
+/* Migration Hub Backend Styles */
+
+/* ===== Form View Enhancements ===== */
+.o_migration_project_form .o_form_sheet {
+    max-width: 1200px;
+}
+
+.o_migration_project_form .oe_title h1 {
+    font-size: 2rem;
+}
+
+/* Status Indicators */
+.o_migration_status_indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.o_migration_status_indicator.draft {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.o_migration_status_indicator.running {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.o_migration_status_indicator.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.o_migration_status_indicator.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Progress Bars */
+.o_migration_progress {
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e9ecef;
+}
+
+.o_migration_progress .progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    transition: width 0.5s ease;
+}
+
+/* Kanban View */
+.o_kanban_view .o_migration_project_kanban {
+    min-height: 250px;
+}
+
+.o_migration_project_kanban .o_kanban_record {
+    border-left: 4px solid #714B67;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.o_migration_project_kanban .o_kanban_record:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.o_migration_project_kanban .o_kanban_record.state_draft {
+    border-left-color: #6c757d;
+}
+
+.o_migration_project_kanban .o_kanban_record.state_running {
+    border-left-color: #007bff;
+}
+
+.o_migration_project_kanban .o_kanban_record.state_completed {
+    border-left-color: #28a745;
+}
+
+.o_migration_project_kanban .o_kanban_record.state_error {
+    border-left-color: #dc3545;
+}
+
+/* Kanban Progress */
+.o_kanban_record .o_kanban_progress {
+    margin-top: 10px;
+}
+
+.o_kanban_record .o_kanban_progress_bar {
+    height: 6px;
+    border-radius: 3px;
+}
+
+/* ===== Tree View Decorations ===== */
+.o_list_view .o_data_row.text-success td {
+    color: #155724 !important;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.o_list_view .o_data_row.text-danger td {
+    color: #721c24 !important;
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.o_list_view .o_data_row.text-warning td {
+    color: #856404 !important;
+    background-color: rgba(255, 193, 7, 0.05);
+}
+
+/* ===== Topic Icons ===== */
+.o_migration_topic_icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+}
+
+/* ===== Schema Viewer in Backend ===== */
+.o_migration_schema_viewer {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.o_migration_schema_viewer pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* ===== Field Mapping Tree ===== */
+.o_migration_field_mapping_tree .o_list_view {
+    font-size: 0.9rem;
+}
+
+.o_migration_field_mapping_tree .o_data_cell.o_field_confidence {
+    text-align: center;
+}
+
+/* Confidence Colors */
+.o_field_confidence_high {
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.o_field_confidence_medium {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.o_field_confidence_low {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ===== Connection Form ===== */
+.o_migration_connection_form .o_field_password {
+    font-family: 'Courier New', monospace;
+}
+
+.o_migration_connection_form .o_test_connection_result {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.o_migration_connection_form .o_test_connection_result.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.o_migration_connection_form .o_test_connection_result.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+/* ===== Log Viewer ===== */
+.o_migration_log_tree {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+}
+
+.o_migration_log_tree .o_data_row.level_error {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.o_migration_log_tree .o_data_row.level_warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.o_migration_log_tree .o_data_row.level_debug {
+    color: #6c757d;
+}
+
+/* ===== Error Management ===== */
+.o_migration_error_form .o_field_source_data {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 4px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* ===== Wizard Styles ===== */
+.o_migration_wizard .o_form_sheet {
+    padding: 30px;
+}
+
+.o_migration_wizard .o_wizard_step_indicator {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.o_migration_wizard .o_wizard_step {
+    display: flex;
+    align-items: center;
+    margin: 0 20px;
+}
+
+.o_migration_wizard .o_wizard_step_number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.o_migration_wizard .o_wizard_step.active .o_wizard_step_number {
+    background: #714B67;
+    color: white;
+}
+
+.o_migration_wizard .o_wizard_step.completed .o_wizard_step_number {
+    background: #28a745;
+    color: white;
+}
+
+/* ===== AI Suggestions ===== */
+.o_ai_suggestion_panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.o_ai_suggestion_panel .o_ai_icon {
+    font-size: 2rem;
+    color: #714B67;
+    margin-bottom: 10px;
+}
+
+.o_ai_suggestion_panel .o_ai_title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.o_ai_suggestion_panel .o_ai_suggestion_list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.o_ai_suggestion_panel .o_ai_suggestion_item {
+    padding: 10px;
+    background: white;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ===== Dashboard Widgets ===== */
+.o_migration_dashboard_widget {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    height: 100%;
+}
+
+.o_migration_dashboard_widget .widget_title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.o_migration_dashboard_widget .widget_value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #714B67;
+}
+
+.o_migration_dashboard_widget .widget_change {
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+.o_migration_dashboard_widget .widget_change.positive {
+    color: #28a745;
+}
+
+.o_migration_dashboard_widget .widget_change.negative {
+    color: #dc3545;
+}
+
+/* ===== Stat Buttons ===== */
+.o_migration_project_form .oe_button_box .oe_stat_button {
+    border-left: 3px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.o_migration_project_form .oe_button_box .oe_stat_button:hover {
+    border-left-color: #714B67;
+}
+
+/* ===== Badge Styles ===== */
+.o_migration_badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.o_migration_badge.pending { background: #fff3cd; color: #856404; }
+.o_migration_badge.success { background: #d4edda; color: #155724; }
+.o_migration_badge.error { background: #f8d7da; color: #721c24; }
+.o_migration_badge.info { background: #cce5ff; color: #004085; }
+
+/* ===== Animation for Running State ===== */
+@keyframes migration_pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.o_migration_running_indicator {
+    animation: migration_pulse 1.5s infinite;
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 992px) {
+    .o_migration_project_form .o_inner_group {
+        width: 100% !important;
+    }
+
+    .o_migration_wizard .o_wizard_step_indicator {
+        flex-wrap: wrap;
+    }
+}
+
+/* ===== Dark Mode Support (Odoo 16+) ===== */
+.dark .o_migration_schema_viewer {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+.dark .o_ai_suggestion_panel {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+    border-color: #404040;
+}
+
+.dark .o_ai_suggestion_panel .o_ai_suggestion_item {
+    background: #2d2d2d;
+}

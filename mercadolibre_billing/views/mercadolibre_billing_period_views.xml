@@ -36,6 +36,9 @@
                     <button name="action_create_grouped_invoices" type="object" string="Crear Facturas Agrupadas"
                             class="oe_highlight" icon="fa-file-invoice-dollar"
                             attrs="{'invisible': [('state', 'not in', ['synced', 'processed'])]}"/>
+                    <button name="action_download_pending_pdfs" type="object" string="Descargar PDFs"
+                            class="btn-secondary" icon="fa-file-pdf-o"
+                            attrs="{'invisible': [('state', 'not in', ['synced', 'processed'])]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,syncing,synced,processed"/>
                 </header>
                 <sheet>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Configuración de Kafka para Migration Hub
+
+            Valores por defecto para Kubernetes con Strimzi (namespace: default)
+            El servicio de Kafka se llama: migration-hub-kafka-bootstrap
+
+            Para cambiar la configuración:
+            - Ir a Ajustes > Técnico > Parámetros > Parámetros del Sistema
+            - Buscar los parámetros "migration_hub.kafka_*"
+        -->
+
+        <!-- Servidores de Kafka Bootstrap -->
+        <record id="param_kafka_servers" model="ir.config_parameter">
+            <field name="key">migration_hub.kafka_servers</field>
+            <field name="value">migration-hub-kafka-bootstrap:9092</field>
+        </record>
+
+        <!-- Grupo de consumidores -->
+        <record id="param_kafka_consumer_group" model="ir.config_parameter">
+            <field name="key">migration_hub.consumer_group</field>
+            <field name="value">odoo_migration_hub</field>
+        </record>
+
+        <!-- Protocolo de seguridad: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL -->
+        <record id="param_kafka_security_protocol" model="ir.config_parameter">
+            <field name="key">migration_hub.kafka_security_protocol</field>
+            <field name="value">PLAINTEXT</field>
+        </record>
+
+        <!-- Schema Registry URL (opcional, dejar vacío si no se usa) -->
+        <record id="param_schema_registry_url" model="ir.config_parameter">
+            <field name="key">migration_hub.schema_registry_url</field>
+            <field name="value"></field>
+        </record>
+
+        <!-- SASL Mechanism (vacío para PLAINTEXT) -->
+        <record id="param_kafka_sasl_mechanism" model="ir.config_parameter">
+            <field name="key">migration_hub.kafka_sasl_mechanism</field>
+            <field name="value"></field>
+        </record>
+
+        <!-- SASL Username -->
+        <record id="param_kafka_sasl_username" model="ir.config_parameter">
+            <field name="key">migration_hub.kafka_sasl_username</field>
+            <field name="value"></field>
+        </record>
+
+        <!-- SASL Password -->
+        <record id="param_kafka_sasl_password" model="ir.config_parameter">
+            <field name="key">migration_hub.kafka_sasl_password</field>
+            <field name="value"></field>
+        </record>
+
+        <!--
+            Configuración de IA para mapeo automático
+        -->
+
+        <!-- Proveedor de IA: openai, claude, heuristic -->
+        <record id="param_ai_provider" model="ir.config_parameter">
+            <field name="key">migration_hub.ai_provider</field>
+            <field name="value">heuristic</field>
+        </record>
+
+        <!-- API Key de OpenAI (si se usa) -->
+        <record id="param_openai_api_key" model="ir.config_parameter">
+            <field name="key">migration_hub.openai_api_key</field>
+            <field name="value"></field>
+        </record>
+
+        <!-- API Key de Claude/Anthropic (si se usa) -->
+        <record id="param_claude_api_key" model="ir.config_parameter">
+            <field name="key">migration_hub.claude_api_key</field>
+            <field name="value"></field>
+        </record>
+
+        <!--
+            Configuración general de migración
+        -->
+
+        <!-- Tamaño de lote por defecto -->
+        <record id="param_default_batch_size" model="ir.config_parameter">
+            <field name="key">migration_hub.default_batch_size</field>
+            <field name="value">100</field>
+        </record>
+
+        <!-- Máximo de reintentos para errores -->
+        <record id="param_max_retries" model="ir.config_parameter">
+            <field name="key">migration_hub.max_retries</field>
+            <field name="value">3</field>
+        </record>
+
+        <!-- Tiempo entre reintentos (segundos) -->
+        <record id="param_retry_delay" model="ir.config_parameter">
+            <field name="key">migration_hub.retry_delay</field>
+            <field name="value">30</field>
+        </record>
+
+    </data>
+</odoo>

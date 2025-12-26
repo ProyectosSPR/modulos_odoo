@@ -1,0 +1,756 @@
+/* Migration Hub Portal Styles */
+
+/* ===== Variables ===== */
+:root {
+    --mh-primary: #714B67;
+    --mh-primary-dark: #5a3c52;
+    --mh-secondary: #017e84;
+    --mh-success: #28a745;
+    --mh-warning: #ffc107;
+    --mh-danger: #dc3545;
+    --mh-info: #17a2b8;
+    --mh-light: #f8f9fa;
+    --mh-dark: #343a40;
+    --mh-border: #dee2e6;
+    --mh-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --mh-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Dashboard ===== */
+.mh-dashboard {
+    padding: 20px 0;
+}
+
+.mh-dashboard-header {
+    margin-bottom: 30px;
+}
+
+.mh-dashboard-header h1 {
+    color: var(--mh-primary);
+    font-weight: 600;
+}
+
+/* Stats Cards */
+.mh-stats-row {
+    margin-bottom: 30px;
+}
+
+.mh-stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: var(--mh-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+
+.mh-stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--mh-shadow-lg);
+}
+
+.mh-stat-card .stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    opacity: 0.8;
+}
+
+.mh-stat-card .stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.mh-stat-card .stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mh-stat-card.primary { border-left: 4px solid var(--mh-primary); }
+.mh-stat-card.primary .stat-icon { color: var(--mh-primary); }
+.mh-stat-card.primary .stat-number { color: var(--mh-primary); }
+
+.mh-stat-card.success { border-left: 4px solid var(--mh-success); }
+.mh-stat-card.success .stat-icon { color: var(--mh-success); }
+.mh-stat-card.success .stat-number { color: var(--mh-success); }
+
+.mh-stat-card.warning { border-left: 4px solid var(--mh-warning); }
+.mh-stat-card.warning .stat-icon { color: var(--mh-warning); }
+.mh-stat-card.warning .stat-number { color: var(--mh-warning); }
+
+.mh-stat-card.danger { border-left: 4px solid var(--mh-danger); }
+.mh-stat-card.danger .stat-icon { color: var(--mh-danger); }
+.mh-stat-card.danger .stat-number { color: var(--mh-danger); }
+
+/* ===== Project Cards ===== */
+.mh-projects-section {
+    margin-top: 30px;
+}
+
+.mh-project-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: var(--mh-shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.mh-project-card:hover {
+    box-shadow: var(--mh-shadow-lg);
+}
+
+.mh-project-card .card-header {
+    background: linear-gradient(135deg, var(--mh-primary), var(--mh-primary-dark));
+    color: white;
+    padding: 15px 20px;
+}
+
+.mh-project-card .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.mh-project-card .card-body {
+    padding: 20px;
+}
+
+.mh-project-card .project-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--mh-border);
+}
+
+.mh-project-card .project-stat {
+    text-align: center;
+}
+
+.mh-project-card .project-stat .value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--mh-primary);
+}
+
+.mh-project-card .project-stat .label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+/* Progress bar */
+.mh-progress {
+    height: 8px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.mh-progress .progress-bar {
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* ===== Wizard Steps ===== */
+.mh-wizard {
+    padding: 30px 0;
+}
+
+.mh-wizard-steps {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40px;
+    padding: 0 20px;
+}
+
+.mh-wizard-step {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.mh-wizard-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50px;
+    width: calc(100% - 40px);
+    height: 2px;
+    background: var(--mh-border);
+    z-index: 0;
+}
+
+.mh-wizard-step.completed:not(:last-child)::after {
+    background: var(--mh-success);
+}
+
+.mh-step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--mh-border);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+    margin-right: 10px;
+}
+
+.mh-wizard-step.active .mh-step-circle {
+    background: var(--mh-primary);
+}
+
+.mh-wizard-step.completed .mh-step-circle {
+    background: var(--mh-success);
+}
+
+.mh-step-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-right: 30px;
+}
+
+.mh-wizard-step.active .mh-step-label {
+    color: var(--mh-primary);
+    font-weight: 600;
+}
+
+.mh-wizard-step.completed .mh-step-label {
+    color: var(--mh-success);
+}
+
+/* Wizard Content */
+.mh-wizard-content {
+    background: white;
+    border-radius: 10px;
+    box-shadow: var(--mh-shadow);
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.mh-wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid var(--mh-border);
+}
+
+/* ===== Schema Visualizer ===== */
+.mh-schema-container {
+    display: flex;
+    gap: 30px;
+    min-height: 500px;
+}
+
+.mh-schema-panel {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    box-shadow: var(--mh-shadow);
+    overflow: hidden;
+}
+
+.mh-panel-header {
+    background: var(--mh-light);
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--mh-border);
+    font-weight: 600;
+}
+
+.mh-panel-body {
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Topic Groups */
+.mh-topic-group {
+    margin-bottom: 20px;
+    border: 1px solid var(--mh-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mh-topic-header {
+    background: var(--mh-light);
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mh-topic-header:hover {
+    background: #e9ecef;
+}
+
+.mh-topic-header .topic-icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+}
+
+.mh-topic-header .topic-name {
+    font-weight: 600;
+    flex: 1;
+}
+
+.mh-topic-header .topic-count {
+    background: var(--mh-primary);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.mh-topic-tables {
+    padding: 15px;
+    background: white;
+}
+
+/* Table Items */
+.mh-table-item {
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    background: var(--mh-light);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.mh-table-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.mh-table-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.mh-table-item .table-icon {
+    margin-right: 10px;
+    color: var(--mh-secondary);
+}
+
+.mh-table-item .table-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.mh-table-item .table-rows {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* AI Confidence Badge */
+.mh-confidence {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.mh-confidence.high {
+    background: #d4edda;
+    color: #155724;
+}
+
+.mh-confidence.medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.mh-confidence.low {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ===== Field Mapping ===== */
+.mh-field-mapper {
+    display: flex;
+    gap: 20px;
+}
+
+.mh-field-column {
+    flex: 1;
+}
+
+.mh-field-list {
+    background: white;
+    border: 1px solid var(--mh-border);
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.mh-field-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--mh-border);
+    display: flex;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.mh-field-item:last-child {
+    border-bottom: none;
+}
+
+.mh-field-item:hover {
+    background: var(--mh-light);
+}
+
+.mh-field-item .field-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.mh-field-item .field-type {
+    font-size: 0.75rem;
+    color: #6c757d;
+    background: var(--mh-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.mh-mapping-arrows {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mh-mapping-arrow {
+    color: var(--mh-primary);
+    font-size: 1.5rem;
+    margin: 5px 0;
+}
+
+/* ===== Monitor ===== */
+.mh-monitor {
+    padding: 20px 0;
+}
+
+.mh-monitor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.mh-live-indicator {
+    display: flex;
+    align-items: center;
+    color: var(--mh-success);
+}
+
+.mh-live-indicator .pulse {
+    width: 10px;
+    height: 10px;
+    background: var(--mh-success);
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Progress Overview */
+.mh-progress-overview {
+    background: white;
+    border-radius: 10px;
+    box-shadow: var(--mh-shadow);
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.mh-progress-circle {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 20px;
+    position: relative;
+}
+
+.mh-progress-circle svg {
+    transform: rotate(-90deg);
+}
+
+.mh-progress-circle .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--mh-primary);
+}
+
+/* Topic Progress */
+.mh-topic-progress {
+    margin-bottom: 15px;
+}
+
+.mh-topic-progress .topic-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.mh-topic-progress .topic-name {
+    font-weight: 500;
+}
+
+.mh-topic-progress .topic-stats {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Log Viewer */
+.mh-log-viewer {
+    background: #1e1e1e;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+}
+
+.mh-log-entry {
+    padding: 5px 0;
+    border-bottom: 1px solid #333;
+    display: flex;
+}
+
+.mh-log-entry:last-child {
+    border-bottom: none;
+}
+
+.mh-log-entry .log-time {
+    color: #6c757d;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.mh-log-entry .log-level {
+    margin-right: 10px;
+    flex-shrink: 0;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.mh-log-entry .log-level.info { background: #17a2b8; color: white; }
+.mh-log-entry .log-level.warning { background: #ffc107; color: #1e1e1e; }
+.mh-log-entry .log-level.error { background: #dc3545; color: white; }
+.mh-log-entry .log-level.debug { background: #6c757d; color: white; }
+
+.mh-log-entry .log-message {
+    color: #d4d4d4;
+    word-break: break-word;
+}
+
+/* Error List */
+.mh-error-list {
+    background: white;
+    border-radius: 10px;
+    box-shadow: var(--mh-shadow);
+}
+
+.mh-error-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--mh-border);
+    display: flex;
+    align-items: flex-start;
+}
+
+.mh-error-item:last-child {
+    border-bottom: none;
+}
+
+.mh-error-item .error-icon {
+    color: var(--mh-danger);
+    font-size: 1.2rem;
+    margin-right: 15px;
+    margin-top: 3px;
+}
+
+.mh-error-item .error-content {
+    flex: 1;
+}
+
+.mh-error-item .error-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.mh-error-item .error-details {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.mh-error-item .error-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== Buttons ===== */
+.mh-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.mh-btn-primary {
+    background: var(--mh-primary);
+    color: white;
+}
+
+.mh-btn-primary:hover {
+    background: var(--mh-primary-dark);
+    color: white;
+}
+
+.mh-btn-success {
+    background: var(--mh-success);
+    color: white;
+}
+
+.mh-btn-outline {
+    background: transparent;
+    border: 1px solid var(--mh-border);
+    color: var(--mh-dark);
+}
+
+.mh-btn-outline:hover {
+    background: var(--mh-light);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .mh-schema-container {
+        flex-direction: column;
+    }
+
+    .mh-wizard-steps {
+        flex-wrap: wrap;
+    }
+
+    .mh-wizard-step:not(:last-child)::after {
+        display: none;
+    }
+
+    .mh-stat-card {
+        margin-bottom: 15px;
+    }
+
+    .mh-field-mapper {
+        flex-direction: column;
+    }
+
+    .mh-mapping-arrows {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+
+/* ===== Animations ===== */
+.mh-fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mh-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ===== Drag and Drop ===== */
+.mh-drop-zone {
+    border: 2px dashed var(--mh-border);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.mh-drop-zone.drag-over {
+    border-color: var(--mh-primary);
+    background: rgba(113, 75, 103, 0.05);
+}
+
+.mh-drop-zone.has-content {
+    border-style: solid;
+    border-color: var(--mh-success);
+}
+
+/* ===== Tooltips ===== */
+.mh-tooltip {
+    position: relative;
+}
+
+.mh-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: var(--mh-dark);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+}
+
+.mh-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ===== Empty States ===== */
+.mh-empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: #6c757d;
+}
+
+.mh-empty-state .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.mh-empty-state h4 {
+    margin-bottom: 10px;
+}
+
+.mh-empty-state p {
+    margin-bottom: 20px;
+}

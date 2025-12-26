@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Detalle de proyecto -->
+    <template id="portal_project_detail" name="Migration Project Detail">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <t t-call="kafka_migration_hub.portal_migration_breadcrumb">
+                    <t t-set="current_page" t-value="project.name"/>
+                </t>
+
+                <!-- Header del proyecto -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h4 class="mb-1">
+                                    <i class="fa fa-folder-open me-2"/>
+                                    <t t-esc="project.name"/>
+                                </h4>
+                                <p class="text-muted mb-0">
+                                    <t t-if="project.source_connection_id">
+                                        <span class="badge bg-secondary me-2">
+                                            <t t-esc="project.source_type"/>
+                                        </span>
+                                        <t t-esc="project.source_connection_id.host"/>:<t t-esc="project.source_connection_id.port"/>
+                                        / <t t-esc="project.source_connection_id.database"/>
+                                    </t>
+                                </p>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <t t-call="kafka_migration_hub.portal_state_badge">
+                                    <t t-set="state" t-value="project.state"/>
+                                </t>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        Creado: <t t-esc="project.create_date" t-options="{'widget': 'date'}"/>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <t t-if="project.state in ('draft', 'mapping', 'ready')">
+                                    <a t-attf-href="/my/migration/#{project.id}/wizard"
+                                       class="btn btn-primary">
+                                        <i class="fa fa-cog me-1"/> Configurar
+                                    </a>
+                                </t>
+                                <t t-elif="project.state == 'running'">
+                                    <a t-attf-href="/my/migration/#{project.id}/monitor"
+                                       class="btn btn-success">
+                                        <i class="fa fa-eye me-1"/> Monitor en Vivo
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progreso general -->
+                <t t-if="project.total_source_records > 0">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6>Progreso General</h6>
+                            <t t-call="kafka_migration_hub.portal_progress_bar">
+                                <t t-set="progress" t-value="project.progress_percentage"/>
+                                <t t-set="show_label" t-value="True"/>
+                            </t>
+                            <div class="row mt-3 text-center">
+                                <div class="col-4">
+                                    <h5 class="mb-0 text-primary">
+                                        <t t-esc="'{:,}'.format(project.total_migrated_records)"/>
+                                    </h5>
+                                    <small class="text-muted">Migrados</small>
+                                </div>
+                                <div class="col-4">
+                                    <h5 class="mb-0 text-danger">
+                                        <t t-esc="'{:,}'.format(project.total_error_records)"/>
+                                    </h5>
+                                    <small class="text-muted">Errores</small>
+                                </div>
+                                <div class="col-4">
+                                    <h5 class="mb-0">
+                                        <t t-esc="'{:,}'.format(project.total_source_records)"/>
+                                    </h5>
+                                    <small class="text-muted">Total</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <div class="row">
+                    <!-- Tablas mapeadas -->
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Mapeo de Tablas</h6>
+                                <span class="badge bg-primary">
+                                    <t t-esc="project.total_mapped_tables"/> / <t t-esc="project.total_source_tables"/>
+                                </span>
+                            </div>
+                            <div class="card-body p-0">
+                                <t t-if="table_mappings">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Tabla Origen</th>
+                                                    <th>Tópico</th>
+                                                    <th>Modelo Odoo</th>
+                                                    <th>Registros</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="table_mappings" t-as="mapping">
+                                                    <tr>
+                                                        <td>
+                                                            <strong><t t-esc="mapping.source_table"/></strong>
+                                                        </td>
+                                                        <td>
+                                                            <t t-if="mapping.topic_id">
+                                                                <span class="badge bg-info">
+                                                                    <t t-esc="mapping.topic_id.icon"/>
+                                                                    <t t-esc="mapping.topic_id.name"/>
+                                                                </span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="text-muted">-</span>
+                                                            </t>
+                                                        </td>
+                                                        <td>
+                                                            <code t-if="mapping.target_model">
+                                                                <t t-esc="mapping.target_model"/>
+                                                            </code>
+                                                            <span t-else="" class="text-muted">-</span>
+                                                        </td>
+                                                        <td>
+                                                            <t t-esc="'{:,}'.format(mapping.row_count)"/>
+                                                        </td>
+                                                        <td>
+                                                            <span t-attf-class="badge bg-#{
+                                                                'success' if mapping.state == 'mapped' else
+                                                                'secondary' if mapping.state == 'ignored' else
+                                                                'warning' if mapping.state == 'suggested' else
+                                                                'light text-dark'
+                                                            }">
+                                                                <t t-esc="mapping.state"/>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No hay tablas mapeadas aún</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel lateral -->
+                    <div class="col-md-4">
+                        <!-- Errores recientes -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-white">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-exclamation-triangle text-danger me-1"/>
+                                    Errores Pendientes
+                                    <span class="badge bg-danger ms-2">
+                                        <t t-esc="len(errors)"/>
+                                    </span>
+                                </h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <t t-if="errors">
+                                    <ul class="list-group list-group-flush">
+                                        <t t-foreach="errors[:5]" t-as="error">
+                                            <li class="list-group-item small">
+                                                <strong><t t-esc="error.source_table"/></strong>
+                                                <br/>
+                                                <span class="text-danger">
+                                                    <t t-esc="error.error_message[:100]"/>...
+                                                </span>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center py-3">
+                                        <i class="fa fa-check-circle text-success"/>
+                                        <small class="text-muted d-block">Sin errores</small>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Acciones -->
+                        <div class="card">
+                            <div class="card-header bg-white">
+                                <h6 class="mb-0">Acciones</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <t t-if="project.state in ('draft', 'mapping', 'ready')">
+                                        <a t-attf-href="/my/migration/#{project.id}/wizard"
+                                           class="btn btn-primary">
+                                            <i class="fa fa-cog me-1"/> Continuar Configuración
+                                        </a>
+                                    </t>
+                                    <t t-if="project.state == 'ready'">
+                                        <form t-attf-action="/my/migration/#{project.id}/start" method="post">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-success w-100">
+                                                <i class="fa fa-play me-1"/> Iniciar Migración
+                                            </button>
+                                        </form>
+                                    </t>
+                                    <t t-if="project.state == 'running'">
+                                        <a t-attf-href="/my/migration/#{project.id}/monitor"
+                                           class="btn btn-info">
+                                            <i class="fa fa-eye me-1"/> Ver Monitor
+                                        </a>
+                                    </t>
+                                    <t t-if="project.state in ('draft', 'error', 'cancelled')">
+                                        <form t-attf-action="/my/migration/#{project.id}/delete"
+                                              method="post"
+                                              onsubmit="return confirm('¿Eliminar este proyecto?')">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-outline-danger w-100">
+                                                <i class="fa fa-trash me-1"/> Eliminar Proyecto
+                                            </button>
+                                        </form>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

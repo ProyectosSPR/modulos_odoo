@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Monitor en tiempo real -->
+    <template id="portal_monitor" name="Migration Monitor">
+        <t t-call="portal.portal_layout">
+            <div class="container-fluid py-4">
+                <t t-call="kafka_migration_hub.portal_migration_breadcrumb">
+                    <t t-set="current_page">Monitor</t>
+                </t>
+
+                <!-- Header con estado -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h4 class="mb-1">
+                                    <t t-if="project.state == 'running'">
+                                        <span class="badge bg-success me-2">
+                                            <i class="fa fa-circle-notch fa-spin"/> EN VIVO
+                                        </span>
+                                    </t>
+                                    <t t-esc="project.name"/>
+                                </h4>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h2 class="mb-0" id="progress_value">
+                                        <t t-esc="'%.1f' % project.progress_percentage"/>%
+                                    </h2>
+                                    <t t-call="kafka_migration_hub.portal_progress_bar">
+                                        <t t-set="progress" t-value="project.progress_percentage"/>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <t t-if="project.state == 'running'">
+                                    <form t-attf-action="/my/migration/#{project.id}/pause"
+                                          method="post" class="d-inline">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fa fa-pause"/> Pausar
+                                        </button>
+                                    </form>
+                                    <form t-attf-action="/my/migration/#{project.id}/cancel"
+                                          method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Cancelar la migración?')">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fa fa-stop"/> Detener
+                                        </button>
+                                    </form>
+                                </t>
+                                <t t-elif="project.state == 'paused'">
+                                    <form t-attf-action="/my/migration/#{project.id}/resume"
+                                          method="post" class="d-inline">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fa fa-play"/> Reanudar
+                                        </button>
+                                    </form>
+                                </t>
+                                <t t-elif="project.state == 'completed'">
+                                    <span class="badge bg-success fs-5">
+                                        <i class="fa fa-check-circle"/> Completado
+                                    </span>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas en tiempo real -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h3 class="text-primary mb-0" id="stat_migrated">
+                                    <t t-esc="'{:,}'.format(project.total_migrated_records)"/>
+                                </h3>
+                                <small class="text-muted">Registros Migrados</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h3 class="mb-0" id="stat_total">
+                                    <t t-esc="'{:,}'.format(project.total_source_records)"/>
+                                </h3>
+                                <small class="text-muted">Total Registros</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h3 class="text-danger mb-0" id="stat_errors">
+                                    <t t-esc="'{:,}'.format(project.total_error_records)"/>
+                                </h3>
+                                <small class="text-muted">Errores</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h3 class="text-info mb-0" id="stat_speed">
+                                    --
+                                </h3>
+                                <small class="text-muted">Reg/min</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Progreso por tópico -->
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-header bg-white">
+                                <h6 class="mb-0">Progreso por Tópico</h6>
+                            </div>
+                            <div class="card-body">
+                                <t t-foreach="topic_stats" t-as="topic">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span>
+                                                <t t-esc="topic.get('icon')"/>
+                                                <strong><t t-esc="topic.get('name')"/></strong>
+                                            </span>
+                                            <span class="text-muted">
+                                                <t t-esc="'{:,}'.format(topic.get('migrated_records', 0))"/> /
+                                                <t t-esc="'{:,}'.format(topic.get('total_records', 0))"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 25px;">
+                                            <t t-set="topic_progress"
+                                               t-value="(topic.get('migrated_records', 0) / topic.get('total_records', 1)) * 100 if topic.get('total_records', 0) > 0 else 0"/>
+                                            <div class="progress-bar bg-success"
+                                                 t-attf-style="width: #{topic_progress}%">
+                                                <t t-esc="'%.1f' % topic_progress"/>%
+                                            </div>
+                                            <t t-if="topic.get('error_records', 0) > 0">
+                                                <t t-set="error_pct"
+                                                   t-value="(topic.get('error_records', 0) / topic.get('total_records', 1)) * 100"/>
+                                                <div class="progress-bar bg-danger"
+                                                     t-attf-style="width: #{error_pct}%">
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <!-- Tablas del tópico -->
+                                        <div class="mt-2">
+                                            <t t-foreach="topic.get('tables', [])" t-as="table">
+                                                <span class="badge bg-light text-dark me-1">
+                                                    <t t-esc="table.get('name')"/>
+                                                    <small>(<t t-esc="'%.0f' % table.get('progress', 0)"/>%)</small>
+                                                </span>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel lateral -->
+                    <div class="col-md-4">
+                        <!-- Log en tiempo real -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-white d-flex justify-content-between">
+                                <h6 class="mb-0">Log en Tiempo Real</h6>
+                                <a t-attf-href="/my/migration/api/monitor/#{project.id}/export-log"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa fa-download"/>
+                                </a>
+                            </div>
+                            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;" id="log_container">
+                                <ul class="list-group list-group-flush" id="log_list">
+                                    <t t-foreach="recent_logs" t-as="log">
+                                        <li class="list-group-item py-1 small">
+                                            <span t-attf-class="badge bg-#{
+                                                'success' if log.level == 'info' else
+                                                'warning' if log.level == 'warning' else
+                                                'danger' if log.level == 'error' else
+                                                'secondary'
+                                            } me-1">
+                                                <t t-esc="log.level[:1].upper()"/>
+                                            </span>
+                                            <span class="text-muted">
+                                                <t t-esc="log.timestamp" t-options="{'widget': 'datetime', 'format': 'HH:mm:ss'}"/>
+                                            </span>
+                                            <br/>
+                                            <t t-esc="log.message[:80]"/>
+                                            <t t-if="len(log.message) > 80">...</t>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Errores pendientes -->
+                        <div class="card">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-exclamation-triangle text-danger"/>
+                                    Errores Pendientes
+                                </h6>
+                                <span class="badge bg-danger" id="error_count">
+                                    <t t-esc="len(pending_errors)"/>
+                                </span>
+                            </div>
+                            <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                                <t t-if="pending_errors">
+                                    <ul class="list-group list-group-flush" id="error_list">
+                                        <t t-foreach="pending_errors" t-as="error">
+                                            <li class="list-group-item py-2">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong class="small">
+                                                        <t t-esc="error.source_table"/>
+                                                    </strong>
+                                                    <div>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-primary"
+                                                                t-attf-onclick="retryError(#{error.id})">
+                                                            <i class="fa fa-refresh"/>
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-secondary"
+                                                                t-attf-onclick="ignoreError(#{error.id})">
+                                                            <i class="fa fa-times"/>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <small class="text-danger">
+                                                    <t t-esc="error.error_message[:100]"/>...
+                                                </small>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center py-3">
+                                        <i class="fa fa-check-circle text-success fa-2x"/>
+                                        <p class="text-muted mb-0 mt-2">Sin errores</p>
+                                    </div>
+                                </t>
+                            </div>
+                            <t t-if="pending_errors">
+                                <div class="card-footer">
+                                    <button type="button" class="btn btn-sm btn-warning w-100"
+                                            onclick="retryAllErrors()">
+                                        <i class="fa fa-refresh me-1"/> Reintentar Todos
+                                    </button>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script para actualización en tiempo real -->
+            <script>
+                var projectId = <t t-esc="project.id"/>;
+                var isRunning = '<t t-esc="project.state"/>' === 'running';
+
+                function updateLiveStatus() {
+                    if (!isRunning) return;
+
+                    fetch('/my/migration/api/monitor/' + projectId + '/live', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: {}, id: 1})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result) {
+                            var stats = data.result.stats;
+                            document.getElementById('stat_migrated').textContent =
+                                stats.migrated_records.toLocaleString();
+                            document.getElementById('stat_errors').textContent =
+                                stats.error_count.toLocaleString();
+                            document.getElementById('progress_value').textContent =
+                                stats.progress.toFixed(1) + '%';
+
+                            // Actualizar barra de progreso
+                            var progressBar = document.querySelector('.progress-bar');
+                            if (progressBar) {
+                                progressBar.style.width = stats.progress + '%';
+                            }
+
+                            // Verificar si terminó
+                            if (stats.state !== 'running') {
+                                isRunning = false;
+                                location.reload();
+                            }
+                        }
+                    })
+                    .catch(console.error);
+                }
+
+                function retryError(errorId) {
+                    fetch('/my/migration/api/monitor/' + projectId + '/error/' + errorId + '/retry', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: {}, id: 1})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result &amp;&amp; data.result.success) {
+                            location.reload();
+                        }
+                    });
+                }
+
+                function ignoreError(errorId) {
+                    fetch('/my/migration/api/monitor/' + projectId + '/error/' + errorId + '/ignore', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: {}, id: 1})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result &amp;&amp; data.result.success) {
+                            location.reload();
+                        }
+                    });
+                }
+
+                function retryAllErrors() {
+                    fetch('/my/migration/api/monitor/' + projectId + '/retry-all-errors', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: {}, id: 1})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        location.reload();
+                    });
+                }
+
+                // Actualizar cada 3 segundos si está en ejecución
+                if (isRunning) {
+                    setInterval(updateLiveStatus, 3000);
+                }
+            </script>
+        </t>
+    </template>
+</odoo>

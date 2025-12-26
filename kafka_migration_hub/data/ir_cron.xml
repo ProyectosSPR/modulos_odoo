@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Cron para limpieza de logs antiguos -->
+        <record id="cron_cleanup_old_logs" model="ir.cron">
+            <field name="name">Migration Hub: Limpieza de Logs Antiguos</field>
+            <field name="model_id" ref="model_migration_log"/>
+            <field name="state">code</field>
+            <field name="code">model.cleanup_old_logs(days=30)</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

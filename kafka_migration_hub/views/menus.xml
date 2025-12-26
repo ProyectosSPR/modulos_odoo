@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Acción para ver todos los errores (definir antes del menú) -->
+    <record id="migration_error_action_all" model="ir.actions.act_window">
+        <field name="name">Todos los Errores</field>
+        <field name="res_model">migration.error</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+    </record>
+
+    <!-- Menú principal de Migration Hub -->
+    <menuitem id="menu_migration_hub_root"
+              name="Migration Hub"
+              web_icon="kafka_migration_hub,static/description/icon.png"
+              sequence="100"/>
+
+    <!-- Menú de Proyectos -->
+    <menuitem id="menu_migration_projects"
+              name="Proyectos"
+              parent="menu_migration_hub_root"
+              action="migration_project_action"
+              sequence="10"/>
+
+    <!-- Menú de Conexiones -->
+    <menuitem id="menu_migration_connections"
+              name="Conexiones"
+              parent="menu_migration_hub_root"
+              action="source_connection_action"
+              sequence="20"/>
+
+    <!-- Menú de Errores (para managers) -->
+    <menuitem id="menu_migration_all_errors"
+              name="Todos los Errores"
+              parent="menu_migration_hub_root"
+              action="migration_error_action_all"
+              sequence="80"
+              groups="group_migration_manager"/>
+
+    <!-- Menú de Configuración -->
+    <menuitem id="menu_migration_config"
+              name="Configuración"
+              parent="menu_migration_hub_root"
+              sequence="90"
+              groups="group_migration_manager"/>
+
+    <menuitem id="menu_migration_topics"
+              name="Tópicos"
+              parent="menu_migration_config"
+              action="migration_topic_action"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_settings"
+              name="Ajustes (Kafka, IA)"
+              parent="menu_migration_config"
+              action="action_migration_config_settings"
+              sequence="20"/>
+</odoo>

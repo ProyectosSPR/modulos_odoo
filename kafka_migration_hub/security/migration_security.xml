@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Categoría de la aplicación -->
+    <record id="module_category_migration" model="ir.module.category">
+        <field name="name">Migration Hub</field>
+        <field name="description">Módulo de migración de datos</field>
+        <field name="sequence">100</field>
+    </record>
+
+    <!-- Grupo: Usuario de Migración -->
+    <record id="group_migration_user" model="res.groups">
+        <field name="name">Usuario de Migración</field>
+        <field name="category_id" ref="module_category_migration"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Puede crear y gestionar sus propios proyectos de migración</field>
+    </record>
+
+    <!-- Grupo: Administrador de Migración -->
+    <record id="group_migration_manager" model="res.groups">
+        <field name="name">Administrador de Migración</field>
+        <field name="category_id" ref="module_category_migration"/>
+        <field name="implied_ids" eval="[(4, ref('group_migration_user'))]"/>
+        <field name="comment">Puede gestionar todos los proyectos y configurar tópicos del sistema</field>
+    </record>
+
+    <!-- Reglas de registro para migration.project -->
+    <record id="rule_migration_project_user" model="ir.rule">
+        <field name="name">Migration Project: Usuario solo ve sus proyectos</field>
+        <field name="model_id" ref="model_migration_project"/>
+        <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_migration_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_migration_project_manager" model="ir.rule">
+        <field name="name">Migration Project: Manager ve todos</field>
+        <field name="model_id" ref="model_migration_project"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_migration_manager'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Reglas para migration.source.connection -->
+    <record id="rule_source_connection_user" model="ir.rule">
+        <field name="name">Source Connection: Usuario solo ve sus conexiones</field>
+        <field name="model_id" ref="model_migration_source_connection"/>
+        <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_migration_user'))]"/>
+    </record>
+
+    <record id="rule_source_connection_manager" model="ir.rule">
+        <field name="name">Source Connection: Manager ve todas</field>
+        <field name="model_id" ref="model_migration_source_connection"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_migration_manager'))]"/>
+    </record>
+
+    <!-- Reglas para migration.topic -->
+    <record id="rule_topic_user" model="ir.rule">
+        <field name="name">Topic: Usuario ve tópicos globales y de su compañía</field>
+        <field name="model_id" ref="model_migration_topic"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_migration_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Portal: Acceso a usuarios de portal -->
+    <record id="rule_migration_project_portal" model="ir.rule">
+        <field name="name">Migration Project: Portal solo ve sus proyectos</field>
+        <field name="model_id" ref="model_migration_project"/>
+        <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+</odoo>

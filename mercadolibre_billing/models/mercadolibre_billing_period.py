@@ -62,6 +62,11 @@ class MercadoliBillingPeriod(models.Model):
         'period_id',
         string='Detalles de Facturación'
     )
+    invoice_group_ids = fields.One2many(
+        'mercadolibre.billing.invoice',
+        'period_id',
+        string='Facturas ML'
+    )
     purchase_order_ids = fields.One2many(
         'purchase.order',
         'ml_billing_period_id',
@@ -154,12 +159,24 @@ class MercadoliBillingPeriod(models.Model):
             else:
                 record.name = 'Nuevo Periodo'
 
-    @api.depends('detail_ids', 'detail_ids.state', 'purchase_order_ids')
+    @api.depends('detail_ids', 'detail_ids.state', 'purchase_order_ids', 'invoice_group_ids', 'invoice_group_ids.detail_ids')
     def _compute_counts(self):
         for record in self:
             record.synced_count = len(record.detail_ids)
-            record.bill_count = len(record.detail_ids.filtered(lambda d: not d.is_credit_note))
-            record.credit_note_count = len(record.detail_ids.filtered(lambda d: d.is_credit_note))
+            # Contar facturas únicas (invoice_groups) en lugar de detalles
+            # Una factura es nota de crédito si TODOS sus detalles son notas de crédito
+            bills = 0
+            credit_notes = 0
+            for inv_group in record.invoice_group_ids:
+                if inv_group.detail_ids:
+                    # Es nota de crédito si todos los detalles son notas de crédito
+                    all_credit_notes = all(d.is_credit_note for d in inv_group.detail_ids)
+                    if all_credit_notes:
+                        credit_notes += 1
+                    else:
+                        bills += 1
+            record.bill_count = bills
+            record.credit_note_count = credit_notes
             record.purchase_order_count = len(record.purchase_order_ids)
 
     @api.depends('detail_ids', 'detail_ids.detail_amount', 'detail_ids.is_credit_note')
@@ -172,9 +189,103 @@ class MercadoliBillingPeriod(models.Model):
             record.total_credit_notes = sum(credit_notes.mapped('detail_amount'))
             record.net_amount = record.total_charges - record.total_credit_notes
 
+    def _sync_document_type(self, token, document_type, log_lines):
+        """
+        Sincroniza un tipo específico de documento (BILL o CREDIT_NOTE)
+
+        Args:
+            token: Token de acceso válido
+            document_type: 'BILL' o 'CREDIT_NOTE'
+            log_lines: Lista para agregar logs
+
+        Returns:
+            int: Cantidad de detalles sincronizados
+        """
+        limit = 50
+        offset = 0
+        batch_number = 0
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+        base_delay = 1.0
+        total_synced = 0
+
+        doc_type_name = 'Facturas' if document_type == 'BILL' else 'Notas de Crédito'
+        log_lines.append(f'[INFO] Sincronizando {doc_type_name}...')
+
+        while True:
+            try:
+                batch_number += 1
+
+                if batch_number > 1:
+                    time.sleep(base_delay)
+
+                results, display, total = self._sync_billing_details_batch(
+                    token, offset, limit, document_type=document_type
+                )
+
+                consecutive_errors = 0
+                synced_in_batch = len(results)
+                total_synced += synced_in_batch
+
+                log_lines.append(
+                    f'[INFO] {doc_type_name} Lote {batch_number}: offset={offset}, '
+                    f'{synced_in_batch} detalles (total API: {total}, display: {display})'
+                )
+
+                self.env.cr.commit()
+
+                is_last_page = (
+                    display == 'complete' or
+                    not results or
+                    synced_in_batch < limit or
+                    (offset + limit) >= total
+                )
+
+                if is_last_page:
+                    log_lines.append(f'[INFO] {doc_type_name} completado: {total_synced} detalles')
+                    break
+
+                offset += limit
+
+            except requests.exceptions.HTTPError as e:
+                self.env.cr.rollback()
+                consecutive_errors += 1
+
+                if e.response is not None and e.response.status_code == 429:
+                    wait_time = min(2 ** consecutive_errors, 60)
+                    log_lines.append(
+                        f'[WARNING] Rate limit {doc_type_name} (lote {batch_number}). '
+                        f'Esperando {wait_time}s... ({consecutive_errors}/{max_consecutive_errors})'
+                    )
+                    time.sleep(wait_time)
+
+                    if consecutive_errors >= max_consecutive_errors:
+                        log_lines.append(f'[ERROR] Máximo reintentos {doc_type_name}. Parcial: {total_synced}')
+                        break
+                    continue
+                else:
+                    log_lines.append(f'[ERROR] Error HTTP {doc_type_name} lote {batch_number}: {str(e)}')
+                    if consecutive_errors >= max_consecutive_errors:
+                        break
+                    time.sleep(2)
+                    continue
+
+            except Exception as e:
+                self.env.cr.rollback()
+                consecutive_errors += 1
+                log_lines.append(f'[ERROR] Error {doc_type_name} lote {batch_number}: {str(e)}')
+
+                if consecutive_errors >= max_consecutive_errors:
+                    break
+                time.sleep(2)
+                continue
+
+        return total_synced
+
     def action_sync_details(self):
         """
         Sincroniza los detalles de facturación desde la API de MercadoLibre/MercadoPago
+        Soporta sincronización de facturas, notas de crédito o ambos según configuración
         """
         self.ensure_one()
 
@@ -196,111 +307,43 @@ class MercadoliBillingPeriod(models.Model):
             # Obtener token válido
             token = self.account_id.get_valid_token()
 
-            limit = 50
-            last_id = None  # Para paginación basada en cursor
-            batch_number = 0
-            consecutive_errors = 0
-            max_consecutive_errors = 5  # Máximo de errores consecutivos antes de abortar
-            base_delay = 0.5  # Delay base entre requests (segundos)
-
             log_lines.append(f'[INFO] Iniciando sincronización para periodo {self.period_key}')
             log_lines.append(f'[INFO] Grupo: {self.billing_group}')
 
-            while True:
-                try:
-                    batch_number += 1
+            # Obtener configuración de document_types del contexto
+            # Por defecto sincroniza solo facturas (BILL) para compatibilidad
+            sync_document_types = self.env.context.get('sync_document_types', 'bill')
 
-                    # Delay entre requests para evitar rate limiting
-                    if batch_number > 1:
-                        time.sleep(base_delay)
+            # Determinar qué tipos de documento sincronizar
+            doc_types_to_sync = []
+            if sync_document_types == 'bill':
+                doc_types_to_sync = ['BILL']
+            elif sync_document_types == 'credit_note':
+                doc_types_to_sync = ['CREDIT_NOTE']
+            elif sync_document_types == 'both':
+                doc_types_to_sync = ['BILL', 'CREDIT_NOTE']
+            else:
+                doc_types_to_sync = ['BILL']  # Default
 
-                    results, new_last_id, total = self._sync_billing_details_batch(
-                        token, limit, last_id
-                    )
+            log_lines.append(f'[INFO] Tipos de documento a sincronizar: {doc_types_to_sync}')
 
-                    # Reset contador de errores consecutivos en éxito
-                    consecutive_errors = 0
+            # Sincronizar cada tipo de documento
+            for doc_type in doc_types_to_sync:
+                synced = self._sync_document_type(token, doc_type, log_lines)
+                total_synced += synced
 
-                    synced_in_batch = len(results)
-                    total_synced += synced_in_batch
-
-                    log_lines.append(
-                        f'[INFO] Lote {batch_number}: {synced_in_batch} detalles procesados (total API: {total}, last_id: {new_last_id})'
-                    )
-
-                    # Commit después de cada lote exitoso
-                    self.env.cr.commit()
-
-                    # Condiciones para terminar la paginación:
-                    # 1. No hay resultados
-                    # 2. Menos resultados que el límite (última página)
-                    # 3. No hay new_last_id (no más páginas)
-                    if not results or synced_in_batch < limit or not new_last_id:
-                        log_lines.append(f'[INFO] Paginación completada - Total sincronizado: {total_synced}')
-                        break
-
-                    # Actualizar last_id para siguiente página
-                    last_id = new_last_id
-
-                except requests.exceptions.HTTPError as e:
-                    # Rollback en caso de error
-                    self.env.cr.rollback()
-                    consecutive_errors += 1
-
-                    # Manejar rate limiting (429 Too Many Requests)
-                    if e.response is not None and e.response.status_code == 429:
-                        # Backoff exponencial: 2, 4, 8, 16, 32 segundos
-                        wait_time = min(2 ** consecutive_errors, 60)
-                        log_lines.append(
-                            f'[WARNING] Rate limit alcanzado (lote {batch_number}). '
-                            f'Esperando {wait_time}s... (intento {consecutive_errors}/{max_consecutive_errors})'
-                        )
-                        _logger.warning(
-                            f'Rate limit 429 en periodo {self.id}, esperando {wait_time}s'
-                        )
-                        time.sleep(wait_time)
-
-                        if consecutive_errors >= max_consecutive_errors:
-                            log_lines.append(
-                                f'[ERROR] Máximo de reintentos alcanzado. Sincronización parcial: {total_synced} detalles'
-                            )
-                            break
-                        continue
-                    else:
-                        # Otro error HTTP
-                        log_lines.append(f'[ERROR] Error HTTP en lote {batch_number}: {str(e)}')
-                        _logger.error(f'Error HTTP sincronizando periodo {self.id} lote {batch_number}: {e}')
-
-                        if consecutive_errors >= max_consecutive_errors:
-                            break
-                        if last_id:
-                            time.sleep(2)  # Esperar antes de reintentar
-                            continue
-                        else:
-                            break
-
-                except Exception as e:
-                    # Rollback en caso de error
-                    self.env.cr.rollback()
-                    consecutive_errors += 1
-
-                    log_lines.append(f'[ERROR] Error en lote {batch_number}: {str(e)}')
-                    _logger.error(f'Error sincronizando periodo {self.id} lote {batch_number}: {e}')
-
-                    if consecutive_errors >= max_consecutive_errors:
-                        log_lines.append(f'[ERROR] Máximo de errores alcanzado. Abortando.')
-                        break
-
-                    # Si hay error, intentar continuar si tenemos last_id
-                    if last_id:
-                        time.sleep(2)  # Esperar antes de reintentar
-                        continue
-                    else:
-                        break
+                # Pausa entre tipos de documento para evitar rate limit
+                if len(doc_types_to_sync) > 1 and doc_type != doc_types_to_sync[-1]:
+                    log_lines.append('[INFO] Pausa de 5s antes de siguiente tipo...')
+                    time.sleep(5)
 
             log_lines.append(f'[SUCCESS] Sincronización de detalles completada: {total_synced} detalles')
 
             # Sincronizar file_ids de documentos PDF
+            # Esperar antes de llamar para evitar rate limit
+            log_lines.append(f'[INFO] Esperando 10s antes de sincronizar PDFs...')
+            time.sleep(10)
+
             try:
                 log_lines.append(f'[INFO] Sincronizando file_ids de PDFs...')
                 pdf_count = self._sync_document_files(token)
@@ -362,17 +405,19 @@ class MercadoliBillingPeriod(models.Model):
                 'Error al sincronizar el periodo:\n%s'
             ) % error_msg)
 
-    def _sync_billing_details_batch(self, token, limit, last_id=None):
+    def _sync_billing_details_batch(self, token, offset, limit, document_type='BILL'):
         """
-        Sincroniza un lote de detalles de facturación usando paginación basada en cursor (last_id)
+        Sincroniza un lote de detalles de facturación usando paginación con offset
 
         Args:
             token: Token de acceso válido
+            offset: Posición desde donde empezar
             limit: Cantidad de registros por lote
-            last_id: ID del último registro del lote anterior (para paginación)
+            document_type: Tipo de documento ('BILL' o 'CREDIT_NOTE')
 
         Returns:
-            tuple: (results, last_id, total)
+            tuple: (results, display, total)
+            - display: 'complete' cuando es la última página
         """
         self.ensure_one()
 
@@ -381,13 +426,10 @@ class MercadoliBillingPeriod(models.Model):
         url = f'https://api.mercadolibre.com/billing/integration/periods/key/{period_key_str}/group/{self.billing_group}/details'
 
         params = {
-            'document_type': 'BILL',
+            'document_type': document_type,
             'limit': limit,
+            'offset': offset,
         }
-
-        # Usar last_id para paginación basada en cursor
-        if last_id:
-            params['last_id'] = last_id
 
         headers = {
             'Authorization': f'Bearer {token}'
@@ -420,24 +462,12 @@ class MercadoliBillingPeriod(models.Model):
 
             results = data.get('results', [])
             total = data.get('total', 0)
+            display = data.get('display')  # None si no viene, 'complete' en última página
 
-            # Intentar obtener last_id del último elemento en results
-            # ya que el last_id top-level puede ser estático
-            new_last_id = None
-            if results:
-                last_result = results[-1]
-                # El detail_id del último resultado es el cursor para la siguiente página
-                charge_info = last_result.get('charge_info', {})
-                new_last_id = charge_info.get('detail_id')
-
-                # Log para debug: mostrar rango de IDs en este lote
-                first_id = results[0].get('charge_info', {}).get('detail_id')
-                _logger.info(
-                    f'Lote recibido: {len(results)} resultados, total={total}, '
-                    f'IDs: {first_id} -> {new_last_id}'
-                )
-            else:
-                _logger.info(f'Lote recibido: 0 resultados, total={total}')
+            _logger.info(
+                f'Lote recibido: offset={offset}, {len(results)} resultados, '
+                f'total={total}, display={display}'
+            )
 
             # Procesar cada detalle
             Detail = self.env['mercadolibre.billing.detail']
@@ -449,7 +479,7 @@ class MercadoliBillingPeriod(models.Model):
                     _logger.warning(f'Error procesando detalle: {e}')
                     continue
 
-            return results, new_last_id, total
+            return results, display, total
 
         except requests.exceptions.RequestException as e:
             duration = (datetime.now() - start_time).total_seconds()
@@ -497,14 +527,26 @@ class MercadoliBillingPeriod(models.Model):
         group_name = 'MercadoLibre' if self.billing_group == 'ML' else 'MercadoPago'
         _logger.info(f'Sincronizando documentos PDF de {group_name} desde: {url}?group={self.billing_group}')
 
-        response = requests.get(url, headers=headers, params=params, timeout=60)
+        # Retry con backoff para manejar rate limiting
+        max_retries = 3
+        for attempt in range(max_retries):
+            response = requests.get(url, headers=headers, params=params, timeout=60)
 
-        if response.status_code != 200:
-            _logger.error(f'Error obteniendo documentos: {response.status_code} - {response.text[:500]}')
-            raise UserError(_(
-                'Error al obtener documentos de MercadoLibre.\n'
-                'Status: %s'
-            ) % response.status_code)
+            if response.status_code == 200:
+                break
+            elif response.status_code == 429:
+                wait_time = 2 ** (attempt + 1)  # 2, 4, 8 segundos
+                _logger.warning(f'Rate limit 429 en documents, esperando {wait_time}s (intento {attempt + 1}/{max_retries})')
+                time.sleep(wait_time)
+            else:
+                _logger.error(f'Error obteniendo documentos: {response.status_code} - {response.text[:500]}')
+                raise UserError(_(
+                    'Error al obtener documentos de MercadoLibre.\n'
+                    'Status: %s'
+                ) % response.status_code)
+        else:
+            # Si agotamos los reintentos
+            raise UserError(_('Error al obtener documentos: Rate limit persistente (429)'))
 
         data = response.json()
         results = data.get('results', [])
@@ -556,6 +598,64 @@ class MercadoliBillingPeriod(models.Model):
                 continue
 
         return updated_count
+
+    def action_download_pending_pdfs(self):
+        """
+        Descarga y adjunta PDFs pendientes para todas las facturas del periodo
+        que tienen ml_pdf_file_id pero no tienen el PDF adjunto
+        """
+        self.ensure_one()
+
+        Invoice = self.env['mercadolibre.billing.invoice']
+        Attachment = self.env['ir.attachment']
+
+        # Buscar facturas con file_id que tengan vendor_bill_id
+        invoices_to_process = Invoice.search([
+            ('period_id', '=', self.id),
+            ('ml_pdf_file_id', '!=', False),
+            ('vendor_bill_id', '!=', False),
+        ])
+
+        downloaded = 0
+        errors = []
+
+        for inv in invoices_to_process:
+            # Verificar si ya tiene el PDF adjunto
+            existing_attachment = Attachment.search([
+                ('res_model', '=', 'account.move'),
+                ('res_id', '=', inv.vendor_bill_id.id),
+                ('name', 'ilike', f'%{inv.legal_document_number}%')
+            ], limit=1)
+
+            if existing_attachment:
+                continue  # Ya tiene el PDF
+
+            try:
+                # Esperar para evitar rate limit
+                time.sleep(0.5)
+                inv._download_and_attach_pdf(inv.vendor_bill_id)
+                downloaded += 1
+                _logger.info(f'PDF descargado para {inv.legal_document_number}')
+            except Exception as e:
+                errors.append(f'{inv.legal_document_number}: {str(e)}')
+                _logger.warning(f'Error descargando PDF para {inv.legal_document_number}: {e}')
+
+        message = f'{downloaded} PDFs descargados.'
+        if errors:
+            message += f'\n\n{len(errors)} errores:\n' + '\n'.join(errors[:5])
+
+        self.message_post(body=message)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Descarga de PDFs'),
+                'message': message,
+                'type': 'warning' if errors else 'success',
+                'sticky': bool(errors),
+            }
+        }
 
     def action_create_purchase_orders(self):
         """

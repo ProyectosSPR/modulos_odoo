@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista de Configuración de Migration Hub -->
+    <record id="res_config_settings_view_form_migration" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.migration</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority">50</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Migration Hub" string="Migration Hub" data-key="kafka_migration_hub">
+                    <h2>Migration Hub</h2>
+
+                    <!-- Sección: Inteligencia Artificial -->
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Proveedor de IA</span>
+                                <div class="text-muted">
+                                    Motor de IA para sugerencias automáticas de mapeo
+                                </div>
+                                <div class="content-group mt16">
+                                    <field name="migration_ai_provider" widget="radio"/>
+                                </div>
+
+                                <!-- Claude Configuration -->
+                                <div class="content-group mt16" attrs="{'invisible': [('migration_ai_provider', '!=', 'claude')]}">
+                                    <div class="row">
+                                        <label for="migration_claude_api_key" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_claude_api_key" password="True" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row mt8">
+                                        <label for="migration_claude_model" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_claude_model" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row mt16">
+                                        <div class="col-lg-3"/>
+                                        <div class="col-lg-8">
+                                            <button name="action_test_claude_connection"
+                                                    type="object"
+                                                    string="Probar Conexión Claude"
+                                                    class="btn-secondary"
+                                                    icon="fa-plug"/>
+                                        </div>
+                                    </div>
+                                    <div class="mt8 text-muted">
+                                        <i class="fa fa-info-circle"/> Obtén tu API Key en:
+                                        <a href="https://console.anthropic.com/settings/keys" target="_blank">
+                                            console.anthropic.com/settings/keys
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- OpenAI Configuration -->
+                                <div class="content-group mt16" attrs="{'invisible': [('migration_ai_provider', '!=', 'openai')]}">
+                                    <div class="row">
+                                        <label for="migration_openai_api_key" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_openai_api_key" password="True" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row mt8">
+                                        <label for="migration_openai_model" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_openai_model" class="col-lg-8"/>
+                                    </div>
+                                    <div class="mt8 text-muted">
+                                        <i class="fa fa-info-circle"/> Obtén tu API Key en:
+                                        <a href="https://platform.openai.com/api-keys" target="_blank">
+                                            platform.openai.com/api-keys
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- Heuristic Info -->
+                                <div class="content-group mt16" attrs="{'invisible': [('migration_ai_provider', '!=', 'heuristic')]}">
+                                    <div class="alert alert-info" role="alert">
+                                        <i class="fa fa-lightbulb-o"/> Las heurísticas usan reglas predefinidas para
+                                        sugerir mapeos basándose en nombres de tablas y columnas.
+                                        No requiere API externa pero es menos preciso que la IA.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección: Apache Kafka -->
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Apache Kafka</span>
+                                <div class="text-muted">
+                                    Configuración del servidor Kafka para streaming de datos
+                                </div>
+                                <div class="content-group mt16">
+                                    <div class="row">
+                                        <label for="migration_kafka_servers" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_kafka_servers" class="col-lg-8"
+                                               placeholder="migration-hub-kafka-bootstrap:9092"/>
+                                    </div>
+                                    <div class="row mt8">
+                                        <label for="migration_kafka_security" class="col-lg-3 o_light_label"/>
+                                        <field name="migration_kafka_security" class="col-lg-8"/>
+                                    </div>
+
+                                    <!-- SASL Config -->
+                                    <div attrs="{'invisible': [('migration_kafka_security', 'not in', ['SASL_PLAINTEXT', 'SASL_SSL'])]}">
+                                        <div class="row mt8">
+                                            <label for="migration_kafka_sasl_mechanism" class="col-lg-3 o_light_label"/>
+                                            <field name="migration_kafka_sasl_mechanism" class="col-lg-8"/>
+                                        </div>
+                                        <div class="row mt8">
+                                            <label for="migration_kafka_username" class="col-lg-3 o_light_label"/>
+                                            <field name="migration_kafka_username" class="col-lg-8"/>
+                                        </div>
+                                        <div class="row mt8">
+                                            <label for="migration_kafka_password" class="col-lg-3 o_light_label"/>
+                                            <field name="migration_kafka_password" password="True" class="col-lg-8"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt16">
+                                        <div class="col-lg-3"/>
+                                        <div class="col-lg-8">
+                                            <button name="action_test_kafka_connection"
+                                                    type="object"
+                                                    string="Probar Conexión Kafka"
+                                                    class="btn-secondary"
+                                                    icon="fa-plug"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Configuración de Migración -->
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Parámetros de Migración</span>
+                                <div class="text-muted">
+                                    Configuración de procesamiento de datos
+                                </div>
+                                <div class="content-group mt16">
+                                    <div class="row">
+                                        <label for="migration_batch_size" class="col-lg-4 o_light_label"/>
+                                        <field name="migration_batch_size" class="col-lg-3"/>
+                                        <div class="col-lg-5">
+                                            <span class="text-muted">registros por lote</span>
+                                        </div>
+                                    </div>
+                                    <div class="row mt8">
+                                        <label for="migration_max_retries" class="col-lg-4 o_light_label"/>
+                                        <field name="migration_max_retries" class="col-lg-3"/>
+                                        <div class="col-lg-5">
+                                            <span class="text-muted">reintentos</span>
+                                        </div>
+                                    </div>
+                                    <div class="row mt8">
+                                        <label for="migration_retry_delay" class="col-lg-4 o_light_label"/>
+                                        <field name="migration_retry_delay" class="col-lg-3"/>
+                                        <div class="col-lg-5">
+                                            <span class="text-muted">segundos</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Acción para abrir configuración de Migration Hub -->
+    <record id="action_migration_config_settings" model="ir.actions.act_window">
+        <field name="name">Configuración de Migration Hub</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'kafka_migration_hub', 'bin_size': False}</field>
+    </record>
+</odoo>
