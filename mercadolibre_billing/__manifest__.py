@@ -48,6 +48,7 @@ Dependencias:
         # Wizard (debe ir antes de los menús)
         'wizard/mercadolibre_billing_sync_views.xml',
         'wizard/mercadolibre_billing_sync_charge_types_views.xml',
+        'wizard/mercadolibre_billing_create_invoice_wizard_views.xml',
 
         # Views
         'views/mercadolibre_billing_period_views.xml',

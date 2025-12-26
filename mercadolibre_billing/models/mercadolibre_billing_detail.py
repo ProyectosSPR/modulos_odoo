@@ -282,6 +282,14 @@ class MercadoliBillingDetail(models.Model):
         compute='_compute_is_credit_note',
         store=True
     )
+    charge_category = fields.Selection([
+        ('sale', 'Cargo de Venta'),
+        ('service', 'Servicio/Otros'),
+    ], string='Categoría de Cargo',
+       compute='_compute_charge_category',
+       store=True,
+       help='Cargo de Venta: tiene Order ID o Reference ID. Servicio: no tiene relación con una venta específica.'
+    )
     error_message = fields.Text(
         string='Mensaje de Error'
     )
@@ -342,6 +350,19 @@ class MercadoliBillingDetail(models.Model):
             else:
                 record.detail_type = 'other'
 
+    @api.depends('ml_order_id', 'reference_id')
+    def _compute_charge_category(self):
+        """
+        Determina si el cargo está relacionado con una venta o es un servicio.
+        - sale: tiene order_id (ML) o reference_id (MP) - cargo relacionado a una venta
+        - service: no tiene identificador de venta - servicios como suscripciones, publicidad, etc.
+        """
+        for record in self:
+            if record.ml_order_id or record.reference_id:
+                record.charge_category = 'sale'
+            else:
+                record.charge_category = 'service'
+
     @api.model
     def create_from_api_data(self, data, period):
         """
@@ -401,11 +422,17 @@ class MercadoliBillingDetail(models.Model):
             # Extraer file_id del PDF si existe
             ml_pdf_file_id = None
             legal_document_files = document_info.get('legal_document_files', [])
+            _logger.info(f'Buscando PDF file_id para {legal_document_number}: legal_document_files={legal_document_files}')
+
             if legal_document_files and isinstance(legal_document_files, list):
                 for doc_file in legal_document_files:
                     if isinstance(doc_file, dict) and doc_file.get('file_id'):
                         ml_pdf_file_id = str(doc_file.get('file_id'))
+                        _logger.info(f'PDF file_id encontrado: {ml_pdf_file_id}')
                         break
+
+            if not ml_pdf_file_id:
+                _logger.warning(f'No se encontró PDF file_id para {legal_document_number}')
 
             invoice_group = Invoice.create({
                 'period_id': period.id,
@@ -565,8 +592,16 @@ class MercadoliBillingDetail(models.Model):
                 'account_id': self.account_id.id,
             })
 
-        # Obtener/crear proveedor MercadoLibre
-        vendor = self._get_or_create_ml_vendor()
+        # Obtener proveedor: 1) del contexto, 2) de la config, 3) crear automáticamente
+        vendor = None
+        force_vendor_id = self.env.context.get('force_vendor_id')
+        if force_vendor_id:
+            vendor = self.env['res.partner'].browse(force_vendor_id)
+        elif config.vendor_id:
+            vendor = config.vendor_id
+
+        if not vendor:
+            vendor = self._get_or_create_ml_vendor()
 
         # Obtener producto según mapeo de tipo de cargo
         ProductMapping = self.env['mercadolibre.billing.product.mapping']

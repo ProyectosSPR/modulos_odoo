@@ -151,10 +151,39 @@ class MercadoliBillingInvoice(models.Model):
             'context': {'default_invoice_group_id': self.id}
         }
 
+    def action_download_pdf(self):
+        """
+        Descarga manualmente el PDF de MercadoLibre
+        y lo adjunta a este registro y a la factura de proveedor si existe
+        """
+        self.ensure_one()
+
+        if not self.ml_pdf_file_id:
+            raise UserError(_('No hay File ID de PDF disponible para descargar.'))
+
+        try:
+            # Si ya existe factura de proveedor, adjuntar ahí también
+            invoice = self.vendor_bill_id if self.vendor_bill_id else None
+            attachment = self._download_and_attach_pdf(invoice)
+
+            if attachment:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('PDF Descargado'),
+                        'message': _('El PDF se ha descargado y adjuntado correctamente.'),
+                        'type': 'success',
+                        'sticky': False,
+                    }
+                }
+        except Exception as e:
+            raise UserError(_('Error al descargar PDF: %s') % str(e))
+
     def action_create_grouped_invoice(self):
         """
-        Crea una factura de proveedor agrupando todas las POs
-        de los detalles asociados a este documento legal
+        Abre el wizard para crear la factura de proveedor
+        El wizard permite ver el resumen y advierte si se crearán POs automáticamente
         """
         self.ensure_one()
 
@@ -164,32 +193,35 @@ class MercadoliBillingInvoice(models.Model):
                 'Ya existe una factura de proveedor para este documento legal: %s'
             ) % self.vendor_bill_id.name)
 
-        # Obtener configuración
-        config = self.env['mercadolibre.billing.sync.config'].sudo().search([
-            ('account_id', '=', self.account_id.id)
-        ], limit=1)
+        # Abrir wizard de confirmación
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Crear Factura de Proveedor'),
+            'res_model': 'mercadolibre.billing.create.invoice.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_invoice_group_id': self.id,
+            }
+        }
 
-        # Validar que todos los detalles tengan PO
-        details_without_po = self.detail_ids.filtered(lambda d: not d.purchase_order_id)
-        if details_without_po:
-            raise UserError(_(
-                'No todos los detalles tienen orden de compra creada.\n'
-                'Detalles sin PO: %s\n'
-                'Por favor cree las órdenes de compra primero.'
-            ) % ', '.join(details_without_po.mapped('ml_detail_id')))
+    def _create_invoice_internal(self, config=None):
+        """
+        Método interno para crear la factura (llamado desde el wizard)
+        Asume que las POs ya están creadas y confirmadas
+        """
+        self.ensure_one()
+
+        if not config:
+            config = self.env['mercadolibre.billing.sync.config'].sudo().search([
+                ('account_id', '=', self.account_id.id)
+            ], limit=1)
 
         # Obtener todas las POs
         purchase_orders = self.detail_ids.mapped('purchase_order_id')
 
         if not purchase_orders:
             raise UserError(_('No hay órdenes de compra para procesar.'))
-
-        # Validar que todas las POs estén confirmadas
-        draft_pos = purchase_orders.filtered(lambda po: po.state in ('draft', 'sent', 'to approve'))
-        if draft_pos:
-            raise UserError(_(
-                'Las siguientes órdenes de compra deben estar confirmadas:\n%s'
-            ) % '\n'.join(draft_pos.mapped('name')))
 
         # Verificar si ya existe factura con esta referencia
         if config and config.skip_if_invoice_exists:
@@ -204,12 +236,17 @@ class MercadoliBillingInvoice(models.Model):
                 self.message_post(
                     body=_('Factura existente encontrada: %s') % existing_invoice.name
                 )
-                return existing_invoice
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'account.move',
+                    'view_mode': 'form',
+                    'res_id': existing_invoice.id,
+                }
 
         self.state = 'processing'
 
         try:
-            # Crear factura usando el wizard estándar de Odoo
+            # Crear factura
             invoice = self._create_vendor_bill_from_purchases(purchase_orders, config)
 
             # Actualizar referencia
@@ -226,17 +263,33 @@ class MercadoliBillingInvoice(models.Model):
                 body=_('Factura de proveedor creada: %s') % invoice.name
             )
 
-            # Descargar y adjuntar PDF si está configurado
-            if config and config.attach_ml_pdf and self.ml_pdf_file_id:
+            # Siempre descargar y adjuntar PDF si existe file_id
+            _logger.info(f'Verificando PDF para {self.legal_document_number}: ml_pdf_file_id={self.ml_pdf_file_id}')
+            if self.ml_pdf_file_id:
                 try:
+                    _logger.info(f'Iniciando descarga de PDF para {self.legal_document_number}')
                     self._download_and_attach_pdf(invoice)
+                    _logger.info(f'PDF descargado y adjuntado exitosamente para {self.legal_document_number}')
                 except Exception as e:
-                    _logger.warning(
-                        f'Error al descargar PDF para factura {self.legal_document_number}: {e}'
+                    _logger.error(
+                        f'Error al descargar PDF para factura {self.legal_document_number}: {e}',
+                        exc_info=True
                     )
-                    # No fallar por error en descarga de PDF
+                    # Notificar en el chatter que no se pudo descargar
+                    self.message_post(
+                        body=_('No se pudo descargar el PDF de MercadoLibre: %s') % str(e),
+                        message_type='notification'
+                    )
+            else:
+                _logger.warning(f'No hay ml_pdf_file_id para {self.legal_document_number}, PDF no disponible')
 
-            return invoice
+            # Retornar acción para ver la factura creada
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.move',
+                'view_mode': 'form',
+                'res_id': invoice.id,
+            }
 
         except Exception as e:
             self.state = 'draft'
@@ -246,36 +299,17 @@ class MercadoliBillingInvoice(models.Model):
     def _create_vendor_bill_from_purchases(self, purchase_orders, config):
         """
         Crea una factura de proveedor desde múltiples órdenes de compra
+        Compatible con Odoo 16
         """
         # Obtener el proveedor (debe ser el mismo en todas las POs)
         vendor = purchase_orders[0].partner_id
 
-        # Preparar valores de la factura
-        invoice_vals = {
-            'move_type': 'in_invoice',
-            'partner_id': vendor.id,
-            'invoice_date': fields.Date.context_today(self),
-            'date': fields.Date.context_today(self),
-            'ref': self.legal_document_number,
-            'company_id': self.company_id.id,
-            'currency_id': purchase_orders[0].currency_id.id,
-            'ml_billing_period_id': self.period_id.id,
-            'ml_is_commission_invoice': True,
-        }
+        # Preparar líneas de factura
+        invoice_line_vals_list = []
 
-        # Configurar diario si existe
-        if config and config.journal_id:
-            invoice_vals['journal_id'] = config.journal_id.id
-
-        # Crear factura
-        invoice = self.env['account.move'].create(invoice_vals)
-
-        # Agregar líneas desde todas las POs
         for po in purchase_orders:
             for po_line in po.order_line:
-                # Crear línea de factura
-                invoice_line_vals = {
-                    'move_id': invoice.id,
+                line_vals = {
                     'product_id': po_line.product_id.id,
                     'name': po_line.name,
                     'quantity': po_line.product_qty,
@@ -286,20 +320,37 @@ class MercadoliBillingInvoice(models.Model):
 
                 # Configurar cuenta si existe
                 if config and config.expense_account_id:
-                    invoice_line_vals['account_id'] = config.expense_account_id.id
+                    line_vals['account_id'] = config.expense_account_id.id
 
-                self.env['account.move.line'].with_context(check_move_validity=False).create(invoice_line_vals)
+                invoice_line_vals_list.append((0, 0, line_vals))
 
         # Agregar línea de nota con el origen
         po_names = ', '.join(purchase_orders.mapped('name'))
-        self.env['account.move.line'].with_context(check_move_validity=False).create({
-            'move_id': invoice.id,
+        invoice_line_vals_list.append((0, 0, {
             'display_type': 'line_note',
             'name': f'Documento Legal ML: {self.legal_document_number}\nÓrdenes: {po_names}',
-        })
+        }))
 
-        # Recalcular impuestos
-        invoice._recompute_dynamic_lines(recompute_all_taxes=True)
+        # Preparar valores de la factura con líneas incluidas
+        invoice_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': vendor.id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'ref': self.legal_document_number,
+            'company_id': self.company_id.id,
+            'currency_id': purchase_orders[0].currency_id.id,
+            'ml_billing_period_id': self.period_id.id,
+            'ml_is_commission_invoice': True,
+            'invoice_line_ids': invoice_line_vals_list,
+        }
+
+        # Configurar diario si existe
+        if config and config.journal_id:
+            invoice_vals['journal_id'] = config.journal_id.id
+
+        # Crear factura con todas las líneas (Odoo 16 recalcula automáticamente)
+        invoice = self.env['account.move'].create(invoice_vals)
 
         # Publicar automáticamente si está configurado
         if config and config.auto_post_invoices:
@@ -307,9 +358,13 @@ class MercadoliBillingInvoice(models.Model):
 
         return invoice
 
-    def _download_and_attach_pdf(self, invoice):
+    def _download_and_attach_pdf(self, invoice=None):
         """
-        Descarga el PDF desde MercadoLibre y lo adjunta a la factura
+        Descarga el PDF desde MercadoLibre y lo adjunta a la factura y al registro ML
+        El PDF aparece en el chatter y en los adjuntos de ambos registros
+
+        Args:
+            invoice: account.move opcional. Si se proporciona, también adjunta el PDF ahí.
         """
         if not self.ml_pdf_file_id:
             _logger.warning(f'No hay file_id para descargar PDF de {self.legal_document_number}')
@@ -323,6 +378,8 @@ class MercadoliBillingInvoice(models.Model):
         # Descargar PDF
         url = f'https://api.mercadolibre.com/billing/integration/legal_document/{self.ml_pdf_file_id}'
 
+        _logger.info(f'Descargando PDF desde: {url}')
+
         import requests
         import base64
 
@@ -333,6 +390,7 @@ class MercadoliBillingInvoice(models.Model):
         response = requests.get(url, headers=headers, timeout=30)
 
         if response.status_code != 200:
+            _logger.error(f'Error descargando PDF: Status {response.status_code}, Response: {response.text[:500]}')
             raise UserError(_(
                 'Error al descargar PDF de MercadoLibre.\n'
                 'Status: %s\n'
@@ -341,19 +399,54 @@ class MercadoliBillingInvoice(models.Model):
 
         # Convertir a base64
         pdf_data = base64.b64encode(response.content).decode('utf-8')
+        pdf_filename = f'{self.legal_document_number}.pdf'
 
-        # Crear adjunto
-        attachment = self.env['ir.attachment'].create({
-            'name': f'{self.legal_document_number}.pdf',
+        _logger.info(f'PDF descargado correctamente: {pdf_filename}, tamaño: {len(response.content)} bytes')
+
+        attachment_invoice = None
+
+        # Crear adjunto para la factura de proveedor (account.move) si existe
+        if invoice:
+            attachment_invoice = self.env['ir.attachment'].create({
+                'name': pdf_filename,
+                'type': 'binary',
+                'datas': pdf_data,
+                'res_model': 'account.move',
+                'res_id': invoice.id,
+                'mimetype': 'application/pdf',
+            })
+
+            # Publicar mensaje con adjunto en el chatter de la factura de proveedor
+            invoice.message_post(
+                body=_('PDF de factura MercadoLibre/MercadoPago adjunto: %s') % self.legal_document_number,
+                attachment_ids=[attachment_invoice.id],
+                message_type='notification',
+                subtype_xmlid='mail.mt_note'
+            )
+            _logger.info(f'PDF adjuntado a factura de proveedor: {invoice.name}')
+
+        # Crear adjunto para el registro de factura ML (mercadolibre.billing.invoice)
+        attachment_ml = self.env['ir.attachment'].create({
+            'name': pdf_filename,
             'type': 'binary',
             'datas': pdf_data,
-            'res_model': 'account.move',
-            'res_id': invoice.id,
+            'res_model': 'mercadolibre.billing.invoice',
+            'res_id': self.id,
             'mimetype': 'application/pdf',
         })
 
-        self.ml_pdf_attachment_id = attachment
+        # Publicar mensaje con adjunto en el chatter del registro ML
+        self.message_post(
+            body=_('PDF de MercadoLibre descargado y adjuntado'),
+            attachment_ids=[attachment_ml.id],
+            message_type='notification',
+            subtype_xmlid='mail.mt_note'
+        )
+
+        # Guardar referencia al adjunto (para compatibilidad)
+        self.ml_pdf_attachment_id = attachment_ml
 
         _logger.info(f'PDF descargado y adjuntado para {self.legal_document_number}')
 
-        return attachment
+        # Retornar el adjunto del registro ML (siempre existe)
+        return attachment_ml

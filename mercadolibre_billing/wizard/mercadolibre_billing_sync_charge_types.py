@@ -46,33 +46,17 @@ class MercadolibreBillingSyncChargeTypes(models.TransientModel):
                 period_key=self.period_key
             )
 
-        # Mostrar resultado
+        # Preparar mensaje
         message = _(
-            'Sincronización completada:\n'
-            '• Tipos nuevos: %(created)s\n'
-            '• Ya existentes: %(existing)s\n'
-            '• Total encontrados: %(total)s'
+            'Tipos nuevos: %(created)s | Ya existentes: %(existing)s | Total: %(total)s'
         ) % result
 
-        if result.get('created_types'):
-            message += '\n\nNuevos tipos:\n• ' + '\n• '.join(result['created_types'][:10])
-            if len(result['created_types']) > 10:
-                message += f'\n... y {len(result["created_types"]) - 10} más'
-
+        # Retornar acción para abrir la lista de mapeos con mensaje
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Tipos de Cargos Sincronizados'),
-                'message': message,
-                'type': 'success' if result['created'] > 0 else 'info',
-                'sticky': True,
-                'next': {
-                    'type': 'ir.actions.act_window',
-                    'res_model': 'mercadolibre.billing.product.mapping',
-                    'view_mode': 'tree,form',
-                    'target': 'current',
-                    'context': {'search_default_no_product': 1}
-                }
-            }
+            'type': 'ir.actions.act_window',
+            'name': _('Mapeo de Cargos - %s') % message,
+            'res_model': 'mercadolibre.billing.product.mapping',
+            'view_mode': 'tree,form',
+            'target': 'current',
+            'context': {'search_default_no_product': 1 if result['created'] > 0 else 0}
         }

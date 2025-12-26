@@ -50,6 +50,18 @@ class MercadoliBillingSync(models.TransientModel):
         default=False,
         help='Confirmar las órdenes de compra creadas'
     )
+    auto_create_invoices = fields.Boolean(
+        string='Crear Facturas Automáticamente',
+        default=False,
+        help='Crear facturas de proveedor agrupadas por documento legal'
+    )
+
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Proveedor',
+        domain="[('supplier_rank', '>', 0)]",
+        help='Proveedor para las órdenes de compra y facturas'
+    )
 
     state = fields.Selection([
         ('draft', 'Borrador'),
@@ -75,6 +87,11 @@ class MercadoliBillingSync(models.TransientModel):
         readonly=True,
         default=0
     )
+    invoices_created = fields.Integer(
+        string='Facturas Creadas',
+        readonly=True,
+        default=0
+    )
     period_ids = fields.Many2many(
         'mercadolibre.billing.period',
         string='Periodos Procesados',
@@ -89,6 +106,16 @@ class MercadoliBillingSync(models.TransientModel):
                     'La fecha "Desde" debe ser anterior a la fecha "Hasta".'
                 ))
 
+    @api.onchange('account_id')
+    def _onchange_account_id(self):
+        """Cargar proveedor de la configuración si existe"""
+        if self.account_id:
+            config = self.env['mercadolibre.billing.sync.config'].search([
+                ('account_id', '=', self.account_id.id)
+            ], limit=1)
+            if config and config.vendor_id:
+                self.vendor_id = config.vendor_id
+
     def action_sync(self):
         """
         Ejecuta la sincronización
@@ -99,6 +126,7 @@ class MercadoliBillingSync(models.TransientModel):
         periods_created = 0
         details_synced = 0
         error_count = 0
+        total_invoices_created = 0
         period_ids = []
 
         log_lines.append(f'[INFO] Iniciando sincronización')
@@ -153,9 +181,48 @@ class MercadoliBillingSync(models.TransientModel):
 
                             # Crear POs si está configurado
                             if self.auto_create_pos:
-                                period.action_create_purchase_orders()
+                                # Pasar el proveedor seleccionado
+                                period.with_context(
+                                    force_vendor_id=self.vendor_id.id if self.vendor_id else False
+                                ).action_create_purchase_orders()
                                 pos_count = len(period.purchase_order_ids)
                                 log_lines.append(f'  [SUCCESS] {pos_count} POs creadas')
+
+                                # Confirmar POs si está configurado
+                                if self.auto_validate_pos:
+                                    draft_pos = period.purchase_order_ids.filtered(
+                                        lambda po: po.state in ('draft', 'sent', 'to approve')
+                                    )
+                                    for po in draft_pos:
+                                        try:
+                                            po.button_confirm()
+                                        except Exception as e:
+                                            log_lines.append(f'  [WARNING] Error confirmando PO {po.name}: {str(e)}')
+                                    confirmed_count = len(draft_pos)
+                                    log_lines.append(f'  [SUCCESS] {confirmed_count} POs confirmadas')
+
+                                    # Crear facturas si está configurado
+                                    if self.auto_create_invoices:
+                                        invoice_groups = self.env['mercadolibre.billing.invoice'].search([
+                                            ('period_id', '=', period.id),
+                                            ('state', '!=', 'done')
+                                        ])
+                                        invoices_created = 0
+                                        for inv_group in invoice_groups:
+                                            try:
+                                                # Verificar que todos los detalles tengan PO confirmada
+                                                details_ready = inv_group.detail_ids.filtered(
+                                                    lambda d: d.purchase_order_id and
+                                                    d.purchase_order_id.state not in ('draft', 'sent', 'to approve', 'cancel')
+                                                )
+                                                if len(details_ready) == len(inv_group.detail_ids):
+                                                    inv_group._create_invoice_internal()
+                                                    invoices_created += 1
+                                                    total_invoices_created += 1
+                                            except Exception as e:
+                                                log_lines.append(f'  [WARNING] Error creando factura {inv_group.legal_document_number}: {str(e)}')
+                                        if invoices_created:
+                                            log_lines.append(f'  [SUCCESS] {invoices_created} facturas creadas')
                         else:
                             log_lines.append(f'  [INFO] Periodo ya sincronizado (estado: {period.state})')
 
@@ -171,6 +238,7 @@ class MercadoliBillingSync(models.TransientModel):
             log_lines.append(f'\n[SUCCESS] Sincronización completada')
             log_lines.append(f'  - Periodos creados: {periods_created}')
             log_lines.append(f'  - Detalles sincronizados: {details_synced}')
+            log_lines.append(f'  - Facturas creadas: {total_invoices_created}')
             log_lines.append(f'  - Errores: {error_count}')
 
             self.write({
@@ -178,6 +246,7 @@ class MercadoliBillingSync(models.TransientModel):
                 'sync_log': '\n'.join(log_lines),
                 'periods_created': periods_created,
                 'details_synced': details_synced,
+                'invoices_created': total_invoices_created,
                 'error_count': error_count,
                 'period_ids': [(6, 0, period_ids)]
             })
@@ -199,6 +268,7 @@ class MercadoliBillingSync(models.TransientModel):
                 'sync_log': '\n'.join(log_lines),
                 'periods_created': periods_created,
                 'details_synced': details_synced,
+                'invoices_created': total_invoices_created,
                 'error_count': error_count + 1,
                 'period_ids': [(6, 0, period_ids)]
             })

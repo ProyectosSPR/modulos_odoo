@@ -7,7 +7,10 @@
             <tree string="Detalles de Facturación" decoration-info="is_credit_note==True">
                 <field name="creation_date"/>
                 <field name="billing_group"/>
-                <field name="ml_pack_id" string="Pack ID"/>
+                <field name="charge_category" widget="badge"
+                       decoration-success="charge_category=='sale'"
+                       decoration-warning="charge_category=='service'"/>
+                <field name="ml_pack_id" string="Pack ID" optional="hide"/>
                 <field name="ml_order_id" string="Order ID"/>
                 <field name="legal_document_number"/>
                 <field name="transaction_detail"/>
@@ -53,6 +56,7 @@
                             <field name="legal_document_status"/>
                             <field name="detail_amount" widget="monetary"/>
                             <field name="detail_type"/>
+                            <field name="charge_category" widget="badge"/>
                         </group>
                         <group>
                             <field name="charge_status"/>

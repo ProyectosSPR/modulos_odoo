@@ -16,15 +16,20 @@
                     <group string="Opciones">
                         <field name="billing_group"/>
                         <field name="document_types"/>
+                        <field name="vendor_id" placeholder="Seleccione proveedor..."
+                               attrs="{'required': [('auto_create_pos', '=', True)]}"/>
                         <field name="auto_create_pos"/>
                         <field name="auto_validate_pos" attrs="{'invisible': [('auto_create_pos', '=', False)]}"/>
+                        <field name="auto_create_invoices"
+                               attrs="{'invisible': [('auto_validate_pos', '=', False)]}"/>
                     </group>
                 </group>
                 <group string="Resultado" attrs="{'invisible': [('state', '=', 'draft')]}">
                     <group>
                         <field name="periods_created"/>
                         <field name="details_synced"/>
-                        <field name="error_count"/>
+                        <field name="invoices_created"/>
+                        <field name="error_count" decoration-danger="error_count > 0"/>
                     </group>
                 </group>
                 <group string="Log de Sincronización" attrs="{'invisible': [('state', '=', 'draft')]}">
