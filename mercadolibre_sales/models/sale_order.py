@@ -48,6 +48,7 @@ class SaleOrder(models.Model):
         ('mshops', 'Mercado Shops'),
         ('proximity', 'Proximity'),
         ('mp-channel', 'MercadoPago Channel'),
+        ('meli_cofunding', 'Aporte ML (Co-fondeo)'),
     ], string='Canal ML', readonly=True, copy=False)
 
     ml_sync_date = fields.Datetime(
@@ -135,6 +136,49 @@ class SaleOrder(models.Model):
                 ('ml_order_id', '=', self.ml_order_id)
             ], limit=1)
         return False
+
+
+    def action_mass_cancel(self):
+        """
+        Cancela masivamente ordenes de venta sin mostrar wizard de confirmacion.
+        Solo cancela ordenes en estado 'sale'.
+        """
+        orders_to_cancel = self.filtered(lambda o: o.state == 'sale')
+        cancelled_count = 0
+        errors = []
+
+        for order in orders_to_cancel:
+            try:
+                # Cancelar sin mostrar wizard - usar _action_cancel directamente
+                # El context disable_cancel_warning evita validaciones innecesarias
+                order.with_context(disable_cancel_warning=True)._action_cancel()
+                cancelled_count += 1
+            except Exception as e:
+                errors.append(f'{order.name}: {str(e)}')
+
+        # Preparar mensaje de resultado
+        message_parts = []
+        if cancelled_count:
+            message_parts.append(f'{cancelled_count} orden(es) cancelada(s)')
+
+        skipped = len(self) - len(orders_to_cancel)
+        if skipped:
+            message_parts.append(f'{skipped} orden(es) omitida(s) (no estaban en estado "Venta")')
+
+        if errors:
+            message_parts.append(f'{len(errors)} error(es): {"; ".join(errors[:3])}')
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Cancelacion Masiva',
+                'message': '. '.join(message_parts) if message_parts else 'No hay ordenes para cancelar',
+                'type': 'success' if cancelled_count and not errors else ('warning' if errors else 'info'),
+                'sticky': bool(errors),
+            }
+        }
+
 
 
 class SaleOrderLine(models.Model):

@@ -96,6 +96,14 @@ class MercadoliBillingInvoice(models.Model):
         ('done', 'Procesado')
     ], string='Estado', default='draft', tracking=True)
 
+    # Indica si todos los detalles son notas de crédito
+    is_credit_note = fields.Boolean(
+        string='Es Nota de Crédito',
+        compute='_compute_is_credit_note',
+        store=True,
+        help='True si TODOS los detalles de esta factura son notas de crédito'
+    )
+
     # Factura de proveedor generada
     vendor_bill_id = fields.Many2one(
         'account.move',
@@ -134,6 +142,15 @@ class MercadoliBillingInvoice(models.Model):
     def _compute_totals(self):
         for record in self:
             record.total_amount = sum(record.detail_ids.mapped('detail_amount'))
+
+    @api.depends('detail_ids', 'detail_ids.is_credit_note')
+    def _compute_is_credit_note(self):
+        for record in self:
+            if record.detail_ids:
+                # Es nota de crédito si TODOS los detalles son notas de crédito
+                record.is_credit_note = all(d.is_credit_note for d in record.detail_ids)
+            else:
+                record.is_credit_note = False
 
     def action_mark_complete(self):
         """Marca la factura como completa (todos los detalles descargados)"""
@@ -207,8 +224,9 @@ class MercadoliBillingInvoice(models.Model):
 
     def _create_invoice_internal(self, config=None):
         """
-        Método interno para crear la factura (llamado desde el wizard)
-        Asume que las POs ya están creadas y confirmadas
+        Método interno para crear la factura o nota de crédito (llamado desde el wizard)
+        - Para facturas: requiere POs confirmadas
+        - Para notas de crédito: crea directamente sin PO
         """
         self.ensure_one()
 
@@ -217,24 +235,21 @@ class MercadoliBillingInvoice(models.Model):
                 ('account_id', '=', self.account_id.id)
             ], limit=1)
 
-        # Obtener todas las POs
-        purchase_orders = self.detail_ids.mapped('purchase_order_id')
+        # Determinar tipo de movimiento
+        move_type = 'in_refund' if self.is_credit_note else 'in_invoice'
 
-        if not purchase_orders:
-            raise UserError(_('No hay órdenes de compra para procesar.'))
-
-        # Verificar si ya existe factura con esta referencia
+        # Verificar si ya existe documento con esta referencia
         if config and config.skip_if_invoice_exists:
             existing_invoice = self.env['account.move'].search([
                 ('ref', '=', self.legal_document_number),
-                ('move_type', '=', 'in_invoice'),
+                ('move_type', '=', move_type),
                 ('company_id', '=', self.company_id.id)
             ], limit=1)
             if existing_invoice:
                 self.vendor_bill_id = existing_invoice
                 self.state = 'done'
                 self.message_post(
-                    body=_('Factura existente encontrada: %s') % existing_invoice.name
+                    body=_('Documento existente encontrado: %s') % existing_invoice.name
                 )
                 return {
                     'type': 'ir.actions.act_window',
@@ -246,8 +261,18 @@ class MercadoliBillingInvoice(models.Model):
         self.state = 'processing'
 
         try:
-            # Crear factura
-            invoice = self._create_vendor_bill_from_purchases(purchase_orders, config)
+            # Si es nota de crédito, crear directamente sin PO
+            if self.is_credit_note:
+                invoice = self._create_credit_note_direct(config)
+            else:
+                # Obtener todas las POs para facturas normales
+                purchase_orders = self.detail_ids.mapped('purchase_order_id')
+
+                if not purchase_orders:
+                    raise UserError(_('No hay órdenes de compra para procesar.'))
+
+                # Crear factura desde POs
+                invoice = self._create_vendor_bill_from_purchases(purchase_orders, config)
 
             # Actualizar referencia
             self.vendor_bill_id = invoice
@@ -259,8 +284,9 @@ class MercadoliBillingInvoice(models.Model):
                 'state': 'invoiced'
             })
 
+            doc_type = 'Nota de Crédito' if self.is_credit_note else 'Factura de proveedor'
             self.message_post(
-                body=_('Factura de proveedor creada: %s') % invoice.name
+                body=_(f'{doc_type} creada: %s') % invoice.name
             )
 
             # Siempre descargar y adjuntar PDF si existe file_id
@@ -357,6 +383,132 @@ class MercadoliBillingInvoice(models.Model):
             invoice.action_post()
 
         return invoice
+
+    def _create_credit_note_direct(self, config=None):
+        """
+        Crea una nota de crédito de proveedor directamente sin PO
+        Las notas de crédito no requieren orden de compra previa
+        """
+        self.ensure_one()
+
+        if not config:
+            config = self.env['mercadolibre.billing.sync.config'].sudo().search([
+                ('account_id', '=', self.account_id.id)
+            ], limit=1)
+
+        # Obtener proveedor
+        vendor = None
+        if config and config.vendor_id:
+            vendor = config.vendor_id
+        else:
+            # Crear o buscar proveedor automáticamente
+            vendor_name = 'MercadoLibre' if self.billing_group == 'ML' else 'MercadoPago'
+            vendor = self.env['res.partner'].search([
+                ('name', '=', vendor_name),
+                ('supplier_rank', '>', 0),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not vendor:
+                vendor = self.env['res.partner'].create({
+                    'name': vendor_name,
+                    'supplier_rank': 1,
+                    'company_id': self.company_id.id,
+                })
+
+        # Preparar líneas de la nota de crédito
+        invoice_line_vals_list = []
+
+        for detail in self.detail_ids:
+            # Obtener producto según mapeo de tipo de cargo
+            ProductMapping = self.env['mercadolibre.billing.product.mapping']
+            product = ProductMapping.get_product_for_charge(
+                transaction_detail=detail.transaction_detail,
+                account_id=self.account_id.id,
+                billing_group=self.billing_group
+            )
+
+            # Si no hay mapeo, usar producto de configuración
+            if not product:
+                product = config.commission_product_id if config else None
+                if not product:
+                    product = self.env.ref(
+                        'mercadolibre_billing.product_ml_commission',
+                        raise_if_not_found=False
+                    )
+
+            if not product:
+                raise UserError(_(
+                    'No se ha configurado un producto para comisiones.\n'
+                    'Por favor configure el mapeo de cargos.'
+                ))
+
+            # El monto de nota de crédito es positivo en el documento
+            amount = abs(detail.detail_amount)
+
+            # Descripción de la línea
+            description_parts = []
+            if detail.transaction_detail:
+                description_parts.append(detail.transaction_detail)
+            if detail.charge_bonified_id:
+                description_parts.append(f'Bonificación cargo: {detail.charge_bonified_id}')
+            if detail.ml_order_id:
+                description_parts.append(f'Orden ML: {detail.ml_order_id}')
+            if detail.reference_id:
+                description_parts.append(f'Ref MP: {detail.reference_id}')
+
+            line_name = '\n'.join(description_parts) if description_parts else f'Nota de Crédito {self.billing_group}'
+
+            line_vals = {
+                'product_id': product.id,
+                'name': line_name,
+                'quantity': 1,
+                'price_unit': amount,
+            }
+
+            # Aplicar impuesto si está configurado
+            if config and config.purchase_tax_id:
+                line_vals['tax_ids'] = [(6, 0, [config.purchase_tax_id.id])]
+
+            # Configurar cuenta si existe
+            if config and config.expense_account_id:
+                line_vals['account_id'] = config.expense_account_id.id
+
+            invoice_line_vals_list.append((0, 0, line_vals))
+
+        # Agregar línea de nota con información del documento
+        invoice_line_vals_list.append((0, 0, {
+            'display_type': 'line_note',
+            'name': f'Documento Legal ML: {self.legal_document_number}',
+        }))
+
+        # Preparar valores de la nota de crédito
+        credit_note_vals = {
+            'move_type': 'in_refund',  # Nota de crédito de proveedor
+            'partner_id': vendor.id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'ref': self.legal_document_number,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id,
+            'ml_billing_period_id': self.period_id.id,
+            'ml_is_commission_invoice': True,
+            'invoice_line_ids': invoice_line_vals_list,
+        }
+
+        # Configurar diario si existe
+        if config and config.journal_id:
+            credit_note_vals['journal_id'] = config.journal_id.id
+
+        # Crear nota de crédito
+        credit_note = self.env['account.move'].create(credit_note_vals)
+
+        # Publicar automáticamente si está configurado
+        if config and config.auto_post_invoices:
+            credit_note.action_post()
+
+        _logger.info(f'Nota de crédito creada directamente: {credit_note.name} para {self.legal_document_number}')
+
+        return credit_note
 
     def _download_and_attach_pdf(self, invoice=None):
         """

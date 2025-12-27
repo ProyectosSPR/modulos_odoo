@@ -97,4 +97,17 @@
             </p>
         </field>
     </record>
+
+    <!-- Server Action: Mass Cancel Orders -->
+    <record id="action_sale_order_mass_cancel" model="ir.actions.server">
+        <field name="name">Cancelar Ordenes</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_mass_cancel()
+        </field>
+    </record>
 </odoo>

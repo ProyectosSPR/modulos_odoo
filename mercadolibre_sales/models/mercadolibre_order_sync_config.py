@@ -78,6 +78,17 @@ class MercadolibreOrderSyncConfig(models.Model):
         help='Codigos de tipos logisticos seleccionados (para filtrado)'
     )
 
+    # =====================================================
+    # CONFIGURACION DE WEBHOOKS
+    # =====================================================
+    use_webhook = fields.Boolean(
+        string='Usar para Webhooks',
+        default=False,
+        help='Si esta activo, esta configuracion sera usada cuando lleguen '
+             'notificaciones de webhook de ordenes. El sistema buscara la '
+             'configuracion que coincida con el tipo logistico de la orden.'
+    )
+
     period = fields.Selection([
         ('today', 'Hoy'),
         ('yesterday', 'Ayer'),
@@ -171,6 +182,18 @@ class MercadolibreOrderSyncConfig(models.Model):
         string='Confirmar Orden Auto',
         default=False,
         help='Confirmar las ordenes de venta automaticamente'
+    )
+    auto_confirm_picking = fields.Boolean(
+        string='Validar Picking Auto',
+        default=False,
+        help='Validar el picking automaticamente despues de confirmar la orden. '
+             'Requiere que "Confirmar Orden Auto" este activo.'
+    )
+    set_done_from_reserved = fields.Boolean(
+        string='Hecho = Reservado Auto',
+        default=True,
+        help='Automaticamente poner la cantidad hecha igual a la reservada '
+             'para permitir validar el picking. Activo por defecto.'
     )
 
     # Defaults
@@ -281,6 +304,101 @@ class MercadolibreOrderSyncConfig(models.Model):
         _logger.info('Retornando lista vacia (ningun tipo permitido)')
         return []
 
+    def _fetch_logistic_type_from_shipment_api(self, shipment_id):
+        """
+        Consulta la API de shipments para obtener el logistic_type.
+        Se usa cuando la búsqueda de órdenes no trae esta información.
+
+        Args:
+            shipment_id: ID del shipment en MercadoLibre
+
+        Returns:
+            str: Código del tipo logístico o False si no se pudo obtener
+        """
+        import requests
+
+        if not shipment_id:
+            return False
+
+        try:
+            access_token = self.account_id.get_valid_token()
+        except Exception as e:
+            _logger.error('Error obteniendo token para shipment: %s', str(e))
+            return False
+
+        url = f'https://api.mercadolibre.com/shipments/{shipment_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Mapeo de valores de ML a nuestro selection
+                logistic_map = {
+                    'fulfillment': 'fulfillment',
+                    'xd_drop_off': 'xd_drop_off',
+                    'cross_docking': 'cross_docking',
+                    'drop_off': 'drop_off',
+                    'self_service': 'self_service',
+                    'custom': 'custom',
+                    'not_specified': 'not_specified',
+                    'default': 'custom',
+                }
+
+                _logger.info(
+                    'Shipment %s: logistic_type=%s, mode=%s, tags=%s',
+                    shipment_id,
+                    data.get('logistic_type'),
+                    data.get('mode'),
+                    data.get('tags')
+                )
+
+                # El logistic_type puede venir directamente
+                logistic_type = data.get('logistic_type', '')
+
+                if not logistic_type:
+                    # Intentar de logistic.type
+                    logistic_info = data.get('logistic', {}) or {}
+                    logistic_type = logistic_info.get('type', '')
+
+                if not logistic_type:
+                    # Inferir de tags
+                    tags = data.get('tags', []) or []
+                    tags_str = str(tags).lower()
+                    if 'fulfillment' in tags_str:
+                        return 'fulfillment'
+                    if 'self_service' in tags_str:
+                        return 'self_service'
+                    if 'drop_off' in tags_str:
+                        return 'drop_off'
+                    if 'cross_docking' in tags_str:
+                        return 'cross_docking'
+
+                if not logistic_type:
+                    # Inferir del modo
+                    mode = data.get('mode', '')
+                    if mode == 'me1':
+                        return 'custom'
+                    elif mode == 'custom':
+                        return 'custom'
+
+                if logistic_type and logistic_type in logistic_map:
+                    return logistic_map[logistic_type]
+
+            else:
+                _logger.warning('Error consultando shipment %s: HTTP %s - %s',
+                              shipment_id, response.status_code, response.text[:200])
+
+        except Exception as e:
+            _logger.error('Excepción consultando shipment %s: %s', shipment_id, str(e))
+
+        return False
+
     def write(self, vals):
         result = super().write(vals)
         if 'active' in vals:
@@ -388,6 +506,16 @@ class MercadolibreOrderSyncConfig(models.Model):
     def _execute_sync(self):
         """Ejecuta la sincronizacion de ordenes"""
         self.ensure_one()
+
+        # Si usa webhook, omitir sincronizacion por cron (las ordenes llegan en tiempo real)
+        if self.use_webhook:
+            _logger.info('SYNC "%s": Omitida - Webhook activo (ordenes llegan en tiempo real)', self.name)
+            self.write({
+                'last_run': fields.Datetime.now(),
+                'last_sync_log': 'Sincronizacion omitida: Webhook activo.\n'
+                                 'Las ordenes se reciben en tiempo real via webhook.',
+            })
+            return True
 
         _logger.info('='*60)
         _logger.info('SYNC ORDENES ML: Iniciando "%s"', self.name)
@@ -524,10 +652,62 @@ class MercadolibreOrderSyncConfig(models.Model):
         sale_orders_created = 0
         sale_orders_errors = 0
 
+        # Contadores para filtro de tipo logistico
+        filtered_logistic_count = 0
+
         synced_orders = []
+
+        # Obtener tipos logisticos permitidos para esta configuracion
+        allowed_logistic_types = self.get_allowed_logistic_types()
+        if allowed_logistic_types is not None:
+            log_lines.append(f'  Filtro logistico: {", ".join(allowed_logistic_types) or "Ninguno"}')
+            _logger.info('Tipos logisticos permitidos: %s', allowed_logistic_types)
+        else:
+            log_lines.append('  Filtro logistico: Todos (sin filtro)')
 
         for order_data in results:
             ml_id = order_data.get('id')
+
+            # FILTRO POR TIPO LOGISTICO - Verificar ANTES de crear el registro
+            if allowed_logistic_types is not None:
+                # Obtener tipo logistico de los datos de la orden
+                order_logistic_type = OrderModel._get_logistic_type_from_data(order_data)
+
+                # Si no tiene tipo, intentar inferir del shipping
+                if not order_logistic_type:
+                    shipping = order_data.get('shipping', {}) or {}
+                    shipping_mode = shipping.get('mode', '')
+                    if shipping_mode == 'me1':
+                        order_logistic_type = 'custom'
+                    elif shipping_mode == 'custom':
+                        order_logistic_type = 'custom'
+                    elif shipping_mode == 'not_specified':
+                        order_logistic_type = 'not_specified'
+
+                # Si aún no tiene tipo, consultar la API de shipments
+                if not order_logistic_type:
+                    shipping = order_data.get('shipping', {}) or {}
+                    shipment_id = shipping.get('id')
+                    if shipment_id:
+                        _logger.info('Orden %s: consultando shipment %s para obtener logistic_type',
+                                   ml_id, shipment_id)
+                        order_logistic_type = self._fetch_logistic_type_from_shipment_api(shipment_id)
+                        _logger.info('Orden %s: logistic_type obtenido del shipment: %s',
+                                   ml_id, order_logistic_type)
+
+                # Verificar si el tipo esta permitido
+                if order_logistic_type and order_logistic_type not in allowed_logistic_types:
+                    filtered_logistic_count += 1
+                    _logger.info('Orden %s filtrada: tipo logistico %s no esta en %s',
+                               ml_id, order_logistic_type, allowed_logistic_types)
+                    continue  # Saltar esta orden, NO crear mercadolibre.order
+
+                # Si no tiene tipo determinado y hay filtro activo, tambien saltar
+                if not order_logistic_type and allowed_logistic_types:
+                    filtered_logistic_count += 1
+                    _logger.info('Orden %s filtrada: sin tipo logistico determinado (shipment_id=%s)',
+                               ml_id, shipping.get('id') if shipping else None)
+                    continue
 
             try:
                 order, is_new = OrderModel.create_from_ml_data(order_data, self.account_id)
@@ -656,6 +836,8 @@ class MercadolibreOrderSyncConfig(models.Model):
         log_lines.append('-' * 50)
         log_lines.append('  RESUMEN SYNC')
         log_lines.append('-' * 50)
+        if filtered_logistic_count:
+            log_lines.append(f'  Filtradas (tipo log.): {filtered_logistic_count}')
         log_lines.append(f'  Sincronizadas: {sync_count}')
         log_lines.append(f'    Nuevas:      {created_count}')
         log_lines.append(f'    Actualizadas:{updated_count}')

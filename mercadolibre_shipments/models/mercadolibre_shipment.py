@@ -831,6 +831,85 @@ class MercadolibreShipment(models.Model):
             raise UserError(_('No hay coordenadas disponibles'))
 
     # =========================================================================
+    # WEBHOOK NOTIFICATIONS
+    # =========================================================================
+
+    @api.model
+    def process_notification(self, account, data):
+        """
+        Procesa notificaciones webhook de MercadoLibre para shipments.
+
+        El webhook envía:
+        {
+            "resource": "/shipments/12345678",
+            "user_id": 123456789,
+            "topic": "shipments",
+            ...
+        }
+
+        Args:
+            account: mercadolibre.account record
+            data: dict con los datos del webhook
+
+        Returns:
+            dict con el resultado del procesamiento
+        """
+        resource = data.get('resource', '')
+        topic = data.get('topic', '')
+
+        _logger.info('[SHIPMENT WEBHOOK] Procesando notificación')
+        _logger.info('[SHIPMENT WEBHOOK] Resource: %s', resource)
+        _logger.info('[SHIPMENT WEBHOOK] Topic: %s', topic)
+
+        if topic != 'shipments':
+            return {'status': 'ignored', 'reason': 'not_shipment_topic'}
+
+        # Extraer shipment_id del resource (/shipments/12345678)
+        shipment_id = None
+        if '/shipments/' in resource:
+            try:
+                shipment_id = resource.split('/shipments/')[-1].split('/')[0].split('?')[0]
+            except:
+                pass
+
+        if not shipment_id:
+            _logger.warning('[SHIPMENT WEBHOOK] No se pudo extraer shipment_id de: %s', resource)
+            return {'status': 'error', 'message': 'invalid_resource'}
+
+        _logger.info('[SHIPMENT WEBHOOK] Shipment ID extraído: %s', shipment_id)
+
+        try:
+            # Sincronizar el shipment desde la API
+            shipment = self.sync_shipment_by_id(shipment_id, account)
+
+            if shipment:
+                _logger.info('[SHIPMENT WEBHOOK] Shipment %s sincronizado: status=%s, logistic_type=%s',
+                           shipment_id, shipment.status, shipment.logistic_type)
+
+                # Actualizar logistic_type en la orden asociada si existe
+                if shipment.order_id and shipment.logistic_type:
+                    if shipment.order_id.logistic_type != shipment.logistic_type:
+                        shipment.order_id.write({'logistic_type': shipment.logistic_type})
+                        _logger.info('[SHIPMENT WEBHOOK] Actualizado logistic_type de orden %s a %s',
+                                   shipment.order_id.ml_order_id, shipment.logistic_type)
+
+                return {
+                    'status': 'ok',
+                    'shipment_id': shipment.id,
+                    'ml_shipment_id': shipment_id,
+                    'logistic_type': shipment.logistic_type,
+                    'shipment_status': shipment.status,
+                }
+            else:
+                _logger.warning('[SHIPMENT WEBHOOK] No se pudo sincronizar shipment %s', shipment_id)
+                return {'status': 'error', 'message': 'sync_failed'}
+
+        except Exception as e:
+            _logger.error('[SHIPMENT WEBHOOK] Error procesando shipment %s: %s',
+                        shipment_id, str(e), exc_info=True)
+            return {'status': 'error', 'message': str(e)}
+
+    # =========================================================================
     # CRON
     # =========================================================================
 

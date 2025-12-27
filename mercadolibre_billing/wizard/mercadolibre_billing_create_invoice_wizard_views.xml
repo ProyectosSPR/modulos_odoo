@@ -6,13 +6,25 @@
         <field name="model">mercadolibre.billing.create.invoice.wizard</field>
         <field name="arch" type="xml">
             <form string="Crear Factura de Proveedor">
+                <field name="is_credit_note" invisible="1"/>
+
+                <!-- Alerta para Notas de Crédito -->
+                <div class="alert alert-info mb-3" role="alert"
+                     attrs="{'invisible': [('is_credit_note', '=', False)]}">
+                    <strong>NOTA DE CRÉDITO</strong><br/>
+                    Este documento se creará directamente como Nota de Crédito de Proveedor.<br/>
+                    No se requieren órdenes de compra.
+                </div>
+
                 <group>
                     <group string="Documento Legal">
                         <field name="invoice_group_id" readonly="1" options="{'no_open': True}"/>
                         <field name="total_amount" widget="monetary"/>
                         <field name="currency_id" invisible="1"/>
                     </group>
-                    <group string="Estado de Órdenes de Compra">
+                    <!-- Solo mostrar estado de POs para facturas normales -->
+                    <group string="Estado de Órdenes de Compra"
+                           attrs="{'invisible': [('is_credit_note', '=', True)]}">
                         <field name="total_details"/>
                         <field name="details_without_po"
                                decoration-danger="details_without_po > 0"/>
@@ -21,15 +33,20 @@
                         <field name="pos_confirmed"
                                decoration-success="pos_confirmed > 0"/>
                     </group>
+                    <!-- Resumen para notas de crédito -->
+                    <group string="Resumen"
+                           attrs="{'invisible': [('is_credit_note', '=', False)]}">
+                        <field name="total_details"/>
+                    </group>
                 </group>
 
                 <div class="alert alert-warning" role="alert"
-                     attrs="{'invisible': [('needs_create_pos', '=', False), ('needs_confirm_pos', '=', False)]}">
+                     attrs="{'invisible': ['|', ('is_credit_note', '=', True), '&amp;', ('needs_create_pos', '=', False), ('needs_confirm_pos', '=', False)]}">
                     <field name="warning_message" nolabel="1" readonly="1"/>
                 </div>
 
                 <div class="alert alert-success" role="alert"
-                     attrs="{'invisible': ['|', ('needs_create_pos', '=', True), ('needs_confirm_pos', '=', True)]}">
+                     attrs="{'invisible': ['|', '|', ('is_credit_note', '=', True), ('needs_create_pos', '=', True), ('needs_confirm_pos', '=', True)]}">
                     <field name="warning_message" nolabel="1" readonly="1"/>
                 </div>
 
@@ -37,9 +54,16 @@
                 <field name="needs_confirm_pos" invisible="1"/>
 
                 <footer>
+                    <!-- Botón para Facturas -->
                     <button name="action_create_invoice" type="object"
                             string="Crear Factura" class="btn-primary"
+                            attrs="{'invisible': [('is_credit_note', '=', True)]}"
                             confirm="¿Está seguro de crear la factura? Se crearán y/o confirmarán las órdenes de compra necesarias automáticamente."/>
+                    <!-- Botón para Notas de Crédito -->
+                    <button name="action_create_invoice" type="object"
+                            string="Crear Nota de Crédito" class="btn-primary"
+                            attrs="{'invisible': [('is_credit_note', '=', False)]}"
+                            confirm="¿Está seguro de crear la nota de crédito?"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

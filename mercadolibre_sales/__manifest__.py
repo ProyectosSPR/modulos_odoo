@@ -39,6 +39,7 @@ Dependencias:
         'security/mercadolibre_sales_security.xml',
         'security/ir.model.access.csv',
         'data/mercadolibre_logistic_type_data.xml',
+        'data/mercadolibre_sales_actions.xml',
         'views/mercadolibre_order_views.xml',
         'views/mercadolibre_order_item_views.xml',
         'views/mercadolibre_order_discount_views.xml',

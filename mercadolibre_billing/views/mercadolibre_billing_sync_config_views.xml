@@ -1,90 +1,220 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Tree View -->
     <record id="view_mercadolibre_billing_sync_config_tree" model="ir.ui.view">
         <field name="name">mercadolibre.billing.sync.config.tree</field>
         <field name="model">mercadolibre.billing.sync.config</field>
         <field name="arch" type="xml">
-            <tree string="Configuraciones de Sincronización">
+            <tree string="Configuraciones de Sincronización"
+                  decoration-success="state=='active'"
+                  decoration-muted="state=='paused'"
+                  decoration-info="state=='draft'">
                 <field name="name"/>
                 <field name="account_id"/>
                 <field name="billing_group"/>
-                <field name="auto_sync"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
                 <field name="last_sync_date"/>
-                <field name="active"/>
+                <field name="next_run"/>
+                <field name="last_sync_count"/>
+                <field name="state" widget="badge"
+                       decoration-success="state=='active'"
+                       decoration-warning="state=='paused'"
+                       decoration-info="state=='draft'"/>
+                <field name="active" invisible="1"/>
             </tree>
         </field>
     </record>
 
+    <!-- Form View -->
     <record id="view_mercadolibre_billing_sync_config_form" model="ir.ui.view">
         <field name="name">mercadolibre.billing.sync.config.form</field>
         <field name="model">mercadolibre.billing.sync.config</field>
         <field name="arch" type="xml">
             <form string="Configuración de Sincronización">
+                <header>
+                    <button name="action_activate" type="object" string="Activar"
+                            class="btn-primary" icon="fa-play"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_pause" type="object" string="Pausar"
+                            class="btn-warning" icon="fa-pause"
+                            attrs="{'invisible': [('state', '!=', 'active')]}"/>
+                    <button name="action_resume" type="object" string="Reanudar"
+                            class="btn-success" icon="fa-play"
+                            attrs="{'invisible': [('state', '!=', 'paused')]}"/>
+                    <button name="action_sync_now" type="object" string="Ejecutar Ahora"
+                            class="btn-secondary" icon="fa-refresh"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button name="action_force_current_month_sync" type="object"
+                            string="Forzar Sync Mes Actual"
+                            class="btn-info" icon="fa-calendar"
+                            attrs="{'invisible': ['|', ('state', '=', 'draft'), ('sync_mode', '=', 'full')]}"
+                            confirm="Esto re-descargará TODOS los detalles del mes actual, incluso si ya están sincronizados. ¿Continuar?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,paused"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_sync_now" type="object" class="oe_stat_button" icon="fa-refresh"
-                                string="Sincronizar Ahora"/>
+                        <button class="oe_stat_button" type="object" name="action_sync_now"
+                                icon="fa-refresh"
+                                attrs="{'invisible': [('state', '=', 'draft')]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="total_syncs" nolabel="1"/></span>
+                                <span class="o_stat_text">Ejecuciones</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Ej: Sync Facturación ML"/>
+                        </h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="name"/>
-                            <field name="account_id"/>
+                        <group string="Configuración General">
+                            <field name="account_id" options="{'no_create': True}"/>
                             <field name="billing_group"/>
-                            <field name="active"/>
-                        </group>
-                        <group>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="last_sync_date" readonly="1"/>
-                        </group>
-                    </group>
-                    <group string="Configuración de Sincronización">
-                        <group>
-                            <field name="auto_sync"/>
-                            <field name="sync_last_n_periods"/>
                             <field name="document_types"/>
                         </group>
-                        <group>
-                            <field name="interval_number"/>
-                            <field name="interval_type"/>
+                        <group string="Periodo a Descargar">
+                            <field name="sync_period_type"/>
+                            <field name="sync_last_n_periods"
+                                   attrs="{'invisible': [('sync_period_type', '!=', 'custom')],
+                                           'required': [('sync_period_type', '=', 'custom')]}"/>
+                            <field name="sync_period_display" widget="char" readonly="1"
+                                   style="font-weight: bold; font-size: 14px; color: #017e84;"/>
+                            <label for="period_from_date" string="Fechas"/>
+                            <div class="o_row">
+                                <field name="period_from_date" readonly="1" class="oe_inline"/>
+                                <span class="mx-2">→</span>
+                                <field name="period_to_date" readonly="1" class="oe_inline"/>
+                            </div>
+                            <field name="sync_mode"/>
+                            <field name="skip_synced_periods"
+                                   attrs="{'invisible': [('sync_mode', '!=', 'smart')]}"/>
                         </group>
                     </group>
-                    <group string="Configuración de Purchase Orders">
-                        <group>
-                            <field name="auto_create_purchase_orders"/>
-                            <field name="auto_validate_purchase_orders" attrs="{'invisible': [('auto_create_purchase_orders', '=', False)]}"/>
+                    <group>
+                        <group string="Programación">
+                            <label for="interval_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline"/>
+                                <field name="interval_type" class="oe_inline"/>
+                            </div>
+                            <field name="next_run"/>
+                        </group>
+                        <group string="Estadísticas">
+                            <field name="last_sync_date"/>
+                            <field name="last_sync_count" string="Último Sync"/>
+                            <field name="last_sync_errors" string="Últimos Errores"/>
+                            <field name="total_syncs"/>
                         </group>
                     </group>
-                    <group string="Configuración de Facturación">
-                        <group>
-                            <field name="auto_create_invoices"/>
-                            <field name="auto_post_invoices" attrs="{'invisible': [('auto_create_invoices', '=', False)]}"/>
-                            <field name="group_invoices_by_legal_document"/>
-                            <field name="skip_if_invoice_exists"/>
-                        </group>
-                        <group>
-                            <field name="attach_ml_pdf"/>
-                        </group>
-                    </group>
-                    <group string="Configuración Contable">
-                        <group>
-                            <field name="vendor_id"/>
-                            <field name="commission_product_id"/>
-                            <field name="purchase_tax_id"/>
-                        </group>
-                        <group>
-                            <field name="expense_account_id"/>
-                            <field name="journal_id"/>
-                        </group>
-                    </group>
+                    <notebook>
+                        <page string="Automatización" name="automation">
+                            <group string="Configuración de Purchase Orders">
+                                <group>
+                                    <field name="auto_create_purchase_orders"/>
+                                    <field name="auto_validate_purchase_orders"
+                                           attrs="{'invisible': [('auto_create_purchase_orders', '=', False)]}"/>
+                                </group>
+                            </group>
+                            <group string="Configuración de Facturación">
+                                <group>
+                                    <field name="auto_create_invoices"/>
+                                    <field name="auto_post_invoices"
+                                           attrs="{'invisible': [('auto_create_invoices', '=', False)]}"/>
+                                    <field name="group_invoices_by_legal_document"/>
+                                    <field name="skip_if_invoice_exists"/>
+                                </group>
+                                <group>
+                                    <field name="attach_ml_pdf"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Configuración Contable" name="accounting">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Nota:</strong> El producto para cada cargo se obtiene del
+                                <strong>Mapeo de Cargos</strong> (menú MercadoLibre &gt; Configuración &gt; Mapeo de Cargos).
+                                El "Producto por Defecto" solo se usa cuando no existe mapeo para un tipo de cargo específico.
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="vendor_id" placeholder="Ej: Deremate.com de Mexico"/>
+                                    <field name="commission_product_id"/>
+                                    <field name="purchase_tax_id"/>
+                                </group>
+                                <group>
+                                    <field name="expense_account_id"/>
+                                    <field name="journal_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Log Última Ejecución" name="log"
+                              attrs="{'invisible': [('last_sync_log', '=', False)]}">
+                            <field name="last_sync_log" nolabel="1" readonly="1"
+                                   widget="text" colspan="2"
+                                   style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                        </page>
+                    </notebook>
+                    <field name="active" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="cron_id" invisible="1"/>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" groups="base.group_user"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
 
-    <record id="action_mercadolibre_billing_sync_config" model="ir.actions.act_window">
-        <field name="name">Configuración de Sincronización</field>
-        <field name="res_model">mercadolibre.billing.sync.config</field>
-        <field name="view_mode">tree,form</field>
+    <!-- Search View -->
+    <record id="view_mercadolibre_billing_sync_config_search" model="ir.ui.view">
+        <field name="name">mercadolibre.billing.sync.config.search</field>
+        <field name="model">mercadolibre.billing.sync.config</field>
+        <field name="arch" type="xml">
+            <search string="Configuraciones de Sincronización">
+                <field name="name"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Activas" name="active_state" domain="[('state', '=', 'active')]"/>
+                <filter string="Pausadas" name="paused_state" domain="[('state', '=', 'paused')]"/>
+                <filter string="Borrador" name="draft_state" domain="[('state', '=', 'draft')]"/>
+                <separator/>
+                <filter string="MercadoLibre" name="ml" domain="[('billing_group', 'in', ['ML', 'both'])]"/>
+                <filter string="MercadoPago" name="mp" domain="[('billing_group', 'in', ['MP', 'both'])]"/>
+                <separator/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Grupo" name="group_billing" context="{'group_by': 'billing_group'}"/>
+                </group>
+            </search>
+        </field>
     </record>
 
+    <!-- Action -->
+    <record id="action_mercadolibre_billing_sync_config" model="ir.actions.act_window">
+        <field name="name">Sincronización Automática</field>
+        <field name="res_model">mercadolibre.billing.sync.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear configuración de sincronización automática
+            </p>
+            <p>
+                Configure sincronizaciones automáticas para descargar facturas de MercadoLibre/MercadoPago
+                con diferentes intervalos y configuraciones.
+            </p>
+            <p>
+                Ejemplos:
+                <ul>
+                    <li>Facturas ML cada 60 minutos</li>
+                    <li>Facturas MP cada 2 horas</li>
+                    <li>Ambos cada día</li>
+                </ul>
+            </p>
+        </field>
+    </record>
 </odoo>

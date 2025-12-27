@@ -8,8 +8,10 @@
             <tree string="Facturas MercadoLibre/MercadoPago"
                   decoration-success="state=='done'"
                   decoration-warning="state=='processing'"
-                  decoration-info="state=='complete'">
+                  decoration-info="state=='complete'"
+                  decoration-danger="is_credit_note==True">
                 <field name="legal_document_number"/>
+                <field name="is_credit_note" widget="boolean" string="NC"/>
                 <field name="period_id"/>
                 <field name="account_id"/>
                 <field name="billing_group"/>
@@ -32,7 +34,11 @@
                     <button name="action_create_grouped_invoice" type="object"
                             string="Crear Factura de Proveedor"
                             class="oe_highlight" icon="fa-file-invoice"
-                            attrs="{'invisible': [('state', '=', 'done')]}"/>
+                            attrs="{'invisible': ['|', ('state', '=', 'done'), ('is_credit_note', '=', True)]}"/>
+                    <button name="action_create_grouped_invoice" type="object"
+                            string="Crear Nota de Crédito"
+                            class="oe_highlight" icon="fa-minus-circle"
+                            attrs="{'invisible': ['|', ('state', '=', 'done'), ('is_credit_note', '=', False)]}"/>
                     <button name="action_mark_complete" type="object"
                             string="Marcar Completo"
                             class="btn-secondary"
@@ -45,9 +51,14 @@
                             <field name="detail_count" widget="statinfo" string="Detalles"/>
                         </button>
                     </div>
+                    <div class="alert alert-warning mb-3" role="alert"
+                         attrs="{'invisible': [('is_credit_note', '=', False)]}">
+                        <strong>NOTA DE CRÉDITO</strong> - Este documento se creará directamente como Nota de Crédito de Proveedor (sin PO).
+                    </div>
                     <group>
                         <group>
                             <field name="legal_document_number"/>
+                            <field name="is_credit_note" readonly="1"/>
                             <field name="ml_document_id"/>
                             <field name="legal_document_status"/>
                         </group>
@@ -113,6 +124,10 @@
                 <field name="legal_document_number"/>
                 <field name="account_id"/>
                 <field name="period_id"/>
+                <separator/>
+                <filter string="Facturas" name="bills" domain="[('is_credit_note', '=', False)]"/>
+                <filter string="Notas de Crédito" name="credit_notes" domain="[('is_credit_note', '=', True)]"/>
+                <separator/>
                 <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Completo" name="complete" domain="[('state', '=', 'complete')]"/>
                 <filter string="Procesado" name="done" domain="[('state', '=', 'done')]"/>
@@ -121,6 +136,7 @@
                     <filter string="Cuenta" name="group_account" context="{'group_by': 'account_id'}"/>
                     <filter string="Grupo" name="group_billing" context="{'group_by': 'billing_group'}"/>
                     <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'is_credit_note'}"/>
                 </group>
             </search>
         </field>

@@ -15,6 +15,12 @@ class MercadolibreBillingCreateInvoiceWizard(models.TransientModel):
         ondelete='cascade'
     )
 
+    # Indica si es nota de crédito
+    is_credit_note = fields.Boolean(
+        related='invoice_group_id.is_credit_note',
+        string='Es Nota de Crédito'
+    )
+
     # Información calculada
     total_details = fields.Integer(
         string='Total Detalles',
@@ -76,7 +82,21 @@ class MercadolibreBillingCreateInvoiceWizard(models.TransientModel):
 
             # Contar detalles
             wizard.total_details = len(details)
+            wizard.total_amount = inv.total_amount
 
+            # Las notas de crédito no requieren POs
+            if inv.is_credit_note:
+                wizard.details_without_po = 0
+                wizard.pos_to_confirm = 0
+                wizard.pos_confirmed = 0
+                wizard.needs_create_pos = False
+                wizard.needs_confirm_pos = False
+                wizard.warning_message = _(
+                    '✓ Nota de Crédito - Se creará directamente sin orden de compra.'
+                )
+                continue
+
+            # Solo para facturas normales (no notas de crédito)
             # Detalles sin PO
             without_po = details.filtered(lambda d: not d.purchase_order_id)
             wizard.details_without_po = len(without_po)
@@ -88,7 +108,6 @@ class MercadolibreBillingCreateInvoiceWizard(models.TransientModel):
 
             wizard.pos_to_confirm = len(draft_pos)
             wizard.pos_confirmed = len(confirmed_pos)
-            wizard.total_amount = inv.total_amount
 
             # Flags
             wizard.needs_create_pos = wizard.details_without_po > 0
@@ -111,22 +130,28 @@ class MercadolibreBillingCreateInvoiceWizard(models.TransientModel):
                 wizard.warning_message = _('✓ Todas las órdenes de compra están listas.')
 
     def action_create_invoice(self):
-        """Crea la factura, creando y confirmando POs si es necesario"""
+        """Crea la factura o nota de crédito, creando y confirmando POs si es necesario"""
         self.ensure_one()
 
         inv = self.invoice_group_id
 
-        # Verificar si ya existe una factura
+        # Verificar si ya existe una factura/nota de crédito
         if inv.vendor_bill_id:
+            doc_type = 'nota de crédito' if inv.is_credit_note else 'factura de proveedor'
             raise UserError(_(
-                'Ya existe una factura de proveedor para este documento legal: %s'
-            ) % inv.vendor_bill_id.name)
+                'Ya existe una %s para este documento legal: %s'
+            ) % (doc_type, inv.vendor_bill_id.name))
 
         # Obtener configuración
         config = self.env['mercadolibre.billing.sync.config'].sudo().search([
             ('account_id', '=', inv.account_id.id)
         ], limit=1)
 
+        # Si es nota de crédito, crear directamente sin POs
+        if inv.is_credit_note:
+            return inv._create_invoice_internal(config)
+
+        # Para facturas normales, crear y confirmar POs primero
         # 1. Crear POs faltantes
         details_without_po = inv.detail_ids.filtered(lambda d: not d.purchase_order_id and d.state == 'draft')
         if details_without_po:

@@ -1,20 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+        <!--
+        NOTA: Los crons de sincronización se crean dinámicamente por cada
+        configuración cuando se activa. Ver action_activate() en
+        mercadolibre_billing_sync_config.py
 
-        <!-- Cron para Sincronización Automática de Facturación -->
-        <record id="ir_cron_mercadolibre_billing_sync" model="ir.cron">
-            <field name="name">MercadoLibre/MP: Sincronización Automática de Facturación</field>
-            <field name="model_id" ref="model_mercadolibre_billing_sync_config"/>
-            <field name="state">code</field>
-            <field name="code">model._cron_execute_all_syncs()</field>
-            <field name="interval_number">6</field>
-            <field name="interval_type">hours</field>
-            <field name="numbercall">-1</field>
-            <field name="doall" eval="False"/>
-            <field name="active" eval="True"/>
-            <field name="priority">5</field>
-        </record>
-
+        Cada configuración tiene su propio cron individual con el intervalo
+        configurado por el usuario.
+        -->
     </data>
 </odoo>

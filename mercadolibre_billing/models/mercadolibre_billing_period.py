@@ -660,12 +660,29 @@ class MercadoliBillingPeriod(models.Model):
     def action_create_purchase_orders(self):
         """
         Crea 1 orden de compra por cada detalle de facturación pendiente
+        NOTA: Las notas de crédito NO crean PO, se procesan directamente como notas de crédito
         """
         self.ensure_one()
 
-        details_pending = self.detail_ids.filtered(lambda d: d.state == 'draft')
+        # Excluir notas de crédito - no necesitan PO
+        details_pending = self.detail_ids.filtered(
+            lambda d: d.state == 'draft' and not d.is_credit_note
+        )
 
         if not details_pending:
+            # Verificar si solo hay notas de crédito
+            credit_notes = self.detail_ids.filtered(lambda d: d.is_credit_note)
+            if credit_notes:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('Sin Detalles para PO'),
+                        'message': _('Solo hay notas de crédito en este periodo. Las notas de crédito se crean directamente sin PO.'),
+                        'type': 'info',
+                        'sticky': False,
+                    }
+                }
             raise UserError(_('No hay detalles pendientes para crear órdenes de compra.'))
 
         created_pos = self.env['purchase.order']
@@ -735,13 +752,19 @@ class MercadoliBillingPeriod(models.Model):
         """
         Crea facturas de proveedor agrupadas por documento legal
         Este método procesa todos los invoice_groups del periodo
+        - Facturas normales: requieren POs confirmadas
+        - Notas de crédito: se crean directamente sin PO
         """
         self.ensure_one()
 
-        # Obtener configuración
-        config = self.env['mercadolibre.billing.sync.config'].sudo().search([
-            ('account_id', '=', self.account_id.id)
-        ], limit=1)
+        # Obtener configuración del contexto o buscarla
+        sync_config_id = self.env.context.get('sync_config_id')
+        if sync_config_id:
+            config = self.env['mercadolibre.billing.sync.config'].browse(sync_config_id)
+        else:
+            config = self.env['mercadolibre.billing.sync.config'].sudo().search([
+                ('account_id', '=', self.account_id.id)
+            ], limit=1)
 
         if not config:
             raise UserError(_(
@@ -772,52 +795,85 @@ class MercadoliBillingPeriod(models.Model):
 
         for invoice_group in invoice_groups:
             try:
-                # Verificar que todos los detalles tengan PO
-                details_without_po = invoice_group.detail_ids.filtered(
-                    lambda d: not d.purchase_order_id
-                )
+                # Determinar si es nota de crédito
+                is_credit_note = invoice_group.is_credit_note
 
-                if details_without_po:
-                    error_msg = _(
-                        'Documento %s: Faltan %d órdenes de compra'
-                    ) % (invoice_group.legal_document_number, len(details_without_po))
-                    errors.append(error_msg)
-                    _logger.warning(error_msg)
-                    continue
+                if is_credit_note:
+                    # Las notas de crédito NO requieren PO
+                    # Verificar si ya existe la nota de crédito
+                    if config.skip_if_invoice_exists:
+                        existing = self.env['account.move'].search([
+                            ('ref', '=', invoice_group.legal_document_number),
+                            ('move_type', '=', 'in_refund'),
+                            ('company_id', '=', self.company_id.id)
+                        ], limit=1)
 
-                # Validar que todas las POs estén confirmadas
-                purchase_orders = invoice_group.detail_ids.mapped('purchase_order_id')
-                draft_pos = purchase_orders.filtered(
-                    lambda po: po.state in ('draft', 'sent', 'to approve')
-                )
+                        if existing:
+                            invoice_group.write({
+                                'vendor_bill_id': existing.id,
+                                'state': 'done'
+                            })
+                            skipped.append(invoice_group.legal_document_number)
+                            continue
 
-                if draft_pos:
-                    error_msg = _(
-                        'Documento %s: %d POs sin confirmar'
-                    ) % (invoice_group.legal_document_number, len(draft_pos))
-                    errors.append(error_msg)
-                    _logger.warning(error_msg)
-                    continue
-
-                # Verificar si ya existe factura
-                if config.skip_if_invoice_exists:
-                    existing = self.env['account.move'].search([
-                        ('ref', '=', invoice_group.legal_document_number),
-                        ('move_type', '=', 'in_invoice'),
-                        ('company_id', '=', self.company_id.id)
-                    ], limit=1)
-
-                    if existing:
-                        invoice_group.write({
-                            'vendor_bill_id': existing.id,
-                            'state': 'done'
-                        })
+                    # Crear nota de crédito directamente
+                    invoice = invoice_group._create_invoice_internal(config)
+                    if isinstance(invoice, dict):
+                        # Si retorna una acción, la factura ya existía
                         skipped.append(invoice_group.legal_document_number)
+                    else:
+                        created_invoices.append(invoice_group.vendor_bill_id)
+                else:
+                    # Facturas normales SÍ requieren PO
+                    # Verificar que todos los detalles tengan PO
+                    details_without_po = invoice_group.detail_ids.filtered(
+                        lambda d: not d.purchase_order_id
+                    )
+
+                    if details_without_po:
+                        error_msg = _(
+                            'Documento %s: Faltan %d órdenes de compra'
+                        ) % (invoice_group.legal_document_number, len(details_without_po))
+                        errors.append(error_msg)
+                        _logger.warning(error_msg)
                         continue
 
-                # Crear factura agrupada
-                invoice = invoice_group.action_create_grouped_invoice()
-                created_invoices.append(invoice)
+                    # Validar que todas las POs estén confirmadas
+                    purchase_orders = invoice_group.detail_ids.mapped('purchase_order_id')
+                    draft_pos = purchase_orders.filtered(
+                        lambda po: po.state in ('draft', 'sent', 'to approve')
+                    )
+
+                    if draft_pos:
+                        error_msg = _(
+                            'Documento %s: %d POs sin confirmar'
+                        ) % (invoice_group.legal_document_number, len(draft_pos))
+                        errors.append(error_msg)
+                        _logger.warning(error_msg)
+                        continue
+
+                    # Verificar si ya existe factura
+                    if config.skip_if_invoice_exists:
+                        existing = self.env['account.move'].search([
+                            ('ref', '=', invoice_group.legal_document_number),
+                            ('move_type', '=', 'in_invoice'),
+                            ('company_id', '=', self.company_id.id)
+                        ], limit=1)
+
+                        if existing:
+                            invoice_group.write({
+                                'vendor_bill_id': existing.id,
+                                'state': 'done'
+                            })
+                            skipped.append(invoice_group.legal_document_number)
+                            continue
+
+                    # Crear factura agrupada
+                    invoice = invoice_group._create_invoice_internal(config)
+                    if isinstance(invoice, dict):
+                        skipped.append(invoice_group.legal_document_number)
+                    else:
+                        created_invoices.append(invoice_group.vendor_bill_id)
 
             except Exception as e:
                 error_msg = f'Documento {invoice_group.legal_document_number}: {str(e)}'

@@ -11,6 +11,7 @@
                 <field name="interval_number"/>
                 <field name="interval_type"/>
                 <field name="period"/>
+                <field name="use_webhook" widget="boolean_toggle" optional="show"/>
                 <field name="sync_all_logistic_types" optional="hide"/>
                 <field name="logistic_type_ids" widget="many2many_tags" optional="show"/>
                 <field name="last_run"/>
@@ -54,6 +55,7 @@
                         <group string="Cuenta">
                             <field name="account_id"/>
                             <field name="active"/>
+                            <field name="use_webhook" widget="boolean_toggle"/>
                         </group>
                         <group string="Intervalo de Sincronizacion">
                             <label for="interval_number" string="Ejecutar cada"/>
@@ -63,6 +65,11 @@
                             </div>
                         </group>
                     </group>
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('use_webhook', '=', False)]}">
+                        <strong><i class="fa fa-plug"/> Webhook Activo:</strong>
+                        Cuando lleguen notificaciones de ordenes via webhook, esta configuracion sera evaluada
+                        segun el tipo logistico de la orden. Si coincide, se usara para procesar la orden.
+                    </div>
                     <group>
                         <group string="Filtros">
                             <field name="period"/>
@@ -94,11 +101,19 @@
                         </div>
                     </group>
                     <group string="Configuracion de Ordenes Odoo" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
-                        <group>
+                        <group string="Automatizacion">
                             <field name="auto_confirm_order"/>
+                            <field name="auto_confirm_picking"
+                                   attrs="{'invisible': [('auto_confirm_order', '=', False)]}"/>
+                            <field name="set_done_from_reserved"
+                                   attrs="{'invisible': [('auto_confirm_picking', '=', False)]}"/>
+                        </group>
+                        <group string="Agrupacion y Descuentos">
                             <field name="group_by_pack"/>
                             <field name="sync_discounts"/>
                         </group>
+                    </group>
+                    <group string="Valores por Defecto" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
                         <group>
                             <field name="default_warehouse_id"/>
                             <field name="default_pricelist_id"/>

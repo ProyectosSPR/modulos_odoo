@@ -1197,25 +1197,37 @@ class MercadolibreOrder(models.Model):
             # Prioridad: tipo logistico > sync config
             should_confirm_order = False
             should_confirm_picking = False
+            should_set_done_from_reserved = True  # Por defecto activo
 
             if logistic_config:
                 should_confirm_order = logistic_config.auto_confirm_order
                 should_confirm_picking = logistic_config.auto_confirm_picking
-            elif hasattr(config, 'auto_confirm_order'):
-                should_confirm_order = config.auto_confirm_order
+                _logger.info('[AUTO_CONFIRM] Usando config tipo logistico %s: confirm_order=%s, confirm_picking=%s',
+                           logistic_config.name, should_confirm_order, should_confirm_picking)
+            else:
+                # Usar configuracion del sync config
+                should_confirm_order = getattr(config, 'auto_confirm_order', False)
+                should_confirm_picking = getattr(config, 'auto_confirm_picking', False)
+                should_set_done_from_reserved = getattr(config, 'set_done_from_reserved', True)
+                _logger.info('[AUTO_CONFIRM] Usando sync config %s: confirm_order=%s, confirm_picking=%s, set_done=%s',
+                           config.name if hasattr(config, 'name') else 'N/A',
+                           should_confirm_order, should_confirm_picking, should_set_done_from_reserved)
 
             # Confirmar orden automaticamente si esta configurado
             if should_confirm_order:
                 try:
                     sale_order.action_confirm()
-                    _logger.info('Orden %s confirmada automaticamente', sale_order.name)
+                    _logger.info('[AUTO_CONFIRM] Orden %s confirmada automaticamente', sale_order.name)
 
-                    # Confirmar picking si esta configurado en el tipo logistico
+                    # Validar picking si esta configurado
                     if should_confirm_picking:
-                        self._auto_confirm_picking(sale_order, logistic_config)
+                        self._auto_confirm_picking(sale_order, logistic_config, config, should_set_done_from_reserved)
 
                 except Exception as e:
-                    _logger.warning('Error al confirmar orden %s: %s', sale_order.name, str(e))
+                    _logger.error('[AUTO_CONFIRM] Error al confirmar orden %s: %s', sale_order.name, str(e))
+            else:
+                _logger.info('[AUTO_CONFIRM] Orden %s NO se confirma automaticamente (should_confirm_order=False)',
+                           sale_order.name)
 
             # =========================================================
             # PROCESAR ETIQUETA DE ENVIO (descarga e impresion)
@@ -1368,16 +1380,28 @@ class MercadolibreOrder(models.Model):
 
         # Verificar si hay aporte de ML
         if self.meli_discount <= 0:
+            _logger.debug('[MELI_DISCOUNT] Orden %s: sin descuento ML (%.2f)',
+                        self.ml_order_id, self.meli_discount)
             return False
 
-        handling = getattr(config, 'meli_discount_handling', 'ignore')
+        # Obtener configuracion - usar campo directo si existe, o getattr como fallback
+        handling = config.meli_discount_handling if hasattr(config, 'meli_discount_handling') and config.meli_discount_handling else 'ignore'
+
+        _logger.info('[MELI_DISCOUNT] Orden %s: meli_discount=%.2f, handling=%s, config=%s',
+                    self.ml_order_id, self.meli_discount, handling, config.name if hasattr(config, 'name') else 'N/A')
+
         if handling == 'ignore':
+            _logger.info('[MELI_DISCOUNT] Orden %s: handling=ignore, no se registra aporte ML', self.ml_order_id)
             return False
 
-        meli_product = getattr(config, 'meli_discount_product_id', False)
+        meli_product = config.meli_discount_product_id if hasattr(config, 'meli_discount_product_id') else False
         if not meli_product:
-            _logger.warning('No hay producto configurado para aporte ML')
+            _logger.warning('[MELI_DISCOUNT] Orden %s: No hay producto configurado para aporte ML (meli_discount_product_id)',
+                          self.ml_order_id)
             return False
+
+        _logger.info('[MELI_DISCOUNT] Orden %s: usando producto %s para aporte ML',
+                    self.ml_order_id, meli_product.name)
 
         OrderLine = self.env['sale.order.line']
 
@@ -1391,22 +1415,30 @@ class MercadolibreOrder(models.Model):
                 'price_unit': self.meli_discount,  # Positivo porque es ingreso
             }
             OrderLine.create(line_vals)
-            _logger.info('Aporte ML %.2f agregado a orden %s', self.meli_discount, sale_order.name)
+            _logger.info('[MELI_DISCOUNT] Orden %s: Aporte ML %.2f agregado como linea en orden %s',
+                        self.ml_order_id, self.meli_discount, sale_order.name)
             return False
 
         elif handling == 'separate_order':
             # Crear orden de venta separada
-            meli_partner = getattr(config, 'meli_discount_partner_id', False)
+            meli_partner = config.meli_discount_partner_id if hasattr(config, 'meli_discount_partner_id') else False
             if not meli_partner:
-                _logger.warning('No hay cliente configurado para orden de aporte ML')
+                _logger.warning('[MELI_DISCOUNT] Orden %s: No hay cliente configurado para orden de aporte ML (meli_discount_partner_id)',
+                              self.ml_order_id)
                 return False
+            _logger.info('[MELI_DISCOUNT] Orden %s: creando orden separada con cliente %s',
+                        self.ml_order_id, meli_partner.name)
+
+            # Usar misma referencia que orden principal (pack_id tiene prioridad sobre order_id)
+            base_ref = self.ml_pack_id if self.ml_pack_id else self.ml_order_id
+            client_order_ref = f'Aporte ML - {base_ref}'
 
             # Crear orden de venta para el aporte de ML
             meli_order_vals = {
                 'partner_id': meli_partner.id,
                 'company_id': self.company_id.id,
                 'date_order': self.date_closed or fields.Datetime.now(),
-                'client_order_ref': f'Aporte ML - {self.ml_order_id}',
+                'client_order_ref': client_order_ref,
                 # Campos ML para referencia
                 'ml_order_id': f'{self.ml_order_id}-MELI',
                 'ml_pack_id': self.ml_pack_id,
@@ -1444,167 +1476,150 @@ class MercadolibreOrder(models.Model):
 
         return False
 
-    def _auto_confirm_picking(self, sale_order, logistic_config=None):
+    def _auto_confirm_picking(self, sale_order, logistic_config=None, sync_config=None, set_done_from_reserved=True):
         """
-        Confirma automaticamente los pickings de la orden.
+        Confirma/valida automaticamente los pickings de la orden.
 
-        Proceso:
-        1. Busca pickings de la orden
-        2. Verifica disponibilidad de stock
-        3. Segun la politica de stock:
-           - strict: Solo valida si hay stock completo
-           - partial: Valida lo disponible, crea backorder
-           - force: Valida todo aunque no haya stock
-        4. Notifica problemas de stock si esta configurado
+        Proceso simplificado:
+        1. Confirma el picking si esta en borrador
+        2. Intenta asignar stock (reservar)
+        3. Copia cantidad reservada a cantidad hecha (si set_done_from_reserved=True)
+        4. Valida el picking
 
         Args:
             sale_order: Orden de venta
             logistic_config: Configuracion del tipo logistico (opcional)
+            sync_config: Configuracion de sincronizacion (opcional)
+            set_done_from_reserved: Si True, copia reservado a hecho automaticamente
 
         Returns:
-            dict con resultado de la validacion:
-            {
-                'success': bool,
-                'validated_pickings': list,
-                'stock_issues': list of dicts con productos sin stock
-            }
+            dict con resultado de la validacion
         """
         result = {
             'success': True,
             'validated_pickings': [],
-            'stock_issues': [],
+            'errors': [],
         }
 
         # Obtener politica de stock
-        policy = 'strict'
-        notify_issues = True
-        notify_user = None
+        policy = 'force'  # Por defecto forzar para MercadoLibre
+        if logistic_config and logistic_config.stock_validation_policy:
+            policy = logistic_config.stock_validation_policy
 
-        if logistic_config:
-            policy = logistic_config.stock_validation_policy or 'strict'
-            notify_issues = logistic_config.notify_stock_issues
-            notify_user = logistic_config.stock_issue_user_id
+        _logger.info('[AUTO_PICKING] Orden %s: procesando pickings (policy=%s, set_done=%s)',
+                    sale_order.name, policy, set_done_from_reserved)
 
-        for picking in sale_order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel')):
+        pickings_to_process = sale_order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+
+        if not pickings_to_process:
+            _logger.info('[AUTO_PICKING] Orden %s: no hay pickings pendientes', sale_order.name)
+            return result
+
+        for picking in pickings_to_process:
             try:
-                _logger.info('Procesando picking %s (estado: %s, politica: %s)',
-                           picking.name, picking.state, policy)
+                _logger.info('[AUTO_PICKING] Procesando picking %s (estado: %s)', picking.name, picking.state)
 
-                # Si el picking esta en borrador, confirmarlo
+                # 1. Si el picking esta en borrador, confirmarlo
                 if picking.state == 'draft':
                     picking.action_confirm()
-                    _logger.debug('Picking %s confirmado (draft -> waiting/confirmed)', picking.name)
+                    _logger.info('[AUTO_PICKING] Picking %s confirmado', picking.name)
 
-                # Si el picking esta esperando o confirmado, intentar asignar stock
+                # 2. Intentar asignar stock (reservar)
                 if picking.state in ('waiting', 'confirmed'):
                     picking.action_assign()
-                    _logger.debug('Picking %s: intento de asignacion de stock', picking.name)
+                    _logger.info('[AUTO_PICKING] Picking %s: stock asignado (estado: %s)',
+                               picking.name, picking.state)
 
-                # Verificar disponibilidad de stock
-                stock_check = self._check_picking_stock_availability(picking)
+                # 3. Copiar cantidad reservada a cantidad hecha
+                if set_done_from_reserved:
+                    self._set_all_done_from_reserved(picking, force_demand=policy == 'force')
+                    _logger.info('[AUTO_PICKING] Picking %s: cantidades hecho establecidas', picking.name)
 
-                if stock_check['fully_available']:
-                    # Stock completo, validar normalmente
-                    self._set_picking_quantities_done(picking, use_reserved=True)
-                    self._validate_picking(picking, create_backorder=False)
-                    result['validated_pickings'].append(picking.name)
-                    self.write({
-                        'stock_validation_status': 'ok',
-                        'stock_validation_notes': False,
-                    })
+                # 4. Validar el picking
+                self._validate_picking_simple(picking)
+                result['validated_pickings'].append(picking.name)
+                _logger.info('[AUTO_PICKING] Picking %s: VALIDADO exitosamente', picking.name)
 
-                elif stock_check['partially_available']:
-                    # Stock parcial
-                    result['stock_issues'].extend(stock_check['missing_products'])
-
-                    if policy == 'strict':
-                        # No validar, solo notificar
-                        self._notify_stock_issues(
-                            sale_order, picking, stock_check['missing_products'],
-                            notify_issues, notify_user
-                        )
-                        self.write({
-                            'stock_validation_status': 'failed',
-                            'stock_validation_notes': self._format_stock_issues(stock_check['missing_products']),
-                        })
-                        result['success'] = False
-                        _logger.warning('Picking %s: stock insuficiente (politica estricta)', picking.name)
-
-                    elif policy == 'partial':
-                        # Validar lo disponible, crear backorder
-                        self._set_picking_quantities_done(picking, use_reserved=True)
-                        self._validate_picking(picking, create_backorder=True)
-                        result['validated_pickings'].append(picking.name)
-                        self._notify_stock_issues(
-                            sale_order, picking, stock_check['missing_products'],
-                            notify_issues, notify_user, is_backorder=True
-                        )
-                        self.write({
-                            'stock_validation_status': 'partial',
-                            'stock_validation_notes': self._format_stock_issues(
-                                stock_check['missing_products'], backorder=True
-                            ),
-                        })
-                        _logger.info('Picking %s: validacion parcial con backorder', picking.name)
-
-                    elif policy == 'force':
-                        # Forzar validacion aunque no haya stock
-                        self._set_picking_quantities_done(picking, use_reserved=False, force_all=True)
-                        self._validate_picking(picking, create_backorder=False)
-                        result['validated_pickings'].append(picking.name)
-                        self._notify_stock_issues(
-                            sale_order, picking, stock_check['missing_products'],
-                            notify_issues, notify_user, is_forced=True
-                        )
-                        self.write({
-                            'stock_validation_status': 'forced',
-                            'stock_validation_notes': self._format_stock_issues(
-                                stock_check['missing_products'], forced=True
-                            ),
-                        })
-                        _logger.warning('Picking %s: validacion forzada sin stock completo', picking.name)
-
-                else:
-                    # Sin stock disponible
-                    result['stock_issues'].extend(stock_check['missing_products'])
-
-                    if policy == 'force':
-                        # Forzar incluso sin nada de stock
-                        self._set_picking_quantities_done(picking, use_reserved=False, force_all=True)
-                        self._validate_picking(picking, create_backorder=False)
-                        result['validated_pickings'].append(picking.name)
-                        self._notify_stock_issues(
-                            sale_order, picking, stock_check['missing_products'],
-                            notify_issues, notify_user, is_forced=True
-                        )
-                        self.write({
-                            'stock_validation_status': 'forced',
-                            'stock_validation_notes': self._format_stock_issues(
-                                stock_check['missing_products'], forced=True
-                            ),
-                        })
-                    else:
-                        # No hay stock, notificar error
-                        self._notify_stock_issues(
-                            sale_order, picking, stock_check['missing_products'],
-                            notify_issues, notify_user
-                        )
-                        self.write({
-                            'stock_validation_status': 'failed',
-                            'stock_validation_notes': self._format_stock_issues(stock_check['missing_products']),
-                        })
-                        result['success'] = False
-                        _logger.warning('Picking %s: sin stock disponible', picking.name)
+                self.write({
+                    'stock_validation_status': 'ok',
+                    'stock_validation_notes': False,
+                })
 
             except Exception as e:
-                _logger.error('Error validando picking %s: %s', picking.name, str(e))
+                error_msg = str(e)
+                _logger.error('[AUTO_PICKING] Error validando picking %s: %s', picking.name, error_msg)
+                result['errors'].append(f'{picking.name}: {error_msg}')
                 result['success'] = False
                 self.write({
                     'stock_validation_status': 'failed',
-                    'stock_validation_notes': f'Error: {str(e)}',
+                    'stock_validation_notes': f'Error: {error_msg}',
                 })
 
+        _logger.info('[AUTO_PICKING] Orden %s: resultado - validados=%s, errores=%s',
+                    sale_order.name, result['validated_pickings'], result['errors'])
         return result
+
+    def _set_all_done_from_reserved(self, picking, force_demand=False):
+        """
+        Establece la cantidad hecha (qty_done) igual a la reservada.
+        Usa el metodo nativo de Odoo action_set_quantities_to_reservation.
+
+        Args:
+            picking: stock.picking a procesar
+            force_demand: Si True, usa la cantidad demandada cuando no hay reservado
+        """
+        # Usar metodo nativo de Odoo para copiar reservado a hecho
+        picking.action_set_quantities_to_reservation()
+        _logger.info('[AUTO_PICKING] Picking %s: qty_done establecido desde reservado (metodo nativo)',
+                    picking.name)
+
+        # Si es forzado y hay lineas sin qty_done, poner la demanda
+        if force_demand:
+            for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+                if move.move_line_ids:
+                    for move_line in move.move_line_ids:
+                        if move_line.qty_done == 0:
+                            # Usar reservado o demanda del move
+                            move_line.qty_done = move_line.reserved_uom_qty or move.product_uom_qty
+                            _logger.info('[AUTO_PICKING] Linea %s: qty_done forzado a %.2f',
+                                        move_line.id, move_line.qty_done)
+                else:
+                    # Crear linea si no existe
+                    if move.product_uom_qty > 0:
+                        self.env['stock.move.line'].create({
+                            'move_id': move.id,
+                            'picking_id': picking.id,
+                            'product_id': move.product_id.id,
+                            'product_uom_id': move.product_uom.id,
+                            'location_id': move.location_id.id,
+                            'location_dest_id': move.location_dest_id.id,
+                            'qty_done': move.product_uom_qty,
+                        })
+                        _logger.info('[AUTO_PICKING] Move %s: linea creada con qty_done=%.2f',
+                                    move.id, move.product_uom_qty)
+
+    def _validate_picking_simple(self, picking):
+        """
+        Valida un picking de forma simple, manejando wizards automaticamente.
+        """
+        result = picking.with_context(
+            skip_sms=True,
+            skip_immediate=True,
+            skip_backorder=True,
+        ).button_validate()
+
+        # Si retorna un wizard, procesarlo
+        if isinstance(result, dict) and result.get('res_model'):
+            wizard_model = result.get('res_model')
+            wizard_context = result.get('context', {})
+
+            if wizard_model == 'stock.backorder.confirmation':
+                wizard = self.env[wizard_model].with_context(wizard_context).create({})
+                wizard.process_cancel_backorder()  # No crear backorder
+
+            elif wizard_model == 'stock.immediate.transfer':
+                wizard = self.env[wizard_model].with_context(wizard_context).create({})
+                wizard.process()
 
     def _check_picking_stock_availability(self, picking):
         """
@@ -1667,84 +1682,50 @@ class MercadolibreOrder(models.Model):
         Establece las cantidades hechas en las lineas de movimiento del picking.
 
         En Odoo 16:
-        - stock.move usa 'quantity' para cantidad hecha (campo computado)
-        - stock.move.line usa 'quantity' para cantidad hecha (columna: qty_done)
-        - reserved_uom_qty se accede via SQL ya que no es campo ORM
+        - stock.move.line usa 'qty_done' para cantidad hecha
+        - stock.move.line usa 'reserved_uom_qty' para cantidad reservada
+        - stock.move usa 'quantity_done' (computado) para total hecho
 
         Args:
             picking: stock.picking a procesar
             use_reserved: Si True, usa la cantidad reservada. Si False, usa la demandada.
             force_all: Si True, fuerza todas las cantidades demandadas aunque no haya stock.
         """
-        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
-            # Obtener cantidad reservada via SQL
-            if move.move_line_ids:
-                self.env.cr.execute("""
-                    SELECT COALESCE(SUM(reserved_uom_qty), 0)
-                    FROM stock_move_line
-                    WHERE move_id = %s AND state NOT IN ('done', 'cancel')
-                """, (move.id,))
-                result = self.env.cr.fetchone()
-                reserved_qty = float(result[0]) if result else 0.0
-            else:
-                reserved_qty = 0.0
+        # Primero usar el metodo nativo de Odoo para copiar reservado a hecho
+        if use_reserved:
+            picking.action_set_quantities_to_reservation()
 
+        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
             if force_all:
                 # Forzar cantidad demandada completa
-                qty_to_do = move.product_uom_qty
-            elif use_reserved:
-                # Usar solo lo reservado
-                qty_to_do = reserved_qty
-            else:
-                qty_to_do = move.product_uom_qty
-
-            # En Odoo 16, usamos move.quantity (campo computado con inverse)
-            move.quantity = qty_to_do
-
-            # Actualizar move_line_ids si existen
-            if move.move_line_ids:
-                for move_line in move.move_line_ids:
-                    # Obtener reserved_uom_qty via SQL para esta linea
-                    self.env.cr.execute("""
-                        SELECT COALESCE(reserved_uom_qty, 0)
-                        FROM stock_move_line WHERE id = %s
-                    """, (move_line.id,))
-                    ml_reserved = float(self.env.cr.fetchone()[0] or 0)
-
-                    if force_all:
-                        # Forzar: usar reservado o demandado total
-                        move_line.quantity = ml_reserved if ml_reserved > 0 else move.product_uom_qty
-                    elif move_line.quantity == 0:
-                        # Usar lo reservado
-                        move_line.quantity = ml_reserved
-            elif force_all and qty_to_do > 0:
-                # Crear move_lines si es forzado y no existen
-                try:
-                    move._action_assign()
-                    # Actualizar las lineas creadas
+                if move.move_line_ids:
                     for move_line in move.move_line_ids:
-                        self.env.cr.execute("""
-                            SELECT COALESCE(reserved_uom_qty, 0)
-                            FROM stock_move_line WHERE id = %s
-                        """, (move_line.id,))
-                        ml_reserved = float(self.env.cr.fetchone()[0] or 0)
-                        move_line.quantity = ml_reserved if ml_reserved > 0 else move.product_uom_qty
-                except Exception:
-                    # Si falla la asignacion, crear linea manual
-                    self.env['stock.move.line'].create({
-                        'move_id': move.id,
-                        'picking_id': picking.id,
-                        'product_id': move.product_id.id,
-                        'product_uom_id': move.product_uom.id,
-                        'location_id': move.location_id.id,
-                        'location_dest_id': move.location_dest_id.id,
-                        'quantity': move.product_uom_qty,
-                    })
+                        if move_line.qty_done == 0:
+                            # Usar reservado o demanda completa
+                            move_line.qty_done = move_line.reserved_uom_qty or move.product_uom_qty
+                else:
+                    # Crear move_line si no existe
+                    try:
+                        move._action_assign()
+                        for move_line in move.move_line_ids:
+                            if move_line.qty_done == 0:
+                                move_line.qty_done = move_line.reserved_uom_qty or move.product_uom_qty
+                    except Exception:
+                        # Si falla la asignacion, crear linea manual
+                        self.env['stock.move.line'].create({
+                            'move_id': move.id,
+                            'picking_id': picking.id,
+                            'product_id': move.product_id.id,
+                            'product_uom_id': move.product_uom.id,
+                            'location_id': move.location_id.id,
+                            'location_dest_id': move.location_dest_id.id,
+                            'qty_done': move.product_uom_qty,
+                        })
 
             _logger.debug(
-                'Move %s: producto=%s, demandado=%.2f, reservado=%.2f, hecho=%.2f',
+                'Move %s: producto=%s, demandado=%.2f, hecho=%.2f',
                 move.id, move.product_id.name, move.product_uom_qty,
-                reserved_qty, move.quantity
+                move.quantity_done
             )
 
     def _validate_picking(self, picking, create_backorder=False):
@@ -2290,3 +2271,274 @@ class MercadolibreOrder(models.Model):
                 )
 
         return result
+
+    # =====================================================
+    # WEBHOOK NOTIFICATION HANDLER
+    # =====================================================
+
+    @api.model
+    def process_notification(self, account, data):
+        """
+        Procesa notificaciones de webhook para ordenes (topic: orders_v2).
+
+        Este metodo es llamado automaticamente por el controller de mercadolibre_connector
+        cuando llega una notificacion del topic 'orders_v2'.
+
+        Args:
+            account: mercadolibre.account - cuenta que recibe la notificacion
+            data: dict con los datos del webhook:
+                - resource: str, ej: '/orders/123456789'
+                - topic: str, 'orders_v2'
+                - user_id: int, ID del usuario en ML
+                - application_id: int
+                - attempts: int
+                - sent: str, fecha de envio
+                - received: str, fecha de recepcion
+
+        Returns:
+            dict con resultado del procesamiento
+        """
+        _logger.info('='*60)
+        _logger.info('WEBHOOK orders_v2 recibido para cuenta %s', account.ml_nickname)
+        _logger.info('Data: %s', data)
+        _logger.info('='*60)
+
+        resource = data.get('resource', '')
+
+        # Extraer order_id del resource (formato: /orders/123456789)
+        order_id = None
+        if resource.startswith('/orders/'):
+            order_id = resource.replace('/orders/', '').split('/')[0]
+
+        if not order_id:
+            _logger.warning('No se pudo extraer order_id del resource: %s', resource)
+            return {'status': 'error', 'message': 'No se pudo extraer order_id del resource'}
+
+        _logger.info('Procesando orden ML: %s', order_id)
+
+        # Buscar configuraciones de sincronizacion activas para esta cuenta con webhook habilitado
+        SyncConfig = self.env['mercadolibre.order.sync.config'].sudo()
+        configs = SyncConfig.search([
+            ('account_id', '=', account.id),
+            ('state', '=', 'active'),
+            ('use_webhook', '=', True),
+        ], order='sequence')
+
+        if not configs:
+            _logger.info('No hay configuraciones de sync con webhook activo para cuenta %s', account.ml_nickname)
+            return {'status': 'ignored', 'message': 'No hay configuraciones con webhook activo'}
+
+        _logger.info('Encontradas %d configuraciones con webhook activo', len(configs))
+
+        # Obtener datos completos de la orden desde la API
+        try:
+            order_data = self._fetch_order_from_api(account, order_id)
+            if not order_data:
+                return {'status': 'error', 'message': 'No se pudo obtener datos de la orden'}
+        except Exception as e:
+            _logger.error('Error obteniendo orden %s desde API: %s', order_id, str(e))
+            return {'status': 'error', 'message': str(e)}
+
+        # Determinar el tipo logistico de la orden
+        logistic_type = self._get_logistic_type_from_data(order_data)
+        _logger.info('Tipo logistico de la orden: %s', logistic_type or 'No determinado')
+
+        # Si no se pudo determinar el tipo logistico, intentar obtenerlo del shipment
+        if not logistic_type:
+            shipping = order_data.get('shipping', {}) or {}
+            shipment_id = shipping.get('id')
+            if shipment_id:
+                logistic_type = self._fetch_logistic_type_from_api(account, str(shipment_id))
+                _logger.info('Tipo logistico obtenido del shipment: %s', logistic_type)
+
+        # Buscar la configuracion que aplique para este tipo logistico
+        matching_config = None
+        for config in configs:
+            allowed_types = config.get_allowed_logistic_types()
+            _logger.info('Config "%s": allowed_types=%s', config.name, allowed_types)
+
+            if allowed_types is None:
+                # Esta config acepta todos los tipos
+                matching_config = config
+                _logger.info('Config "%s" acepta todos los tipos, usandola', config.name)
+                break
+            elif logistic_type and logistic_type in allowed_types:
+                # Esta config acepta este tipo especifico
+                matching_config = config
+                _logger.info('Config "%s" acepta tipo %s, usandola', config.name, logistic_type)
+                break
+            elif not logistic_type and allowed_types:
+                # Sin tipo determinado, pero la config tiene filtros - saltar
+                _logger.info('Config "%s" tiene filtros pero orden sin tipo, saltando', config.name)
+                continue
+
+        if not matching_config:
+            _logger.info('Ninguna configuracion aplica para tipo logistico: %s', logistic_type)
+            return {
+                'status': 'filtered',
+                'message': f'Orden filtrada por tipo logistico: {logistic_type or "desconocido"}'
+            }
+
+        _logger.info('Usando configuracion: %s', matching_config.name)
+
+        # Verificar filtro de estado
+        status_filter = matching_config.status_filter
+        order_status = order_data.get('status', '')
+
+        if status_filter == 'paid' and order_status not in ('paid', 'partially_paid'):
+            _logger.info('Orden omitida: estado %s, se requiere paid', order_status)
+            return {'status': 'filtered', 'message': f'Orden no pagada (estado: {order_status})'}
+
+        if status_filter == 'confirmed' and order_status not in ('confirmed', 'paid', 'partially_paid'):
+            _logger.info('Orden omitida: estado %s, se requiere confirmed o paid', order_status)
+            return {'status': 'filtered', 'message': f'Orden no confirmada (estado: {order_status})'}
+
+        # Crear o actualizar la orden en mercadolibre.order
+        try:
+            order, is_new = self.create_from_ml_data(order_data, account)
+            if not order:
+                return {'status': 'error', 'message': 'No se pudo crear/actualizar la orden'}
+
+            _logger.info('Orden %s %s: %s', order.ml_order_id, 'creada' if is_new else 'actualizada', order.name)
+
+            # Actualizar tipo logistico si se determino
+            if logistic_type and not order.logistic_type:
+                order.write({'logistic_type': logistic_type})
+
+            # Sincronizar descuentos si esta configurado
+            if matching_config.sync_discounts and order.ml_order_id:
+                try:
+                    order._sync_discounts_from_api()
+                except Exception as e:
+                    _logger.warning('Error sincronizando descuentos: %s', str(e))
+
+            # Crear orden de venta si esta configurado
+            sale_order = None
+            if matching_config.create_sale_orders and not order.sale_order_id:
+                if order.status in ('paid', 'partially_paid'):
+                    try:
+                        sale_order = order._create_sale_order(matching_config)
+                        if sale_order:
+                            _logger.info('Orden de venta creada: %s', sale_order.name)
+                    except Exception as e:
+                        _logger.error('Error creando orden de venta: %s', str(e))
+                        order.write({
+                            'odoo_order_state': 'error',
+                            'odoo_order_error': str(e)
+                        })
+
+            return {
+                'status': 'success',
+                'message': f'Orden {"creada" if is_new else "actualizada"}: {order.name}',
+                'order_id': order.id,
+                'sale_order_id': sale_order.id if sale_order else None,
+            }
+
+        except Exception as e:
+            _logger.error('Error procesando orden %s: %s', order_id, str(e))
+            return {'status': 'error', 'message': str(e)}
+
+    @api.model
+    def _fetch_order_from_api(self, account, order_id):
+        """
+        Obtiene los datos completos de una orden desde la API de MercadoLibre.
+
+        Args:
+            account: mercadolibre.account
+            order_id: str, ID de la orden
+
+        Returns:
+            dict con datos de la orden o None si falla
+        """
+        import requests
+
+        try:
+            access_token = account.get_valid_token()
+        except Exception as e:
+            _logger.error('Error obteniendo token: %s', str(e))
+            return None
+
+        url = f'https://api.mercadolibre.com/orders/{order_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                _logger.error('Error API /orders/%s: %s - %s', order_id, response.status_code, response.text[:500])
+                return None
+
+        except Exception as e:
+            _logger.error('Error conexion API: %s', str(e))
+            return None
+
+    def _fetch_logistic_type_from_api(self, account, shipment_id):
+        """
+        Obtiene el tipo logistico desde la API de shipments.
+
+        Args:
+            account: mercadolibre.account
+            shipment_id: str, ID del shipment
+
+        Returns:
+            str codigo del tipo logistico o False
+        """
+        import requests
+
+        try:
+            access_token = account.get_valid_token()
+        except Exception:
+            return False
+
+        url = f'https://api.mercadolibre.com/shipments/{shipment_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Mapeo de valores
+                logistic_map = {
+                    'fulfillment': 'fulfillment',
+                    'xd_drop_off': 'xd_drop_off',
+                    'cross_docking': 'cross_docking',
+                    'drop_off': 'drop_off',
+                    'self_service': 'self_service',
+                    'custom': 'custom',
+                    'not_specified': 'not_specified',
+                }
+
+                # Intentar diferentes campos
+                logistic_type = data.get('logistic_type', '')
+                if logistic_type in logistic_map:
+                    return logistic_map[logistic_type]
+
+                # Intentar desde logistic.type
+                logistic_info = data.get('logistic', {}) or {}
+                logistic_type = logistic_info.get('type', '')
+                if logistic_type in logistic_map:
+                    return logistic_map[logistic_type]
+
+                # Inferir del modo
+                mode = data.get('mode', '')
+                if mode == 'me1':
+                    return 'custom'
+                elif mode == 'custom':
+                    return 'custom'
+                elif mode == 'not_specified':
+                    return 'not_specified'
+
+        except Exception as e:
+            _logger.warning('Error obteniendo shipment %s: %s', shipment_id, str(e))
+
+        return False
