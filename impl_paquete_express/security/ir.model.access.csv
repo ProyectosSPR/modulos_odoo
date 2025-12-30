@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_px_anexo_01_user,px.anexo.01 user,model_px_anexo_01,stock.group_stock_user,1,0,0,0
+access_px_quotation_response_user,px.quotation.response user,model_px_quotation_response,stock.group_stock_user,1,1,1,1
+access_px_quotation_response_service_user,px.quotation.response.service user,model_px_quotation_response_service,stock.group_stock_user,1,1,1,1
+access_px_errors_messages_user,px.errors.messages user,model_px_errors_messages,stock.group_stock_user,1,1,1,1
+access_px_errors_messages_details_user,px.errors.messages.details user,model_px_errors_messages_details,stock.group_stock_user,1,1,1,1
+access_px_shipment_user,px.shipment user,model_px_shipment,stock.group_stock_user,1,1,1,1
+
+access_px_shipment_tracking_user,px.shipment.tracking user,model_px_shipment_tracking,stock.group_stock_user,1,1,1,1
+access_px_shipment_tracking_details_user,px.shipment.tracking.details user,model_px_shipment_tracking_details,stock.group_stock_user,1,1,1,1

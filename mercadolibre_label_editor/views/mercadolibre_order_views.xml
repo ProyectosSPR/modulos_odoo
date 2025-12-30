@@ -8,12 +8,22 @@
         <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_form"/>
         <field name="arch" type="xml">
 
+            <!-- Agregar campo invisible para usar en attrs -->
+            <field name="has_sale_order" position="after">
+                <field name="logistic_type_id" invisible="1"/>
+            </field>
+
             <!-- Agregar botón de regenerar etiqueta después del botón de imprimir -->
             <button name="action_print_shipping_label" position="after">
                 <button name="action_regenerate_label_with_template" type="object"
                         string="Regenerar con Plantilla"
                         class="btn-secondary" icon="fa-refresh"
                         attrs="{'invisible': ['|', ('ml_shipment_id', '=', False), ('has_sale_order', '=', False)]}"/>
+                <button name="action_test_printer_connection" type="object"
+                        string="Test Impresora"
+                        class="btn-info" icon="fa-plug"
+                        attrs="{'invisible': [('logistic_type_id', '=', False)]}"
+                        title="Probar conexión con la impresora configurada"/>
             </button>
 
         </field>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="product_product_delivery_paquete_express" model="product.product">
+            <field name="name">Paquete express</field>
+            <field name="default_code">PX</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="delivery.product_category_deliveries"/>
+            <field name="sale_ok" eval="False"/>
+            <field name="purchase_ok" eval="False"/>
+            <field name="list_price">0</field>
+            <field name="invoice_policy">order</field>
+        </record>
+
+
+        <record id="delivery_carrier_paquete_express" model="delivery.carrier">
+            <field name="name">Paquete express</field>
+            <field name="sequence">30</field>
+            <field name="delivery_type">base_on_rule</field>
+            <field name="integration_level">rate</field>
+            <field name="country_ids" eval="[(6, 0, [ref('base.be'), ref('base.lu')])]"/>
+            <field name="product_id" ref="impl_paquete_express.product_product_delivery_paquete_express"/>
+        </record>
+
+        <record id="delivery_price_rule" model="delivery.price.rule">
+            <field name="carrier_id" ref="delivery_carrier_paquete_express"/>
+            <field name="operator">&gt;</field>
+            <field name="max_value" eval="0"/>
+            <field name="list_base_price" eval="0"/>
+        </record>
+    </data>
+</odoo>

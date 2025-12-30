@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_px_quotation_response_service_form" model="ir.ui.view">
+        <field name="name">px.quotation.response.service.form</field>
+        <field name="model">px.quotation.response.service</field>
+        <field name="arch" type="xml">
+            <form string="Servicio de Cotización">
+                <sheet>
+                    <group>
+                        <group col="2">
+                            <field name="service_type" readonly="1"/>
+                            <field name="service_id" readonly="1"/>
+                            <field name="service_id_ref" readonly="1"/>
+                            <field name="service_name" readonly="1"/>
+                            <field name="service_info_descr" readonly="1"/>
+                            <field name="service_info_descr_long" readonly="1"/>
+                        </group>
+                        <group col="2">
+                            <field name="cutoff_date_time" readonly="1"/>
+                            <field name="cutoff_time" readonly="1"/>
+                            <field name="max_rad_time" readonly="1"/>
+                            <field name="max_bok_time" readonly="1"/>
+                            <field name="on_time" readonly="1"/>
+                            <field name="promise_date" readonly="1"/>
+                            <field name="promise_date_days_qty" readonly="1"/>
+                            <field name="promise_date_hours_qty" readonly="1"/>
+                            <field name="in_offer" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Detalles del Servicio">
+                            <group>
+                                <group col="2">
+                                    <field name="services_dlvy_type" readonly="1"/>
+                                    <field name="services_ack_type" readonly="1"/>
+                                    <field name="services_totl_decl_vlue" readonly="1"/>
+                                    <field name="services_inv_type" readonly="1"/>
+                                    <field name="services_rad_type" readonly="1"/>
+                                    <field name="services_dlvy_type_amt" readonly="1"/>
+                                    <field name="services_dlvy_type_amt_disc" readonly="1"/>
+                                    <field name="services_dlvy_type_amt_tax" readonly="1"/>
+                                    <field name="services_dlvy_type_amt_ret_tax" readonly="1"/>
+                                    <field name="services_inv_type_amt" readonly="1"/>
+                                </group>
+                                <group col="2">
+                                    <field name="services_inv_type_amt_disc" readonly="1"/>
+                                    <field name="services_inv_type_amt_tax" readonly="1"/>
+                                    <field name="services_inv_type_amt_ret_tax" readonly="1"/>
+                                    <field name="services_rad_type_amt" readonly="1"/>
+                                    <field name="services_rad_type_amt_disc" readonly="1"/>
+                                    <field name="services_rad_type_amt_tax" readonly="1"/>
+                                    <field name="services_rad_type_amt_ret_tax" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Detalles del Monto">
+                            <group>
+                                <field name="amount_shp_amnt" readonly="1"/>
+                                <field name="amount_disc_amnt" readonly="1"/>
+                                <field name="amount_srvc_amnt" readonly="1"/>
+                                <field name="amount_sub_totl_amnt" readonly="1"/>
+                                <field name="amount_tax_amnt" readonly="1"/>
+                                <field name="amount_tax_ret_amnt" readonly="1"/>
+                                <field name="amount_total_amnt" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                    <footer>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

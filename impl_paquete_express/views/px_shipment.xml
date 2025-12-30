@@ -1,0 +1,27 @@
+<odoo>
+    <record id="view_px_shipment_form" model="ir.ui.view">
+        <field name="name">px.shipment.form</field>
+        <field name="model">px.shipment</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_tracking" string="Seguimiento" type="object" class="oe_highlight"/>
+                    <button name="action_print_ticket" string="Imprimir ticket" type="object" class="oe_highlight"/>
+                    <button name="action_cancelation" string="Cancelar envio" type="object"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="data" readonly="1"/>
+                        <field name="credit_amnt" readonly="1"/>
+                        <field name="sub_totl_amnt" readonly="1"/>
+                        <field name="total_amnt" readonly="1"/>
+                        <field name="is_cancel" widget="boolean_toggle" readonly="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Aceptar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

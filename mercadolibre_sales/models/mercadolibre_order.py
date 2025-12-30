@@ -429,6 +429,41 @@ class MercadolibreOrder(models.Model):
             existing.write(vals)
             order = existing
             is_new = False
+
+            # =========================================================
+            # ACTUALIZAR TAGS EN SALE.ORDER SI EXISTE
+            # =========================================================
+            if existing.sale_order_id:
+                try:
+                    # Obtener estado de envío usando el método helper
+                    current_shipping_status = existing._get_shipping_status()
+                    _logger.info(
+                        '[TAGS_SYNC] Actualizando tags para %s: shipping=%s, payment=%s',
+                        existing.sale_order_id.name,
+                        current_shipping_status,
+                        vals.get('status') or existing.status
+                    )
+
+                    tag_result = existing.sale_order_id._update_ml_status_and_tags(
+                        shipment_status=current_shipping_status,
+                        payment_status=vals.get('status') or existing.status,
+                        ml_tags=vals.get('ml_tags'),
+                        paid_amount=vals.get('paid_amount'),
+                    )
+                    if tag_result.get('tags_added') or tag_result.get('tags_removed'):
+                        _logger.info(
+                            '[TAGS_SYNC] Tags actualizados en %s: +%s -%s',
+                            existing.sale_order_id.name,
+                            tag_result.get('tags_added', []),
+                            tag_result.get('tags_removed', [])
+                        )
+                    elif tag_result.get('updated'):
+                        _logger.info('[TAGS_SYNC] Estados ML actualizados en %s', existing.sale_order_id.name)
+                    else:
+                        _logger.info('[TAGS_SYNC] Sin cambios en tags para %s', existing.sale_order_id.name)
+                except Exception as e:
+                    _logger.error('[TAGS_SYNC] Error actualizando tags en sale.order %s: %s',
+                                  existing.sale_order_id.name, e, exc_info=True)
         else:
             _logger.info('Creando nueva orden: %s', ml_order_id)
             order = self.create(vals)
@@ -443,6 +478,23 @@ class MercadolibreOrder(models.Model):
             if buyer:
                 order.buyer_id = buyer.id
 
+        # Si no se pudo determinar el logistic_type desde la orden,
+        # intentar obtenerlo del shipment
+        if not order.logistic_type and order.ml_shipment_id:
+            try:
+                fetched_type = order._fetch_logistic_type_from_shipment()
+                if fetched_type:
+                    order.write({'logistic_type': fetched_type})
+                    _logger.info(
+                        'Logistic type obtenido del shipment para orden %s: %s',
+                        ml_order_id, fetched_type
+                    )
+            except Exception as e:
+                _logger.warning(
+                    'No se pudo obtener logistic_type del shipment para orden %s: %s',
+                    ml_order_id, e
+                )
+
         return order, is_new
 
     def _get_logistic_type_from_data(self, data):
@@ -453,6 +505,7 @@ class MercadolibreOrder(models.Model):
         1. shipping.logistic_type directamente en la orden
         2. Los tags de la orden (como backup)
         3. Consultando el shipment (si no viene en la orden)
+        4. Si no hay shipping (id=null o tag no_shipping), es "A Convenir"
         """
         # Mapeo de valores de ML a nuestro selection
         logistic_map = {
@@ -466,17 +519,23 @@ class MercadolibreOrder(models.Model):
             'default': 'custom',  # me1 default = envio propio
         }
 
-        # 1. Intentar desde shipping.logistic_type (viene en la orden)
+        # 0. Verificar si NO hay shipping (A Convenir)
         shipping = data.get('shipping', {}) or {}
+        shipping_id = shipping.get('id')
+        tags = data.get('tags', []) or []
+        tags_str = str(tags).lower()
+
+        # Si no hay shipping_id o tiene tag "no_shipping", es A Convenir
+        if not shipping_id or 'no_shipping' in tags_str:
+            return 'not_specified'
+
+        # 1. Intentar desde shipping.logistic_type (viene en la orden)
         logistic_type = shipping.get('logistic_type', '')
 
         if logistic_type and logistic_type in logistic_map:
             return logistic_map[logistic_type]
 
         # 2. Intentar desde los tags de la orden
-        tags = data.get('tags', []) or []
-        tags_str = str(tags).lower()
-
         if 'fulfillment' in tags_str:
             return 'fulfillment'
         if 'self_service' in tags_str:
@@ -495,7 +554,8 @@ class MercadolibreOrder(models.Model):
         elif shipping_mode == 'not_specified':
             return 'not_specified'
 
-        # Si no se puede determinar, retornar False para que se actualice despues
+        # Si no se puede determinar desde la orden, retornar False
+        # para que el sistema consulte el shipment y obtenga el tipo real
         return False
 
     def _sync_items(self, order, items_data):
@@ -580,6 +640,34 @@ class MercadolibreOrder(models.Model):
         except (ValueError, TypeError) as e:
             _logger.warning('Error parseando fecha %s: %s', dt_string, str(e))
             return False
+
+    def _get_shipping_status(self):
+        """
+        Obtiene el estado de envío desde la fuente disponible.
+
+        Orden de prioridad:
+        1. Registro de mercadolibre.shipment por ml_shipment_id
+        2. Campo ml_shipping_status del sale.order asociado
+        3. None si no hay información disponible
+
+        Returns:
+            str or None: Estado de envío o None
+        """
+        self.ensure_one()
+
+        # 1. Buscar en mercadolibre.shipment
+        if self.ml_shipment_id:
+            shipment = self.env['mercadolibre.shipment'].search([
+                ('ml_shipment_id', '=', self.ml_shipment_id)
+            ], limit=1)
+            if shipment and shipment.status:
+                return shipment.status
+
+        # 2. Buscar en sale.order asociado
+        if self.sale_order_id and self.sale_order_id.ml_shipping_status:
+            return self.sale_order_id.ml_shipping_status
+
+        return None
 
     def action_sync_logistic_type(self):
         """
@@ -1161,37 +1249,37 @@ class MercadolibreOrder(models.Model):
                 _logger.debug('Sin aporte ML para orden %s', self.ml_order_id)
 
             # =========================================================
-            # ASIGNAR ETIQUETAS SEGUN CONFIGURACION
+            # ASIGNAR ETIQUETAS SEGUN CONFIGURACION (MÉTODO CENTRALIZADO)
             # =========================================================
-            tags_to_assign = self.env['crm.tag']
-
-            # 1. Etiquetas por defecto del tipo logistico
-            if logistic_config and logistic_config.default_tag_ids:
-                tags_to_assign |= logistic_config.default_tag_ids
-                _logger.debug('Etiquetas por tipo logistico: %s', logistic_config.default_tag_ids.mapped('name'))
-
-            # 2. Etiquetas por estado de pago
-            payment_tags = self.env['mercadolibre.payment.status.config'].get_tags_for_payment_status(
+            # Usar método centralizado de sale.order para aplicar tags
+            # según configuración de payment.status.config y shipment.status.config
+            current_shipping_status = self._get_shipping_status()
+            _logger.info(
+                '[TAGS_CREATE] Aplicando tags para nueva orden %s: shipping=%s, payment=%s, logistic=%s',
+                sale_order.name,
+                current_shipping_status,
                 self.status,
-                account_id=self.account_id.id,
-                company_id=self.company_id.id
+                self.logistic_type
             )
-            if payment_tags:
-                tags_to_assign |= payment_tags
-                _logger.debug('Etiquetas por estado de pago (%s): %s', self.status, payment_tags.mapped('name'))
 
-            # 3. Etiquetas por estado de envio (si hay shipment sincronizado)
-            if logistic_config and hasattr(self, 'shipment_id') and self.shipment_id:
-                shipment_status = self.shipment_id.status
-                shipment_tags = logistic_config.get_tags_for_shipment_status(shipment_status)
-                if shipment_tags:
-                    tags_to_assign |= shipment_tags
-                    _logger.debug('Etiquetas por estado de envio (%s): %s', shipment_status, shipment_tags.mapped('name'))
+            tag_result = sale_order._update_ml_status_and_tags(
+                shipment_status=current_shipping_status,
+                payment_status=self.status,
+                ml_tags=self.ml_tags if hasattr(self, 'ml_tags') else None,
+                paid_amount=self.paid_amount,
+            )
 
-            # Asignar etiquetas a la orden de venta
-            if tags_to_assign:
-                sale_order.write({'tag_ids': [(6, 0, tags_to_assign.ids)]})
-                _logger.info('Etiquetas asignadas a %s: %s', sale_order.name, tags_to_assign.mapped('name'))
+            if tag_result.get('tags_added') or tag_result.get('tags_removed'):
+                _logger.info(
+                    '[TAGS_CREATE] Etiquetas actualizadas en %s: +%s -%s',
+                    sale_order.name,
+                    tag_result.get('tags_added', []),
+                    tag_result.get('tags_removed', [])
+                )
+            elif tag_result.get('updated'):
+                _logger.info('[TAGS_CREATE] Estados ML actualizados en %s', sale_order.name)
+            else:
+                _logger.info('[TAGS_CREATE] Sin cambios de tags en %s', sale_order.name)
 
             # Determinar si se debe confirmar automaticamente
             # Prioridad: tipo logistico > sync config
@@ -1268,6 +1356,23 @@ class MercadolibreOrder(models.Model):
         """Obtiene o crea el partner para la orden"""
         self.ensure_one()
 
+        # =====================================================
+        # MODO CLIENTE ESPECÍFICO: Usar siempre el mismo cliente
+        # =====================================================
+        customer_mode = getattr(config, 'customer_mode', 'buyer')
+        if customer_mode == 'fixed':
+            if config.default_customer_id:
+                return config.default_customer_id
+            else:
+                _logger.warning(
+                    'Modo cliente "Específico" pero no hay cliente configurado. '
+                    'Intentando crear desde comprador ML.'
+                )
+                # Si no hay cliente específico, intentar con el modo buyer como fallback
+
+        # =====================================================
+        # MODO COMPRADOR ML: Buscar o crear del comprador
+        # =====================================================
         # Si ya tiene partner asignado, usarlo
         if self.partner_id:
             return self.partner_id
@@ -1302,8 +1407,52 @@ class MercadolibreOrder(models.Model):
             self.buyer_id.partner_id = partner.id
             return partner
 
-        # Usar cliente por defecto
+        # Usar cliente por defecto como último recurso
         return config.default_customer_id
+
+    def _get_price_without_taxes(self, price_with_tax, product):
+        """
+        Calcula el precio sin impuestos a partir del precio con impuestos incluidos.
+
+        MercadoLibre envía los precios con IVA incluido. Odoo necesita el precio
+        sin impuestos para calcular correctamente los impuestos en la factura.
+
+        Args:
+            price_with_tax: Precio con impuestos incluidos (de MercadoLibre)
+            product: Producto para obtener los impuestos de venta
+
+        Returns:
+            Precio sin impuestos
+        """
+        if not product or not price_with_tax:
+            return price_with_tax
+
+        # Obtener impuestos de venta del producto
+        taxes = product.taxes_id
+        if not taxes:
+            # Si el producto no tiene impuestos, el precio es el mismo
+            return price_with_tax
+
+        # Calcular la tasa total de impuestos
+        # Solo consideramos impuestos que se incluyen en el precio (price_include)
+        # o todos si ninguno está marcado como incluido
+        total_tax_rate = 0.0
+        for tax in taxes:
+            if tax.amount_type == 'percent':
+                total_tax_rate += tax.amount / 100.0
+
+        if total_tax_rate == 0:
+            return price_with_tax
+
+        # Calcular precio sin impuestos: precio / (1 + tasa)
+        price_without_tax = price_with_tax / (1 + total_tax_rate)
+
+        _logger.debug(
+            'Precio ML: %.2f -> Precio sin IVA: %.6f (tasa: %.2f%%)',
+            price_with_tax, price_without_tax, total_tax_rate * 100
+        )
+
+        return price_without_tax
 
     def _create_sale_order_lines(self, sale_order, config):
         """Crea las lineas de la orden de venta"""
@@ -1325,12 +1474,15 @@ class MercadolibreOrder(models.Model):
                 _logger.warning('No se encontro producto para SKU %s', item.seller_sku)
                 continue
 
+            # Calcular precio sin impuestos (ML envía precios con IVA incluido)
+            price_without_tax = self._get_price_without_taxes(item.unit_price, product)
+
             line_vals = {
                 'order_id': sale_order.id,
                 'product_id': product.id,
                 'name': item.title or product.name,
                 'product_uom_qty': item.quantity,
-                'price_unit': item.unit_price,
+                'price_unit': price_without_tax,
                 'ml_item_id': item.ml_item_id,
                 'ml_seller_sku': item.seller_sku,
             }
@@ -1349,15 +1501,19 @@ class MercadolibreOrder(models.Model):
             return
 
         OrderLine = self.env['sale.order.line']
+        discount_product = config.discount_product_id
 
         # Crear una linea de descuento negativa por el monto que el vendedor aporta
         if self.seller_discount > 0:
+            # Calcular precio sin impuestos (ML envía precios con IVA incluido)
+            price_without_tax = self._get_price_without_taxes(self.seller_discount, discount_product)
+
             line_vals = {
                 'order_id': sale_order.id,
-                'product_id': config.discount_product_id.id,
+                'product_id': discount_product.id,
                 'name': f'Descuento promocional (Aporte vendedor)',
                 'product_uom_qty': 1,
-                'price_unit': -self.seller_discount,  # Negativo porque es descuento
+                'price_unit': -price_without_tax,  # Negativo porque es descuento
             }
             OrderLine.create(line_vals)
 
@@ -1405,6 +1561,9 @@ class MercadolibreOrder(models.Model):
 
         OrderLine = self.env['sale.order.line']
 
+        # Calcular precio sin impuestos (ML envía precios con IVA incluido)
+        price_without_tax = self._get_price_without_taxes(self.meli_discount, meli_product)
+
         if handling == 'same_order':
             # Agregar linea positiva en la misma orden
             line_vals = {
@@ -1412,7 +1571,7 @@ class MercadolibreOrder(models.Model):
                 'product_id': meli_product.id,
                 'name': f'Aporte MercadoLibre (Co-fondeo)',
                 'product_uom_qty': 1,
-                'price_unit': self.meli_discount,  # Positivo porque es ingreso
+                'price_unit': price_without_tax,  # Positivo porque es ingreso
             }
             OrderLine.create(line_vals)
             _logger.info('[MELI_DISCOUNT] Orden %s: Aporte ML %.2f agregado como linea en orden %s',
@@ -1453,13 +1612,13 @@ class MercadolibreOrder(models.Model):
 
             meli_order = self.env['sale.order'].create(meli_order_vals)
 
-            # Crear linea del aporte
+            # Crear linea del aporte (price_without_tax ya fue calculado arriba)
             OrderLine.create({
                 'order_id': meli_order.id,
                 'product_id': meli_product.id,
                 'name': f'Aporte MercadoLibre - Orden {self.ml_order_id}',
                 'product_uom_qty': 1,
-                'price_unit': self.meli_discount,
+                'price_unit': price_without_tax,
             })
 
             _logger.info('Orden separada %s creada para aporte ML %.2f de orden %s',

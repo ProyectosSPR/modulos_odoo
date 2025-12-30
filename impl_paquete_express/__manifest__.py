@@ -1,0 +1,37 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'Paquete express',
+    'version': '16.0.1',
+    'category': '',
+    'author': 'Gerardo G.',
+    'license': '',
+    'website': '',
+    'summary': '',
+    'description': '',
+    'category': '',
+    'depends': ['stock', 'contacts', 'delivery', 'website_sale_delivery'],
+    'external_dependencies': {},
+    'data': [
+        'data/data.xml',
+        'data/px_anexo_01.xml',
+        'views/res_company.xml',
+        'views/stock_picking.xml',
+        'views/product_template.xml',
+        'views/sale_order.xml',
+        'views/px_shipment.xml',
+        'wizard/px_quotation_response.xml',
+        'wizard/px_quotation_response_service.xml',
+        'wizard/px_errors_messages.xml',
+        'wizard/px_shipment_tracking.xml',
+        'security/ir.model.access.csv',
+    ],
+    'assets': {
+        'web.assets_frontend': [
+            'impl_paquete_express/static/src/js/website_sale_delivery_paquete_express.js',
+            'impl_paquete_express/static/src/xml/website_sale_delivery_paquete_express.xml',
+        ],
+    },
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+}

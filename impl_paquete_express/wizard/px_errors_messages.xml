@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_px_errors_messages_form" model="ir.ui.view">
+        <field name="name">px.errors.messages.form</field>
+        <field name="model">px.errors.messages</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                    </group>
+                    <field name="details" readonly="1" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="code" readonly="1"/>
+                            <field name="name" readonly="1"/>
+                        </tree>
+                    </field>
+                    <footer>
+                        <button string="Aceptar" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

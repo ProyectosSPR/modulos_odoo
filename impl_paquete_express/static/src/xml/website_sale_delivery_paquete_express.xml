@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="website_sale_delivery_paquete_express">
+        <style>
+            #o_zone_widget_px {
+                width: 50%;
+                margin: 0 auto;
+            }
+            #o_zone_widget_px ul {
+                list-style: none;
+                padding: 0;
+            }
+            #o_zone_widget_px li {
+                border: 1px solid #ddd;
+                padding: 10px;
+                margin-bottom: 5px;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                transition: background-color 0.3s, border-color 0.3s;
+            }
+            #o_zone_widget_px li:hover {
+                background-color: #f0f0f0;
+            }
+            #o_zone_widget_px li input[type="radio"] {
+                margin-right: 10px;
+            }
+            #o_zone_widget_px li.selected {
+                background-color: #e0e0e0;
+                border-color: #007bff;
+            }
+        </style>
+         <div class="modal fade" id="modal_paquete_express" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="h5 modal-title">Estimación de costo.</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="w-100" id="o_zone_widget_px">
+                        </div>
+                    </div>
+                    <footer class="modal-footer">
+                        <button type="button" id="btn_confirm_relay" class="btn btn-primary disabled" aria-label="Choose this Parcel Point">Aceptar cotización</button>
+                        <button type="button" class="btn" data-bs-dismiss="modal" aria-label="Cancel">Cancelar</button>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

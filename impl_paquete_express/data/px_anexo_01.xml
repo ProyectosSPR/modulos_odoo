@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="px_anexo_01_1" model="px.anexo.01">
+            <field name="code">1</field>
+            <field name="name">SOBRE</field>
+        </record>
+        <record id="px_anexo_01_10" model="px.anexo.01">
+            <field name="code">10</field>
+            <field name="name">TAMBOR</field>
+        </record>
+        <record id="px_anexo_01_2" model="px.anexo.01">
+            <field name="code">2</field>
+            <field name="name">CAJA</field>
+        </record>
+        <record id="px_anexo_01_3" model="px.anexo.01">
+            <field name="code">3</field>
+            <field name="name">PAQUETE</field>
+        </record>
+        <record id="px_anexo_01_4" model="px.anexo.01">
+            <field name="code">4</field>
+            <field name="name">BOLSA</field>
+        </record>
+        <record id="px_anexo_01_5" model="px.anexo.01">
+            <field name="code">5</field>
+            <field name="name">PIEZA</field>
+        </record>
+        <record id="px_anexo_01_6" model="px.anexo.01">
+            <field name="code">6</field>
+            <field name="name">CUBETA</field>
+        </record>
+        <record id="px_anexo_01_7" model="px.anexo.01">
+            <field name="code">7</field>
+            <field name="name">BIDON</field>
+        </record>
+        <record id="px_anexo_01_8" model="px.anexo.01">
+            <field name="code">8</field>
+            <field name="name">PORRON</field>
+        </record>
+        <record id="px_anexo_01_9" model="px.anexo.01">
+            <field name="code">9</field>
+            <field name="name">GALON</field>
+        </record>
+        <record id="px_anexo_01_12" model="px.anexo.01">
+            <field name="code">12</field>
+            <field name="name">COSTAL</field>
+        </record>
+        <record id="px_anexo_01_14" model="px.anexo.01">
+            <field name="code">14</field>
+            <field name="name">PALETT</field>
+        </record>
+        <record id="px_anexo_01_15" model="px.anexo.01">
+            <field name="code">15</field>
+            <field name="name">HUACAL</field>
+        </record>
+        <record id="px_anexo_01_16" model="px.anexo.01">
+            <field name="code">16</field>
+            <field name="name">TERMO</field>
+        </record>
+        <record id="px_anexo_01_11" model="px.anexo.01">
+            <field name="code">11</field>
+            <field name="name">TARIMA</field>
+        </record>
+        <record id="px_anexo_01_22" model="px.anexo.01">
+            <field name="code">22</field>
+            <field name="name">REJA MEDE</field>
+        </record>
+        <record id="px_anexo_01_23" model="px.anexo.01">
+            <field name="code">23</field>
+            <field name="name">SACO</field>
+        </record>
+        <record id="px_anexo_01_24" model="px.anexo.01">
+            <field name="code">24</field>
+            <field name="name">ATADO A</field>
+        </record>
+        <record id="px_anexo_01_25" model="px.anexo.01">
+            <field name="code">25</field>
+            <field name="name">LOTE</field>
+        </record>
+        <record id="px_anexo_01_26" model="px.anexo.01">
+            <field name="code">26</field>
+            <field name="name">ROLLOS</field>
+        </record>
+        <record id="px_anexo_01_28" model="px.anexo.01">
+            <field name="code">28</field>
+            <field name="name">CAJA A</field>
+        </record>
+        <record id="px_anexo_01_27" model="px.anexo.01">
+            <field name="code">27</field>
+            <field name="name">BULTO</field>
+        </record>
+        <record id="px_anexo_01_32" model="px.anexo.01">
+            <field name="code">32</field>
+            <field name="name">HUACAL *</field>
+        </record>
+        <record id="px_anexo_01_33" model="px.anexo.01">
+            <field name="code">33</field>
+            <field name="name">SOBRE ANEXO</field>
+        </record>
+        <record id="px_anexo_01_42" model="px.anexo.01">
+            <field name="code">42</field>
+            <field name="name">HIELERA</field>
+        </record>
+        <record id="px_anexo_01_50" model="px.anexo.01">
+            <field name="code">50</field>
+            <field name="name">VALIJA</field>
+        </record>
+        <record id="px_anexo_01_61" model="px.anexo.01">
+            <field name="code">61</field>
+            <field name="name">EMBALAJE PE MED</field>
+        </record>
+        <record id="px_anexo_01_62" model="px.anexo.01">
+            <field name="code">62</field>
+            <field name="name">EMBALAJE PE GDE</field>
+        </record>
+        <record id="px_anexo_01_63" model="px.anexo.01">
+            <field name="code">63</field>
+            <field name="name">EMBALAJE PE EXGDE</field>
+        </record>
+        <record id="px_anexo_01_60" model="px.anexo.01">
+            <field name="code">60</field>
+            <field name="name">EMBALAJE PE CH</field>
+        </record>
+    </data>
+</odoo>

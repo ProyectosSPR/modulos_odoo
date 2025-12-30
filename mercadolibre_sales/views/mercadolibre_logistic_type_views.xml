@@ -121,24 +121,242 @@
                                 <strong>Configuracion de Etiquetas por Estado de Envio</strong><br/>
                                 Configure que etiquetas asignar a las ordenes segun el estado del envio.
                                 Puede agrupar varios estados de envio en una misma configuracion para que compartan etiquetas.
+                                <br/><br/>
+                                <i class="fa fa-refresh"/> <strong>Comportamiento:</strong> Al cambiar de estado, los tags del estado anterior
+                                se <u>reemplazan</u> por los del nuevo estado.
                             </div>
                             <field name="shipment_status_config_ids" nolabel="1">
-                                <tree editable="bottom">
+                                <tree string="Configuraciones de Etiquetas">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
-                                    <field name="status_pending"/>
-                                    <field name="status_handling"/>
-                                    <field name="status_ready_to_ship"/>
-                                    <field name="status_shipped"/>
-                                    <field name="status_in_transit"/>
-                                    <field name="status_out_for_delivery"/>
-                                    <field name="status_delivered"/>
-                                    <field name="status_not_delivered"/>
-                                    <field name="status_returned"/>
-                                    <field name="status_cancelled"/>
+                                    <field name="status_display" string="Estados que Aplican"/>
                                     <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
-                                    <field name="active"/>
+                                    <field name="active" widget="boolean_toggle"/>
                                 </tree>
+                                <form string="Configuración de Etiquetas por Estado">
+                                    <sheet>
+                                        <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger"
+                                                attrs="{'invisible': [('active', '=', True)]}"/>
+                                        <div class="oe_title">
+                                            <h1>
+                                                <field name="name" placeholder="Ej: En Preparación, En Tránsito, Entregado..."/>
+                                            </h1>
+                                        </div>
+                                        <group>
+                                            <group string="Configuración">
+                                                <field name="sequence"/>
+                                                <field name="active"/>
+                                            </group>
+                                            <group string="Etiquetas a Asignar">
+                                                <field name="tag_ids" widget="many2many_tags"
+                                                       options="{'color_field': 'color', 'no_create_edit': False}"
+                                                       nolabel="1"
+                                                       placeholder="Seleccione las etiquetas..."/>
+                                            </group>
+                                        </group>
+
+                                        <separator string="Estados de Envío que Activan estas Etiquetas"/>
+
+                                        <div class="alert alert-secondary">
+                                            <i class="fa fa-truck"/> Seleccione los estados de envío. Cuando el envío tenga alguno de estos estados, se asignarán las etiquetas configuradas.
+                                        </div>
+
+                                        <group>
+                                            <group string="Preparación">
+                                                <field name="status_pending" string="Pendiente"/>
+                                                <field name="status_handling" string="En Preparación"/>
+                                                <field name="status_ready_to_ship" string="Listo para Enviar"/>
+                                            </group>
+                                            <group string="En Tránsito">
+                                                <field name="status_shipped" string="Enviado"/>
+                                                <field name="status_in_transit" string="En Tránsito"/>
+                                                <field name="status_out_for_delivery" string="En Reparto"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <group string="Finalizados">
+                                                <field name="status_delivered" string="Entregado"/>
+                                                <field name="status_not_delivered" string="No Entregado"/>
+                                            </group>
+                                            <group string="Cancelados/Devueltos">
+                                                <field name="status_returned" string="Devuelto"/>
+                                                <field name="status_cancelled" string="Cancelado"/>
+                                            </group>
+                                        </group>
+
+                                        <separator string="Notas"/>
+                                        <field name="description" placeholder="Descripción opcional..." nolabel="1"/>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+
+                        <page string="Etiquetas Facturacion" name="invoiced_tags">
+                            <div class="alert alert-info" role="alert">
+                                <strong><i class="fa fa-file-text-o"/> Configuracion de Etiquetas para Orden Facturada</strong><br/>
+                                Configure que etiquetas agregar/quitar cuando la orden de venta tenga factura validada.
+                                <br/><br/>
+                                <i class="fa fa-plus-circle text-success"/> <strong>Tags a Agregar:</strong> Se agregan a los tags existentes (no reemplaza todo).
+                                <br/>
+                                <i class="fa fa-minus-circle text-danger"/> <strong>Tags a Quitar:</strong> Solo se quitan estos tags específicos, los demás se mantienen.
+                            </div>
+                            <group>
+                                <group string="Tags a Agregar cuando esté Facturado">
+                                    <field name="invoiced_tag_ids" widget="many2many_tags"
+                                           options="{'color_field': 'color', 'no_create_edit': False}"
+                                           nolabel="1"
+                                           placeholder="Ej: Facturado, Listo para Cobro..."/>
+                                </group>
+                                <group string="Tags a Quitar cuando esté Facturado">
+                                    <field name="invoiced_tags_to_remove_ids" widget="many2many_tags"
+                                           options="{'color_field': 'color', 'no_create_edit': False}"
+                                           nolabel="1"
+                                           placeholder="Ej: Pendiente de Facturar, Por Cobrar..."/>
+                                </group>
+                            </group>
+                            <div class="alert alert-secondary" role="alert">
+                                <strong>Ejemplo:</strong><br/>
+                                • Orden tiene tags: <span class="badge badge-secondary">Entregado</span> <span class="badge badge-secondary">Full</span> <span class="badge badge-warning">Pendiente Factura</span><br/>
+                                • Se factura con config: Agregar <span class="badge badge-success">Facturado</span>, Quitar <span class="badge badge-danger">Pendiente Factura</span><br/>
+                                • Resultado: <span class="badge badge-secondary">Entregado</span> <span class="badge badge-secondary">Full</span> <span class="badge badge-success">Facturado</span>
+                            </div>
+                        </page>
+
+                        <page string="Actualización de Campos" name="field_updates">
+                            <div class="alert alert-info" role="alert">
+                                <strong><i class="fa fa-cogs"/> Actualización Automática de Campos</strong><br/>
+                                Configure campos de <b>sale.order</b> o <b>stock.picking</b> que se actualizan
+                                automáticamente cuando cambia el estado de envío o pago.
+                                <br/><br/>
+                                <i class="fa fa-lightbulb-o"/> <b>Casos de uso:</b> Marcar campo booleano "Entregado",
+                                guardar fecha de entrega, actualizar campos personalizados (x_*), etc.
+                            </div>
+                            <field name="field_update_config_ids" nolabel="1">
+                                <tree string="Configuraciones de Campos">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="trigger_type"/>
+                                    <field name="status_display" string="Estados que Disparan"/>
+                                    <field name="target_model"/>
+                                    <field name="field_id" options="{'no_create': True}"/>
+                                    <field name="value_type"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </tree>
+                                <form string="Configuración de Actualización de Campo">
+                                    <sheet>
+                                        <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger"
+                                                attrs="{'invisible': [('active', '=', True)]}"/>
+                                        <div class="oe_title">
+                                            <h1>
+                                                <field name="name" placeholder="Ej: Marcar Entregado, Fecha de Pago..."/>
+                                            </h1>
+                                        </div>
+                                        <group>
+                                            <group string="Configuración General">
+                                                <field name="sequence"/>
+                                                <field name="active"/>
+                                            </group>
+                                            <group string="Tipo de Disparador">
+                                                <field name="trigger_type" widget="radio"/>
+                                            </group>
+                                        </group>
+
+                                        <separator string="Estados que Activan la Actualización"/>
+
+                                        <!-- Estados de Envío -->
+                                        <div attrs="{'invisible': [('trigger_type', '!=', 'shipment')]}">
+                                            <div class="alert alert-info">
+                                                <i class="fa fa-truck"/> Seleccione los <b>estados de envío</b> que activarán esta actualización de campo.
+                                            </div>
+                                            <group>
+                                                <group string="Preparación">
+                                                    <field name="ship_status_pending" string="Pendiente"/>
+                                                    <field name="ship_status_handling" string="En Preparación"/>
+                                                    <field name="ship_status_ready_to_ship" string="Listo para Enviar"/>
+                                                </group>
+                                                <group string="En Tránsito">
+                                                    <field name="ship_status_shipped" string="Enviado"/>
+                                                    <field name="ship_status_in_transit" string="En Tránsito"/>
+                                                    <field name="ship_status_out_for_delivery" string="En Reparto"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <group string="Finalizados">
+                                                    <field name="ship_status_delivered" string="Entregado"/>
+                                                    <field name="ship_status_not_delivered" string="No Entregado"/>
+                                                </group>
+                                                <group string="Cancelados/Devueltos">
+                                                    <field name="ship_status_returned" string="Devuelto"/>
+                                                    <field name="ship_status_cancelled" string="Cancelado"/>
+                                                </group>
+                                            </group>
+                                        </div>
+
+                                        <!-- Estados de Pago/Orden -->
+                                        <div attrs="{'invisible': [('trigger_type', '!=', 'payment')]}">
+                                            <div class="alert alert-info">
+                                                <i class="fa fa-credit-card"/> Seleccione los <b>estados de pago/orden</b> que activarán esta actualización de campo.
+                                            </div>
+                                            <group>
+                                                <group string="Estados Positivos">
+                                                    <field name="pay_status_paid" string="Pagada"/>
+                                                    <field name="pay_status_confirmed" string="Confirmada"/>
+                                                </group>
+                                                <group string="Estados Pendientes">
+                                                    <field name="pay_status_payment_required" string="Pago Requerido"/>
+                                                    <field name="pay_status_payment_in_process" string="Pago en Proceso"/>
+                                                    <field name="pay_status_partially_paid" string="Parcialmente Pagada"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <group string="Cancelaciones">
+                                                    <field name="pay_status_pending_cancel" string="Cancelación Pendiente"/>
+                                                    <field name="pay_status_cancelled" string="Cancelada"/>
+                                                </group>
+                                                <group string="Devoluciones">
+                                                    <field name="pay_status_partially_refunded" string="Parcialmente Reembolsada"/>
+                                                </group>
+                                            </group>
+                                        </div>
+
+                                        <separator string="Campo a Actualizar"/>
+
+                                        <group>
+                                            <group string="Modelo y Campo">
+                                                <field name="target_model" widget="radio"/>
+                                                <field name="field_id" options="{'no_create': True}"
+                                                       domain="[('model', '=', target_model), ('store', '=', True), ('ttype', 'in', ['boolean', 'char', 'text', 'integer', 'float', 'date', 'datetime', 'selection', 'many2one'])]"/>
+                                                <field name="field_name" invisible="1"/>
+                                                <field name="field_type" readonly="1"/>
+                                            </group>
+                                            <group string="Valor a Asignar">
+                                                <field name="value_type" widget="radio"/>
+                                                <field name="value_fixed"
+                                                       attrs="{'invisible': [('value_type', 'not in', ['fixed'])],
+                                                               'required': [('value_type', '=', 'fixed')]}"
+                                                       placeholder="Ingrese el valor..."/>
+                                            </group>
+                                        </group>
+
+                                        <div class="alert alert-secondary" role="alert"
+                                             attrs="{'invisible': [('value_type', '!=', 'fixed')]}">
+                                            <strong><i class="fa fa-info-circle"/> Formato de Valores Fijos:</strong>
+                                            <ul class="mb-0 mt-2">
+                                                <li><b>Boolean:</b> True / False</li>
+                                                <li><b>Integer:</b> 42</li>
+                                                <li><b>Float:</b> 3.14</li>
+                                                <li><b>Char/Text:</b> Texto libre</li>
+                                                <li><b>Selection:</b> Valor técnico (draft, done, cancel)</li>
+                                                <li><b>Many2one:</b> ID numérico del registro</li>
+                                                <li><b>Date:</b> today o 2024-12-31</li>
+                                                <li><b>Datetime:</b> now o 2024-12-31 10:30:00</li>
+                                            </ul>
+                                        </div>
+
+                                        <separator string="Notas"/>
+                                        <field name="description" placeholder="Descripción opcional de qué hace esta configuración..." nolabel="1"/>
+                                    </sheet>
+                                </form>
                             </field>
                         </page>
 
@@ -221,10 +439,36 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Estados de Pago" name="payment_status">
+                        <page string="Estados de Orden ML" name="order_status">
                             <div class="alert alert-info" role="alert">
-                                <strong>Seleccione los estados de pago</strong> que activaran las etiquetas configuradas arriba.
-                                Puede seleccionar multiples estados para que compartan las mismas etiquetas.
+                                <strong>Estados de Orden MercadoLibre</strong> - Estos son los estados que vienen en la orden ML.
+                                Seleccione los que activarán las etiquetas configuradas arriba.
+                            </div>
+                            <group>
+                                <group string="Estados Positivos">
+                                    <field name="status_paid"/>
+                                    <field name="status_confirmed"/>
+                                </group>
+                                <group string="Estados Pendientes">
+                                    <field name="status_payment_required"/>
+                                    <field name="status_payment_in_process"/>
+                                    <field name="status_partially_paid"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Estados Negativos">
+                                    <field name="status_pending_cancel"/>
+                                    <field name="status_cancelled"/>
+                                </group>
+                                <group string="Devoluciones">
+                                    <field name="status_partially_refunded"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Estados de Pago (API)" name="payment_status">
+                            <div class="alert alert-secondary" role="alert">
+                                <strong>Estados del API de Pagos</strong> - Estos son estados específicos del API de pagos de MercadoPago.
+                                Úselos solo si maneja webhooks de pagos directamente.
                             </div>
                             <group>
                                 <group string="Estados Positivos">
@@ -240,7 +484,6 @@
                             <group>
                                 <group string="Estados Negativos">
                                     <field name="status_rejected"/>
-                                    <field name="status_cancelled"/>
                                 </group>
                                 <group string="Devoluciones">
                                     <field name="status_refunded"/>

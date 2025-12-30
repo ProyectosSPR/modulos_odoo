@@ -89,6 +89,34 @@ class MercadolibreOrderSyncConfig(models.Model):
              'configuracion que coincida con el tipo logistico de la orden.'
     )
 
+    # =====================================================
+    # ACTUALIZACION DE ORDENES EXISTENTES
+    # =====================================================
+    update_existing_orders = fields.Boolean(
+        string='Actualizar Órdenes Existentes',
+        default=False,
+        help='Si está activo, el cron también actualizará los estados de '
+             'las órdenes de venta ya creadas consultando la API de ML.'
+    )
+    update_mode = fields.Selection([
+        ('pending', 'Órdenes Pendientes'),
+        ('days', 'Por Días'),
+    ], string='Modo de Actualización', default='pending',
+       help='Pendientes: actualiza órdenes no entregadas/canceladas. '
+            'Por Días: actualiza órdenes de los últimos X días.')
+
+    update_days = fields.Integer(
+        string='Días a Actualizar',
+        default=7,
+        help='Actualizar órdenes de los últimos X días (solo si modo = Por Días)'
+    )
+    cancel_on_ml_cancel = fields.Boolean(
+        string='Cancelar en Odoo si ML Cancela',
+        default=False,
+        help='Si la orden se cancela en MercadoLibre, cancelar automáticamente '
+             'la orden de venta en Odoo.'
+    )
+
     period = fields.Selection([
         ('today', 'Hoy'),
         ('yesterday', 'Ayer'),
@@ -210,10 +238,21 @@ class MercadolibreOrderSyncConfig(models.Model):
         'crm.team',
         string='Equipo Ventas por Defecto'
     )
+    # =====================================================
+    # CONFIGURACION DE CLIENTE
+    # =====================================================
+    customer_mode = fields.Selection([
+        ('buyer', 'Crear/Buscar del Comprador ML'),
+        ('fixed', 'Usar Cliente Específico'),
+    ], string='Modo de Cliente', default='buyer', required=True,
+       help='Comprador ML: Crea o busca el cliente basado en los datos del comprador de MercadoLibre.\n'
+            'Cliente Específico: Usa siempre el cliente seleccionado para todas las órdenes.')
+
     default_customer_id = fields.Many2one(
         'res.partner',
-        string='Cliente por Defecto',
-        help='Cliente a usar cuando no se puede identificar al comprador'
+        string='Cliente Específico',
+        help='Cliente a usar para todas las órdenes cuando el modo es "Cliente Específico", '
+             'o como respaldo cuando no se puede identificar al comprador en modo "Comprador ML".'
     )
     default_product_id = fields.Many2one(
         'product.product',
@@ -590,6 +629,13 @@ class MercadolibreOrderSyncConfig(models.Model):
             'Content-Type': 'application/json',
         }
 
+        # Log detallado de parámetros
+        _logger.info('─' * 50)
+        _logger.info('API REQUEST: GET /orders/search')
+        _logger.info('URL: %s', url)
+        _logger.info('Params: %s', json.dumps(params, indent=2, default=str))
+        _logger.info('─' * 50)
+
         LogModel = self.env['mercadolibre.log'].sudo()
         headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
         start_time = time.time()
@@ -597,6 +643,12 @@ class MercadolibreOrderSyncConfig(models.Model):
         try:
             response = requests.get(url, params=params, headers=headers, timeout=60)
             duration = time.time() - start_time
+
+            # Log de respuesta
+            _logger.info('API RESPONSE: %s (%.2fs)', response.status_code, duration)
+            _logger.info('Response URL: %s', response.url)
+            if response.status_code != 200:
+                _logger.error('Response Body: %s', response.text[:2000])
 
             response_body_log = response.text[:10000] if response.text else ''
             LogModel.create({
@@ -607,7 +659,7 @@ class MercadolibreOrderSyncConfig(models.Model):
                 'request_url': response.url,
                 'request_method': 'GET',
                 'request_headers': json.dumps(headers_log, indent=2),
-                'request_body': json.dumps(params, indent=2),
+                'request_body': json.dumps(params, indent=2, default=str),
                 'response_code': response.status_code,
                 'response_headers': json.dumps(dict(response.headers), indent=2),
                 'response_body': response_body_log,
@@ -615,7 +667,21 @@ class MercadolibreOrderSyncConfig(models.Model):
             })
 
             if response.status_code != 200:
+                # Parsear error de ML
+                error_detail = ''
+                try:
+                    error_json = response.json()
+                    error_detail = error_json.get('message', '') or error_json.get('error', '')
+                    if error_json.get('cause'):
+                        error_detail += f" - Causa: {error_json.get('cause')}"
+                except:
+                    error_detail = response.text[:500]
+
                 log_lines.append(f'ERROR API: {response.status_code}')
+                log_lines.append(f'Detalle: {error_detail}')
+                log_lines.append(f'URL: {response.url}')
+                _logger.error('ERROR API ML: %s - %s', response.status_code, error_detail)
+
                 self.write({
                     'last_run': fields.Datetime.now(),
                     'last_sync_log': '\n'.join(log_lines),
@@ -832,6 +898,13 @@ class MercadolibreOrderSyncConfig(models.Model):
                 log_lines.append(f'  Omitidas (sin tipo): {skipped_no_logistic}')
             log_lines.append(f'  Errores:         {sale_orders_errors}')
 
+        # Actualizar órdenes existentes si está configurado
+        update_stats = {'updated': 0, 'cancelled': 0, 'errors': 0}
+        if self.update_existing_orders:
+            update_stats = self._update_existing_sale_orders()
+            if update_stats.get('log_lines'):
+                log_lines.extend(update_stats['log_lines'])
+
         log_lines.append('')
         log_lines.append('-' * 50)
         log_lines.append('  RESUMEN SYNC')
@@ -844,6 +917,10 @@ class MercadolibreOrderSyncConfig(models.Model):
         log_lines.append(f'  Errores:       {error_count}')
         if self.create_sale_orders:
             log_lines.append(f'  Ordenes Odoo:  {sale_orders_created}')
+        if self.update_existing_orders:
+            log_lines.append(f'  Estados actualizados: {update_stats.get("updated", 0)}')
+            if update_stats.get('cancelled'):
+                log_lines.append(f'  Canceladas auto: {update_stats.get("cancelled", 0)}')
         log_lines.append('=' * 50)
 
         # Calcular proxima ejecucion
@@ -889,3 +966,189 @@ class MercadolibreOrderSyncConfig(models.Model):
                 result.append(order)
 
         return result
+
+    def _update_existing_sale_orders(self):
+        """
+        Actualiza estados, tags y pagos de órdenes de venta existentes
+        consultando la API de MercadoLibre.
+
+        Returns:
+            dict: Estadísticas de actualización
+        """
+        self.ensure_one()
+        import requests
+
+        stats = {
+            'total_checked': 0,
+            'updated': 0,
+            'cancelled': 0,
+            'errors': 0,
+            'log_lines': [],
+        }
+
+        if not self.update_existing_orders:
+            return stats
+
+        stats['log_lines'].append('')
+        stats['log_lines'].append('-' * 50)
+        stats['log_lines'].append('  ACTUALIZACIÓN DE ÓRDENES EXISTENTES')
+        stats['log_lines'].append('-' * 50)
+
+        # Determinar qué órdenes actualizar según el modo
+        SaleOrder = self.env['sale.order'].sudo()
+        domain = [
+            ('ml_order_id', '!=', False),
+            ('ml_account_id', '=', self.account_id.id),
+        ]
+
+        if self.update_mode == 'pending':
+            # Órdenes no entregadas y no canceladas
+            domain.extend([
+                ('state', 'not in', ['cancel']),
+                '|',
+                ('ml_shipping_status', '=', False),
+                ('ml_shipping_status', 'not in', ['delivered', 'cancelled']),
+            ])
+            stats['log_lines'].append('  Modo: Órdenes Pendientes')
+        else:  # days
+            # Órdenes de los últimos X días
+            date_limit = fields.Datetime.now() - timedelta(days=self.update_days)
+            domain.append(('create_date', '>=', date_limit))
+            stats['log_lines'].append(f'  Modo: Últimos {self.update_days} días')
+
+        sale_orders = SaleOrder.search(domain, limit=100)
+        stats['log_lines'].append(f'  Órdenes a verificar: {len(sale_orders)}')
+
+        if not sale_orders:
+            stats['log_lines'].append('  No hay órdenes para actualizar')
+            return stats
+
+        # Obtener token
+        try:
+            access_token = self.account_id.get_valid_token()
+        except Exception as e:
+            stats['log_lines'].append(f'  ERROR: No se pudo obtener token: {str(e)}')
+            stats['errors'] = 1
+            return stats
+
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        for sale_order in sale_orders:
+            stats['total_checked'] += 1
+            ml_order_id = sale_order.ml_order_id
+
+            try:
+                # Consultar estado de la orden en ML
+                url = f'https://api.mercadolibre.com/orders/{ml_order_id}'
+                response = requests.get(url, headers=headers, timeout=30)
+
+                if response.status_code != 200:
+                    _logger.warning('Error consultando orden %s: HTTP %s',
+                                  ml_order_id, response.status_code)
+                    stats['errors'] += 1
+                    continue
+
+                order_data = response.json()
+
+                # =====================================================
+                # EXTRAER DATOS DE LA API DE ML
+                # =====================================================
+                new_status = order_data.get('status')
+                new_ship_status = None
+
+                # Estado del envío - consultar API de shipments
+                shipping = order_data.get('shipping', {}) or {}
+                shipment_id = shipping.get('id')
+
+                if shipment_id:
+                    ship_url = f'https://api.mercadolibre.com/shipments/{shipment_id}'
+                    ship_response = requests.get(ship_url, headers=headers, timeout=30)
+
+                    if ship_response.status_code == 200:
+                        ship_data = ship_response.json()
+                        new_ship_status = ship_data.get('status')
+
+                # Tags ML
+                tags = order_data.get('tags', []) or []
+                new_ml_tags = ','.join(tags) if tags else ''
+
+                # Monto pagado
+                payments = order_data.get('payments', []) or []
+                paid_amount = sum(p.get('total_paid_amount', 0) or 0
+                                 for p in payments
+                                 if p.get('status') == 'approved')
+
+                # =====================================================
+                # USAR MÉTODO CENTRALIZADO PARA ACTUALIZAR
+                # (elimina duplicación de lógica)
+                # =====================================================
+                _logger.info(
+                    '[SYNC_UPDATE] Actualizando %s: status=%s, ship=%s',
+                    sale_order.name, new_status, new_ship_status
+                )
+
+                tag_result = sale_order._update_ml_status_and_tags(
+                    shipment_status=new_ship_status,
+                    payment_status=new_status,
+                    ml_tags=new_ml_tags,
+                    paid_amount=paid_amount,
+                )
+
+                # Registrar cambios en estadísticas
+                if tag_result.get('updated'):
+                    stats['updated'] += 1
+                    changes = tag_result.get('status_changes', [])
+                    if tag_result.get('tags_added'):
+                        changes.append(f"tags +: {', '.join(tag_result['tags_added'])}")
+                    if tag_result.get('tags_removed'):
+                        changes.append(f"tags -: {', '.join(tag_result['tags_removed'])}")
+
+                    if changes:
+                        stats['log_lines'].append(f'    [UPD] {sale_order.name}: {", ".join(changes)}')
+                        _logger.info('Orden %s actualizada: %s', sale_order.name, changes)
+
+                # =====================================================
+                # CANCELAR SI ML CANCELÓ (funcionalidad especial)
+                # =====================================================
+                if self.cancel_on_ml_cancel and new_status == 'cancelled':
+                    if sale_order.state not in ['cancel', 'done']:
+                        try:
+                            sale_order.with_context(
+                                disable_cancel_warning=True
+                            )._action_cancel()
+                            stats['cancelled'] += 1
+                            stats['log_lines'].append(
+                                f'    [CANCEL] {sale_order.name}: Cancelada por estado ML'
+                            )
+                            _logger.info('Orden %s cancelada por estado ML', sale_order.name)
+                        except Exception as cancel_error:
+                            stats['log_lines'].append(
+                                f'    [ERROR] {sale_order.name}: No se pudo cancelar: {cancel_error}'
+                            )
+
+                # =====================================================
+                # ACTUALIZAR MERCADOLIBRE.ORDER SI EXISTE
+                # =====================================================
+                ml_order = self.env['mercadolibre.order'].sudo().search([
+                    ('ml_order_id', '=', ml_order_id)
+                ], limit=1)
+
+                if ml_order and new_status and new_status != ml_order.status:
+                    ml_order.write({'status': new_status})
+
+            except Exception as e:
+                stats['errors'] += 1
+                _logger.error('Error actualizando orden %s: %s', ml_order_id, str(e))
+                stats['log_lines'].append(f'    [ERROR] {sale_order.name}: {str(e)[:50]}')
+
+        stats['log_lines'].append(f'  Verificadas: {stats["total_checked"]}')
+        stats['log_lines'].append(f'  Actualizadas: {stats["updated"]}')
+        if stats['cancelled']:
+            stats['log_lines'].append(f'  Canceladas: {stats["cancelled"]}')
+        if stats['errors']:
+            stats['log_lines'].append(f'  Errores: {stats["errors"]}')
+
+        return stats

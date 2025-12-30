@@ -35,6 +35,21 @@
                             <field name="ml_pack_id"/>
                             <field name="ml_shipment_id"/>
                         </group>
+                        <group string="Estados ML">
+                            <field name="ml_status" widget="badge"
+                                   decoration-success="ml_status == 'paid'"
+                                   decoration-warning="ml_status in ('payment_in_process', 'partially_paid')"
+                                   decoration-danger="ml_status in ('cancelled', 'pending_cancel')"/>
+                            <field name="ml_shipping_status" widget="badge"
+                                   decoration-success="ml_shipping_status == 'delivered'"
+                                   decoration-info="ml_shipping_status in ('shipped', 'ready_to_ship')"
+                                   decoration-warning="ml_shipping_status in ('pending', 'handling')"
+                                   decoration-danger="ml_shipping_status in ('cancelled', 'not_delivered')"/>
+                            <field name="ml_tags"/>
+                            <field name="ml_paid_amount"/>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Informacion ML">
                             <field name="ml_account_id"/>
                             <field name="ml_logistic_type"/>
@@ -57,6 +72,15 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="ml_order_id" string="Order ML" optional="hide"/>
                 <field name="ml_pack_id" string="Pack ML" optional="hide"/>
+                <field name="ml_status" string="Estado ML" optional="show" widget="badge"
+                       decoration-success="ml_status == 'paid'"
+                       decoration-warning="ml_status in ('payment_in_process', 'partially_paid')"
+                       decoration-danger="ml_status in ('cancelled', 'pending_cancel')"/>
+                <field name="ml_shipping_status" string="Envío ML" optional="show" widget="badge"
+                       decoration-success="ml_shipping_status == 'delivered'"
+                       decoration-info="ml_shipping_status in ('shipped', 'ready_to_ship')"
+                       decoration-warning="ml_shipping_status in ('pending', 'handling')"
+                       decoration-danger="ml_shipping_status in ('cancelled', 'not_delivered')"/>
             </xpath>
         </field>
     </record>
@@ -73,10 +97,20 @@
                 <filter string="Full" name="ml_full" domain="[('ml_logistic_type', '=', 'fulfillment')]"/>
                 <filter string="Agencia" name="ml_agencia" domain="[('ml_logistic_type', '=', 'xd_drop_off')]"/>
                 <separator/>
+                <filter string="Pendiente Envío" name="ml_pending" domain="[('ml_shipping_status', 'in', ['pending', 'handling', 'ready_to_ship'])]"/>
+                <filter string="Enviados" name="ml_shipped" domain="[('ml_shipping_status', '=', 'shipped')]"/>
+                <filter string="Entregados" name="ml_delivered" domain="[('ml_shipping_status', '=', 'delivered')]"/>
+                <filter string="No Entregado/Cancelado" name="ml_problem" domain="[('ml_shipping_status', 'in', ['not_delivered', 'cancelled'])]"/>
+                <separator/>
                 <!-- Campo combinado que busca en order_id y pack_id -->
                 <field name="ml_order_id" string="ID ML (Order/Pack)"
                        filter_domain="['|', ('ml_order_id', 'ilike', self), ('ml_pack_id', 'ilike', self)]"/>
                 <field name="ml_pack_id"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado Envío ML" name="group_ml_shipping" context="{'group_by': 'ml_shipping_status'}"/>
+                    <filter string="Estado ML" name="group_ml_status" context="{'group_by': 'ml_status'}"/>
+                    <filter string="Tipo Logístico" name="group_logistic" context="{'group_by': 'ml_logistic_type'}"/>
+                </group>
             </xpath>
         </field>
     </record>

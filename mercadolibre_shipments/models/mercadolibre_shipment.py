@@ -893,12 +893,55 @@ class MercadolibreShipment(models.Model):
                         _logger.info('[SHIPMENT WEBHOOK] Actualizado logistic_type de orden %s a %s',
                                    shipment.order_id.ml_order_id, shipment.logistic_type)
 
+                # =====================================================
+                # ACTUALIZAR SALE.ORDER CON ESTADOS Y TAGS
+                # =====================================================
+                sale_order = None
+                tag_result = {}
+
+                # Buscar sale.order asociada
+                if shipment.order_id and shipment.order_id.sale_order_id:
+                    sale_order = shipment.order_id.sale_order_id
+                elif shipment.order_id:
+                    # Buscar por ml_order_id
+                    sale_order = self.env['sale.order'].sudo().search([
+                        ('ml_order_id', '=', shipment.order_id.ml_order_id)
+                    ], limit=1)
+
+                if sale_order:
+                    _logger.info('[SHIPMENT WEBHOOK] Actualizando sale.order %s', sale_order.name)
+
+                    # Usar método centralizado para actualizar estados y tags
+                    tag_result = sale_order._update_ml_status_and_tags(
+                        shipment_status=shipment.status,
+                    )
+
+                    if tag_result.get('updated'):
+                        _logger.info('[SHIPMENT WEBHOOK] Sale order actualizada: %s', tag_result)
+
+                        # Notificar en chatter si hubo cambios
+                        changes = tag_result.get('status_changes', [])
+                        if tag_result.get('tags_added'):
+                            changes.append(f"tags +: {', '.join(tag_result['tags_added'])}")
+                        if tag_result.get('tags_removed'):
+                            changes.append(f"tags -: {', '.join(tag_result['tags_removed'])}")
+
+                        if changes:
+                            changes_html = '<br/>'.join([f'• {c}' for c in changes])
+                            sale_order.message_post(
+                                body=f'🚚 Actualización de Envío (Webhook shipments):<br/>'
+                                     f'{changes_html}',
+                                subject='Actualización Envío ML'
+                            )
+
                 return {
                     'status': 'ok',
                     'shipment_id': shipment.id,
                     'ml_shipment_id': shipment_id,
                     'logistic_type': shipment.logistic_type,
                     'shipment_status': shipment.status,
+                    'sale_order_updated': bool(sale_order and tag_result.get('updated')),
+                    'tags_changed': bool(tag_result.get('tags_added') or tag_result.get('tags_removed')),
                 }
             else:
                 _logger.warning('[SHIPMENT WEBHOOK] No se pudo sincronizar shipment %s', shipment_id)

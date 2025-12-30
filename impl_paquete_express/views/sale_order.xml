@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_form_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <group name="sale_shipping" position="inside">
+                <button name="action_view_paquete_express"
+                        string="Paquete express"
+                        type="object"
+                        class="oe_highlight"/>
+            </group>
+        </field>
+    </record>
+</odoo>

@@ -73,6 +73,21 @@ class MlLabelProcessor(models.AbstractModel):
             active_fields = template.field_ids.filtered(lambda f: f.active)
             rendered_count = 0
 
+            # Calcular dimensiones del template en puntos nativos (72 DPI)
+            # El template guarda pdf_width/height en escala 150 DPI
+            template_width_pts = template.pdf_width * (72 / 150) if template.pdf_width else page_width
+            template_height_pts = template.pdf_height * (72 / 150) if template.pdf_height else page_height
+
+            # Factor de escala si el PDF real tiene dimensiones diferentes al template
+            scale_x = page_width / template_width_pts if template_width_pts else 1.0
+            scale_y = page_height / template_height_pts if template_height_pts else 1.0
+
+            _logger.debug(
+                f'Dimensiones template: {template_width_pts:.1f}x{template_height_pts:.1f} pts, '
+                f'PDF real: {page_width:.1f}x{page_height:.1f} pts, '
+                f'escala: ({scale_x:.3f}, {scale_y:.3f})'
+            )
+
             for field in active_fields:
                 try:
                     text = self._resolve_field_value(field, context_record)
@@ -81,11 +96,14 @@ class MlLabelProcessor(models.AbstractModel):
                         _logger.warning(f'Campo {field.name} resultó en texto vacío')
                         continue
 
-                    # Convertir píxeles a puntos (asumiendo 150 DPI de template vs 72 DPI PDF)
-                    scale_factor = 72 / 150
-                    x_pts = field.position_x * scale_factor
-                    # Invertir Y porque PDF usa origen abajo-izquierda
-                    y_pts = page_height - (field.position_y * scale_factor)
+                    # Las coordenadas en BD están en puntos nativos (72 DPI)
+                    # position_y está invertida (Y=0 abajo en formato PyPDF2)
+                    # Solo necesitamos escalar si el PDF real tiene diferente tamaño
+                    x_pts = field.position_x * scale_x
+
+                    # La posición Y en BD ya está en formato PyPDF2 (desde abajo)
+                    # Solo escalar proporcionalmente
+                    y_pts = field.position_y * scale_y
 
                     # Configurar estilo de fuente
                     can.setFont(field.font_family, field.font_size)

@@ -100,6 +100,26 @@
                             La configuracion de cada tipo logistico (almacen, equipo, tarifa, etc.) tendra prioridad sobre los valores por defecto de esta configuracion.
                         </div>
                     </group>
+                    <group string="Actualización de Órdenes Existentes">
+                        <group>
+                            <field name="update_existing_orders" widget="boolean_toggle"/>
+                            <field name="update_mode" attrs="{'invisible': [('update_existing_orders', '=', False)]}"/>
+                            <field name="update_days"
+                                   attrs="{'invisible': ['|', ('update_existing_orders', '=', False), ('update_mode', '!=', 'days')]}"/>
+                        </group>
+                        <group attrs="{'invisible': [('update_existing_orders', '=', False)]}">
+                            <field name="cancel_on_ml_cancel" widget="boolean_toggle"/>
+                        </group>
+                        <div class="alert alert-info col-12" role="alert"
+                             attrs="{'invisible': [('update_existing_orders', '=', False)]}">
+                            <strong><i class="fa fa-sync"/> Actualización Automática:</strong>
+                            <ul class="mb-0">
+                                <li><b>Órdenes Pendientes:</b> Actualiza órdenes que aún no están entregadas o canceladas</li>
+                                <li><b>Por Días:</b> Actualiza todas las órdenes de los últimos X días</li>
+                            </ul>
+                            <p class="mb-0 mt-2">Se actualizan: estado ML, estado de envío, tags, monto pagado.</p>
+                        </div>
+                    </group>
                     <group string="Configuracion de Ordenes Odoo" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
                         <group string="Automatizacion">
                             <field name="auto_confirm_order"/>
@@ -120,8 +140,23 @@
                             <field name="default_team_id"/>
                         </group>
                     </group>
+                    <group string="Configuración de Cliente" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
+                        <group>
+                            <field name="customer_mode" widget="radio"/>
+                        </group>
+                        <group>
+                            <field name="default_customer_id"
+                                   attrs="{'required': [('customer_mode', '=', 'fixed')]}"/>
+                        </group>
+                        <div class="alert alert-secondary col-12" role="alert">
+                            <strong><i class="fa fa-user"/> Modo de Cliente:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><b>Crear/Buscar del Comprador ML:</b> Busca o crea un cliente basado en los datos del comprador de MercadoLibre (nombre, email)</li>
+                                <li><b>Usar Cliente Específico:</b> Todas las órdenes se crean con el cliente seleccionado (útil para B2B o consolidación)</li>
+                            </ul>
+                        </div>
+                    </group>
                     <group string="Productos por Defecto" attrs="{'invisible': [('create_sale_orders', '=', False)]}">
-                        <field name="default_customer_id"/>
                         <field name="default_product_id"/>
                         <field name="discount_product_id"/>
                     </group>
