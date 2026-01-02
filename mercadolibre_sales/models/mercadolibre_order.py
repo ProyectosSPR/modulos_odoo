@@ -784,7 +784,11 @@ class MercadolibreOrder(models.Model):
                     logistic = data.get('logistic', {}) or {}
                     mode = logistic.get('mode', '')
 
-                if mode == 'me1':
+                if mode == 'custom':
+                    # Envio propio del vendedor
+                    _logger.info('Shipment %s: modo custom -> custom', self.ml_shipment_id)
+                    return 'custom'
+                elif mode == 'me1':
                     _logger.info('Shipment %s: modo me1 -> custom', self.ml_shipment_id)
                     return 'custom'
                 elif mode == 'me2':
@@ -795,8 +799,12 @@ class MercadolibreOrder(models.Model):
                         return 'fulfillment'
                     _logger.info('Shipment %s: modo me2 sin fulfillment -> xd_drop_off', self.ml_shipment_id)
                     return 'xd_drop_off'  # Por defecto para me2
+                elif mode == 'not_specified':
+                    # A convenir
+                    _logger.info('Shipment %s: modo not_specified -> not_specified', self.ml_shipment_id)
+                    return 'not_specified'
 
-                _logger.warning('Shipment %s: no se pudo determinar logistic_type', self.ml_shipment_id)
+                _logger.warning('Shipment %s: no se pudo determinar logistic_type, modo=%s', self.ml_shipment_id, mode)
                 return False
 
             else:

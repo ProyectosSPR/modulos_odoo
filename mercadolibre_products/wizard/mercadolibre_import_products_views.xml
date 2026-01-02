@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View del Wizard -->
+    <record id="view_mercadolibre_import_products_form" model="ir.ui.view">
+        <field name="name">mercadolibre.import.products.form</field>
+        <field name="model">mercadolibre.import.products</field>
+        <field name="arch" type="xml">
+            <form string="Importar Productos desde MercadoLibre" style="min-width: 950px;">
+                <field name="state" invisible="1"/>
+
+                <!-- HEADER CON ESTADO -->
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,preview,done"/>
+                </header>
+
+                <!-- ==================== ESTADO: CONFIGURACIÓN ==================== -->
+                <div attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa fa-info-circle"/>
+                        <strong>Importar productos desde MercadoLibre a Odoo</strong><br/>
+                        Este asistente descargará los items de tu cuenta ML y creará productos en Odoo
+                        con sus imágenes, descripciones y stock inicial.
+                    </div>
+
+                    <group>
+                        <group string="Cuenta MercadoLibre">
+                            <field name="account_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Filtros de Búsqueda">
+                            <field name="filter_status"/>
+                            <field name="filter_unlinked_only"/>
+                            <field name="filter_category_id" options="{'no_create': True}"/>
+                            <field name="filter_search_text" placeholder="Buscar en título..."/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Opciones de Importación">
+                            <field name="create_products"/>
+                            <field name="download_images"/>
+                            <field name="download_extra_images"
+                                   attrs="{'invisible': [('download_images', '=', False)]}"/>
+                            <field name="import_stock"/>
+                            <field name="import_description"/>
+                            <field name="set_ml_category"/>
+                        </group>
+                        <group string="Destino en Odoo">
+                            <field name="stock_location_id"
+                                   attrs="{'required': [('import_stock', '=', True)], 'invisible': [('import_stock', '=', False)]}"/>
+                            <field name="product_category_id"/>
+                        </group>
+                    </group>
+                </div>
+
+                <!-- ==================== ESTADO: VISTA PREVIA ==================== -->
+                <div attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <group>
+                        <group>
+                            <field name="total_found" readonly="1"/>
+                            <field name="total_to_import" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_already_linked" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('total_to_import', '>', 0)]}">
+                        <i class="fa fa-warning"/>
+                        <strong>No hay items para importar.</strong>
+                        Todos los items encontrados ya están vinculados a productos de Odoo.
+                    </div>
+
+                    <div class="mb-2">
+                        <button name="action_select_all" type="object"
+                                string="Seleccionar Todos" class="btn-sm btn-secondary"/>
+                        <button name="action_deselect_all" type="object"
+                                string="Deseleccionar Todos" class="btn-sm btn-secondary"/>
+                    </div>
+
+                    <field name="preview_line_ids" nolabel="1">
+                        <tree string="Items de MercadoLibre" editable="bottom"
+                              decoration-success="import_status == 'success'"
+                              decoration-danger="import_status == 'error'"
+                              decoration-muted="is_linked == True"
+                              decoration-info="selected == True and is_linked == False">
+                            <field name="selected" string="Sel."
+                                   attrs="{'readonly': [('is_linked', '=', True)]}"/>
+                            <field name="ml_item_id" string="ID ML" optional="show"/>
+                            <field name="title" string="Título"/>
+                            <field name="seller_sku" string="SKU" optional="show"/>
+                            <field name="price" string="Precio" widget="monetary"/>
+                            <field name="available_quantity" string="Stock"/>
+                            <field name="pictures_count" string="Imgs" optional="show"/>
+                            <field name="status" string="Estado ML" widget="badge"
+                                   decoration-success="status == 'active'"
+                                   decoration-warning="status == 'paused'"
+                                   decoration-muted="status == 'closed'" optional="show"/>
+                            <field name="is_linked" string="Vinc." widget="boolean"/>
+                            <field name="linked_product_id" string="Producto Odoo" optional="show"/>
+                            <field name="import_status" string="Import" widget="badge"
+                                   decoration-success="import_status == 'success'"
+                                   decoration-danger="import_status == 'error'"
+                                   attrs="{'invisible': [('import_status', '=', 'pending')]}"/>
+                            <field name="import_message" string="Mensaje" optional="hide"/>
+                        </tree>
+                    </field>
+                </div>
+
+                <!-- ==================== ESTADO: IMPORTANDO ==================== -->
+                <div attrs="{'invisible': [('state', '!=', 'importing')]}">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa fa-spinner fa-spin"/>
+                        <strong>Importando productos...</strong>
+                        Por favor espere mientras se descargan las imágenes y se crean los productos.
+                    </div>
+                </div>
+
+                <!-- ==================== ESTADO: COMPLETADO ==================== -->
+                <div attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <group>
+                        <group string="Resultados">
+                            <field name="imported_count" readonly="1"/>
+                            <field name="error_count" readonly="1"/>
+                            <field name="skipped_count" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-success" role="alert"
+                         attrs="{'invisible': [('imported_count', '=', 0)]}">
+                        <i class="fa fa-check-circle"/>
+                        <strong>Importación completada.</strong>
+                        Se crearon <field name="imported_count" readonly="1" class="oe_inline"/> productos en Odoo.
+                    </div>
+
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('error_count', '=', 0)]}">
+                        <i class="fa fa-exclamation-triangle"/>
+                        <strong>Hubo errores.</strong>
+                        <field name="error_count" readonly="1" class="oe_inline"/> items no pudieron importarse.
+                    </div>
+
+                    <!-- Lista de resultados -->
+                    <field name="preview_line_ids" nolabel="1">
+                        <tree string="Resultados"
+                              decoration-success="import_status == 'success'"
+                              decoration-danger="import_status == 'error'">
+                            <field name="title" string="Título"/>
+                            <field name="seller_sku" string="SKU"/>
+                            <field name="import_status" string="Estado" widget="badge"
+                                   decoration-success="import_status == 'success'"
+                                   decoration-danger="import_status == 'error'"/>
+                            <field name="import_message" string="Mensaje"/>
+                            <field name="linked_product_id" string="Producto Creado"/>
+                        </tree>
+                    </field>
+
+                    <!-- Log detallado -->
+                    <group string="Log Detallado" attrs="{'invisible': [('import_log', '=', False)]}">
+                        <field name="import_log" nolabel="1" readonly="1"
+                               style="font-family: monospace; background: #f5f5f5; padding: 10px; white-space: pre-wrap;"/>
+                    </group>
+                </div>
+
+                <!-- ==================== FOOTERS POR ESTADO ==================== -->
+                <footer attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <button name="action_search_items" type="object"
+                            string="Buscar Items" class="btn-primary" icon="fa-search"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <button name="action_import" type="object"
+                            string="Importar Seleccionados" class="btn-primary" icon="fa-download"
+                            attrs="{'invisible': [('total_to_import', '=', 0)]}"
+                            confirm="¿Está seguro de importar los items seleccionados? Se crearán productos nuevos en Odoo."/>
+                    <button name="action_back" type="object"
+                            string="Volver" class="btn-secondary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <button name="action_view_products" type="object"
+                            string="Ver Productos Creados" class="btn-primary" icon="fa-list"
+                            attrs="{'invisible': [('imported_count', '=', 0)]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para abrir el wizard -->
+    <record id="action_mercadolibre_import_products" model="ir.actions.act_window">
+        <field name="name">Importar desde MercadoLibre</field>
+        <field name="res_model">mercadolibre.import.products</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -41,11 +41,24 @@ Características:
         'data/external_db_config.xml',
         'data/csf_fields_data.xml',
         'data/billing_status_data.xml',
+        'data/billing_reconciliation_fields_data.xml',
+        'data/billing_cron_data.xml',
         # Vistas Backend
         'views/csf_field_config_views.xml',
         'views/billing_request_views.xml',
         'views/billing_settings_views.xml',
         'views/res_partner_views.xml',
+        'views/billing_excluded_product_views.xml',
+        'views/billing_public_config_views.xml',
+        'views/billing_public_invoice_views.xml',
+        'views/billing_reconciliation_field_views.xml',
+        'views/billing_public_reconciliation_views.xml',
+        'views/billing_auto_execution_views.xml',
+        # Wizards
+        'wizard/billing_public_invoice_wizard_views.xml',
+        'wizard/billing_public_reconciliation_wizard_views.xml',
+        'wizard/billing_preview_wizard_views.xml',
+        # Menu
         'views/menu.xml',
         # Vistas Portal
         'views/portal_templates.xml',

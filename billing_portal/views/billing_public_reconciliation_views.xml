@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_billing_public_reconciliation_tree" model="ir.ui.view">
+        <field name="name">billing.public.reconciliation.tree</field>
+        <field name="model">billing.public.reconciliation</field>
+        <field name="arch" type="xml">
+            <tree string="Conciliaciones" decoration-success="is_reconciled" decoration-danger="not is_reconciled">
+                <field name="public_invoice_id"/>
+                <field name="order_name"/>
+                <field name="order_amount"/>
+                <field name="payment_name"/>
+                <field name="payment_amount"/>
+                <field name="matched_field"/>
+                <field name="matched_value"/>
+                <field name="amount" sum="Total Conciliado"/>
+                <field name="difference"/>
+                <field name="is_reconciled" string="Contable OK" widget="boolean"/>
+                <field name="reconcile_date"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_billing_public_reconciliation_form" model="ir.ui.view">
+        <field name="name">billing.public.reconciliation.form</field>
+        <field name="model">billing.public.reconciliation</field>
+        <field name="arch" type="xml">
+            <form string="Conciliación">
+                <sheet>
+                    <group>
+                        <group string="Factura Pública">
+                            <field name="public_invoice_id" readonly="1"/>
+                        </group>
+                        <group string="Fecha">
+                            <field name="reconcile_date" readonly="1"/>
+                            <field name="user_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Orden de Venta">
+                            <field name="order_id" readonly="1"/>
+                            <field name="order_name" readonly="1"/>
+                            <field name="order_amount" readonly="1"/>
+                        </group>
+                        <group string="Pago">
+                            <field name="payment_id" readonly="1"/>
+                            <field name="payment_name" readonly="1"/>
+                            <field name="payment_amount" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Coincidencia">
+                            <field name="matched_field" readonly="1"/>
+                            <field name="matched_value" readonly="1"/>
+                        </group>
+                        <group string="Montos">
+                            <field name="amount" readonly="1"/>
+                            <field name="difference" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Estado Conciliación Contable">
+                        <field name="is_reconciled" readonly="1"/>
+                        <field name="reconciliation_error" readonly="1"
+                               attrs="{'invisible': [('is_reconciled', '=', True)]}"/>
+                    </group>
+                    <group>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_billing_public_reconciliation_search" model="ir.ui.view">
+        <field name="name">billing.public.reconciliation.search</field>
+        <field name="model">billing.public.reconciliation</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Conciliaciones">
+                <field name="public_invoice_id"/>
+                <field name="order_id"/>
+                <field name="payment_id"/>
+                <field name="matched_value"/>
+                <separator/>
+                <filter string="Conciliación Contable OK" name="reconciled" domain="[('is_reconciled', '=', True)]"/>
+                <filter string="Conciliación Contable Pendiente" name="not_reconciled" domain="[('is_reconciled', '=', False)]"/>
+                <separator/>
+                <filter string="Con Diferencia" name="with_diff" domain="[('difference', '!=', 0)]"/>
+                <filter string="Sin Diferencia" name="no_diff" domain="[('difference', '=', 0)]"/>
+                <separator/>
+                <filter string="Hoy" name="today" domain="[('reconcile_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Esta Semana" name="this_week" domain="[('reconcile_date', '&gt;=', (context_today() - relativedelta(weeks=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Factura Pública" name="group_invoice" context="{'group_by': 'public_invoice_id'}"/>
+                    <filter string="Usuario" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Campo de Match" name="group_field" context="{'group_by': 'matched_field'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'reconcile_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_public_reconciliation" model="ir.actions.act_window">
+        <field name="name">Conciliaciones</field>
+        <field name="res_model">billing.public.reconciliation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay conciliaciones registradas
+            </p>
+            <p>
+                Las conciliaciones se crean desde el wizard de conciliación masiva
+                en las facturas a Público en General.
+            </p>
+        </field>
+    </record>
+
+</odoo>

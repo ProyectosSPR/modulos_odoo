@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View -->
+    <record id="view_billing_public_reconciliation_wizard_form" model="ir.ui.view">
+        <field name="name">billing.public.reconciliation.wizard.form</field>
+        <field name="model">billing.public.reconciliation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Conciliación Masiva">
+                <field name="config_missing" invisible="1"/>
+                <div class="alert alert-warning" role="alert" attrs="{'invisible': [('config_missing', '=', False)]}">
+                    <strong>Configuración Requerida:</strong>
+                    <p>No hay configuración de Público en General. Vaya a:</p>
+                    <p><strong>Portal Facturación → Configuración → Público en General</strong></p>
+                    <p>y cree una configuración antes de continuar.</p>
+                </div>
+                <group attrs="{'invisible': ['|', ('state', '!=', 'search'), ('config_missing', '=', True)]}">
+                    <group string="Factura">
+                        <field name="public_invoice_id" readonly="1"/>
+                        <field name="public_invoice_name" readonly="1"/>
+                    </group>
+                    <group string="Configuración">
+                        <field name="config_id" invisible="1"/>
+                    </group>
+                </group>
+                <group string="Campos de Búsqueda" attrs="{'invisible': ['|', ('state', '!=', 'search'), ('config_missing', '=', True)]}">
+                    <field name="search_field_ids" widget="many2many_checkboxes" nolabel="1"/>
+                </group>
+                <div class="alert alert-info" role="alert" attrs="{'invisible': ['|', ('state', '!=', 'search'), ('config_missing', '=', True)]}">
+                    <p><strong>Instrucciones:</strong></p>
+                    <p>Seleccione los campos de la orden de venta que desea usar para buscar pagos coincidentes.
+                    El sistema buscará en los pagos del cliente "Público en General" que contengan las referencias de las órdenes.</p>
+                </div>
+
+                <group attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <group string="Resumen">
+                        <field name="total_orders" readonly="1"/>
+                        <field name="total_matched" readonly="1"/>
+                        <field name="total_unmatched" readonly="1"/>
+                    </group>
+                    <group string="Montos">
+                        <field name="amount_matched" readonly="1"/>
+                        <field name="amount_to_reconcile" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+
+                <field name="state" invisible="1"/>
+                <field name="search_done" invisible="1"/>
+
+                <notebook attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <page string="Coincidencias Encontradas" name="matches">
+                        <field name="line_ids">
+                            <tree string="Líneas" editable="bottom"
+                                  decoration-success="match_status == 'matched'"
+                                  decoration-warning="match_status == 'partial'"
+                                  decoration-muted="match_status == 'no_match'">
+                                <field name="to_reconcile" widget="boolean_toggle"
+                                       attrs="{'readonly': [('payment_id', '=', False)]}"/>
+                                <field name="order_name"/>
+                                <field name="order_reference"/>
+                                <field name="order_amount"/>
+                                <field name="payment_name"/>
+                                <field name="payment_ref"/>
+                                <field name="payment_amount"/>
+                                <field name="matched_field"/>
+                                <field name="matched_value"/>
+                                <field name="difference"/>
+                                <field name="amount_to_reconcile"/>
+                                <field name="match_status" widget="badge"
+                                       decoration-success="match_status == 'matched'"
+                                       decoration-warning="match_status == 'partial'"
+                                       decoration-danger="match_status == 'no_match'"/>
+                                <field name="order_id" invisible="1"/>
+                                <field name="payment_id" invisible="1"/>
+                                <field name="currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+
+                <div class="alert alert-success" role="alert" attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <p><strong>Conciliación Completada</strong></p>
+                    <p>Las conciliaciones han sido registradas exitosamente.</p>
+                </div>
+
+                <footer>
+                    <button name="action_search_payments"
+                            string="Buscar Pagos"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('state', '!=', 'search'), ('config_missing', '=', True)]}"/>
+                    <button name="action_back_to_search"
+                            string="Volver"
+                            type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '!=', 'preview')]}"/>
+                    <button name="action_reconcile"
+                            string="Conciliar Seleccionados"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'preview')]}"
+                            confirm="¿Confirmar la conciliación de las líneas seleccionadas?"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Line Tree View (for reference) -->
+    <record id="view_billing_public_reconciliation_wizard_line_tree" model="ir.ui.view">
+        <field name="name">billing.public.reconciliation.wizard.line.tree</field>
+        <field name="model">billing.public.reconciliation.wizard.line</field>
+        <field name="arch" type="xml">
+            <tree string="Líneas de Conciliación"
+                  decoration-success="match_status == 'matched'"
+                  decoration-warning="match_status == 'partial'"
+                  decoration-muted="match_status == 'no_match'">
+                <field name="to_reconcile" widget="boolean_toggle"/>
+                <field name="order_name"/>
+                <field name="order_reference"/>
+                <field name="order_amount"/>
+                <field name="payment_name"/>
+                <field name="payment_amount"/>
+                <field name="matched_field"/>
+                <field name="difference"/>
+                <field name="match_status"/>
+            </tree>
+        </field>
+    </record>
+
+</odoo>

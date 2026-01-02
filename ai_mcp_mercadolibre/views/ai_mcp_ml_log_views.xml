@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de arbol -->
+    <record id="view_ai_mcp_ml_log_tree" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.log.tree</field>
+        <field name="model">ai.mcp.ml.log</field>
+        <field name="arch" type="xml">
+            <tree string="Logs MCP" default_order="timestamp desc" decoration-success="status == 'success'" decoration-danger="status == 'error'" create="0" edit="0">
+                <field name="timestamp"/>
+                <field name="server_id"/>
+                <field name="tool_name" decoration-bf="1"/>
+                <field name="endpoint_id"/>
+                <field name="account_id"/>
+                <field name="status" widget="badge" decoration-success="status == 'success'" decoration-danger="status == 'error'"/>
+                <field name="duration" widget="float" string="Duracion (s)"/>
+                <field name="response_size" string="Tamano"/>
+                <field name="error_message" optional="hide"/>
+                <button name="action_retry" type="object" string="Reintentar" icon="fa-refresh" attrs="{'invisible': [('status', '!=', 'error')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista de formulario -->
+    <record id="view_ai_mcp_ml_log_form" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.log.form</field>
+        <field name="model">ai.mcp.ml.log</field>
+        <field name="arch" type="xml">
+            <form string="Log MCP" create="0" edit="0">
+                <header>
+                    <button name="action_retry" type="object" string="Reintentar Peticion" class="btn-primary" icon="fa-refresh" attrs="{'invisible': [('status', '!=', 'error')]}"/>
+                </header>
+                <sheet>
+                    <!-- Banner de estado -->
+                    <div class="alert alert-success" role="alert" attrs="{'invisible': [('status', '!=', 'success')]}">
+                        <strong>Peticion exitosa</strong> - Duracion: <field name="duration" class="oe_inline"/> segundos
+                    </div>
+                    <div class="alert alert-danger" role="alert" attrs="{'invisible': [('status', '!=', 'error')]}">
+                        <strong>Error:</strong> <field name="error_message" class="oe_inline"/>
+                    </div>
+
+                    <group>
+                        <group string="Informacion General">
+                            <field name="timestamp"/>
+                            <field name="server_id"/>
+                            <field name="tool_name"/>
+                            <field name="endpoint_id"/>
+                            <field name="account_id"/>
+                        </group>
+                        <group string="Metricas">
+                            <field name="status" widget="badge"/>
+                            <field name="duration"/>
+                            <field name="response_size"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Request" name="request">
+                            <group string="Datos Enviados">
+                                <field name="request_data" nolabel="1" widget="ace" options="{'mode': 'json'}" readonly="1" style="height: 300px;"/>
+                            </group>
+                        </page>
+                        <page string="Response" name="response">
+                            <group string="Datos Recibidos">
+                                <field name="response_data" nolabel="1" widget="ace" options="{'mode': 'json'}" readonly="1" style="height: 400px;"/>
+                            </group>
+                        </page>
+                        <page string="Error" name="error" attrs="{'invisible': [('status', '!=', 'error')]}">
+                            <group string="Mensaje de Error">
+                                <field name="error_message" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de busqueda -->
+    <record id="view_ai_mcp_ml_log_search" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.log.search</field>
+        <field name="model">ai.mcp.ml.log</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Logs">
+                <field name="tool_name"/>
+                <field name="server_id"/>
+                <field name="endpoint_id"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter name="success" string="Exitosos" domain="[('status', '=', 'success')]"/>
+                <filter name="errors" string="Errores" domain="[('status', '=', 'error')]"/>
+                <separator/>
+                <filter name="today" string="Hoy" domain="[('timestamp', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter name="last_hour" string="Ultima Hora" domain="[('timestamp', '>=', (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
+                <filter name="last_24h" string="Ultimas 24h" domain="[('timestamp', '>=', (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_server" string="Servidor" context="{'group_by': 'server_id'}"/>
+                    <filter name="group_tool" string="Herramienta" context="{'group_by': 'tool_name'}"/>
+                    <filter name="group_status" string="Estado" context="{'group_by': 'status'}"/>
+                    <filter name="group_date" string="Fecha" context="{'group_by': 'timestamp:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Accion -->
+    <record id="action_ai_mcp_ml_log" model="ir.actions.act_window">
+        <field name="name">Logs MCP</field>
+        <field name="res_model">ai.mcp.ml.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay logs todavia
+            </p>
+            <p>
+                Los logs se generan automaticamente cuando se ejecutan herramientas MCP.
+            </p>
+        </field>
+    </record>
+
+    <!-- Accion: Logs con errores -->
+    <record id="action_ai_mcp_ml_log_errors" model="ir.actions.act_window">
+        <field name="name">Errores MCP</field>
+        <field name="res_model">ai.mcp.ml.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('status', '=', 'error')]</field>
+        <field name="context">{'search_default_today': 1}</field>
+    </record>
+
+</odoo>

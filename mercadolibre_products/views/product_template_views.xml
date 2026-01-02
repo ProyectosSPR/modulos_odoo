@@ -13,13 +13,99 @@
                         attrs="{'invisible': [('ml_item_count', '=', 0)]}">
                     <field name="ml_item_count" widget="statinfo" string="Items ML"/>
                 </button>
+                <button name="action_view_ml_images" type="object"
+                        class="oe_stat_button" icon="fa-image"
+                        attrs="{'invisible': [('ml_image_count', '=', 0)]}">
+                    <field name="ml_image_count" widget="statinfo" string="Imgs ML"/>
+                </button>
             </xpath>
 
             <!-- Agregar pestana MercadoLibre -->
             <xpath expr="//notebook" position="inside">
                 <page string="MercadoLibre" name="mercadolibre">
+                    <!-- Campos invisibles para attrs -->
+                    <field name="has_ml_items" invisible="1"/>
+                    <field name="ml_fields_ready" invisible="1"/>
+                    <field name="ml_missing_fields_count" invisible="1"/>
+                    <field name="ml_category_is_leaf" invisible="1"/>
+
+                    <!-- CHECKLIST: Campos usados para publicar en MercadoLibre -->
+                    <group string="📋 Campos para Publicación en MercadoLibre"
+                           attrs="{'invisible': [('has_ml_items', '=', True)]}">
+                        <field name="ml_publish_readiness" nolabel="1" colspan="2"/>
+                    </group>
+
+                    <!-- Campos específicos para MercadoLibre -->
                     <group>
-                        <group string="Sincronizacion">
+                        <group string="Datos del Producto">
+                            <field name="ml_brand" placeholder="Ej: Samsung, Apple, Genérico"/>
+                            <field name="ml_model" placeholder="Ej: Galaxy S21, iPhone 13"/>
+                        </group>
+                        <group string="Configuración de Publicación">
+                            <field name="ml_category_id"
+                                   domain="[('has_children', '=', False), ('listing_allowed', '=', True)]"
+                                   options="{'no_create': True}"
+                                   context="{'show_leaf_only': True}"/>
+                            <field name="ml_listing_type"/>
+                            <field name="ml_condition"/>
+                        </group>
+                    </group>
+
+                    <!-- Predicción de Categoría ML -->
+                    <field name="ml_category_matches_prediction" invisible="1"/>
+                    <group string="🔮 Predicción de Categoría ML">
+                        <group>
+                            <button name="action_predict_category" type="object"
+                                    string=" Consultar ML" icon="fa-magic"
+                                    class="btn-info o_form_button"
+                                    help="Consulta a MercadoLibre cuál es la categoría más apropiada para este producto"/>
+                        </group>
+                        <group>
+                            <field name="ml_predicted_category_name" readonly="1"
+                                   placeholder="Haz clic en 'Consultar ML'"/>
+                            <field name="ml_predicted_category_id" readonly="1" string="ID ML"/>
+                        </group>
+                    </group>
+
+                    <!-- Botón para aplicar categoría sugerida -->
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': ['|', ('ml_predicted_category_id', '=', False), ('ml_category_matches_prediction', '=', True)]}">
+                        <i class="fa fa-exclamation-triangle"/>
+                        <strong> La categoría seleccionada no coincide con la sugerida por ML.</strong>
+                        <br/>
+                        <small>Esto puede causar que MercadoLibre pause tu publicación.</small>
+                        <br/>
+                        <button name="action_apply_predicted_category" type="object"
+                                string=" Usar Categoría Sugerida" icon="fa-check"
+                                class="btn btn-sm btn-primary mt-2"/>
+                    </div>
+
+                    <!-- Advertencia: Categoría no es hoja -->
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': ['|', ('ml_category_id', '=', False), ('ml_category_is_leaf', '=', True)]}">
+                        <i class="fa fa-exclamation-triangle"/>
+                        <strong> Categoría No Válida:</strong>
+                        La categoría seleccionada tiene subcategorías y no puede usarse para publicar.
+                        <br/>
+                        <small>MercadoLibre solo permite publicar en categorías "hoja" (sin subcategorías).
+                        Por favor seleccione una categoría más específica.</small>
+                    </div>
+
+                    <group>
+                        <group string="Envío">
+                            <field name="ml_shipping_mode"/>
+                            <field name="ml_free_shipping"/>
+                            <field name="ml_local_pick_up"/>
+                        </group>
+                        <group string="Garantía">
+                            <field name="ml_warranty_type"/>
+                            <field name="ml_warranty_time"
+                                   attrs="{'invisible': [('ml_warranty_type', '=', 'Sin garantía')]}"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Sincronización Automática">
                             <field name="ml_sync_enabled"/>
                             <field name="ml_auto_sync_stock"
                                    attrs="{'invisible': [('ml_sync_enabled', '=', False)]}"/>
@@ -29,7 +115,6 @@
                         </group>
                         <group string="Stock MercadoLibre"
                                attrs="{'invisible': [('has_ml_items', '=', False)]}">
-                            <field name="has_ml_items" invisible="1"/>
                             <field name="ml_total_stock" readonly="1"/>
                             <field name="ml_stock_difference" readonly="1"
                                    decoration-danger="ml_stock_difference != 0"/>
@@ -47,29 +132,47 @@
                         </button>
                     </div>
 
-                    <group string="Acciones" attrs="{'invisible': [('has_ml_items', '=', False)]}">
-                        <div>
+                    <!-- Acciones cuando YA tiene publicaciones -->
+                    <group string="Acciones Rápidas" attrs="{'invisible': [('has_ml_items', '=', False)]}">
+                        <group>
                             <button name="action_sync_to_ml" type="object"
-                                    string="Enviar a MercadoLibre" icon="fa-upload"
-                                    class="btn-primary mr-2"/>
+                                    string=" Enviar Stock/Precio a ML" icon="fa-upload"
+                                    class="btn-primary oe_highlight o_form_button" style="margin-bottom: 8px;"/>
+                        </group>
+                        <group>
                             <button name="action_sync_from_ml" type="object"
-                                    string="Traer de MercadoLibre" icon="fa-download"
-                                    class="btn-secondary mr-2"/>
-                            <button name="action_view_ml_items" type="object"
-                                    string="Ver Publicaciones" icon="fa-list"
-                                    class="btn-info"/>
-                        </div>
+                                    string=" Actualizar desde ML" icon="fa-download"
+                                    class="btn-secondary o_form_button" style="margin-bottom: 8px;"/>
+                        </group>
                     </group>
 
-                    <group string="Acciones" attrs="{'invisible': [('has_ml_items', '=', True)]}">
-                        <div>
+                    <!-- Acciones cuando NO tiene publicaciones -->
+                    <group string="Publicar en MercadoLibre" attrs="{'invisible': [('has_ml_items', '=', True)]}">
+                        <group>
                             <button name="action_publish_to_ml" type="object"
-                                    string="Publicar en MercadoLibre" icon="fa-plus"
-                                    class="btn-primary mr-2"/>
+                                    string=" Crear Nueva Publicación" icon="fa-plus"
+                                    class="btn-primary oe_highlight o_form_button" style="margin-bottom: 8px;"/>
+                        </group>
+                        <group>
                             <button name="action_link_ml_item" type="object"
-                                    string="Vincular a Item Existente" icon="fa-link"
-                                    class="btn-secondary"/>
-                        </div>
+                                    string=" Vincular a Publicación Existente" icon="fa-link"
+                                    class="btn-secondary o_form_button" style="margin-bottom: 8px;"/>
+                        </group>
+                    </group>
+
+                    <!-- Acción de imágenes (siempre visible) -->
+                    <field name="ml_has_uploaded_images" invisible="1"/>
+                    <group string="Imágenes">
+                        <group>
+                            <button name="action_upload_images_to_ml" type="object"
+                                    string=" Subir Imágenes a MercadoLibre" icon="fa-image"
+                                    class="btn-info o_form_button"/>
+                        </group>
+                        <group attrs="{'invisible': [('ml_has_uploaded_images', '=', False)]}">
+                            <button name="action_view_ml_images" type="object"
+                                    string=" Ver Imágenes Subidas" icon="fa-picture-o"
+                                    class="btn-outline-secondary o_form_button"/>
+                        </group>
                     </group>
 
                     <group string="Publicaciones Vinculadas"
@@ -140,6 +243,46 @@ action = records.action_sync_to_ml_batch()
         <field name="state">code</field>
         <field name="code">
 action = records.action_sync_from_ml_batch()
+        </field>
+    </record>
+
+    <!-- Server Action: Publicación Masiva en ML -->
+    <record id="action_server_publish_massive_ml" model="ir.actions.server">
+        <field name="name">Publicar en MercadoLibre (Masivo)</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Publicación Masiva en MercadoLibre',
+    'res_model': 'mercadolibre.publish.massive',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {
+        'default_product_tmpl_ids': records.ids,
+    },
+}
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronización Bidireccional ML -->
+    <record id="action_server_sync_bidirectional_ml" model="ir.actions.server">
+        <field name="name">Sincronización Bidireccional ML</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Sincronización Bidireccional con MercadoLibre',
+    'res_model': 'mercadolibre.sync.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {
+        'default_product_tmpl_ids': records.ids,
+    },
+}
         </field>
     </record>
 </odoo>

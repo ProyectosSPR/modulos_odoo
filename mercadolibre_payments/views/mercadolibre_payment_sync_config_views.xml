@@ -84,12 +84,14 @@
                     </group>
                     <group>
                         <group string="Programacion">
-                            <label for="interval_number" string="Ejecutar cada"/>
-                            <div class="o_row">
+                            <field name="use_webhook" widget="boolean_toggle"/>
+                            <label for="interval_number" string="Ejecutar cada"
+                                   attrs="{'invisible': [('use_webhook', '=', True)]}"/>
+                            <div class="o_row" attrs="{'invisible': [('use_webhook', '=', True)]}">
                                 <field name="interval_number" class="oe_inline"/>
                                 <field name="interval_type" class="oe_inline"/>
                             </div>
-                            <field name="next_run"/>
+                            <field name="next_run" attrs="{'invisible': [('use_webhook', '=', True)]}"/>
                         </group>
                         <group string="Ultima Ejecucion">
                             <field name="last_run"/>
@@ -100,6 +102,12 @@
                             <field name="total_payments_synced"/>
                         </group>
                     </group>
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('use_webhook', '=', False)]}">
+                        <strong><i class="fa fa-plug"/> Webhook Activo:</strong>
+                        Los pagos se recibiran en tiempo real cuando MercadoPago envie notificaciones.
+                        El cron no ejecutara sincronizacion mientras el webhook este activo.
+                        <br/><small>Asegurese de que su URL de webhook este configurada en MercadoLibre: <code>/mercadolibre/callback</code></small>
+                    </div>
                     <notebook>
                         <page string="Pagos Odoo" name="odoo_payments">
                             <group>

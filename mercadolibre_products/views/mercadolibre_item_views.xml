@@ -48,6 +48,14 @@
                             string="Enviar Precio a ML"
                             class="btn-secondary" icon="fa-money"
                             attrs="{'invisible': [('is_linked', '=', False)]}"/>
+                    <button name="action_sync_description_to_ml" type="object"
+                            string="Enviar Descripción a ML"
+                            class="btn-secondary" icon="fa-file-text-o"
+                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
+                    <button name="action_sync_brand_model_to_ml" type="object"
+                            string="Enviar Marca/Modelo a ML"
+                            class="btn-secondary" icon="fa-tag"
+                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
                     <button name="action_pause_item" type="object"
                             string="Pausar"
                             class="btn-warning"
@@ -143,6 +151,10 @@
                                 <group>
                                     <field name="brand"/>
                                     <field name="model"/>
+                                    <button name="action_sync_brand_model_to_ml" type="object"
+                                            string="Actualizar Marca/Modelo en ML" icon="fa-upload"
+                                            class="btn-primary mt-2"
+                                            attrs="{'invisible': [('is_linked', '=', False)]}"/>
                                 </group>
                             </group>
                         </page>
@@ -185,15 +197,45 @@
                         </page>
 
                         <page string="Descripcion" name="description">
-                            <field name="description"/>
+                            <div class="mb-3" attrs="{'invisible': [('is_linked', '=', False)]}">
+                                <button name="action_sync_description_to_ml" type="object"
+                                        string="Actualizar Descripción en ML" icon="fa-upload"
+                                        class="btn-primary"/>
+                                <span class="text-muted ml-2">
+                                    Envía la descripción de venta del producto Odoo a MercadoLibre
+                                </span>
+                            </div>
+                            <field name="description" placeholder="Descripción del producto en MercadoLibre"/>
                         </page>
 
                         <page string="Sincronizacion" name="sync">
                             <group>
-                                <group>
+                                <group string="Odoo → MercadoLibre">
                                     <field name="auto_sync_stock"/>
                                     <field name="auto_sync_price"/>
                                 </group>
+                                <group string="MercadoLibre → Odoo">
+                                    <field name="sync_price_to_odoo"/>
+                                    <field name="sync_stock_to_odoo"/>
+                                    <field name="sync_description_to_odoo"/>
+                                    <field name="sync_images_to_odoo"/>
+                                </group>
+                            </group>
+
+                            <div class="alert alert-info" role="alert"
+                                 attrs="{'invisible': [('is_linked', '=', False)]}">
+                                <i class="fa fa-info-circle"/>
+                                <strong>Sincronizar datos ML al producto Odoo:</strong>
+                                Las opciones de arriba controlan qué campos se actualizan en Odoo al sincronizar desde ML.
+                                <div class="mt-2">
+                                    <button name="action_sync_to_odoo_only" type="object"
+                                            string="Aplicar a Odoo ahora" class="btn btn-sm btn-primary"
+                                            icon="fa-arrow-right"
+                                            confirm="¿Actualizar el producto Odoo con los datos actuales del item ML?"/>
+                                </div>
+                            </div>
+
+                            <group string="Estado de Sincronización">
                                 <group>
                                     <field name="last_sync"/>
                                     <field name="sync_status" widget="badge"/>
@@ -328,6 +370,66 @@ action = records.action_auto_link_by_sku()
 for item in records.filtered(lambda i: i.is_linked):
     try:
         item.action_sync_stock_to_ml()
+    except Exception as e:
+        pass
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar Descripción a ML -->
+    <record id="action_server_sync_description_to_ml" model="ir.actions.server">
+        <field name="name">Enviar Descripción a MercadoLibre</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+for item in records.filtered(lambda i: i.is_linked):
+    try:
+        item.action_sync_description_to_ml()
+    except Exception as e:
+        pass
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar Marca/Modelo a ML -->
+    <record id="action_server_sync_brand_model_to_ml" model="ir.actions.server">
+        <field name="name">Enviar Marca/Modelo a MercadoLibre</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+for item in records.filtered(lambda i: i.is_linked):
+    try:
+        item.action_sync_brand_model_to_ml()
+    except Exception as e:
+        pass
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar desde ML -->
+    <record id="action_server_sync_from_ml" model="ir.actions.server">
+        <field name="name">Sincronizar desde MercadoLibre</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+for item in records:
+    try:
+        item.action_sync_from_ml()
+    except Exception as e:
+        pass
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar datos a producto Odoo -->
+    <record id="action_server_sync_to_odoo" model="ir.actions.server">
+        <field name="name">Sincronizar a Producto Odoo</field>
+        <field name="model_id" ref="model_mercadolibre_item"/>
+        <field name="binding_model_id" ref="model_mercadolibre_item"/>
+        <field name="state">code</field>
+        <field name="code">
+for item in records.filtered(lambda i: i.is_linked):
+    try:
+        item.action_sync_to_odoo_only()
     except Exception as e:
         pass
         </field>

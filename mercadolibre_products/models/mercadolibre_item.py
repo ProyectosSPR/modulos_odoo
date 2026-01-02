@@ -2,10 +2,58 @@
 
 import json
 import logging
+from datetime import datetime
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
+
+
+def parse_ml_datetime(date_str):
+    """
+    Parsea fechas ISO de MercadoLibre al formato que espera Odoo.
+    Ejemplos de entrada:
+        - '2025-12-31T00:31:41.138Z'
+        - '2025-12-31T00:31:41.000-04:00'
+        - '2025-12-31 00:31:41'
+    """
+    if not date_str:
+        return False
+
+    # Si ya es un objeto datetime, retornarlo
+    if isinstance(date_str, datetime):
+        return date_str
+
+    try:
+        # Limpiar la cadena
+        date_str = str(date_str).strip()
+
+        # Formato ISO con 'Z' (UTC)
+        if 'T' in date_str:
+            # Remover la 'Z' y milisegundos si existen
+            date_str = date_str.replace('Z', '').replace('z', '')
+
+            # Manejar timezone offset (+00:00 o -04:00)
+            if '+' in date_str:
+                date_str = date_str.split('+')[0]
+            elif date_str.count('-') > 2:
+                # Tiene offset negativo como -04:00
+                parts = date_str.rsplit('-', 1)
+                if ':' in parts[-1]:
+                    date_str = parts[0]
+
+            # Remover milisegundos (.000)
+            if '.' in date_str:
+                date_str = date_str.split('.')[0]
+
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S')
+
+        # Formato simple sin T
+        return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+
+    except (ValueError, TypeError) as e:
+        _logger.warning('Error parseando fecha ML "%s": %s', date_str, str(e))
+        return False
 
 
 class MercadolibreItem(models.Model):
@@ -267,6 +315,27 @@ class MercadolibreItem(models.Model):
         default=False,
         help='Sincronizar precio automaticamente cuando cambie en Odoo'
     )
+    # Opciones para sincronización ML -> Odoo
+    sync_price_to_odoo = fields.Boolean(
+        string='Sincronizar Precio a Odoo',
+        default=True,
+        help='Al sincronizar desde ML, actualizar el precio en el producto Odoo'
+    )
+    sync_stock_to_odoo = fields.Boolean(
+        string='Sincronizar Stock a Odoo',
+        default=True,
+        help='Al sincronizar desde ML, actualizar el stock en Odoo'
+    )
+    sync_description_to_odoo = fields.Boolean(
+        string='Sincronizar Descripción a Odoo',
+        default=False,
+        help='Al sincronizar desde ML, actualizar la descripción de venta en Odoo'
+    )
+    sync_images_to_odoo = fields.Boolean(
+        string='Sincronizar Imagen a Odoo',
+        default=False,
+        help='Al sincronizar desde ML, actualizar la imagen principal en Odoo'
+    )
 
     # =====================================================
     # STOCK COMPARISON
@@ -449,10 +518,10 @@ class MercadolibreItem(models.Model):
             'free_shipping': data.get('shipping', {}).get('free_shipping', False) if data.get('shipping') else False,
             'logistic_type': data.get('shipping', {}).get('logistic_type', '') if data.get('shipping') else '',
             'attributes_json': json.dumps(attributes) if attributes else False,
-            'date_created': data.get('date_created'),
-            'last_updated': data.get('last_updated'),
-            'start_time': data.get('start_time'),
-            'stop_time': data.get('stop_time'),
+            'date_created': parse_ml_datetime(data.get('date_created')),
+            'last_updated': parse_ml_datetime(data.get('last_updated')),
+            'start_time': parse_ml_datetime(data.get('start_time')),
+            'stop_time': parse_ml_datetime(data.get('stop_time')),
             'last_sync': fields.Datetime.now(),
             'sync_status': 'synced',
             'sync_error': False,
@@ -491,7 +560,10 @@ class MercadolibreItem(models.Model):
     # SYNC METHODS
     # =====================================================
     def action_sync_from_ml(self):
-        """Sincroniza este item desde MercadoLibre"""
+        """
+        Sincroniza este item desde MercadoLibre y opcionalmente al producto Odoo.
+        Utiliza las opciones configuradas en el registro (sync_price_to_odoo, etc.)
+        """
         self.ensure_one()
 
         if not self.account_id.has_valid_token:
@@ -507,12 +579,26 @@ class MercadolibreItem(models.Model):
             data = response.get('data', {})
             self.create_from_ml_data(data, self.account_id)
 
+            # Sincronizar al producto Odoo si está vinculado
+            odoo_sync_msg = ''
+            if self.is_linked:
+                result = self.sync_to_odoo_product(
+                    sync_price=self.sync_price_to_odoo,
+                    sync_stock=self.sync_stock_to_odoo,
+                    sync_description=self.sync_description_to_odoo,
+                    sync_images=self.sync_images_to_odoo
+                )
+                if result.get('success'):
+                    odoo_sync_msg = '\n' + _('Producto Odoo: %s') % result.get('message', '')
+                else:
+                    odoo_sync_msg = '\n' + _('Error Odoo: %s') % result.get('message', '')
+
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'title': _('Sincronizacion Exitosa'),
-                    'message': _('El item se sincronizo correctamente.'),
+                    'message': _('El item se sincronizo correctamente.') + odoo_sync_msg,
                     'type': 'success',
                     'sticky': False,
                 }
@@ -523,6 +609,37 @@ class MercadolibreItem(models.Model):
                 'sync_error': str(e)
             })
             raise UserError(_('Error sincronizando item: %s') % str(e))
+
+    def action_sync_to_odoo_only(self):
+        """
+        Sincroniza los datos del item actual al producto Odoo vinculado.
+        No consulta la API de ML, solo usa los datos ya almacenados.
+        """
+        self.ensure_one()
+
+        if not self.is_linked:
+            raise UserError(_('El item no está vinculado a un producto de Odoo.'))
+
+        result = self.sync_to_odoo_product(
+            sync_price=self.sync_price_to_odoo,
+            sync_stock=self.sync_stock_to_odoo,
+            sync_description=self.sync_description_to_odoo,
+            sync_images=self.sync_images_to_odoo
+        )
+
+        if result.get('success'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sincronización a Odoo'),
+                    'message': result.get('message', _('Completado')),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            raise UserError(result.get('message', _('Error desconocido')))
 
     def action_sync_stock_to_ml(self):
         """Envia el stock de Odoo a MercadoLibre"""
@@ -636,6 +753,130 @@ class MercadolibreItem(models.Model):
             })
             raise UserError(_('Error actualizando precio: %s') % str(e))
 
+    def action_sync_description_to_ml(self):
+        """Envia la descripción del producto de Odoo a MercadoLibre"""
+        self.ensure_one()
+
+        if not self.is_linked:
+            raise UserError(_('El item no esta vinculado a un producto de Odoo.'))
+
+        if not self.account_id.has_valid_token:
+            raise UserError(_('La cuenta no tiene un token valido.'))
+
+        # Obtener descripción del producto
+        product = self.product_tmpl_id
+        if not product:
+            raise UserError(_('No se encontro producto vinculado.'))
+
+        new_description = product.description_sale or ''
+        if not new_description:
+            raise UserError(_('El producto no tiene descripción de venta definida.'))
+
+        http = self.env['mercadolibre.http']
+
+        try:
+            # Para items existentes, usar PUT para actualizar la descripción
+            http._request(
+                account_id=self.account_id.id,
+                endpoint=f'/items/{self.ml_item_id}/description',
+                method='PUT',
+                body={'plain_text': new_description}
+            )
+
+            self.write({
+                'description': new_description,
+                'last_sync': fields.Datetime.now(),
+                'sync_status': 'synced',
+                'sync_error': False,
+            })
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Descripción Actualizada'),
+                    'message': _('La descripción se actualizó en MercadoLibre (%d caracteres)') % len(new_description),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except Exception as e:
+            self.write({
+                'sync_status': 'error',
+                'sync_error': str(e)
+            })
+            raise UserError(_('Error actualizando descripción: %s') % str(e))
+
+    def action_sync_brand_model_to_ml(self):
+        """Envía la marca y modelo del producto de Odoo a MercadoLibre"""
+        self.ensure_one()
+
+        if not self.is_linked:
+            raise UserError(_('El item no está vinculado a un producto de Odoo.'))
+
+        if not self.account_id.has_valid_token:
+            raise UserError(_('La cuenta no tiene un token válido.'))
+
+        # Obtener producto
+        product = self.product_tmpl_id
+        if not product:
+            raise UserError(_('No se encontró producto vinculado.'))
+
+        # Obtener marca
+        if product.ml_brand:
+            brand_name = product.ml_brand
+        else:
+            brand_name = 'Genérico'
+
+        # Obtener modelo
+        if product.ml_model:
+            model_name = product.ml_model
+        elif product.default_code:
+            model_name = product.default_code
+        else:
+            model_name = product.name[:30] if product.name else 'Estándar'
+
+        http = self.env['mercadolibre.http']
+
+        try:
+            # Actualizar atributos via PUT /items/{id}
+            attributes = [
+                {'id': 'BRAND', 'value_name': brand_name},
+                {'id': 'MODEL', 'value_name': model_name},
+            ]
+
+            http._request(
+                account_id=self.account_id.id,
+                endpoint=f'/items/{self.ml_item_id}',
+                method='PUT',
+                body={'attributes': attributes}
+            )
+
+            self.write({
+                'brand': brand_name,
+                'model': model_name,
+                'last_sync': fields.Datetime.now(),
+                'sync_status': 'synced',
+                'sync_error': False,
+            })
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Marca y Modelo Actualizados'),
+                    'message': _('Se actualizó en MercadoLibre: %s - %s') % (brand_name, model_name),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except Exception as e:
+            self.write({
+                'sync_status': 'error',
+                'sync_error': str(e)
+            })
+            raise UserError(_('Error actualizando marca/modelo: %s') % str(e))
+
     def action_pause_item(self):
         """Pausa la publicacion en MercadoLibre"""
         self.ensure_one()
@@ -704,6 +945,134 @@ class MercadolibreItem(models.Model):
                 'default_account_id': self.account_id.id,
             }
         }
+
+    # =====================================================
+    # SYNC TO ODOO PRODUCT
+    # =====================================================
+    def sync_to_odoo_product(self, sync_price=True, sync_stock=True, sync_description=False, sync_images=False):
+        """
+        Sincroniza los datos del item ML hacia el producto Odoo vinculado.
+
+        Args:
+            sync_price: Sincronizar precio (lst_price)
+            sync_stock: Sincronizar stock disponible
+            sync_description: Sincronizar descripcion de venta
+            sync_images: Sincronizar imagen principal
+
+        Returns:
+            dict: Resultado de la sincronizacion
+        """
+        self.ensure_one()
+
+        if not self.is_linked:
+            return {'success': False, 'message': _('El item no está vinculado a un producto de Odoo')}
+
+        product_tmpl = self.product_tmpl_id
+        if not product_tmpl:
+            return {'success': False, 'message': _('No hay producto template vinculado')}
+
+        updates = {}
+        messages = []
+
+        # Sincronizar precio
+        if sync_price and self.price:
+            if product_tmpl.list_price != self.price:
+                updates['list_price'] = self.price
+                messages.append(_('Precio: $%.2f') % self.price)
+
+        # Sincronizar descripcion
+        if sync_description and self.description:
+            if product_tmpl.description_sale != self.description:
+                updates['description_sale'] = self.description
+                messages.append(_('Descripción actualizada'))
+
+        # Sincronizar imagen principal
+        if sync_images and self.main_picture_url:
+            try:
+                import requests
+                import base64
+                response = requests.get(self.main_picture_url, timeout=30)
+                if response.status_code == 200:
+                    image_data = base64.b64encode(response.content).decode('utf-8')
+                    if image_data:
+                        updates['image_1920'] = image_data
+                        messages.append(_('Imagen actualizada'))
+            except Exception as e:
+                _logger.warning('Error descargando imagen: %s', str(e))
+
+        # Aplicar actualizaciones al producto
+        if updates:
+            try:
+                product_tmpl.write(updates)
+            except Exception as e:
+                return {'success': False, 'message': _('Error actualizando producto: %s') % str(e)}
+
+        # Sincronizar stock
+        if sync_stock:
+            try:
+                self._sync_stock_to_odoo_product()
+                messages.append(_('Stock: %d unidades') % self.available_quantity)
+            except Exception as e:
+                _logger.warning('Error sincronizando stock: %s', str(e))
+                messages.append(_('Error en stock: %s') % str(e))
+
+        return {
+            'success': True,
+            'message': ', '.join(messages) if messages else _('Sin cambios'),
+            'fields_updated': list(updates.keys())
+        }
+
+    def _sync_stock_to_odoo_product(self):
+        """
+        Sincroniza el stock del item ML al producto Odoo.
+        Crea o actualiza el quant en la ubicacion de stock.
+        """
+        self.ensure_one()
+
+        if not self.is_linked:
+            return False
+
+        product = self.product_id or (self.product_tmpl_id.product_variant_id if self.product_tmpl_id else False)
+        if not product:
+            return False
+
+        # Obtener ubicacion de stock principal
+        warehouse = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+
+        if not warehouse:
+            warehouse = self.env['stock.warehouse'].search([], limit=1)
+
+        if not warehouse:
+            _logger.warning('No se encontró almacén para sincronizar stock')
+            return False
+
+        location = warehouse.lot_stock_id
+
+        # Buscar quant existente
+        quant = self.env['stock.quant'].search([
+            ('product_id', '=', product.id),
+            ('location_id', '=', location.id),
+        ], limit=1)
+
+        new_qty = self.available_quantity
+
+        if quant:
+            # Actualizar quant existente
+            if quant.quantity != new_qty:
+                quant.sudo().write({'quantity': new_qty})
+                _logger.info('Stock actualizado para %s: %d -> %d', product.default_code or product.name, quant.quantity, new_qty)
+        else:
+            # Crear nuevo quant
+            self.env['stock.quant'].sudo().create({
+                'product_id': product.id,
+                'location_id': location.id,
+                'quantity': new_qty,
+            })
+            _logger.info('Stock creado para %s: %d', product.default_code or product.name, new_qty)
+
+        return True
 
     def action_auto_link_by_sku(self):
         """Intenta vincular automaticamente por SKU"""

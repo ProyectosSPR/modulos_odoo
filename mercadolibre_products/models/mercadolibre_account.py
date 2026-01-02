@@ -7,6 +7,31 @@ class MercadolibreAccount(models.Model):
     _inherit = 'mercadolibre.account'
 
     # =====================================================
+    # CONFIGURACION DE SITIO
+    # =====================================================
+    site_id = fields.Selection([
+        ('MLM', 'México (MLM)'),
+        ('MLA', 'Argentina (MLA)'),
+        ('MLB', 'Brasil (MLB)'),
+        ('MLC', 'Chile (MLC)'),
+        ('MCO', 'Colombia (MCO)'),
+        ('MLU', 'Uruguay (MLU)'),
+        ('MPE', 'Perú (MPE)'),
+        ('MLV', 'Venezuela (MLV)'),
+        ('MEC', 'Ecuador (MEC)'),
+        ('MBO', 'Bolivia (MBO)'),
+        ('MPA', 'Panamá (MPA)'),
+        ('MRD', 'Rep. Dominicana (MRD)'),
+        ('MCR', 'Costa Rica (MCR)'),
+        ('MGT', 'Guatemala (MGT)'),
+        ('MHN', 'Honduras (MHN)'),
+        ('MNI', 'Nicaragua (MNI)'),
+        ('MSV', 'El Salvador (MSV)'),
+        ('MPY', 'Paraguay (MPY)'),
+    ], string='Sitio ML', default='MLM', required=True,
+       help='Sitio de MercadoLibre para esta cuenta (determina categorías, moneda, etc.)')
+
+    # =====================================================
     # RELACIONES CON PRODUCTOS
     # =====================================================
     item_ids = fields.One2many(
@@ -128,3 +153,21 @@ class MercadolibreAccount(models.Model):
         items = self.item_ids.filtered(lambda i: not i.is_linked)
         result = items.action_auto_link_by_sku()
         return result
+
+    def action_sync_categories(self):
+        """Sincroniza las categorías raíz del sitio de esta cuenta"""
+        self.ensure_one()
+        CategoryModel = self.env['mercadolibre.category']
+        return CategoryModel.action_sync_root_categories(site_id=self.site_id)
+
+    def action_view_categories(self):
+        """Ver categorías del sitio de esta cuenta"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Categorías ML - %s') % self.site_id,
+            'res_model': 'mercadolibre.category',
+            'view_mode': 'tree,form',
+            'domain': [('site_id', '=', self.site_id)],
+            'context': {'default_site_id': self.site_id},
+        }

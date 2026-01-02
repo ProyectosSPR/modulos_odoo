@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View -->
+    <record id="view_billing_public_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">billing.public.invoice.wizard.form</field>
+        <field name="model">billing.public.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Crear Factura Público en General">
+                <field name="config_missing" invisible="1"/>
+                <div class="alert alert-warning" role="alert" attrs="{'invisible': [('config_missing', '=', False)]}">
+                    <strong>Configuración Requerida:</strong>
+                    <p>No hay configuración de Público en General. Vaya a:</p>
+                    <p><strong>Portal Facturación → Configuración → Público en General</strong></p>
+                    <p>y cree una configuración antes de continuar.</p>
+                </div>
+                <group attrs="{'invisible': [('config_missing', '=', True)]}">
+                    <group string="Período">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Configuración">
+                        <field name="config_id" options="{'no_create': True}"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('preview_done', '=', False)]}">
+                    <group string="Resumen">
+                        <field name="order_count" readonly="1"/>
+                        <field name="total_amount" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+                <field name="preview_done" invisible="1"/>
+                <notebook attrs="{'invisible': [('preview_done', '=', False)]}">
+                    <page string="Órdenes a Facturar" name="orders">
+                        <field name="order_ids" readonly="1">
+                            <tree string="Órdenes" create="0" delete="0">
+                                <field name="name"/>
+                                <field name="client_order_ref"/>
+                                <field name="date_order"/>
+                                <field name="partner_id"/>
+                                <field name="amount_total" sum="Total"/>
+                                <field name="ml_order_id"/>
+                                <field name="ml_pack_id"/>
+                                <field name="invoice_status"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+                <footer>
+                    <button name="action_preview"
+                            string="Vista Previa"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('preview_done', '=', True), ('config_missing', '=', True)]}"/>
+                    <button name="action_create_invoice"
+                            string="Crear Factura"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('preview_done', '=', False), ('config_missing', '=', True)]}"
+                            confirm="¿Crear factura a Público en General con las órdenes mostradas?"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_public_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Crear Factura Público en General</field>
+        <field name="res_model">billing.public.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

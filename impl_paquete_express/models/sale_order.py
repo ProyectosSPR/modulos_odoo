@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 
 
 class SaleOrder(models.Model):
@@ -12,6 +13,9 @@ class SaleOrder(models.Model):
     px_shipment_id = fields.One2many('px.shipment', 'sale_order_id', string='Envio paquete express')
 
     def action_view_paquete_express(self):
+        self.ensure_one()
+        if not self.px_shipment_id:
+            raise UserError(_('No hay envio de Paquete Express para esta orden. Primero debe crear una cotizacion.'))
         return {
             'type': 'ir.actions.act_window',
             'name': 'Envio paquete express',

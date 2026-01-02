@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_mercadolibre_publish_massive_form" model="ir.ui.view">
+        <field name="name">mercadolibre.publish.massive.form</field>
+        <field name="model">mercadolibre.publish.massive</field>
+        <field name="arch" type="xml">
+            <form string="Publicación Masiva en MercadoLibre" style="min-width: 900px;">
+                <field name="state" invisible="1"/>
+
+                <!-- Estado: Configuración -->
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Cuenta MercadoLibre">
+                        <field name="account_id" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Productos Seleccionados">
+                        <field name="product_count" readonly="1"/>
+                        <field name="ready_count" readonly="1" class="text-success"/>
+                        <field name="missing_category_count" readonly="1" class="text-danger"/>
+                        <field name="missing_image_count" readonly="1" class="text-warning"/>
+                        <field name="already_published_count" readonly="1" class="text-muted"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Verificación de Duplicados">
+                        <field name="check_duplicates"/>
+                        <field name="duplicate_action"
+                               attrs="{'invisible': [('check_duplicates', '=', False)]}"/>
+                    </group>
+                    <group string="Opciones">
+                        <field name="skip_no_category"/>
+                        <field name="skip_no_image"/>
+                        <field name="validate_category"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <i class="fa fa-info-circle"/>
+                    <strong>Nota:</strong> Los productos deben tener configurada su
+                    <em>Categoría ML</em> en la pestaña MercadoLibre del producto.
+                    También se usarán los campos Marca ML, Modelo ML, Tipo de Publicación,
+                    Envío y Garantía configurados en cada producto.
+                </div>
+
+                <!-- Estado: Vista Previa -->
+                <div attrs="{'invisible': [('state', '!=', 'preview')]}" style="width: 100%;">
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('ready_count', '>', 0)]}">
+                        <i class="fa fa-warning"/>
+                        <strong>No hay productos listos para publicar.</strong>
+                        Verifique que los productos tengan Categoría ML configurada.
+                    </div>
+
+                    <field name="preview_line_ids" nolabel="1" style="width: 100%;">
+                        <tree string="Vista Previa" editable="bottom"
+                              decoration-success="status == 'ready'"
+                              decoration-danger="status in ('no_category', 'not_leaf_category', 'error')"
+                              decoration-warning="status in ('no_image', 'low_price', 'sku_exists', 'category_mismatch')"
+                              decoration-muted="status == 'already_published'"
+                              decoration-info="status == 'published'">
+                            <field name="published" invisible="1"/>
+                            <field name="product_name" string="Producto"/>
+                            <field name="product_default_code" string="SKU" optional="show"/>
+                            <field name="ml_category_name" string="Categoría ML" optional="show"/>
+                            <field name="predicted_category_name" string="Sugerida ML" optional="show"/>
+                            <field name="product_price" string="Precio" widget="monetary" optional="show"/>
+                            <field name="product_qty" string="Stock" optional="hide"/>
+                            <field name="has_image" string="Img" widget="boolean"/>
+                            <field name="status" string="Estado" widget="badge"
+                                   decoration-success="status == 'ready'"
+                                   decoration-danger="status in ('no_category', 'not_leaf_category', 'error')"
+                                   decoration-warning="status in ('no_image', 'low_price', 'sku_exists', 'category_mismatch')"
+                                   decoration-muted="status == 'already_published'"
+                                   decoration-info="status == 'published'"/>
+                            <field name="status_message" string="Mensaje"/>
+                            <field name="ml_item_id" string="ID ML" attrs="{'invisible': [('published', '=', False)]}"/>
+                        </tree>
+                    </field>
+                </div>
+
+                <!-- Estado: Publicando -->
+                <div attrs="{'invisible': [('state', '!=', 'publishing')]}">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa fa-spinner fa-spin"/>
+                        <strong>Publicando productos...</strong>
+                        Por favor espere.
+                    </div>
+                </div>
+
+                <!-- Estado: Completado -->
+                <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <group string="Resultados">
+                        <field name="published_count" readonly="1"/>
+                        <field name="skipped_count" readonly="1"/>
+                        <field name="error_count" readonly="1"/>
+                    </group>
+                </group>
+
+                <div attrs="{'invisible': [('state', '!=', 'done')]}" style="width: 100%;">
+                    <field name="preview_line_ids" nolabel="1" style="width: 100%;">
+                        <tree string="Resultados"
+                              decoration-success="status == 'published'"
+                              decoration-danger="status == 'error'"
+                              decoration-muted="status not in ('published', 'error')">
+                            <field name="product_name" string="Producto"/>
+                            <field name="product_default_code" string="SKU"/>
+                            <field name="status" string="Estado" widget="badge"/>
+                            <field name="status_message" string="Mensaje"/>
+                            <field name="ml_item_id" string="ID MercadoLibre"/>
+                        </tree>
+                    </field>
+                </div>
+
+                <div attrs="{'invisible': [('publish_log', '=', False)]}" style="width: 100%;">
+                    <field name="publish_log" nolabel="1" readonly="1"
+                           style="font-family: monospace; background: #f5f5f5; padding: 10px; white-space: pre-wrap; width: 100%;"/>
+                </div>
+
+                <!-- Footers según estado -->
+                <footer attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <button name="action_preview" type="object"
+                            string="Vista Previa" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'preview')]}">
+                    <button name="action_publish" type="object"
+                            string="Publicar" class="btn-primary"
+                            attrs="{'invisible': [('ready_count', '=', 0)]}"
+                            confirm="¿Está seguro de publicar los productos listos en MercadoLibre?"/>
+                    <button name="action_back" type="object"
+                            string="Volver" class="btn-secondary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <button name="action_view_items" type="object"
+                            string="Ver Items Publicados" class="btn-primary"
+                            attrs="{'invisible': [('published_count', '=', 0)]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_publish_massive" model="ir.actions.act_window">
+        <field name="name">Publicación Masiva ML</field>
+        <field name="res_model">mercadolibre.publish.massive</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

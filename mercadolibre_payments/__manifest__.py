@@ -28,8 +28,8 @@ Dependencias:
     'license': 'LGPL-3',
     'depends': [
         'mercadolibre_connector',
+        'mercadolibre_sales',  # Para heredar sale.order y payment_status_config
         'account',
-        'sale',
         'mail',
     ],
     'data': [
@@ -42,6 +42,9 @@ Dependencias:
         'views/mercadolibre_known_vendor_views.xml',
         'views/mercadolibre_account_views.xml',
         'views/account_payment_views.xml',
+        'views/sale_order_views.xml',  # Herencia de sale.order
+        'views/payment_status_config_views.xml',  # Herencia de payment status config
+        'views/mercadolibre_order_views.xml',  # Herencia de mercadolibre.order
         'wizard/mercadolibre_payment_sync_views.xml',
         'wizard/mercadolibre_payment_create_views.xml',
         'views/mercadolibre_payments_menus.xml',

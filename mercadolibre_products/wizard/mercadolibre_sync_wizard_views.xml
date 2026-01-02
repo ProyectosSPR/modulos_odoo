@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_mercadolibre_sync_wizard_form" model="ir.ui.view">
+        <field name="name">mercadolibre.sync.wizard.form</field>
+        <field name="model">mercadolibre.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sincronización Bidireccional con MercadoLibre">
+                <field name="state" invisible="1"/>
+
+                <!-- Estado: Configuración -->
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Cuenta MercadoLibre">
+                        <field name="account_id" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Productos Seleccionados">
+                        <field name="product_count" readonly="1"/>
+                        <field name="linked_count" readonly="1" class="text-success"/>
+                        <field name="not_linked_count" readonly="1" class="text-warning"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('linked_count', '>', 0)]}">
+                    <i class="fa fa-warning"/>
+                    <strong>Atención:</strong> Ninguno de los productos seleccionados tiene
+                    items de MercadoLibre vinculados en esta cuenta.
+                    Solo se pueden sincronizar productos que ya están publicados y vinculados.
+                </div>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}"
+                       string="Dirección de Sincronización por Campo">
+                    <div class="alert alert-info" role="alert" colspan="2">
+                        <i class="fa fa-info-circle"/>
+                        Seleccione la dirección para cada campo:
+                        <ul class="mb-0">
+                            <li><strong>Odoo → ML:</strong> Los datos de Odoo se envían a MercadoLibre</li>
+                            <li><strong>ML → Odoo:</strong> Los datos de MercadoLibre se traen a Odoo</li>
+                            <li><strong>No sincronizar:</strong> El campo no se modifica</li>
+                        </ul>
+                    </div>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group>
+                        <field name="stock_direction" widget="radio"/>
+                    </group>
+                    <group>
+                        <field name="price_direction" widget="radio"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group>
+                        <field name="description_direction" widget="radio"/>
+                    </group>
+                    <group>
+                        <field name="brand_model_direction" widget="radio"/>
+                    </group>
+                </group>
+
+                <!-- Estado: Sincronizando -->
+                <div attrs="{'invisible': [('state', '!=', 'syncing')]}">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa fa-spinner fa-spin"/>
+                        <strong>Sincronizando...</strong>
+                        Por favor espere.
+                    </div>
+                </div>
+
+                <!-- Estado: Completado -->
+                <group attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <group string="Resultados">
+                        <field name="synced_count" readonly="1"/>
+                        <field name="error_count" readonly="1"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('sync_log', '=', False)]}">
+                    <field name="sync_log" nolabel="1" readonly="1"
+                           style="font-family: monospace; background: #f5f5f5; padding: 10px; white-space: pre-wrap;"/>
+                </group>
+
+                <!-- Footers según estado -->
+                <footer attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <button name="action_sync" type="object"
+                            string="Sincronizar" class="btn-primary"
+                            attrs="{'invisible': [('linked_count', '=', 0)]}"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <button name="action_new_sync" type="object"
+                            string="Nueva Sincronización" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mercadolibre_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronización Bidireccional ML</field>
+        <field name="res_model">mercadolibre.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

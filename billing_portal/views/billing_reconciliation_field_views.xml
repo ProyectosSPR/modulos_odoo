@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_billing_reconciliation_field_tree" model="ir.ui.view">
+        <field name="name">billing.reconciliation.field.tree</field>
+        <field name="model">billing.reconciliation.field</field>
+        <field name="arch" type="xml">
+            <tree string="Campos de Conciliación">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="field_name"/>
+                <field name="payment_field"/>
+                <field name="search_mode"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_billing_reconciliation_field_form" model="ir.ui.view">
+        <field name="name">billing.reconciliation.field.form</field>
+        <field name="model">billing.reconciliation.field</field>
+        <field name="arch" type="xml">
+            <form string="Campo de Conciliación">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Identificación">
+                            <field name="name" placeholder="Ej: Número de Orden"/>
+                            <field name="sequence"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Configuración de Campos">
+                            <field name="field_name"/>
+                            <field name="payment_field"/>
+                            <field name="search_mode"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" placeholder="Descripción del campo y cuándo usarlo..."/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Cómo funciona:</strong>
+                        <p>
+                            El sistema buscará pagos donde el valor del <strong>Campo en Pago</strong>
+                            coincida con el valor del <strong>Campo en Orden de Venta</strong>.
+                        </p>
+                        <p>
+                            Por ejemplo: Si configura "Número de Orden" → "Referencia/Memo",
+                            buscará pagos cuya referencia contenga el número de orden (ej: SO0001).
+                        </p>
+                        <strong>Prioridad:</strong>
+                        <p>
+                            Los campos se evalúan en orden de secuencia. El primer campo que encuentre
+                            coincidencia será el usado para la conciliación.
+                        </p>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_reconciliation_field" model="ir.actions.act_window">
+        <field name="name">Campos de Conciliación</field>
+        <field name="res_model">billing.reconciliation.field</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configurar campos de búsqueda para conciliación
+            </p>
+            <p>
+                Defina qué campos de la orden de venta usar para buscar pagos coincidentes.
+                El sistema buscará en el orden de secuencia definido.
+            </p>
+        </field>
+    </record>
+
+</odoo>

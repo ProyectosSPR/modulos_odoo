@@ -31,6 +31,7 @@ Requirements:
     'depends': [
         'ai_agent_core',
         'ai_chatbot_base',
+        'mercadolibre_connector',  # Para usar tokens siempre actualizados
     ],
     'data': [
         'security/ir.model.access.csv',

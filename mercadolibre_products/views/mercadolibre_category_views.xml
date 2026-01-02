@@ -10,9 +10,16 @@
                 <field name="name"/>
                 <field name="path_from_root"/>
                 <field name="site_id"/>
+                <field name="has_children"/>
+                <field name="children_loaded" optional="hide"/>
+                <field name="total_items_in_category" optional="show"/>
                 <field name="parent_id" optional="hide"/>
                 <button name="action_load_children" type="object"
-                        icon="fa-plus-square-o" title="Cargar Subcategorias"/>
+                        icon="fa-plus-square-o" title="Cargar Subcategorias"
+                        attrs="{'invisible': [('children_loaded', '=', True), ('has_children', '=', False)]}"/>
+                <button name="action_load_children" type="object"
+                        icon="fa-refresh" title="Actualizar Subcategorias"
+                        attrs="{'invisible': [('children_loaded', '=', False)]}"/>
             </tree>
         </field>
     </record>
@@ -29,33 +36,87 @@
                             class="btn-secondary"/>
                     <button name="action_load_children" type="object"
                             string="Cargar Subcategorias" icon="fa-sitemap"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            attrs="{'invisible': [('children_loaded', '=', True), ('has_children', '=', False)]}"/>
+                    <button name="action_load_children" type="object"
+                            string="Actualizar Subcategorias" icon="fa-refresh"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('children_loaded', '=', False)]}"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_load_children" type="object"
+                                class="oe_stat_button" icon="fa-sitemap"
+                                attrs="{'invisible': [('has_children', '=', False)]}">
+                            <field name="has_children" invisible="1"/>
+                            <span>Subcategorías</span>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name"/>
                         </h1>
+                        <h3 class="text-muted">
+                            <field name="path_from_root" readonly="1"/>
+                        </h3>
                     </div>
                     <group>
                         <group>
                             <field name="ml_category_id"/>
                             <field name="site_id"/>
+                            <field name="total_items_in_category"/>
                         </group>
                         <group>
                             <field name="parent_id"/>
-                            <field name="path_from_root"/>
+                            <field name="has_children"/>
+                            <field name="children_loaded"/>
                         </group>
                     </group>
-                    <group string="Subcategorias">
+                    <group>
+                        <group string="Enlaces">
+                            <field name="picture" widget="url"/>
+                            <field name="permalink" widget="url"/>
+                        </group>
+                    </group>
+                    <group string="Subcategorias" attrs="{'invisible': [('has_children', '=', False)]}">
                         <field name="child_ids" nolabel="1">
                             <tree>
                                 <field name="ml_category_id"/>
                                 <field name="name"/>
+                                <field name="has_children"/>
+                                <field name="total_items_in_category"/>
                                 <button name="action_load_children" type="object"
-                                        icon="fa-plus-square-o" title="Cargar Subcategorias"/>
+                                        icon="fa-plus-square-o" title="Cargar Subcategorias"
+                                        attrs="{'invisible': [('children_loaded', '=', True)]}"/>
+                                <field name="children_loaded" invisible="1"/>
                             </tree>
                         </field>
+                    </group>
+                    <group string="Atributos de la Categoría">
+                        <div>
+                            <button name="action_load_attributes" type="object"
+                                    string="Cargar Atributos" icon="fa-download"
+                                    class="btn-secondary mb-2"
+                                    attrs="{'invisible': [('attributes_loaded', '=', True)]}"/>
+                            <button name="action_load_attributes" type="object"
+                                    string="Actualizar Atributos" icon="fa-refresh"
+                                    class="btn-secondary mb-2"
+                                    attrs="{'invisible': [('attributes_loaded', '=', False)]}"/>
+                            <field name="attributes_loaded" invisible="1"/>
+                        </div>
+                        <field name="attribute_ids" nolabel="1" attrs="{'invisible': [('attribute_count', '=', 0)]}">
+                            <tree>
+                                <field name="ml_attribute_id"/>
+                                <field name="name"/>
+                                <field name="value_type"/>
+                                <field name="is_required" widget="boolean"/>
+                                <field name="values_display" optional="show"/>
+                            </tree>
+                        </field>
+                        <field name="attribute_count" invisible="1"/>
+                        <div attrs="{'invisible': ['|', ('attributes_loaded', '=', False), ('attribute_count', '>', 0)]}">
+                            <p class="text-muted">Esta categoría no tiene atributos definidos.</p>
+                        </div>
                     </group>
                 </sheet>
             </form>
@@ -88,37 +149,61 @@
         <field name="name">Categorias ML</field>
         <field name="res_model">mercadolibre.category</field>
         <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_root_categories': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No hay categorias sincronizadas
             </p>
             <p>
-                Haga clic en "Sincronizar Categorias Raiz" para obtener las categorias principales de MercadoLibre.
+                Use el botón <strong>"Sincronizar Categorías"</strong> en el menú de acciones
+                o vaya a <strong>Configuración > Sincronizar Categorías</strong> para descargar las categorías de MercadoLibre.
             </p>
         </field>
     </record>
 
-    <!-- Server Action: Sincronizar categorias raiz -->
-    <record id="action_server_sync_root_categories" model="ir.actions.server">
-        <field name="name">Sincronizar Categorias Raiz (MLM)</field>
+    <!-- Server Action: Abrir wizard de sincronización -->
+    <record id="action_server_open_category_sync" model="ir.actions.server">
+        <field name="name">Sincronizar Categorías</field>
         <field name="model_id" ref="model_mercadolibre_category"/>
         <field name="binding_model_id" ref="model_mercadolibre_category"/>
-        <field name="binding_view_types">list</field>
+        <field name="binding_view_types">list,form</field>
         <field name="state">code</field>
         <field name="code">
-action = model.action_sync_root_categories(site_id='MLM')
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Sincronizar Categorías ML',
+    'res_model': 'mercadolibre.category.sync',
+    'view_mode': 'form',
+    'target': 'new',
+}
         </field>
     </record>
 
     <!-- Server Action: Cargar subcategorias -->
     <record id="action_server_load_children" model="ir.actions.server">
-        <field name="name">Cargar Subcategorias</field>
+        <field name="name">Cargar Subcategorías</field>
         <field name="model_id" ref="model_mercadolibre_category"/>
         <field name="binding_model_id" ref="model_mercadolibre_category"/>
         <field name="state">code</field>
         <field name="code">
 for record in records:
     record.action_load_children()
+        </field>
+    </record>
+
+    <!-- Server Action: Sincronizar varios sitios -->
+    <record id="action_server_sync_all_sites" model="ir.actions.server">
+        <field name="name">Sincronizar Todos los Sitios Configurados</field>
+        <field name="model_id" ref="model_mercadolibre_category"/>
+        <field name="binding_model_id" ref="model_mercadolibre_category"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+# Obtener sitios únicos de las cuentas configuradas
+accounts = env['mercadolibre.account'].search([('state', '=', 'connected')])
+sites = list(set(accounts.mapped('site_id')))
+for site in sites:
+    model.action_sync_root_categories(site_id=site)
         </field>
     </record>
 </odoo>

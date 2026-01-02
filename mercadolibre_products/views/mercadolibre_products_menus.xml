@@ -6,6 +6,13 @@
               parent="mercadolibre_connector.menu_mercadolibre_root"
               sequence="30"/>
 
+    <!-- IMPORTAR PRODUCTOS DESDE ML (Nuevo) -->
+    <menuitem id="menu_mercadolibre_import_products"
+              name="Importar desde ML"
+              parent="menu_mercadolibre_products_root"
+              action="action_mercadolibre_import_products"
+              sequence="1"/>
+
     <!-- Items ML -->
     <menuitem id="menu_mercadolibre_items"
               name="Items MercadoLibre"
@@ -52,6 +59,13 @@
               parent="menu_mercadolibre_products_config"
               action="action_mercadolibre_product_sync_config"
               sequence="10"/>
+
+    <!-- Sincronizar Categorias en el menu de configuracion -->
+    <menuitem id="menu_mercadolibre_category_sync"
+              name="Sincronizar Categorias"
+              parent="menu_mercadolibre_products_config"
+              action="action_mercadolibre_category_sync_wizard"
+              sequence="20"/>
 
     <!-- Accion para abrir wizard de sync manual -->
     <record id="action_mercadolibre_product_sync_wizard" model="ir.actions.act_window">

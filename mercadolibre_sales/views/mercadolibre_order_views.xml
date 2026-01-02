@@ -11,6 +11,9 @@
                 <field name="date_closed" string="Fecha"/>
                 <field name="buyer_nickname" string="Comprador"/>
                 <field name="total_amount" string="Monto" sum="Total"/>
+                <field name="total_discount" string="Dto. Total" sum="Total Dto." optional="show"/>
+                <field name="seller_discount" string="Dto. Vendedor" sum="Dto. Vendedor" optional="show"/>
+                <field name="meli_discount" string="Dto. ML" sum="Dto. ML" optional="show"/>
                 <field name="status" string="Estado ML"
                        decoration-success="status == 'paid'"
                        decoration-warning="status in ('confirmed', 'payment_in_process')"

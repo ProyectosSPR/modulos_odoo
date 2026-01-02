@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Cron para Facturación Automática Público en General -->
+        <!-- Se ejecuta cada minuto, la configuración decide cuándo procesar según el intervalo configurado -->
+        <record id="ir_cron_billing_auto_invoice" model="ir.cron">
+            <field name="name">Público en General: Facturación Automática</field>
+            <field name="model_id" ref="model_billing_public_config"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_execute_auto_invoice()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall">False</field>
+        </record>
+
+        <!-- Cron para Conciliación Automática de Pagos -->
+        <!-- Se ejecuta cada minuto, la configuración decide cuándo procesar según el intervalo configurado -->
+        <record id="ir_cron_billing_auto_reconciliation" model="ir.cron">
+            <field name="name">Público en General: Conciliación Automática</field>
+            <field name="model_id" ref="model_billing_public_config"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_execute_auto_reconciliation()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall">False</field>
+        </record>
+
+    </data>
+</odoo>

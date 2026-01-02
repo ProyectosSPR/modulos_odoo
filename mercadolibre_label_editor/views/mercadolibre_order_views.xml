@@ -29,4 +29,9 @@
         </field>
     </record>
 
+    <!--
+    NOTA: La impresión múltiple de etiquetas está disponible desde el menú "Acción"
+    en la vista de lista. Selecciona las órdenes y usa: Acción → Imprimir Etiquetas Seleccionadas
+    -->
+
 </odoo>

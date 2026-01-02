@@ -401,12 +401,9 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
-                <field name="status_pending" string="Pend"/>
-                <field name="status_approved" string="Aprob"/>
-                <field name="status_in_process" string="Proc" optional="hide"/>
-                <field name="status_rejected" string="Rech" optional="hide"/>
+                <field name="status_paid" string="Pagado"/>
+                <field name="status_confirmed" string="Conf" optional="show"/>
                 <field name="status_cancelled" string="Canc" optional="hide"/>
-                <field name="status_refunded" string="Reemb" optional="hide"/>
                 <field name="account_id" optional="hide"/>
                 <field name="active" optional="hide"/>
             </tree>
@@ -465,32 +462,7 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Estados de Pago (API)" name="payment_status">
-                            <div class="alert alert-secondary" role="alert">
-                                <strong>Estados del API de Pagos</strong> - Estos son estados específicos del API de pagos de MercadoPago.
-                                Úselos solo si maneja webhooks de pagos directamente.
-                            </div>
-                            <group>
-                                <group string="Estados Positivos">
-                                    <field name="status_approved"/>
-                                    <field name="status_authorized"/>
-                                </group>
-                                <group string="Estados Pendientes">
-                                    <field name="status_pending"/>
-                                    <field name="status_in_process"/>
-                                    <field name="status_in_mediation"/>
-                                </group>
-                            </group>
-                            <group>
-                                <group string="Estados Negativos">
-                                    <field name="status_rejected"/>
-                                </group>
-                                <group string="Devoluciones">
-                                    <field name="status_refunded"/>
-                                    <field name="status_charged_back"/>
-                                </group>
-                            </group>
-                        </page>
+                        <!-- Estados de Pago API y Money Release se agregan desde mercadolibre_payments -->
                         <page string="Configuracion" name="config">
                             <group>
                                 <group>

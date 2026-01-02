@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'MercadoLibre Label Editor',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.1.0',
     'category': 'Sales',
     'summary': 'Personaliza etiquetas de MercadoLibre con campos dinámicos',
     'description': """

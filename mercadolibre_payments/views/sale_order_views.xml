@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Heredar vista form de sale.order para agregar campos de pago -->
+    <record id="view_sale_order_form_ml_payments" model="ir.ui.view">
+        <field name="name">sale.order.form.ml.payments</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_form_ml"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Agregar seccion de Pago MercadoPago despues del ultimo grupo principal -->
+            <xpath expr="//page[@name='mercadolibre']/group[last()]" position="after">
+                <group string="Estado de Pago MercadoPago" name="ml_payment_info">
+                    <group>
+                        <field name="ml_payment_status" readonly="1"/>
+                        <field name="ml_money_release_status" readonly="1"
+                               decoration-success="ml_money_release_status == 'released'"
+                               decoration-warning="ml_money_release_status == 'pending'"
+                               decoration-danger="ml_money_release_status == 'not_released'"/>
+                    </group>
+                    <group>
+                        <field name="ml_money_release_date" readonly="1"/>
+                        <field name="ml_payment_count" string="Pagos"/>
+                        <button name="action_view_ml_payments"
+                                type="object"
+                                string="Ver Pagos"
+                                class="btn-link"
+                                icon="fa-money"
+                                attrs="{'invisible': [('ml_payment_count', '=', 0)]}"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Agregar campo de liberacion de dinero a la vista tree de ordenes ML -->
+    <record id="view_sale_order_tree_ml_payments" model="ir.ui.view">
+        <field name="name">sale.order.tree.ml.payments</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_sale_order_tree_ml"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ml_shipping_status']" position="after">
+                <field name="ml_money_release_status" string="Dinero" optional="show" widget="badge"
+                       decoration-success="ml_money_release_status == 'released'"
+                       decoration-warning="ml_money_release_status == 'pending'"
+                       decoration-danger="ml_money_release_status in ('not_released', 'unavailable')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -24,6 +24,36 @@
               action="action_billing_request_pending_stamp"
               sequence="20"/>
 
+    <!-- Público en General -->
+    <menuitem id="menu_billing_public"
+              name="Público en General"
+              parent="menu_billing_portal_root"
+              sequence="20"/>
+
+    <menuitem id="menu_billing_public_invoices"
+              name="Facturas Público en General"
+              parent="menu_billing_public"
+              action="action_billing_public_invoice"
+              sequence="10"/>
+
+    <menuitem id="menu_billing_public_create"
+              name="Crear Factura"
+              parent="menu_billing_public"
+              action="action_billing_public_invoice_wizard"
+              sequence="20"/>
+
+    <menuitem id="menu_billing_public_reconciliations"
+              name="Conciliaciones"
+              parent="menu_billing_public"
+              action="action_billing_public_reconciliation"
+              sequence="30"/>
+
+    <menuitem id="menu_billing_auto_execution"
+              name="Historial de Ejecuciones"
+              parent="menu_billing_public"
+              action="action_billing_auto_execution"
+              sequence="40"/>
+
     <!-- Configuración -->
     <menuitem id="menu_billing_config"
               name="Configuración"
@@ -42,5 +72,23 @@
               parent="menu_billing_config"
               action="action_billing_status_config"
               sequence="20"/>
+
+    <menuitem id="menu_billing_excluded_products"
+              name="Productos Excluidos"
+              parent="menu_billing_config"
+              action="action_billing_excluded_product"
+              sequence="30"/>
+
+    <menuitem id="menu_billing_reconciliation_fields"
+              name="Campos de Conciliación"
+              parent="menu_billing_config"
+              action="action_billing_reconciliation_field"
+              sequence="40"/>
+
+    <menuitem id="menu_billing_public_config"
+              name="Público en General"
+              parent="menu_billing_config"
+              action="action_billing_public_config"
+              sequence="50"/>
 
 </odoo>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Heredar vista tree de mercadolibre.order para agregar campo de liberacion de dinero -->
+    <record id="view_mercadolibre_order_tree_payments" model="ir.ui.view">
+        <field name="name">mercadolibre.order.tree.payments</field>
+        <field name="model">mercadolibre.order</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_order_tree"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='status']" position="after">
+                <field name="ml_money_release_status" string="Dinero" optional="show" widget="badge"
+                       decoration-success="ml_money_release_status == 'released'"
+                       decoration-warning="ml_money_release_status == 'pending'"
+                       decoration-danger="ml_money_release_status in ('not_released', 'unavailable')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

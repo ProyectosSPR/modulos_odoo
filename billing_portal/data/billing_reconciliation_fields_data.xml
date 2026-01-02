@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Campos de búsqueda predefinidos para conciliación -->
+
+        <record id="reconciliation_field_name" model="billing.reconciliation.field">
+            <field name="name">Número de Orden</field>
+            <field name="field_name">name</field>
+            <field name="payment_field">ref</field>
+            <field name="search_mode">ilike</field>
+            <field name="sequence">10</field>
+            <field name="description">Busca el número de orden de venta (ej: SO0001) en la referencia del pago.</field>
+        </record>
+
+        <record id="reconciliation_field_client_order_ref" model="billing.reconciliation.field">
+            <field name="name">Referencia del Cliente</field>
+            <field name="field_name">client_order_ref</field>
+            <field name="payment_field">ref</field>
+            <field name="search_mode">ilike</field>
+            <field name="sequence">20</field>
+            <field name="description">Busca la referencia del cliente en la referencia del pago. Útil para órdenes con referencias personalizadas.</field>
+        </record>
+
+        <record id="reconciliation_field_ml_order_id" model="billing.reconciliation.field">
+            <field name="name">ID Orden MercadoLibre</field>
+            <field name="field_name">ml_order_id</field>
+            <field name="payment_field">ref</field>
+            <field name="search_mode">ilike</field>
+            <field name="sequence">30</field>
+            <field name="description">Busca el ID de orden de MercadoLibre en la referencia del pago.</field>
+        </record>
+
+        <record id="reconciliation_field_ml_pack_id" model="billing.reconciliation.field">
+            <field name="name">ID Pack MercadoLibre</field>
+            <field name="field_name">ml_pack_id</field>
+            <field name="payment_field">ref</field>
+            <field name="search_mode">ilike</field>
+            <field name="sequence">40</field>
+            <field name="description">Busca el ID de paquete de MercadoLibre en la referencia del pago.</field>
+        </record>
+
+    </data>
+</odoo>

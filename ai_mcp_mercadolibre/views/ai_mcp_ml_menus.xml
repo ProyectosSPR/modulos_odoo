@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu principal dentro del menu de IA -->
+    <!-- Asumiendo que ai_agent_core tiene un menu raiz llamado 'menu_ai_root' -->
+
+    <!-- Submenu MCP MercadoLibre -->
+    <menuitem
+        id="menu_ai_mcp_ml_root"
+        name="MCP MercadoLibre"
+        parent="ai_agent_core.menu_ai_root"
+        sequence="50"/>
+
+    <!-- Menu: Servidores -->
+    <menuitem
+        id="menu_ai_mcp_ml_server"
+        name="Servidores MCP"
+        parent="menu_ai_mcp_ml_root"
+        action="action_ai_mcp_ml_server"
+        sequence="10"/>
+
+    <!-- Menu: Endpoints -->
+    <menuitem
+        id="menu_ai_mcp_ml_endpoint"
+        name="Endpoints"
+        parent="menu_ai_mcp_ml_root"
+        action="action_ai_mcp_ml_endpoint"
+        sequence="20"/>
+
+    <!-- Menu: Logs -->
+    <menuitem
+        id="menu_ai_mcp_ml_log"
+        name="Logs"
+        parent="menu_ai_mcp_ml_root"
+        action="action_ai_mcp_ml_log"
+        sequence="30"/>
+
+    <!-- Menu: Errores (acceso rapido) -->
+    <menuitem
+        id="menu_ai_mcp_ml_log_errors"
+        name="Errores"
+        parent="menu_ai_mcp_ml_root"
+        action="action_ai_mcp_ml_log_errors"
+        sequence="40"/>
+
+</odoo>

@@ -29,18 +29,36 @@
                             <field name="name" placeholder="Configuration Name"/>
                         </h1>
                     </div>
+                    <!-- NUEVA SECCION: Integracion con mercadolibre_connector -->
                     <group>
-                        <group string="API Credentials">
-                            <field name="app_id"/>
-                            <field name="client_secret" password="True"/>
-                            <field name="site_id"/>
-                            <field name="redirect_uri" readonly="1"/>
+                        <group string="Cuenta MercadoLibre (Recomendado)">
+                            <field name="use_connector_token"/>
+                            <field name="ml_account_id" options="{'no_create': True}"
+                                   attrs="{'invisible': [('use_connector_token', '=', False)], 'required': [('use_connector_token', '=', True)]}"/>
+                            <div class="alert alert-success" role="alert" attrs="{'invisible': [('use_connector_token', '=', False)]}">
+                                <strong>Usando token de mercadolibre_connector</strong><br/>
+                                El token se actualiza automaticamente cada 30 minutos.
+                            </div>
                         </group>
-                        <group string="Account Info">
+                        <group string="Info de Cuenta">
                             <field name="meli_user_id" readonly="1"/>
                             <field name="meli_nickname" readonly="1"/>
+                            <field name="meli_site_id"/>
+                        </group>
+                    </group>
+
+                    <!-- Credenciales propias (deprecado, solo si no usa connector) -->
+                    <group attrs="{'invisible': [('use_connector_token', '=', True)]}">
+                        <group string="API Credentials (Modo Legacy)">
+                            <div class="alert alert-warning" role="alert">
+                                <strong>Modo Deprecado:</strong> Se recomienda usar una cuenta de mercadolibre_connector.
+                            </div>
+                            <field name="app_id" attrs="{'required': [('use_connector_token', '=', False)]}"/>
+                            <field name="client_secret" password="True"/>
+                        </group>
+                        <group string="Token (Legacy)">
                             <field name="access_token" password="True" readonly="1"/>
-                            <field name="token_expires" readonly="1"/>
+                            <field name="token_expiry" readonly="1"/>
                         </group>
                     </group>
                     <group>
@@ -94,12 +112,14 @@
         <field name="arch" type="xml">
             <tree string="MercadoLibre Configurations">
                 <field name="name"/>
+                <field name="ml_account_id" optional="show"/>
                 <field name="meli_nickname"/>
-                <field name="site_id"/>
+                <field name="meli_site_id"/>
                 <field name="agent_id"/>
                 <field name="connection_status" decoration-success="connection_status == 'connected'"
                        decoration-warning="connection_status == 'connecting'"
                        decoration-danger="connection_status == 'disconnected'" widget="badge"/>
+                <field name="use_connector_token" widget="boolean" optional="hide"/>
                 <field name="auto_reply_enabled"/>
                 <field name="total_messages_received"/>
                 <field name="last_message_date"/>

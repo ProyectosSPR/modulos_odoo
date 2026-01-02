@@ -995,15 +995,32 @@ class MercadolibreConversation(models.Model):
                 return {'status': 'error', 'reason': 'could not fetch message'}
 
             # Obtener pack_id del mensaje
+            # La API devuelve: {"messages": [{"message_resources": [...]}]}
             pack_id = None
-            for resource in message_data.get('message_resources', []):
-                if resource.get('name') == 'packs':
-                    pack_id = resource.get('id')
-                    break
+            actual_message = None  # El mensaje real para crear en Odoo
+
+            # Primero intentar obtener del array 'messages'
+            messages_list = message_data.get('messages', [])
+            if messages_list:
+                actual_message = messages_list[0]
+                for resource in actual_message.get('message_resources', []):
+                    if resource.get('name') == 'packs':
+                        pack_id = resource.get('id')
+                        break
+
+            # Si no está en 'messages', buscar en la raíz (por compatibilidad)
+            if not pack_id:
+                actual_message = message_data  # Usar message_data directamente
+                for resource in message_data.get('message_resources', []):
+                    if resource.get('name') == 'packs':
+                        pack_id = resource.get('id')
+                        break
 
             if not pack_id:
-                _logger.warning(f"Mensaje {message_id} sin pack_id")
+                _logger.warning(f"Mensaje {message_id} sin pack_id en message_resources")
                 return {'status': 'ignored', 'reason': 'no pack_id'}
+
+            _logger.info(f"Mensaje {message_id} asociado a pack {pack_id}")
 
             # Buscar o crear conversación
             conversation = self.search([
@@ -1012,7 +1029,7 @@ class MercadolibreConversation(models.Model):
             ], limit=1)
 
             if not conversation:
-                conversation = self._create_conversation_from_notification(account, pack_id, message_data)
+                conversation = self._create_conversation_from_notification(account, pack_id, actual_message)
 
             if not conversation:
                 return {'status': 'error', 'reason': 'could not create conversation'}
@@ -1026,8 +1043,8 @@ class MercadolibreConversation(models.Model):
                 _logger.debug(f"Mensaje {message_id} ya existe")
                 return {'status': 'ok', 'action': 'already_exists'}
 
-            # Crear mensaje en Odoo
-            message = conversation._create_message_from_notification(message_data, account)
+            # Crear mensaje en Odoo (usar actual_message que tiene la estructura correcta)
+            message = conversation._create_message_from_notification(actual_message, account)
 
             if message:
                 # Log de éxito

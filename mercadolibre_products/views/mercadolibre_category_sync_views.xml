@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_mercadolibre_category_sync_form" model="ir.ui.view">
+        <field name="name">mercadolibre.category.sync.form</field>
+        <field name="model">mercadolibre.category.sync</field>
+        <field name="arch" type="xml">
+            <form string="Sincronizar Categorías MercadoLibre">
+                <group>
+                    <group string="Configuración">
+                        <field name="account_id" placeholder="Opcional - para usar sitio de la cuenta"/>
+                        <field name="site_id"/>
+                        <field name="sync_mode" widget="radio"/>
+                    </group>
+                    <group string="Estadísticas Actuales">
+                        <field name="existing_root_count" readonly="1"/>
+                        <field name="existing_total_count" readonly="1"/>
+                    </group>
+                </group>
+                <group attrs="{'invisible': [('sync_mode', '!=', 'specific')]}">
+                    <group string="Categoría a Sincronizar">
+                        <field name="category_id"
+                               placeholder="Seleccione una categoría existente"/>
+                        <label for="ml_category_id"/>
+                        <div>
+                            <field name="ml_category_id"
+                                   placeholder="ej: MLM1648"
+                                   class="oe_inline"/>
+                            <span class="text-muted"> (O ingrese el ID de ML directamente)</span>
+                        </div>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_sync" type="object"
+                            string="Sincronizar" class="btn-primary"/>
+                    <button name="action_view_categories" type="object"
+                            string="Ver Categorías" class="btn-secondary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open wizard -->
+    <record id="action_mercadolibre_category_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronizar Categorías ML</field>
+        <field name="res_model">mercadolibre.category.sync</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

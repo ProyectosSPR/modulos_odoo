@@ -303,9 +303,13 @@ class StockPicking(models.Model):
         
     @api.model
     def px_api_generate_shipment(self, order):
-        # self.validation_data_to_quotation(zip, street)
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info('[PX_API_GUIA] ========== INICIO px_api_generate_shipment ==========')
+        _logger.info('[PX_API_GUIA] Orden: %s', order.name)
 
         url = "{0}/RadRestFul/api/rad/v1/guia".format(self.env.company.x_px_uri)
+        _logger.info('[PX_API_GUIA] URL: %s', url)
 
         payload = json.dumps({
             "header": self.px_api_header(),
@@ -373,7 +377,7 @@ class StockPicking(models.Model):
                                 }
                                                                 
                             ],
-                            "typeSrvcId": order.partner_shipping_id.ref.split('#')[1],
+                            "typeSrvcId": order.partner_shipping_id.ref.split('#')[1] if order.partner_shipping_id.ref and '#' in order.partner_shipping_id.ref else 'STANDARD',
                             # "listRefs":[
                             #     {
                             #         "grGuiaRefr":"TLALPAN"
@@ -391,35 +395,66 @@ class StockPicking(models.Model):
             'Content-Type': 'application/json'
         }
 
+        _logger.info('[PX_API_GUIA] Enviando request a API...')
+        _logger.info('[PX_API_GUIA] Destino: %s, CP: %s',
+                    order.partner_shipping_id.name if order.partner_shipping_id else 'N/A',
+                    order.partner_shipping_id.zip if order.partner_shipping_id else 'N/A')
+
         response = requests.request("POST", url, headers=headers, data=payload)
 
-        if response.status_code is not 200:
-            raise UserError("Ocurrio un error al obtener una respuesta del Api.")
-        
+        _logger.info('[PX_API_GUIA] Status Code: %s', response.status_code)
+
+        if response.status_code != 200:
+            _logger.error('[PX_API_GUIA] Error HTTP: %s - %s', response.status_code, response.text)
+            raise UserError("Error al obtener respuesta del API. Status: %s" % response.status_code)
+
         data = json.loads(response.text)
-        
-        print(json.dumps(data, indent=4))
+
+        _logger.info('[PX_API_GUIA] Respuesta: success=%s',
+                    data.get("body", {}).get("response", {}).get("success"))
+        _logger.info('[PX_API_GUIA] ========== FIN px_api_generate_shipment ==========')
 
         return data
-    
-    def action_px_api_generate_shipment(self, order_id):
-        order = self.env['sale.order'].sudo().browse(order_id)
 
-        data = self.px_api_generate_shipment(order)
-        
+    def action_px_api_generate_shipment(self, order_id):
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info('[PX_SHIPMENT] ========== INICIO action_px_api_generate_shipment ==========')
+        _logger.info('[PX_SHIPMENT] order_id: %s', order_id)
+
+        order = self.env['sale.order'].sudo().browse(order_id)
+        _logger.info('[PX_SHIPMENT] Orden: %s', order.name)
+        _logger.info('[PX_SHIPMENT] Partner envio: %s', order.partner_shipping_id.name if order.partner_shipping_id else 'NINGUNO')
+
+        try:
+            _logger.info('[PX_SHIPMENT] Llamando px_api_generate_shipment...')
+            data = self.px_api_generate_shipment(order)
+            _logger.info('[PX_SHIPMENT] Respuesta API recibida')
+        except Exception as e:
+            _logger.error('[PX_SHIPMENT] Error en API: %s', str(e), exc_info=True)
+            raise
+
         generate_shipment_data = data["body"]["response"]
+        _logger.info('[PX_SHIPMENT] success: %s', generate_shipment_data.get("success"))
 
         if generate_shipment_data["success"]:
-            order.px_shipment_data = data
+            _logger.info('[PX_SHIPMENT] Creando px.shipment...')
+            order.px_shipment_data = str(data)
 
             shipment = self.env['px.shipment'].create({
-                "data": generate_shipment_data["data"],
-                "object_dto": generate_shipment_data["objectDTO"],
-                "credit_amnt": generate_shipment_data["additionalData"]["creditAmnt"],
-                "sub_totl_amnt": generate_shipment_data["additionalData"]["subTotlAmnt"],
-                "total_amnt": generate_shipment_data["additionalData"]["totalAmnt"],
+                "data": generate_shipment_data.get("data"),
+                "object_dto": generate_shipment_data.get("objectDTO"),
+                "credit_amnt": generate_shipment_data.get("additionalData", {}).get("creditAmnt", 0),
+                "sub_totl_amnt": generate_shipment_data.get("additionalData", {}).get("subTotlAmnt", 0),
+                "total_amnt": generate_shipment_data.get("additionalData", {}).get("totalAmnt", 0),
                 "sale_order_id": order.id
             })
-            print(shipment)
+            _logger.info('[PX_SHIPMENT] px.shipment creado: ID=%s', shipment.id)
+            _logger.info('[PX_SHIPMENT] ========== FIN (exito) ==========')
+            return shipment
         else:
-            print(generate_shipment_data)
+            _logger.warning('[PX_SHIPMENT] API retorno error: %s', generate_shipment_data)
+            messages = generate_shipment_data.get("messages", [])
+            error_msg = ', '.join([m.get('description', str(m)) for m in messages]) if messages else 'Error desconocido'
+            _logger.info('[PX_SHIPMENT] ========== FIN (error) ==========')
+            raise UserError(f'Error al crear guia: {error_msg}')

@@ -60,4 +60,24 @@ Incluye número de orden y nombre del cliente en posiciones predeterminadas.</fi
         </record>
 
     </data>
+
+    <!-- =================================================================== -->
+    <!-- ACCIONES DE SERVIDOR PARA IMPRESIÓN MÚLTIPLE -->
+    <!-- =================================================================== -->
+    <data noupdate="0">
+
+        <!-- Acción de servidor: Imprimir Múltiples Etiquetas -->
+        <record id="action_print_multiple_labels" model="ir.actions.server">
+            <field name="name">Imprimir Etiquetas Seleccionadas</field>
+            <field name="model_id" ref="mercadolibre_sales.model_mercadolibre_order"/>
+            <field name="binding_model_id" ref="mercadolibre_sales.model_mercadolibre_order"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    action = records.action_print_multiple_labels()
+            </field>
+        </record>
+
+    </data>
 </odoo>

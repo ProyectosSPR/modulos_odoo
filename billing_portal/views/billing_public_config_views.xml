@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_billing_public_config_tree" model="ir.ui.view">
+        <field name="name">billing.public.config.tree</field>
+        <field name="model">billing.public.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configuración Público en General">
+                <field name="public_partner_id"/>
+                <field name="uso_cfdi_id"/>
+                <field name="forma_pago_id"/>
+                <field name="journal_id"/>
+                <field name="tolerance_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_billing_public_config_form" model="ir.ui.view">
+        <field name="name">billing.public.config.form</field>
+        <field name="model">billing.public.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración Público en General">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Cliente">
+                            <field name="public_partner_id"
+                                   options="{'no_create': True}"
+                                   required="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Facturación">
+                            <field name="journal_id"
+                                   domain="[('type', '=', 'sale')]"/>
+                            <field name="auto_post_invoice"/>
+                        </group>
+                    </group>
+                    <group string="Datos Fiscales por Defecto">
+                        <group>
+                            <field name="uso_cfdi_id"/>
+                            <field name="forma_pago_id"/>
+                        </group>
+                        <group>
+                            <field name="regimen_fiscal_id"/>
+                            <field name="metodo_pago"/>
+                        </group>
+                    </group>
+                    <group string="Configuración de Tolerancia para Conciliación">
+                        <group>
+                            <field name="allow_partial_reconciliation"/>
+                            <field name="tolerance_type"/>
+                        </group>
+                        <group>
+                            <field name="tolerance_amount"
+                                   attrs="{'invisible': [('tolerance_type', '!=', 'fixed')], 'required': [('tolerance_type', '=', 'fixed')]}"/>
+                            <field name="tolerance_percent"
+                                   attrs="{'invisible': [('tolerance_type', '!=', 'percent')], 'required': [('tolerance_type', '=', 'percent')]}"/>
+                        </group>
+                    </group>
+                    <separator string="Filtros de Órdenes"/>
+                    <group string="Estados de Envío ML a Incluir">
+                        <group>
+                            <field name="ml_include_delivered"/>
+                            <field name="ml_include_shipped"/>
+                            <field name="ml_include_pending"/>
+                        </group>
+                        <group>
+                            <field name="ml_include_ready_to_ship"/>
+                            <field name="ml_include_no_status"/>
+                        </group>
+                    </group>
+                    <separator string="Automatización"/>
+
+                    <!-- Sección Facturación Automática -->
+                    <div class="alert alert-success" role="alert"
+                         attrs="{'invisible': [('auto_invoice_enabled', '=', False)]}">
+                        <strong><i class="fa fa-check-circle"/> Facturación Automática ACTIVADA</strong>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('auto_invoice_enabled', '=', True)]}">
+                        <strong><i class="fa fa-exclamation-triangle"/> Facturación Automática DESACTIVADA</strong>
+                    </div>
+                    <group string="Configuración de Facturación Automática">
+                        <group>
+                            <field name="auto_invoice_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group attrs="{'invisible': [('auto_invoice_enabled', '=', False)]}">
+                            <label for="invoice_day_of_month" string="Ejecutar el día"/>
+                            <div class="o_row">
+                                <field name="invoice_day_of_month" class="oe_inline" style="width: 50px;"/>
+                                <span class="oe_inline"> de cada mes a las </span>
+                                <field name="invoice_hour" class="oe_inline" style="width: 50px;"/>
+                                <span class="oe_inline">:</span>
+                                <field name="invoice_minute" class="oe_inline" style="width: 50px;"/>
+                                <span class="oe_inline"> hrs</span>
+                            </div>
+                            <field name="last_invoice_execution" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <!-- Sección Conciliación Automática -->
+                    <div class="alert alert-success" role="alert"
+                         attrs="{'invisible': [('auto_reconciliation_enabled', '=', False)]}">
+                        <strong><i class="fa fa-check-circle"/> Conciliación Automática ACTIVADA</strong>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': [('auto_reconciliation_enabled', '=', True)]}">
+                        <strong><i class="fa fa-exclamation-triangle"/> Conciliación Automática DESACTIVADA</strong>
+                    </div>
+                    <group string="Configuración de Conciliación Automática">
+                        <group>
+                            <field name="auto_reconciliation_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group attrs="{'invisible': [('auto_reconciliation_enabled', '=', False)]}">
+                            <label for="reconciliation_frequency_number" string="Ejecutar cada"/>
+                            <div class="o_row">
+                                <field name="reconciliation_frequency_number" class="oe_inline" style="width: 60px;"/>
+                                <field name="reconciliation_frequency_type" class="oe_inline"/>
+                            </div>
+                            <field name="last_reconciliation_execution" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Período de Facturación">
+                        <group>
+                            <field name="auto_invoice_period_type" widget="radio"/>
+                            <field name="auto_invoice_period_days"
+                                   attrs="{'invisible': [('auto_invoice_period_type', '!=', 'days')], 'required': [('auto_invoice_period_type', '=', 'days')]}"/>
+                        </group>
+                        <group>
+                            <field name="auto_invoice_date_from"
+                                   attrs="{'invisible': [('auto_invoice_period_type', '!=', 'dates')], 'required': [('auto_invoice_period_type', '=', 'dates')]}"/>
+                            <field name="auto_invoice_date_to"
+                                   attrs="{'invisible': [('auto_invoice_period_type', '!=', 'dates')], 'required': [('auto_invoice_period_type', '=', 'dates')]}"/>
+                        </group>
+                    </group>
+                    <group string="Notificaciones e Historial">
+                        <group>
+                            <field name="auto_notify_email"/>
+                        </group>
+                        <group>
+                            <field name="last_auto_execution" readonly="1"/>
+                            <field name="last_auto_execution_result" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Acciones Manuales" col="4">
+                        <button name="action_preview_invoice"
+                                string="Vista Previa Facturación"
+                                type="object"
+                                class="btn-secondary"
+                                icon="fa-search"/>
+                        <button name="action_execute_invoice_now"
+                                string="Ejecutar Facturación"
+                                type="object"
+                                class="btn-primary"
+                                icon="fa-play"
+                                confirm="¿Ejecutar facturación ahora?"/>
+                        <button name="action_preview_reconciliation"
+                                string="Vista Previa Conciliación"
+                                type="object"
+                                class="btn-secondary"
+                                icon="fa-search"/>
+                        <button name="action_execute_reconciliation_now"
+                                string="Ejecutar Conciliación"
+                                type="object"
+                                class="btn-primary"
+                                icon="fa-play"
+                                confirm="¿Ejecutar conciliación ahora?"/>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Notas adicionales..."/>
+                    </group>
+                    <separator string="Historial de Ejecuciones"/>
+                    <field name="execution_ids" readonly="1">
+                        <tree string="Historial" default_order="execution_date desc" limit="10">
+                            <field name="execution_date"/>
+                            <field name="execution_type"/>
+                            <field name="manual"/>
+                            <field name="state" decoration-success="state == 'done'" decoration-danger="state == 'error'" decoration-info="state == 'running'" widget="badge"/>
+                            <field name="orders_found"/>
+                            <field name="orders_processed"/>
+                            <field name="result_message"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_public_config" model="ir.actions.act_window">
+        <field name="name">Público en General</field>
+        <field name="res_model">billing.public.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configurar facturación a Público en General
+            </p>
+            <p>
+                Configure el cliente a usar para facturas a Público en General,
+                los datos fiscales por defecto y las opciones de tolerancia para conciliación.
+            </p>
+        </field>
+    </record>
+
+</odoo>

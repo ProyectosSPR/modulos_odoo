@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit sale.order form to add Paquete Express quote button -->
+    <record id="view_sale_order_form_ml_px" model="ir.ui.view">
+        <field name="name">sale.order.form.ml.px</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <!-- Agregar boton en el header junto a otros botones de accion -->
+            <xpath expr="//header" position="inside">
+                <button name="action_open_px_quotation_wizard"
+                        type="object"
+                        string="Cotizar Paquete Express"
+                        class="btn-secondary"
+                        icon="fa-truck"
+                        attrs="{'invisible': [('state', 'in', ['cancel'])]}"/>
+            </xpath>
+
+            <!-- Agregar seccion de direccion ML en la pestaña de informacion -->
+            <xpath expr="//page[@name='other_information']" position="inside">
+                <group string="Envio MercadoLibre" name="ml_shipping_info"
+                       attrs="{'invisible': [('ml_order_id', '=', False)]}">
+                    <group>
+                        <field name="has_ml_shipping_data" invisible="1"/>
+                        <field name="ml_shipment_record_id" readonly="1"
+                               attrs="{'invisible': [('ml_shipment_record_id', '=', False)]}"/>
+                        <button name="action_view_ml_shipment"
+                                type="object"
+                                string="Ver Envio ML"
+                                class="btn-link"
+                                icon="fa-external-link"
+                                attrs="{'invisible': [('ml_shipment_record_id', '=', False)]}"/>
+                    </group>
+                    <group>
+                        <field name="ml_shipping_address" readonly="1" nolabel="1"
+                               attrs="{'invisible': [('has_ml_shipping_data', '=', False)]}"/>
+                        <div class="text-muted" attrs="{'invisible': [('has_ml_shipping_data', '=', True)]}">
+                            <i class="fa fa-info-circle"/> No hay datos de envio ML disponibles
+                        </div>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Agregar campo ml_shipping_address a la vista de arbol si es util -->
+    <record id="view_sale_order_tree_ml_px" model="ir.ui.view">
+        <field name="name">sale.order.tree.ml.px</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="has_ml_shipping_data" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

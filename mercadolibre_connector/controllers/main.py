@@ -55,6 +55,7 @@ class MercadolibreController(http.Controller):
             'orders_v2': 'mercadolibre.order',
             'shipments': 'mercadolibre.shipment',
             'questions': 'mercadolibre.question',
+            'payments': 'mercadolibre.payment',  # Agregado desde mercadolibre_payments
         }
 
         handler_model = topic_handlers.get(topic)

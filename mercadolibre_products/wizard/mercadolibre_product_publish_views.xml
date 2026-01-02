@@ -18,6 +18,13 @@
                         <field name="listing_type_id"/>
                         <field name="condition"/>
                         <field name="buying_mode"/>
+                        <button name="action_check_listing_types" type="object"
+                                string="Verificar Tipos Disponibles" icon="fa-search"
+                                class="btn-link"
+                                attrs="{'invisible': [('category_id', '=', False)]}"/>
+                        <field name="available_listing_types" readonly="1" nolabel="1"
+                               attrs="{'invisible': [('available_listing_types', '=', False)]}"
+                               style="font-family: monospace; white-space: pre-wrap;"/>
                     </group>
                 </group>
 
@@ -56,14 +63,71 @@
                 </group>
 
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
-                    <group string="SKU">
+                    <group string="SKU y Código de Barras">
                         <field name="sku_field"/>
                         <field name="custom_sku"
                                attrs="{'invisible': [('sku_field', '!=', 'custom')]}"/>
+                        <field name="use_barcode_as_gtin"/>
                     </group>
-                    <group string="Envio">
+                    <group string="Marca y Modelo">
+                        <div class="alert alert-info py-2" role="alert" colspan="2">
+                            <i class="fa fa-info-circle"/>
+                            <strong>Marca y Modelo</strong> se toman de los campos
+                            <em>Marca ML</em> y <em>Modelo ML</em> del producto.
+                            <br/>Si están vacíos se usará "Genérico" y la Referencia Interna.
+                        </div>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Envío">
                         <field name="shipping_mode"/>
                         <field name="free_shipping"/>
+                        <field name="local_pick_up"/>
+                    </group>
+                    <group string="Garantía">
+                        <field name="warranty_type"/>
+                        <field name="warranty_time"
+                               attrs="{'invisible': [('warranty_type', '=', 'Sin garantía')]}"/>
+                    </group>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Preparación">
+                        <field name="manufacturing_time"/>
+                    </group>
+                    <group/>
+                </group>
+
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Imagenes" colspan="2">
+                        <field name="image_source" widget="radio"/>
+                        <field name="custom_image_urls"
+                               placeholder="https://ejemplo.com/imagen1.jpg&#10;https://ejemplo.com/imagen2.jpg"
+                               attrs="{'invisible': [('image_source', '!=', 'url')]}"/>
+                        <div class="alert alert-success" role="alert" colspan="2"
+                             attrs="{'invisible': [('image_source', '!=', 'upload_ml')]}">
+                            <i class="fa fa-check-circle"/> Las imágenes de los productos se subirán
+                            automáticamente a MercadoLibre al publicar.
+                        </div>
+                        <field name="image_resize_option" widget="radio"
+                               attrs="{'invisible': [('image_source', '!=', 'upload_ml')]}"/>
+                        <div class="alert alert-info" role="alert" colspan="2"
+                             attrs="{'invisible': [('image_source', '!=', 'upload_ml')]}">
+                            <i class="fa fa-info-circle"/>
+                            <strong>Requisitos MercadoLibre:</strong> Mínimo 500px en un lado, recomendado 1200x1200px para zoom.
+                            Las imágenes pequeñas se redimensionarán según la opción seleccionada.
+                        </div>
+                        <div class="alert alert-info" role="alert" colspan="2"
+                             attrs="{'invisible': [('image_source', '!=', 'existing_ml')]}">
+                            <i class="fa fa-info-circle"/> Se usarán las imágenes previamente subidas a ML.
+                            Si no hay imágenes, el producto se publicará sin imágenes.
+                        </div>
+                        <div class="alert alert-warning" role="alert" colspan="2"
+                             attrs="{'invisible': [('image_source', '!=', 'url')]}">
+                            <i class="fa fa-warning"/> Ingrese URLs públicas accesibles desde internet.
+                            Una URL por línea, máximo 10 imágenes.
+                        </div>
                     </group>
                 </group>
 

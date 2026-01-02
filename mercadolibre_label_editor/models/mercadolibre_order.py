@@ -719,6 +719,154 @@ class MercadolibreOrder(models.Model):
         _logger.info(f'═══ FIN PROCESAMIENTO ETIQUETA ═══')
         return result
 
+    # =========================================================================
+    # IMPRESIÓN MÚLTIPLE DE ETIQUETAS
+    # =========================================================================
+
+    def action_print_multiple_labels(self):
+        """
+        Imprime etiquetas para múltiples órdenes seleccionadas.
+        Este método NO usa ensure_one() para permitir procesamiento masivo.
+
+        Returns:
+            dict: Notificación con resumen de resultados
+        """
+        if not self:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Sin Selección',
+                    'message': 'No hay órdenes seleccionadas para imprimir.',
+                    'type': 'warning',
+                }
+            }
+
+        _logger.info('═══ INICIO IMPRESIÓN MÚLTIPLE DE ETIQUETAS ═══')
+        _logger.info(f'Órdenes seleccionadas: {len(self)} - {self.mapped("ml_order_id")}')
+
+        results = {
+            'success': [],
+            'errors': [],
+            'skipped': [],
+        }
+
+        for order in self:
+            try:
+                _logger.info(f'─── Procesando orden {order.ml_order_id} ───')
+
+                # Validar que tiene shipment_id
+                if not order.ml_shipment_id:
+                    results['skipped'].append({
+                        'order': order.ml_order_id,
+                        'reason': 'Sin shipment_id'
+                    })
+                    _logger.warning(f'Orden {order.ml_order_id} sin shipment_id, saltando')
+                    continue
+
+                # Obtener configuración del tipo logístico
+                logistic_config = order.logistic_type_id
+                if not logistic_config:
+                    results['skipped'].append({
+                        'order': order.ml_order_id,
+                        'reason': 'Sin configuración de tipo logístico'
+                    })
+                    _logger.warning(f'Orden {order.ml_order_id} sin tipo logístico, saltando')
+                    continue
+
+                # Verificar URL de impresora
+                if not logistic_config.printer_url:
+                    results['skipped'].append({
+                        'order': order.ml_order_id,
+                        'reason': 'Sin URL de impresora configurada'
+                    })
+                    _logger.warning(f'Orden {order.ml_order_id} sin printer_url, saltando')
+                    continue
+
+                # Descargar etiqueta (esto también aplica plantilla si está configurada)
+                download_result = order._download_and_save_shipping_label(logistic_config)
+
+                if not download_result.get('success'):
+                    results['errors'].append({
+                        'order': order.ml_order_id,
+                        'error': download_result.get('error', 'Error desconocido en descarga')
+                    })
+                    _logger.error(f'Error descargando etiqueta {order.ml_order_id}: {download_result.get("error")}')
+                    continue
+
+                attachment = download_result.get('attachment')
+                if not attachment:
+                    results['errors'].append({
+                        'order': order.ml_order_id,
+                        'error': 'No se obtuvo attachment'
+                    })
+                    continue
+
+                # Enviar a impresora
+                print_result = order._send_label_to_printer_with_logs(attachment, logistic_config)
+
+                if print_result.get('success'):
+                    results['success'].append({
+                        'order': order.ml_order_id,
+                        'printer': logistic_config.printer_name,
+                        'template_applied': download_result.get('template_applied', False)
+                    })
+                    _logger.info(f'✓ Orden {order.ml_order_id} enviada a impresora')
+                else:
+                    results['errors'].append({
+                        'order': order.ml_order_id,
+                        'error': print_result.get('error', 'Error desconocido en impresión')
+                    })
+                    _logger.error(f'✗ Error imprimiendo {order.ml_order_id}: {print_result.get("error")}')
+
+            except Exception as e:
+                _logger.error(f'✗ Excepción procesando orden {order.ml_order_id}: {e}', exc_info=True)
+                results['errors'].append({
+                    'order': order.ml_order_id,
+                    'error': str(e)
+                })
+
+        # Generar mensaje de resumen
+        _logger.info('═══ FIN IMPRESIÓN MÚLTIPLE ═══')
+        _logger.info(f'Exitosas: {len(results["success"])}, Errores: {len(results["errors"])}, Saltadas: {len(results["skipped"])}')
+
+        # Construir mensaje para el usuario
+        msg_parts = []
+
+        if results['success']:
+            msg_parts.append(f"✓ Impresas: {len(results['success'])}")
+
+        if results['errors']:
+            error_details = ', '.join([f"{e['order']}" for e in results['errors'][:3]])
+            if len(results['errors']) > 3:
+                error_details += f' (+{len(results["errors"]) - 3} más)'
+            msg_parts.append(f"✗ Errores: {len(results['errors'])} ({error_details})")
+
+        if results['skipped']:
+            msg_parts.append(f"⊘ Saltadas: {len(results['skipped'])}")
+
+        # Determinar tipo de notificación
+        if results['success'] and not results['errors']:
+            notif_type = 'success'
+            title = 'Impresión Completada'
+        elif results['errors'] and not results['success']:
+            notif_type = 'danger'
+            title = 'Error en Impresión'
+        else:
+            notif_type = 'warning'
+            title = 'Impresión Parcial'
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': title,
+                'message': ' | '.join(msg_parts),
+                'type': notif_type,
+                'sticky': len(results['errors']) > 0,
+            }
+        }
+
     def action_test_printer_connection(self):
         """
         Test completo: Descarga etiqueta → Aplica plantilla → Envía a imprimir.

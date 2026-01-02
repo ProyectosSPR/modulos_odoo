@@ -20,6 +20,14 @@
                         class="oe_stat_button" icon="fa-cogs">
                     <field name="product_sync_config_count" widget="statinfo" string="Configs Sync"/>
                 </button>
+                <button name="action_view_categories" type="object"
+                        class="oe_stat_button" icon="fa-sitemap">
+                    <span>Categorías</span>
+                </button>
+            </xpath>
+            <!-- Agregar campo site_id después de la información básica -->
+            <xpath expr="//field[@name='ml_email']" position="after">
+                <field name="site_id"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <notebook position="inside">
@@ -36,6 +44,16 @@
                                         class="btn-primary"/>
                                 <button name="action_auto_link_all_items" type="object"
                                         string="Auto-vincular por SKU" icon="fa-link"
+                                        class="btn-secondary"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Categorías">
+                                <button name="action_sync_categories" type="object"
+                                        string="Sincronizar Categorías Raíz" icon="fa-download"
+                                        class="btn-secondary"/>
+                                <button name="action_view_categories" type="object"
+                                        string="Ver Categorías" icon="fa-sitemap"
                                         class="btn-secondary"/>
                             </group>
                         </group>

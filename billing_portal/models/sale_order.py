@@ -75,13 +75,40 @@ class SaleOrder(models.Model):
         for order in self:
             order.billing_request_count = len(order.billing_request_ids)
 
-    @api.depends('state', 'invoice_status', 'ml_shipment_status')
+    # Campo para indicar si tiene productos excluidos
+    has_excluded_products = fields.Boolean(
+        compute='_compute_has_excluded_products',
+        string='Tiene Productos Excluidos',
+        store=True
+    )
+
+    @api.depends('order_line.product_id')
+    def _compute_has_excluded_products(self):
+        """
+        Verifica si la orden contiene algún producto excluido de facturación.
+        """
+        # Obtener IDs de productos excluidos una sola vez
+        excluded_product_ids = self.env['billing.excluded.product'].get_excluded_product_ids()
+
+        for order in self:
+            if not excluded_product_ids:
+                order.has_excluded_products = False
+            else:
+                # Verificar si alguna línea tiene un producto excluido
+                order.has_excluded_products = any(
+                    line.product_id.id in excluded_product_ids
+                    for line in order.order_line
+                    if line.product_id
+                )
+
+    @api.depends('state', 'invoice_status', 'ml_shipment_status', 'has_excluded_products')
     def _compute_is_portal_billable(self):
         """
         Una orden es facturable desde el portal si:
         - Estado de la orden es 'sale' o 'done'
         - No está completamente facturada
         - El envío está entregado (si tiene envío ML)
+        - No contiene productos excluidos
         """
         for order in self:
             is_billable = (
@@ -92,6 +119,10 @@ class SaleOrder(models.Model):
             # Si tiene estado de envío ML, debe estar entregado
             if order.ml_shipment_status:
                 is_billable = is_billable and order.ml_shipment_status == 'delivered'
+
+            # Excluir si tiene productos excluidos
+            if order.has_excluded_products:
+                is_billable = False
 
             order.is_portal_billable = is_billable
 
@@ -135,5 +166,9 @@ class SaleOrder(models.Model):
         # Verificar si no tiene nada que facturar
         if self.invoice_status == 'no':
             return False, "No hay nada que facturar en esta orden"
+
+        # Verificar si tiene productos excluidos
+        if self.has_excluded_products:
+            return False, "La orden contiene productos excluidos de facturación"
 
         return True, None

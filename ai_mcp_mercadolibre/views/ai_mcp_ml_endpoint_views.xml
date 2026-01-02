@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de arbol -->
+    <record id="view_ai_mcp_ml_endpoint_tree" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.endpoint.tree</field>
+        <field name="model">ai.mcp.ml.endpoint</field>
+        <field name="arch" type="xml">
+            <tree string="Endpoints MCP" default_order="sequence">
+                <field name="sequence" widget="handle"/>
+                <field name="code" decoration-bf="1"/>
+                <field name="name"/>
+                <field name="ml_endpoint" string="API Endpoint"/>
+                <field name="method" widget="badge" decoration-info="method == 'GET'" decoration-warning="method == 'POST'" decoration-success="method == 'PUT'" decoration-danger="method == 'DELETE'"/>
+                <field name="depends_on_id"/>
+                <field name="use_count"/>
+                <field name="avg_duration" widget="float_time" string="Duracion Prom"/>
+                <field name="last_used"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista de formulario -->
+    <record id="view_ai_mcp_ml_endpoint_form" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.endpoint.form</field>
+        <field name="model">ai.mcp.ml.endpoint</field>
+        <field name="arch" type="xml">
+            <form string="Endpoint MCP">
+                <header>
+                    <button name="action_test_endpoint" type="object" string="Probar Endpoint" class="btn-primary" icon="fa-play"/>
+                    <button name="action_view_logs" type="object" string="Ver Logs" class="btn-secondary" icon="fa-history"/>
+                    <button name="action_copy_as_json" type="object" string="Ver JSON" class="btn-secondary" icon="fa-code"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Nombre descriptivo"/>
+                        </h1>
+                        <label for="code"/>
+                        <h2>
+                            <field name="code" placeholder="codigo_endpoint"/>
+                        </h2>
+                    </div>
+
+                    <group>
+                        <group string="Configuracion API">
+                            <field name="server_id" options="{'no_create': True}"/>
+                            <field name="ml_endpoint" placeholder="/orders/search"/>
+                            <field name="method" widget="radio" options="{'horizontal': true}"/>
+                            <field name="requires_seller_id"/>
+                            <field name="active"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Estadisticas">
+                            <field name="use_count"/>
+                            <field name="avg_duration"/>
+                            <field name="last_used"/>
+                        </group>
+                    </group>
+
+                    <group string="Descripcion para IA">
+                        <field name="description" nolabel="1" placeholder="Describe claramente que hace este endpoint. La IA usara esta descripcion para decidir cuando usarlo."/>
+                    </group>
+
+                    <notebook>
+                        <page string="Parametros" name="parameters">
+                            <field name="parameter_ids">
+                                <tree string="Parametros" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="param_type"/>
+                                    <field name="required"/>
+                                    <field name="is_path_param"/>
+                                    <field name="description"/>
+                                    <field name="default_value"/>
+                                    <field name="enum_values"/>
+                                    <field name="from_dependency"/>
+                                    <field name="dependency_path" attrs="{'invisible': [('from_dependency', '=', False)]}"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Dependencias" name="dependencies">
+                            <group>
+                                <group string="Este endpoint depende de:">
+                                    <field name="depends_on_id" options="{'no_create': True}"/>
+                                    <field name="depends_on_field" placeholder="shipping.id" attrs="{'invisible': [('depends_on_id', '=', False)]}"/>
+                                    <field name="dependency_type" attrs="{'invisible': [('depends_on_id', '=', False)]}"/>
+                                </group>
+                                <group string="Instrucciones para IA">
+                                    <field name="ai_hint" nolabel="1" placeholder="Instrucciones adicionales para la IA sobre como usar este endpoint. Ej: 'Para obtener el shipment_id, primero consulta get_order_detail'"/>
+                                </group>
+                            </group>
+
+                            <!-- Diagrama visual de dependencia -->
+                            <div class="alert alert-info" role="alert" attrs="{'invisible': [('depends_on_id', '=', False)]}">
+                                <h4>Flujo de dependencia:</h4>
+                                <p>
+                                    <strong>1.</strong> Primero usar: <field name="depends_on_id" readonly="1" class="oe_inline"/>
+                                    <br/>
+                                    <strong>2.</strong> Obtener campo: <field name="depends_on_field" readonly="1" class="oe_inline"/>
+                                    <br/>
+                                    <strong>3.</strong> Luego usar este endpoint con el valor obtenido
+                                </p>
+                            </div>
+                        </page>
+
+                        <page string="Respuesta de Ejemplo" name="response">
+                            <group string="Ejemplo de Respuesta (JSON)">
+                                <field name="response_example" nolabel="1" widget="ace" options="{'mode': 'json'}" placeholder='{"id": 123, "status": "paid", "shipping": {"id": 456}}' style="height: 200px;"/>
+                            </group>
+                            <group string="Campos Importantes">
+                                <field name="response_fields" nolabel="1" widget="ace" options="{'mode': 'json'}" placeholder='{"id": "ID de la orden", "shipping.id": "ID del envio para usar en get_shipment"}' style="height: 150px;"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de busqueda -->
+    <record id="view_ai_mcp_ml_endpoint_search" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.endpoint.search</field>
+        <field name="model">ai.mcp.ml.endpoint</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Endpoints">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="ml_endpoint"/>
+                <field name="server_id"/>
+                <filter name="active" string="Activos" domain="[('active', '=', True)]"/>
+                <filter name="has_dependency" string="Con Dependencia" domain="[('depends_on_id', '!=', False)]"/>
+                <separator/>
+                <filter name="method_get" string="GET" domain="[('method', '=', 'GET')]"/>
+                <filter name="method_post" string="POST" domain="[('method', '=', 'POST')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_server" string="Servidor" context="{'group_by': 'server_id'}"/>
+                    <filter name="group_method" string="Metodo" context="{'group_by': 'method'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Accion -->
+    <record id="action_ai_mcp_ml_endpoint" model="ir.actions.act_window">
+        <field name="name">Endpoints MCP</field>
+        <field name="res_model">ai.mcp.ml.endpoint</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un endpoint MCP
+            </p>
+            <p>
+                Los endpoints definen las herramientas que la IA puede usar para consultar MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -98,6 +98,16 @@ class MercadolibrePaymentSyncConfig(models.Model):
         help='Numero maximo de pagos a sincronizar por ejecucion'
     )
 
+    # =========================================================================
+    # CONFIGURACION DE WEBHOOKS
+    # =========================================================================
+    use_webhook = fields.Boolean(
+        string='Usar Webhook',
+        default=False,
+        help='Si está activo, los pagos se recibirán en tiempo real via webhook. '
+             'El cron no ejecutará sincronización cuando use_webhook está activo.'
+    )
+
     # Programacion
     interval_number = fields.Integer(
         string='Ejecutar cada',
@@ -371,6 +381,17 @@ class MercadolibrePaymentSyncConfig(models.Model):
     def _execute_sync(self):
         """Ejecuta la sincronizacion de pagos"""
         self.ensure_one()
+
+        # Si usa webhook, omitir sincronizacion por cron
+        if self.use_webhook:
+            _logger.info('SYNC AUTO "%s": Omitido (usa webhook)', self.name)
+            self.write({
+                'last_run': fields.Datetime.now(),
+                'last_sync_log': 'Sincronización via webhook activa.\n'
+                                 'Los pagos se reciben en tiempo real.\n'
+                                 'El cron no ejecuta sincronización.',
+            })
+            return True
 
         _logger.info('='*60)
         _logger.info('SYNC AUTO: Iniciando "%s"', self.name)

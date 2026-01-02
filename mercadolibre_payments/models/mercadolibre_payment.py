@@ -493,6 +493,9 @@ class MercadolibrePayment(models.Model):
         # Crear/actualizar cargos
         self._sync_charges(payment, fee_details, charges_details)
 
+        # Actualizar sale.order relacionado con estado de pago y liberación
+        payment._update_related_sale_order()
+
         return payment, is_new
 
     def _sync_charges(self, payment, fee_details, charges_details=None):
@@ -535,6 +538,40 @@ class MercadolibrePayment(models.Model):
                         'fee_payer': fee.get('fee_payer', ''),
                         'amount': amount,
                     })
+
+    def _update_related_sale_order(self):
+        """
+        Actualiza el sale.order relacionado con los datos de este pago.
+        Busca el sale.order por el ml_order_id y actualiza los campos de pago.
+        """
+        self.ensure_one()
+
+        if not self.mp_order_id and not self.mp_external_reference:
+            _logger.debug('Pago %s sin order_id, no se puede vincular a sale.order', self.mp_payment_id)
+            return
+
+        # Buscar sale.order relacionado
+        order_ref = self.mp_order_id or self.mp_external_reference
+        sale_order = self.env['sale.order'].search([
+            ('ml_order_id', '=', order_ref)
+        ], limit=1)
+
+        if not sale_order:
+            _logger.debug('No se encontró sale.order para order_id %s', order_ref)
+            return
+
+        # Actualizar campos de pago en sale.order
+        try:
+            sale_order._update_from_ml_payment(self)
+            _logger.info(
+                'Sale.order %s actualizado desde pago %s (status=%s, release=%s)',
+                sale_order.name, self.mp_payment_id, self.status, self.money_release_status
+            )
+        except Exception as e:
+            _logger.error(
+                'Error actualizando sale.order %s desde pago %s: %s',
+                sale_order.name, self.mp_payment_id, str(e)
+            )
 
     def _get_currency(self, currency_code):
         """Obtiene la moneda de Odoo por codigo"""
@@ -1175,3 +1212,95 @@ class MercadolibrePayment(models.Model):
             'odoo_payment_error': False,
         })
         return True
+
+    # =========================================================================
+    # WEBHOOK HANDLER
+    # =========================================================================
+    @api.model
+    def process_notification(self, account, data):
+        """
+        Procesa notificaciones de webhook para pagos.
+
+        Este método es llamado desde el controller de webhook cuando
+        llega una notificación con topic='payments'.
+
+        Args:
+            account: mercadolibre.account record
+            data: dict con datos de la notificación {
+                'topic': 'payments',
+                'resource': '/v1/payments/123456789',
+                'user_id': 123456789,
+                ...
+            }
+
+        Returns:
+            dict con resultado del procesamiento
+        """
+        import requests
+
+        topic = data.get('topic')
+        resource = data.get('resource', '')
+
+        if topic != 'payments':
+            return {'status': 'ignored', 'reason': 'not_payment_topic'}
+
+        # Extraer payment_id del resource: /v1/payments/123456789
+        try:
+            payment_id = resource.split('/')[-1]
+            if not payment_id.isdigit():
+                return {'status': 'error', 'message': f'Invalid payment_id: {payment_id}'}
+        except Exception as e:
+            return {'status': 'error', 'message': f'Error parsing resource: {str(e)}'}
+
+        _logger.info('[WEBHOOK PAYMENTS] Procesando pago %s para cuenta %s', payment_id, account.name)
+
+        # Obtener token válido
+        access_token = account.get_valid_token_with_retry(max_retries=2)
+        if not access_token:
+            _logger.error('[WEBHOOK PAYMENTS] No se pudo obtener token válido')
+            return {'status': 'error', 'message': 'No valid token'}
+
+        # Consultar la API para obtener datos del pago
+        url = f'https://api.mercadopago.com/v1/payments/{payment_id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                _logger.error('[WEBHOOK PAYMENTS] Error API: %s - %s', response.status_code, response.text[:500])
+                return {'status': 'error', 'message': f'API error: {response.status_code}'}
+
+            payment_data = response.json()
+
+        except requests.exceptions.RequestException as e:
+            _logger.error('[WEBHOOK PAYMENTS] Error de conexión: %s', str(e))
+            return {'status': 'error', 'message': str(e)}
+
+        # Sincronizar el pago usando el método existente
+        try:
+            payment, is_new = self.create_from_mp_data(payment_data, account)
+
+            _logger.info(
+                '[WEBHOOK PAYMENTS] Pago %s %s exitosamente (status=%s, release=%s)',
+                payment_id,
+                'creado' if is_new else 'actualizado',
+                payment.status,
+                payment.money_release_status
+            )
+
+            return {
+                'status': 'ok',
+                'payment_id': payment.id,
+                'mp_payment_id': payment_id,
+                'is_new': is_new,
+                'payment_status': payment.status,
+                'money_release_status': payment.money_release_status,
+            }
+
+        except Exception as e:
+            _logger.error('[WEBHOOK PAYMENTS] Error procesando pago %s: %s', payment_id, str(e))
+            return {'status': 'error', 'message': str(e)}

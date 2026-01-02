@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ai_mcp_ml_server_user,ai.mcp.ml.server.user,model_ai_mcp_ml_server,group_ai_mcp_user,1,0,0,0
+access_ai_mcp_ml_server_manager,ai.mcp.ml.server.manager,model_ai_mcp_ml_server,group_ai_mcp_manager,1,1,1,1
+access_ai_mcp_ml_endpoint_user,ai.mcp.ml.endpoint.user,model_ai_mcp_ml_endpoint,group_ai_mcp_user,1,0,0,0
+access_ai_mcp_ml_endpoint_manager,ai.mcp.ml.endpoint.manager,model_ai_mcp_ml_endpoint,group_ai_mcp_manager,1,1,1,1
+access_ai_mcp_ml_endpoint_parameter_user,ai.mcp.ml.endpoint.parameter.user,model_ai_mcp_ml_endpoint_parameter,group_ai_mcp_user,1,0,0,0
+access_ai_mcp_ml_endpoint_parameter_manager,ai.mcp.ml.endpoint.parameter.manager,model_ai_mcp_ml_endpoint_parameter,group_ai_mcp_manager,1,1,1,1
+access_ai_mcp_ml_log_user,ai.mcp.ml.log.user,model_ai_mcp_ml_log,group_ai_mcp_user,1,0,0,0
+access_ai_mcp_ml_log_manager,ai.mcp.ml.log.manager,model_ai_mcp_ml_log,group_ai_mcp_manager,1,1,1,1

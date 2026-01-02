@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View -->
+    <record id="view_billing_preview_wizard_form" model="ir.ui.view">
+        <field name="name">billing.preview.wizard.form</field>
+        <field name="model">billing.preview.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Vista Previa de Ejecución">
+                <field name="state" invisible="1"/>
+                <field name="preview_type" invisible="1"/>
+                <field name="preview_done" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+
+                <!-- Estado: Configuración -->
+                <group attrs="{'invisible': [('state', '!=', 'setup')]}">
+                    <group string="Configuración">
+                        <field name="config_id" readonly="1"/>
+                    </group>
+                    <group string="Tipo de Vista Previa" attrs="{'invisible': [('preview_type', '!=', False)]}">
+                        <field name="preview_type" widget="radio"/>
+                    </group>
+                </group>
+
+                <!-- Período de facturación (editable en setup) -->
+                <group string="Período de Facturación"
+                       attrs="{'invisible': ['|', ('state', '!=', 'setup'), ('preview_type', '!=', 'invoice')]}">
+                    <group>
+                        <field name="period_type" widget="radio"/>
+                    </group>
+                    <group attrs="{'invisible': [('period_type', '!=', 'dates')]}">
+                        <field name="date_from" attrs="{'required': [('period_type', '=', 'dates')]}"/>
+                        <field name="date_to" attrs="{'required': [('period_type', '=', 'dates')]}"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-info" role="alert" attrs="{'invisible': [('state', '!=', 'setup')]}">
+                    <strong>Vista Previa:</strong> Esta herramienta le permite ver qué se ejecutará
+                    antes de habilitar la automatización o ejecutar manualmente.
+                </div>
+
+                <!-- Estado: Vista Previa Facturación -->
+                <group attrs="{'invisible': ['|', ('state', '!=', 'preview'), ('preview_type', '!=', 'invoice')]}">
+                    <group string="Período">
+                        <field name="date_from" readonly="1"/>
+                        <field name="date_to" readonly="1"/>
+                    </group>
+                    <group string="Resumen">
+                        <field name="order_count"/>
+                        <field name="total_amount"/>
+                    </group>
+                </group>
+
+                <notebook attrs="{'invisible': ['|', ('state', '!=', 'preview'), ('preview_type', '!=', 'invoice')]}">
+                    <page string="Órdenes a Facturar" name="orders">
+                        <field name="order_ids" readonly="1">
+                            <tree string="Órdenes" create="0" delete="0">
+                                <field name="name"/>
+                                <field name="client_order_ref"/>
+                                <field name="date_order"/>
+                                <field name="partner_id"/>
+                                <field name="amount_total" sum="Total"/>
+                                <field name="invoice_status"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+
+                <!-- Estado: Vista Previa Conciliación -->
+                <group attrs="{'invisible': ['|', ('state', '!=', 'preview'), ('preview_type', '!=', 'reconciliation')]}">
+                    <group string="Resumen de Conciliación">
+                        <field name="reconciliation_count"/>
+                        <field name="reconciliation_amount"/>
+                    </group>
+                </group>
+
+                <notebook attrs="{'invisible': ['|', ('state', '!=', 'preview'), ('preview_type', '!=', 'reconciliation')]}">
+                    <page string="Conciliaciones Potenciales" name="reconciliations">
+                        <field name="reconciliation_line_ids" readonly="1">
+                            <tree string="Conciliaciones" create="0" delete="0"
+                                  decoration-success="match_status == 'matched'"
+                                  decoration-warning="match_status == 'partial'"
+                                  decoration-muted="match_status == 'no_match'">
+                                <field name="public_invoice_id"/>
+                                <field name="order_name"/>
+                                <field name="order_amount"/>
+                                <field name="payment_name"/>
+                                <field name="payment_amount"/>
+                                <field name="matched_field"/>
+                                <field name="matched_value"/>
+                                <field name="amount_to_reconcile" sum="Total"/>
+                                <field name="match_status" widget="badge"
+                                       decoration-success="match_status == 'matched'"
+                                       decoration-warning="match_status == 'partial'"
+                                       decoration-danger="match_status == 'no_match'"/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Facturas Públicas" name="public_invoices">
+                        <field name="public_invoice_ids" readonly="1">
+                            <tree string="Facturas" create="0" delete="0">
+                                <field name="name"/>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="order_count"/>
+                                <field name="total_amount"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+
+                <!-- Estado: Ejecutado -->
+                <div class="alert alert-success" role="alert" attrs="{'invisible': [('state', '!=', 'executed')]}">
+                    <strong>Ejecutado:</strong> La operación se ha ejecutado exitosamente.
+                </div>
+
+                <footer>
+                    <button name="action_generate_preview"
+                            string="Generar Vista Previa"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'setup')]}"/>
+                    <button name="action_execute"
+                            string="Ejecutar"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'preview')]}"
+                            confirm="¿Está seguro de ejecutar esta operación?"/>
+                    <button name="action_back"
+                            string="Volver"
+                            type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'setup')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_preview_wizard" model="ir.actions.act_window">
+        <field name="name">Vista Previa de Ejecución</field>
+        <field name="res_model">billing.preview.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

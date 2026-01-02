@@ -722,16 +722,9 @@ class MercadolibrePaymentStatusConfig(models.Model):
     status_cancelled = fields.Boolean(string='Cancelada', help='Estado: cancelled')
 
     # =========================================================================
-    # ESTADOS DE PAGO (los que vienen del API de pagos - por compatibilidad)
+    # ESTADOS DE PAGO API Y MONEY RELEASE
+    # Estos campos se agregan desde mercadolibre_payments si está instalado
     # =========================================================================
-    status_pending = fields.Boolean(string='Pendiente', help='Estado pago: pending')
-    status_approved = fields.Boolean(string='Aprobado', help='Estado pago: approved')
-    status_authorized = fields.Boolean(string='Autorizado', help='Estado pago: authorized')
-    status_in_process = fields.Boolean(string='En Proceso (Pago)', help='Estado pago: in_process')
-    status_in_mediation = fields.Boolean(string='En Mediacion', help='Estado pago: in_mediation')
-    status_rejected = fields.Boolean(string='Rechazado', help='Estado pago: rejected')
-    status_refunded = fields.Boolean(string='Reembolsado', help='Estado pago: refunded')
-    status_charged_back = fields.Boolean(string='Contracargo', help='Estado pago: charged_back')
 
     # Etiquetas a asignar
     tag_ids = fields.Many2many(
@@ -747,7 +740,7 @@ class MercadolibrePaymentStatusConfig(models.Model):
     )
 
     def get_status_list(self):
-        """Retorna lista de estados seleccionados (tanto de orden como de pago)"""
+        """Retorna lista de estados seleccionados de orden ML"""
         self.ensure_one()
         statuses = []
 
@@ -769,23 +762,8 @@ class MercadolibrePaymentStatusConfig(models.Model):
         if self.status_cancelled:
             statuses.append('cancelled')
 
-        # Estados de pago (API de pagos)
-        if self.status_pending:
-            statuses.append('pending')
-        if self.status_approved:
-            statuses.append('approved')
-        if self.status_authorized:
-            statuses.append('authorized')
-        if self.status_in_process:
-            statuses.append('in_process')
-        if self.status_in_mediation:
-            statuses.append('in_mediation')
-        if self.status_rejected:
-            statuses.append('rejected')
-        if self.status_refunded:
-            statuses.append('refunded')
-        if self.status_charged_back:
-            statuses.append('charged_back')
+        # Los estados de pago API y money_release se agregan
+        # desde mercadolibre_payments si está instalado
 
         return statuses
 

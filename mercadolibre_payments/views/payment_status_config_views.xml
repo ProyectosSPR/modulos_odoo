@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Heredar vista form de payment status config para agregar Liberacion de Dinero -->
+    <record id="view_mercadolibre_payment_status_config_form_payments" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.status.config.form.payments</field>
+        <field name="model">mercadolibre.payment.status.config</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_payment_status_config_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Agregar pestana de Liberacion de Dinero despues de Estados de Orden ML -->
+            <xpath expr="//page[@name='order_status']" position="after">
+                <page string="Liberacion de Dinero" name="money_release_status">
+                    <div class="alert alert-success" role="alert">
+                        <strong>Estados de Liberacion de Dinero</strong>
+                        <br/>
+                        Estos estados indican si el dinero del pago ya esta disponible en tu cuenta MercadoPago
+                        o aun esta retenido.
+                    </div>
+                    <group>
+                        <group string="Estados de Liberacion">
+                            <field name="status_money_released"/>
+                            <field name="status_money_pending"/>
+                            <field name="status_money_not_released"/>
+                        </group>
+                        <group>
+                            <!-- Espacio para futuras opciones -->
+                        </group>
+                    </group>
+                    <div class="alert alert-secondary mt-3" role="alert">
+                        <strong>Nota:</strong>
+                        <ul class="mb-0">
+                            <li><b>Dinero Liberado:</b> El dinero ya esta disponible en tu cuenta MercadoPago</li>
+                            <li><b>Dinero Pendiente:</b> El pago esta aprobado pero el dinero aun esta retenido (ej: 21 dias)</li>
+                            <li><b>Dinero No Liberado:</b> El dinero no sera liberado (orden cancelada, contracargo, etc.)</li>
+                        </ul>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Actualizar la vista tree para mostrar indicador de liberacion de dinero -->
+    <record id="view_mercadolibre_payment_status_config_tree_payments" model="ir.ui.view">
+        <field name="name">mercadolibre.payment.status.config.tree.payments</field>
+        <field name="model">mercadolibre.payment.status.config</field>
+        <field name="inherit_id" ref="mercadolibre_sales.view_mercadolibre_payment_status_config_tree"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='status_cancelled']" position="after">
+                <field name="status_money_released" string="Liberado" optional="show"/>
+                <field name="status_money_pending" string="Pend." optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

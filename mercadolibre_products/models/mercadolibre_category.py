@@ -51,6 +51,39 @@ class MercadolibreCategory(models.Model):
     active = fields.Boolean(
         default=True
     )
+    # Campos para mejorar navegación
+    has_children = fields.Boolean(
+        string='Tiene Subcategorías',
+        default=False,
+        help='Indica si la categoría tiene subcategorías disponibles en ML'
+    )
+    children_loaded = fields.Boolean(
+        string='Subcategorías Cargadas',
+        default=False,
+        help='Indica si las subcategorías ya fueron sincronizadas'
+    )
+    total_items_in_category = fields.Integer(
+        string='Items en Categoría',
+        help='Cantidad total de items en esta categoría en MercadoLibre'
+    )
+    picture = fields.Char(
+        string='Imagen',
+        help='URL de la imagen de la categoría'
+    )
+    permalink = fields.Char(
+        string='Enlace ML',
+        help='Enlace a la categoría en MercadoLibre'
+    )
+    listing_allowed = fields.Boolean(
+        string='Permite Publicar',
+        default=True,
+        help='Indica si la categoría permite publicar productos directamente. '
+             'Algunas categorías solo permiten vender productos del catálogo.'
+    )
+    catalog_domain = fields.Char(
+        string='Dominio Catálogo',
+        help='Si la categoría es de catálogo, indica el dominio'
+    )
 
     _sql_constraints = [
         ('ml_category_id_site_uniq', 'unique(ml_category_id, site_id)',
@@ -89,8 +122,23 @@ class MercadolibreCategory(models.Model):
         # Obtener datos de la categoria desde ML
         try:
             import requests
+
+            # Obtener token de autenticación
+            headers = {}
+            if not account:
+                account = self.env['mercadolibre.account'].search([
+                    ('state', '=', 'connected')
+                ], limit=1)
+
+            if account:
+                try:
+                    access_token = account.get_valid_token()
+                    headers['Authorization'] = f'Bearer {access_token}'
+                except Exception:
+                    pass
+
             url = f'https://api.mercadolibre.com/categories/{ml_category_id}'
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
 
             if response.status_code != 200:
                 _logger.warning('No se pudo obtener categoria %s: %s',
@@ -138,8 +186,22 @@ class MercadolibreCategory(models.Model):
 
         try:
             import requests
+
+            # Obtener token de autenticación
+            headers = {}
+            account = self.env['mercadolibre.account'].search([
+                ('state', '=', 'connected')
+            ], limit=1)
+
+            if account:
+                try:
+                    access_token = account.get_valid_token()
+                    headers['Authorization'] = f'Bearer {access_token}'
+                except Exception:
+                    pass
+
             url = f'https://api.mercadolibre.com/categories/{self.ml_category_id}'
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
 
             if response.status_code == 200:
                 data = response.json()
@@ -160,18 +222,42 @@ class MercadolibreCategory(models.Model):
             raise UserError(_('Error actualizando categoria: %s') % str(e))
 
     @api.model
-    def action_sync_root_categories(self, site_id='MLM'):
+    def action_sync_root_categories(self, site_id='MLM', account=None):
         """
         Sincroniza las categorias raiz de MercadoLibre.
         Este metodo se puede llamar desde un boton o manualmente.
+
+        Args:
+            site_id: Sitio de MercadoLibre (MLM, MLA, etc)
+            account: mercadolibre.account record (opcional, se busca automáticamente)
         """
         import requests
 
+        # Obtener token de autenticación (la API de categorías ahora requiere auth)
+        headers = {}
+        if not account:
+            account = self.env['mercadolibre.account'].search([
+                ('state', '=', 'connected'),
+                ('site_id', '=', site_id)
+            ], limit=1)
+            if not account:
+                # Buscar cualquier cuenta conectada
+                account = self.env['mercadolibre.account'].search([
+                    ('state', '=', 'connected')
+                ], limit=1)
+
+        if account:
+            try:
+                access_token = account.get_valid_token()
+                headers['Authorization'] = f'Bearer {access_token}'
+            except Exception as e:
+                _logger.warning('No se pudo obtener token para categorías: %s', str(e))
+
         url = f'https://api.mercadolibre.com/sites/{site_id}/categories'
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
             if response.status_code != 200:
-                raise UserError(_('Error obteniendo categorias: %s') % response.status_code)
+                raise UserError(_('Error obteniendo categorias: %s - %s') % (response.status_code, response.text[:200]))
 
             categories_data = response.json()
             created_count = 0
@@ -183,23 +269,28 @@ class MercadolibreCategory(models.Model):
                     ('site_id', '=', site_id)
                 ], limit=1)
 
+                vals = {
+                    'name': cat_data.get('name'),
+                    'has_children': True,  # Las categorías raíz siempre tienen hijos
+                }
+
                 if existing:
-                    existing.write({'name': cat_data.get('name')})
+                    existing.write(vals)
                     updated_count += 1
                 else:
-                    self.create({
-                        'name': cat_data.get('name'),
+                    vals.update({
                         'ml_category_id': cat_data.get('id'),
                         'site_id': site_id,
                     })
+                    self.create(vals)
                     created_count += 1
 
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': _('Sincronizacion Completada'),
-                    'message': _('Creadas: %d, Actualizadas: %d') % (created_count, updated_count),
+                    'title': _('Sincronización Completada'),
+                    'message': _('Categorías raíz de %s - Creadas: %d, Actualizadas: %d') % (site_id, created_count, updated_count),
                     'type': 'success',
                     'sticky': False,
                 }
@@ -209,61 +300,101 @@ class MercadolibreCategory(models.Model):
             raise UserError(_('Error sincronizando categorias: %s') % str(e))
 
     @api.model
-    def action_sync_subcategories(self, parent_ml_id, site_id='MLM'):
+    def action_sync_subcategories(self, parent_ml_id, site_id='MLM', account=None):
         """
         Sincroniza las subcategorias de una categoria padre.
         """
         import requests
 
+        # Obtener token de autenticación
+        headers = {}
+        if not account:
+            account = self.env['mercadolibre.account'].search([
+                ('state', '=', 'connected')
+            ], limit=1)
+
+        if account:
+            try:
+                access_token = account.get_valid_token()
+                headers['Authorization'] = f'Bearer {access_token}'
+            except Exception as e:
+                _logger.warning('No se pudo obtener token para subcategorías: %s', str(e))
+
         url = f'https://api.mercadolibre.com/categories/{parent_ml_id}'
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
             if response.status_code != 200:
-                raise UserError(_('Error obteniendo subcategorias: %s') % response.status_code)
+                raise UserError(_('Error obteniendo subcategorias: %s - %s') % (response.status_code, response.text[:200]))
 
             data = response.json()
             children = data.get('children_categories', [])
+
+            # Obtener categoria padre y actualizar sus datos
+            parent = self.search([
+                ('ml_category_id', '=', parent_ml_id),
+                ('site_id', '=', site_id)
+            ], limit=1)
+
+            # Actualizar datos del padre con info de la API
+            settings = data.get('settings', {})
+            if parent:
+                parent.write({
+                    'has_children': len(children) > 0,
+                    'children_loaded': True,
+                    'total_items_in_category': data.get('total_items_in_this_category', 0),
+                    'picture': data.get('picture'),
+                    'permalink': data.get('permalink'),
+                    'listing_allowed': settings.get('listing_allowed', True),
+                    'catalog_domain': settings.get('catalog_domain', ''),
+                })
 
             if not children:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': _('Sin Subcategorias'),
-                        'message': _('Esta categoria no tiene subcategorias o es una categoria final.'),
-                        'type': 'warning',
+                        'title': _('Categoría Final'),
+                        'message': _('Esta es una categoría final (sin subcategorías). Puede usarla para publicar.'),
+                        'type': 'info',
                         'sticky': False,
                     }
                 }
 
-            # Obtener categoria padre
-            parent = self.search([
-                ('ml_category_id', '=', parent_ml_id),
-                ('site_id', '=', site_id)
-            ], limit=1)
-
             created_count = 0
+            updated_count = 0
             for child_data in children:
                 existing = self.search([
                     ('ml_category_id', '=', child_data.get('id')),
                     ('site_id', '=', site_id)
                 ], limit=1)
 
-                if not existing:
-                    self.create({
-                        'name': child_data.get('name'),
+                # Verificar si esta subcategoría tiene más hijos (por la cantidad de items)
+                child_has_children = child_data.get('total_items_in_this_category', 0) == 0
+
+                vals = {
+                    'name': child_data.get('name'),
+                    'parent_id': parent.id if parent else False,
+                    'has_children': child_has_children,
+                    'total_items_in_category': child_data.get('total_items_in_this_category', 0),
+                }
+
+                if existing:
+                    existing.write(vals)
+                    updated_count += 1
+                else:
+                    vals.update({
                         'ml_category_id': child_data.get('id'),
                         'site_id': site_id,
-                        'parent_id': parent.id if parent else False,
                     })
+                    self.create(vals)
                     created_count += 1
 
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': _('Subcategorias Sincronizadas'),
-                    'message': _('Se crearon %d subcategorias.') % created_count,
+                    'title': _('Subcategorías Sincronizadas'),
+                    'message': _('Creadas: %d, Actualizadas: %d') % (created_count, updated_count),
                     'type': 'success',
                     'sticky': False,
                 }
@@ -278,13 +409,21 @@ class MercadolibreCategory(models.Model):
         return self.action_sync_subcategories(self.ml_category_id, self.site_id)
 
     def name_get(self):
-        """Muestra la ruta completa en selectores"""
+        """Muestra la ruta completa en selectores con indicador de categoría hoja"""
         result = []
         for record in self:
             if record.path_from_root:
-                result.append((record.id, record.path_from_root))
+                name = record.path_from_root
             else:
-                result.append((record.id, record.name))
+                name = record.name
+
+            # Agregar indicador visual
+            if not record.has_children:
+                name = f"✓ {name}"  # Categoría hoja (válida para publicar)
+            else:
+                name = f"📁 {name}"  # Categoría padre (tiene subcategorías)
+
+            result.append((record.id, name))
         return result
 
     @api.model

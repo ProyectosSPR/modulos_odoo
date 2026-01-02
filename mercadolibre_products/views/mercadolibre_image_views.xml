@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View para Imágenes ML -->
+    <record id="view_mercadolibre_image_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.image.tree</field>
+        <field name="model">mercadolibre.image</field>
+        <field name="arch" type="xml">
+            <tree string="Imágenes MercadoLibre">
+                <field name="ml_picture_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="account_id"/>
+                <field name="ml_secure_url" widget="url"/>
+                <field name="ml_size"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'uploaded'"
+                       decoration-danger="state == 'error'"
+                       decoration-info="state == 'draft'"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View para Imágenes ML -->
+    <record id="view_mercadolibre_image_form" model="ir.ui.view">
+        <field name="name">mercadolibre.image.form</field>
+        <field name="model">mercadolibre.image</field>
+        <field name="arch" type="xml">
+            <form string="Imagen MercadoLibre">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Información">
+                            <field name="ml_picture_id"/>
+                            <field name="product_tmpl_id"/>
+                            <field name="account_id"/>
+                        </group>
+                        <group string="URLs">
+                            <field name="ml_url" widget="url"/>
+                            <field name="ml_secure_url" widget="url"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Detalles">
+                            <field name="ml_size"/>
+                            <field name="ml_max_size"/>
+                        </group>
+                    </group>
+                    <group string="Error" attrs="{'invisible': [('state', '!=', 'error')]}">
+                        <field name="error_message" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para ver Imágenes -->
+    <record id="action_mercadolibre_image" model="ir.actions.act_window">
+        <field name="name">Imágenes en MercadoLibre</field>
+        <field name="res_model">mercadolibre.image</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Wizard Form View para Subir Imágenes -->
+    <record id="view_mercadolibre_image_upload_wizard_form" model="ir.ui.view">
+        <field name="name">mercadolibre.image.upload.wizard.form</field>
+        <field name="model">mercadolibre.image.upload.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Subir Imágenes a MercadoLibre">
+                <!-- Estado: Configuración -->
+                <group attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <group string="Configuración">
+                        <field name="account_id"/>
+                        <field name="product_tmpl_id" readonly="1"/>
+                    </group>
+                    <group string="Vista Previa">
+                        <field name="product_image" widget="image" class="oe_avatar"
+                               attrs="{'invisible': [('has_image', '=', False)]}"/>
+                        <field name="has_image" invisible="1"/>
+                        <div attrs="{'invisible': [('has_image', '=', True)]}">
+                            <p class="text-warning">
+                                <i class="fa fa-warning"/> El producto no tiene imagen.
+                            </p>
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Información del tamaño de imagen -->
+                <group attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('has_image', '=', False)]}">
+                    <group string="Información de la Imagen">
+                        <field name="image_size_text" readonly="1"/>
+                        <field name="image_width" invisible="1"/>
+                        <field name="image_height" invisible="1"/>
+                        <field name="image_valid" invisible="1"/>
+                        <field name="image_needs_resize" invisible="1"/>
+                    </group>
+                    <group string="Opciones de Redimensionado"
+                           attrs="{'invisible': [('image_needs_resize', '=', False)]}">
+                        <field name="resize_option" widget="radio"/>
+                    </group>
+                </group>
+
+                <!-- Advertencia si la imagen es muy pequeña -->
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('image_needs_resize', '=', False)]}">
+                    <strong><i class="fa fa-exclamation-triangle"/> Advertencia:</strong>
+                    <field name="image_warning" nolabel="1" readonly="1"/>
+                </div>
+
+                <!-- Info si la imagen es válida -->
+                <div class="alert alert-success" role="alert"
+                     attrs="{'invisible': ['|', '|', ('state', '!=', 'draft'), ('has_image', '=', False), ('image_valid', '=', False)]}">
+                    <i class="fa fa-check-circle"/> La imagen tiene un tamaño válido para MercadoLibre.
+                </div>
+
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <i class="fa fa-info-circle"/>
+                    Las imágenes se subirán a los servidores de MercadoLibre.
+                    <strong>Requisitos ML:</strong> Mínimo 500px, Recomendado 1200x1200px para zoom.
+                </div>
+
+                <!-- Estado: Completado/Error -->
+                <group attrs="{'invisible': [('state', '==', 'draft')]}">
+                    <group>
+                        <field name="uploaded_count" readonly="1"/>
+                    </group>
+                    <field name="result_log" nolabel="1" readonly="1"
+                           style="font-family: monospace; background: #f5f5f5; padding: 10px;"/>
+                </group>
+
+                <group attrs="{'invisible': ['|', ('state', '==', 'draft'), ('uploaded_urls', '=', False)]}">
+                    <field name="uploaded_urls" nolabel="1" readonly="1"
+                           placeholder="URLs de las imágenes subidas"
+                           style="font-family: monospace;"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <!-- Footers -->
+                <footer attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    <button name="action_upload" type="object"
+                            string="Subir Imágenes" class="btn-primary"
+                            attrs="{'invisible': [('has_image', '=', False)]}"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+
+                <footer attrs="{'invisible': [('state', '==', 'draft')]}">
+                    <button string="Cerrar" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para abrir wizard de subida -->
+    <record id="action_mercadolibre_image_upload_wizard" model="ir.actions.act_window">
+        <field name="name">Subir Imágenes a MercadoLibre</field>
+        <field name="res_model">mercadolibre.image.upload.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

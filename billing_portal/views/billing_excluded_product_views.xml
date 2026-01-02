@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_billing_excluded_product_tree" model="ir.ui.view">
+        <field name="name">billing.excluded.product.tree</field>
+        <field name="model">billing.excluded.product</field>
+        <field name="arch" type="xml">
+            <tree string="Productos Excluidos">
+                <field name="sequence" widget="handle"/>
+                <field name="product_id"/>
+                <field name="reason"/>
+                <field name="active"/>
+                <field name="create_uid"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_billing_excluded_product_form" model="ir.ui.view">
+        <field name="name">billing.excluded.product.form</field>
+        <field name="model">billing.excluded.product</field>
+        <field name="arch" type="xml">
+            <form string="Producto Excluido">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Motivo por el cual este producto está excluido de facturación..."/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="create_uid" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="create_date" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_billing_excluded_product_search" model="ir.ui.view">
+        <field name="name">billing.excluded.product.search</field>
+        <field name="model">billing.excluded.product</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Productos Excluidos">
+                <field name="product_id"/>
+                <field name="reason"/>
+                <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivados" name="archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_billing_excluded_product" model="ir.actions.act_window">
+        <field name="name">Productos Excluidos</field>
+        <field name="res_model">billing.excluded.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Agregar productos excluidos de facturación
+            </p>
+            <p>
+                Los productos agregados aquí serán excluidos del filtro de facturación.
+                Si una orden contiene alguno de estos productos, no aparecerá como facturable en el portal.
+            </p>
+        </field>
+    </record>
+
+</odoo>

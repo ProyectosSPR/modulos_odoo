@@ -21,9 +21,18 @@
                     </group>
                 </group>
                 <group attrs="{'invisible': [('state', '!=', 'draft')]}">
-                    <group string="Busqueda Especifica">
+                    <group string="Búsqueda Específica">
                         <field name="search_specific"/>
-                        <field name="specific_order_id" attrs="{'invisible': [('search_specific', '=', False)], 'required': [('search_specific', '=', True)]}"/>
+                        <field name="specific_order_id"
+                               placeholder="Ej: 2000006789012345"
+                               attrs="{'invisible': [('search_specific', '=', False)], 'required': [('search_specific', '=', True)]}"/>
+                        <div class="alert alert-info" role="alert" colspan="2"
+                             attrs="{'invisible': [('search_specific', '=', False)]}">
+                            <i class="fa fa-info-circle"/>
+                            <strong>Búsqueda inteligente:</strong> Puede ingresar el <strong>Order ID</strong>
+                            o el <strong>Pack ID</strong>. El sistema buscará automáticamente por ambos.
+                            <br/><small class="text-muted">El Pack ID es el número que ve el cliente en MercadoLibre.</small>
+                        </div>
                     </group>
                 </group>
                 <group string="Resultado" attrs="{'invisible': [('state', '=', 'draft')]}">

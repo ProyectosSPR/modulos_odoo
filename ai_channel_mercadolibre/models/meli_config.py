@@ -17,29 +17,71 @@ class MeliConfig(models.Model):
     name = fields.Char(string='Account Name', required=True)
     active = fields.Boolean(default=True)
 
-    # API Credentials
-    app_id = fields.Char(string='App ID', required=True)
+    # === NUEVA INTEGRACION CON mercadolibre_connector ===
+    # Usar cuenta de mercadolibre_connector para tokens siempre actualizados
+    ml_account_id = fields.Many2one(
+        'mercadolibre.account',
+        string='Cuenta MercadoLibre',
+        domain="[('state', '=', 'connected'), ('active', '=', True)]",
+        help='Cuenta de MercadoLibre Connector con token siempre actualizado',
+    )
+    use_connector_token = fields.Boolean(
+        string='Usar Token de Connector',
+        default=True,
+        help='Si esta activo, usa el token de mercadolibre_connector (recomendado). '
+             'Si no, usa las credenciales propias de este registro.',
+    )
+
+    # API Credentials (solo si no usa connector)
+    app_id = fields.Char(
+        string='App ID',
+        help='Solo necesario si no usa token de mercadolibre_connector',
+    )
     client_secret = fields.Char(
         string='Client Secret',
-        required=True,
-        groups='ai_agent_core.group_ai_admin'
+        groups='ai_agent_core.group_ai_admin',
+        help='Solo necesario si no usa token de mercadolibre_connector',
     )
 
-    # OAuth tokens
+    # OAuth tokens (solo si no usa connector - DEPRECADO)
     access_token = fields.Char(
-        string='Access Token',
-        groups='ai_agent_core.group_ai_admin'
+        string='Access Token (Deprecado)',
+        groups='ai_agent_core.group_ai_admin',
+        help='Deprecado: Usar mercadolibre_connector en su lugar',
     )
     refresh_token = fields.Char(
-        string='Refresh Token',
-        groups='ai_agent_core.group_ai_admin'
+        string='Refresh Token (Deprecado)',
+        groups='ai_agent_core.group_ai_admin',
+        help='Deprecado: Usar mercadolibre_connector en su lugar',
     )
-    token_expiry = fields.Datetime(string='Token Expiry')
+    token_expiry = fields.Datetime(
+        string='Token Expiry (Deprecado)',
+        help='Deprecado: Usar mercadolibre_connector en su lugar',
+    )
 
-    # MercadoLibre user info
-    meli_user_id = fields.Char(string='MercadoLibre User ID', readonly=True)
-    meli_nickname = fields.Char(string='Nickname', readonly=True)
-    meli_site_id = fields.Char(string='Site ID', default='MLA')
+    # MercadoLibre user info (computados desde ml_account_id si usa connector)
+    meli_user_id = fields.Char(
+        string='MercadoLibre User ID',
+        compute='_compute_meli_info',
+        store=True,
+        readonly=False,
+    )
+    meli_nickname = fields.Char(
+        string='Nickname',
+        compute='_compute_meli_info',
+        store=True,
+        readonly=False,
+    )
+    meli_site_id = fields.Char(string='Site ID', default='MLM')
+
+    @api.depends('ml_account_id', 'use_connector_token')
+    def _compute_meli_info(self):
+        """Obtener info de ML desde mercadolibre_connector."""
+        for record in self:
+            if record.use_connector_token and record.ml_account_id:
+                record.meli_user_id = record.ml_account_id.ml_user_id
+                record.meli_nickname = record.ml_account_id.ml_nickname
+            # Si no usa connector, mantener los valores actuales
 
     # AI Agent configuration
     agent_id = fields.Many2one(
@@ -126,8 +168,48 @@ class MeliConfig(models.Model):
         base = 'https://api.mercadolibre.com'
         return f"{base}{endpoint}"
 
-    def _refresh_token_if_needed(self):
-        """Refresh access token if expired"""
+    def _get_access_token(self):
+        """
+        Obtener token de acceso valido.
+        Usa mercadolibre_connector si esta configurado, sino el token propio.
+
+        Returns:
+            str: Access token valido
+
+        Raises:
+            UserError si no hay token disponible
+        """
+        self.ensure_one()
+
+        # Usar token de mercadolibre_connector (recomendado)
+        if self.use_connector_token and self.ml_account_id:
+            try:
+                token = self.ml_account_id.get_valid_token()
+                if token:
+                    self.write({
+                        'connection_status': 'connected',
+                        'last_error': False,
+                    })
+                    return token
+            except Exception as e:
+                _logger.error(f"Error obteniendo token de connector: {e}")
+                self.write({
+                    'connection_status': 'error',
+                    'last_error': str(e),
+                })
+                raise UserError(f"Error con token de mercadolibre_connector: {e}")
+
+        # Fallback: usar token propio (deprecado)
+        if self._refresh_token_if_needed_legacy():
+            return self.access_token
+
+        raise UserError("No hay token de acceso disponible. Configure una cuenta de MercadoLibre Connector.")
+
+    def _refresh_token_if_needed_legacy(self):
+        """
+        [DEPRECADO] Refrescar token propio si esta expirado.
+        Se mantiene para compatibilidad con configuraciones existentes.
+        """
         self.ensure_one()
 
         if not self.token_expiry or not self.refresh_token:
@@ -172,25 +254,36 @@ class MeliConfig(models.Model):
             })
             return False
 
+    def _refresh_token_if_needed(self):
+        """Alias para compatibilidad. Ahora usa _get_access_token."""
+        try:
+            self._get_access_token()
+            return True
+        except Exception:
+            return False
+
     def _make_api_request(self, method, endpoint, **kwargs):
         """Make authenticated API request"""
         self.ensure_one()
 
-        if not self._refresh_token_if_needed():
-            raise UserError("Unable to authenticate with MercadoLibre")
+        # Obtener token (de connector o propio)
+        access_token = self._get_access_token()
 
         headers = kwargs.pop('headers', {})
-        headers['Authorization'] = f'Bearer {self.access_token}'
+        headers['Authorization'] = f'Bearer {access_token}'
 
         url = self._get_api_url(endpoint)
 
         response = requests.request(method, url, headers=headers, **kwargs)
 
         if response.status_code == 401:
-            # Token might have just expired, try refresh
-            if self._refresh_token_if_needed():
-                headers['Authorization'] = f'Bearer {self.access_token}'
+            # Token might have just expired, try to get a fresh one
+            try:
+                access_token = self._get_access_token()
+                headers['Authorization'] = f'Bearer {access_token}'
                 response = requests.request(method, url, headers=headers, **kwargs)
+            except Exception as e:
+                _logger.error(f"Error re-authenticating: {e}")
 
         return response
 

@@ -48,12 +48,18 @@ Dependencias:
         'views/mercadolibre_product_sync_config_views.xml',
         'views/mercadolibre_stock_reconcile_views.xml',
         'views/mercadolibre_account_views.xml',
+        'views/mercadolibre_image_views.xml',
         'views/product_template_views.xml',
-        'views/mercadolibre_products_menus.xml',
-        # Wizards
+        # Wizards (deben ir antes de los menús)
         'wizard/mercadolibre_product_sync_views.xml',
         'wizard/mercadolibre_product_publish_views.xml',
         'wizard/mercadolibre_product_link_views.xml',
+        'wizard/mercadolibre_publish_massive_views.xml',
+        'wizard/mercadolibre_sync_wizard_views.xml',
+        'wizard/mercadolibre_import_products_views.xml',
+        'views/mercadolibre_category_sync_views.xml',
+        # Menus (al final, después de todas las acciones)
+        'views/mercadolibre_products_menus.xml',
     ],
     'installable': True,
     'application': False,

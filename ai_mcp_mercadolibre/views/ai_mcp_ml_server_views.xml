@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de arbol -->
+    <record id="view_ai_mcp_ml_server_tree" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.server.tree</field>
+        <field name="model">ai.mcp.ml.server</field>
+        <field name="arch" type="xml">
+            <tree string="Servidores MCP">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="server_type" widget="badge" decoration-info="server_type == 'data'" decoration-success="server_type == 'docs'"/>
+                <field name="default_account_id"/>
+                <field name="endpoint_count" string="Endpoints"/>
+                <field name="total_requests"/>
+                <field name="success_requests" decoration-success="1"/>
+                <field name="error_requests" decoration-danger="1"/>
+                <field name="last_request_date"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista de formulario -->
+    <record id="view_ai_mcp_ml_server_form" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.server.form</field>
+        <field name="model">ai.mcp.ml.server</field>
+        <field name="arch" type="xml">
+            <form string="Servidor MCP">
+                <header>
+                    <button name="action_test_connection" type="object" string="Probar Conexion" class="btn-primary" icon="fa-plug"/>
+                    <button name="action_clear_logs" type="object" string="Limpiar Logs" class="btn-secondary" icon="fa-trash" confirm="¿Eliminar todos los logs?"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_endpoints" type="object" class="oe_stat_button" icon="fa-list" attrs="{'invisible': [('server_type', '!=', 'data')]}">
+                            <field name="endpoint_count" widget="statinfo" string="Endpoints"/>
+                        </button>
+                        <button name="action_view_logs" type="object" class="oe_stat_button" icon="fa-history">
+                            <field name="log_count" widget="statinfo" string="Logs"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Inactivo" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nombre del servidor"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Configuracion">
+                            <field name="server_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Cuenta MercadoLibre">
+                            <field name="default_account_id" options="{'no_create': True}"/>
+                            <field name="allow_account_selection"/>
+                            <field name="available_accounts_count" string="Cuentas Disponibles"/>
+                        </group>
+                    </group>
+
+                    <!-- Config especifica segun tipo -->
+                    <group string="Configuracion MCP Documentacion" attrs="{'invisible': [('server_type', '!=', 'docs')]}">
+                        <field name="docs_mcp_url"/>
+                    </group>
+
+                    <group string="Opciones">
+                        <field name="log_requests"/>
+                    </group>
+
+                    <!-- Estadisticas -->
+                    <group string="Estadisticas">
+                        <group>
+                            <field name="total_requests"/>
+                            <field name="success_requests"/>
+                        </group>
+                        <group>
+                            <field name="error_requests"/>
+                            <field name="last_request_date"/>
+                        </group>
+                    </group>
+
+                    <!-- Endpoints (solo para tipo data) -->
+                    <notebook attrs="{'invisible': [('server_type', '!=', 'data')]}">
+                        <page string="Endpoints" name="endpoints">
+                            <field name="endpoint_ids" context="{'default_server_id': active_id}">
+                                <tree string="Endpoints" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="ml_endpoint"/>
+                                    <field name="method" widget="badge"/>
+                                    <field name="depends_on_id"/>
+                                    <field name="use_count"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+
+                    <!-- Info de conexion -->
+                    <group string="URLs de Conexion MCP" class="oe_edit_only">
+                        <div class="alert alert-info" role="alert">
+                            <strong>Servidor de Datos:</strong>
+                            <code>POST /ai/mcp/ml/data</code>
+                            <br/>
+                            <strong>Servidor de Docs:</strong>
+                            <code>POST /ai/mcp/ml/docs</code>
+                            <br/><br/>
+                            <strong>Para conectar con Claude Code:</strong>
+                            <pre>claude mcp add --transport http mercadolibre-data https://tu-odoo.com/ai/mcp/ml/data</pre>
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de busqueda -->
+    <record id="view_ai_mcp_ml_server_search" model="ir.ui.view">
+        <field name="name">ai.mcp.ml.server.search</field>
+        <field name="model">ai.mcp.ml.server</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Servidores">
+                <field name="name"/>
+                <field name="server_type"/>
+                <filter name="active" string="Activos" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Inactivos" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="type_data" string="Tipo Datos" domain="[('server_type', '=', 'data')]"/>
+                <filter name="type_docs" string="Tipo Docs" domain="[('server_type', '=', 'docs')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'server_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Accion -->
+    <record id="action_ai_mcp_ml_server" model="ir.actions.act_window">
+        <field name="name">Servidores MCP</field>
+        <field name="res_model">ai.mcp.ml.server</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un servidor MCP
+            </p>
+            <p>
+                Los servidores MCP permiten que agentes de IA consulten datos de MercadoLibre.
+                <br/>
+                <strong>Tipo Datos:</strong> Para consultar ordenes, envios, productos, etc.
+                <br/>
+                <strong>Tipo Docs:</strong> Para consultar documentacion oficial de MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -6,3 +6,6 @@ from . import mercadolibre_payment_sync_config
 from . import mercadolibre_known_vendor
 from . import account_payment
 from . import mercadolibre_account
+from . import sale_order
+from . import payment_status_config
+from . import mercadolibre_order

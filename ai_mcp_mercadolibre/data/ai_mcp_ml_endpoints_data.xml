@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ================================================================== -->
+        <!-- SERVIDOR MCP DE DATOS (por defecto) -->
+        <!-- ================================================================== -->
+        <record id="mcp_server_data_default" model="ai.mcp.ml.server">
+            <field name="name">MercadoLibre Datos</field>
+            <field name="server_type">data</field>
+            <field name="active">True</field>
+            <field name="allow_account_selection">True</field>
+            <field name="log_requests">True</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- SERVIDOR MCP DE DOCUMENTACION -->
+        <record id="mcp_server_docs_default" model="ai.mcp.ml.server">
+            <field name="name">MercadoLibre Documentacion</field>
+            <field name="server_type">docs</field>
+            <field name="active">True</field>
+            <field name="allow_account_selection">True</field>
+            <field name="docs_mcp_url">https://mcp.mercadolibre.com/mcp</field>
+            <field name="log_requests">True</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: ORDENES -->
+        <!-- ================================================================== -->
+
+        <!-- get_orders: Listar ordenes -->
+        <record id="endpoint_get_orders" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_orders</field>
+            <field name="name">Listar Ordenes</field>
+            <field name="description">Obtener la lista de ordenes de venta de MercadoLibre. Puede filtrar por estado (paid, shipped, delivered, cancelled). Retorna informacion basica de cada orden incluyendo ID, comprador, total y estado del envio.</field>
+            <field name="ml_endpoint">/orders/search</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">True</field>
+            <field name="sequence">10</field>
+            <field name="response_example">{
+  "results": [
+    {
+      "id": 123456789,
+      "status": "paid",
+      "total_amount": 1500.00,
+      "buyer": {"id": 987654321, "nickname": "COMPRADOR123"},
+      "shipping": {"id": 111222333}
+    }
+  ],
+  "paging": {"total": 50, "limit": 50, "offset": 0}
+}</field>
+            <field name="response_fields">{
+  "results[].id": "ID de la orden para usar en get_order_detail",
+  "results[].shipping.id": "ID del envio para usar en get_shipment",
+  "results[].status": "Estado de la orden"
+}</field>
+        </record>
+
+        <!-- Parametros de get_orders -->
+        <record id="param_orders_status" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_orders"/>
+            <field name="name">order.status</field>
+            <field name="param_type">string</field>
+            <field name="required">False</field>
+            <field name="description">Estado de las ordenes a filtrar</field>
+            <field name="enum_values">["paid", "shipped", "delivered", "cancelled"]</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="param_orders_limit" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_orders"/>
+            <field name="name">limit</field>
+            <field name="param_type">integer</field>
+            <field name="required">False</field>
+            <field name="description">Cantidad maxima de ordenes a retornar</field>
+            <field name="default_value">50</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="param_orders_offset" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_orders"/>
+            <field name="name">offset</field>
+            <field name="param_type">integer</field>
+            <field name="required">False</field>
+            <field name="description">Cantidad de ordenes a saltar (para paginacion)</field>
+            <field name="default_value">0</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <!-- get_order_detail: Detalle de orden -->
+        <record id="endpoint_get_order_detail" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_order_detail</field>
+            <field name="name">Detalle de Orden</field>
+            <field name="description">Obtener el detalle completo de una orden especifica de MercadoLibre. Incluye items comprados, datos del comprador, informacion de envio y pagos.</field>
+            <field name="ml_endpoint">/orders/{order_id}</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="depends_on_id" ref="endpoint_get_orders"/>
+            <field name="depends_on_field">results[].id</field>
+            <field name="dependency_type">optional</field>
+            <field name="ai_hint">Si no tienes el order_id, primero usa get_orders para listar las ordenes y obtener el ID.</field>
+            <field name="sequence">20</field>
+            <field name="response_example">{
+  "id": 123456789,
+  "status": "paid",
+  "total_amount": 1500.00,
+  "buyer": {"id": 987654321, "nickname": "COMPRADOR123", "email": "comprador@email.com"},
+  "order_items": [{"item": {"id": "MLM123456", "title": "Producto..."}, "quantity": 1, "unit_price": 1500.00}],
+  "shipping": {"id": 111222333, "status": "pending"},
+  "payments": [{"id": 444555666, "status": "approved", "total_paid_amount": 1500.00}]
+}</field>
+        </record>
+
+        <!-- Parametros de get_order_detail -->
+        <record id="param_order_detail_id" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_order_detail"/>
+            <field name="name">order_id</field>
+            <field name="param_type">string</field>
+            <field name="required">True</field>
+            <field name="is_path_param">True</field>
+            <field name="description">ID de la orden de MercadoLibre</field>
+            <field name="from_dependency">True</field>
+            <field name="dependency_path">results[].id</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: ENVIOS -->
+        <!-- ================================================================== -->
+
+        <!-- get_shipment: Info de envio -->
+        <record id="endpoint_get_shipment" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_shipment</field>
+            <field name="name">Informacion de Envio</field>
+            <field name="description">Obtener informacion detallada del envio de una orden. Incluye estado del envio, numero de tracking, fechas estimadas y direccion de entrega.</field>
+            <field name="ml_endpoint">/shipments/{shipment_id}</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="depends_on_id" ref="endpoint_get_order_detail"/>
+            <field name="depends_on_field">shipping.id</field>
+            <field name="dependency_type">required</field>
+            <field name="ai_hint">El shipment_id se obtiene del campo 'shipping.id' de get_order_detail. Primero consulta la orden para obtener este ID.</field>
+            <field name="sequence">30</field>
+            <field name="response_example">{
+  "id": 111222333,
+  "status": "ready_to_ship",
+  "tracking_number": "MEX123456789",
+  "date_created": "2024-01-15T10:30:00.000Z",
+  "receiver_address": {"city": {"name": "Ciudad de Mexico"}, "zip_code": "01000"}
+}</field>
+        </record>
+
+        <!-- Parametros de get_shipment -->
+        <record id="param_shipment_id" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_shipment"/>
+            <field name="name">shipment_id</field>
+            <field name="param_type">string</field>
+            <field name="required">True</field>
+            <field name="is_path_param">True</field>
+            <field name="description">ID del envio de MercadoLibre</field>
+            <field name="from_dependency">True</field>
+            <field name="dependency_path">shipping.id</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: PREGUNTAS -->
+        <!-- ================================================================== -->
+
+        <!-- get_questions: Listar preguntas -->
+        <record id="endpoint_get_questions" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_questions</field>
+            <field name="name">Listar Preguntas</field>
+            <field name="description">Obtener las preguntas de compradores sobre tus publicaciones. Por defecto muestra las preguntas sin responder (UNANSWERED).</field>
+            <field name="ml_endpoint">/questions/search</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">True</field>
+            <field name="sequence">40</field>
+            <field name="response_example">{
+  "questions": [
+    {
+      "id": 999888777,
+      "text": "Hola, tienen disponible en color azul?",
+      "status": "UNANSWERED",
+      "item_id": "MLM123456",
+      "from": {"id": 555444333}
+    }
+  ],
+  "total": 5
+}</field>
+        </record>
+
+        <!-- Parametros de get_questions -->
+        <record id="param_questions_status" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_questions"/>
+            <field name="name">status</field>
+            <field name="param_type">string</field>
+            <field name="required">False</field>
+            <field name="description">Estado de las preguntas</field>
+            <field name="default_value">UNANSWERED</field>
+            <field name="enum_values">["UNANSWERED", "ANSWERED", "CLOSED_UNANSWERED"]</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="param_questions_item" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_questions"/>
+            <field name="name">item</field>
+            <field name="param_type">string</field>
+            <field name="required">False</field>
+            <field name="description">ID del item/publicacion para filtrar preguntas</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: PRODUCTOS -->
+        <!-- ================================================================== -->
+
+        <!-- get_item: Info de producto -->
+        <record id="endpoint_get_item" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_item</field>
+            <field name="name">Informacion de Producto</field>
+            <field name="description">Obtener informacion detallada de un producto/publicacion de MercadoLibre. Incluye titulo, precio, stock, imagenes y atributos.</field>
+            <field name="ml_endpoint">/items/{item_id}</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="sequence">50</field>
+            <field name="response_example">{
+  "id": "MLM123456",
+  "title": "Producto de Ejemplo",
+  "price": 1500.00,
+  "available_quantity": 10,
+  "sold_quantity": 25,
+  "status": "active",
+  "pictures": [{"url": "http://..."}]
+}</field>
+        </record>
+
+        <!-- Parametros de get_item -->
+        <record id="param_item_id" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_item"/>
+            <field name="name">item_id</field>
+            <field name="param_type">string</field>
+            <field name="required">True</field>
+            <field name="is_path_param">True</field>
+            <field name="description">ID del item/publicacion (ej: MLM123456789)</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: USUARIO -->
+        <!-- ================================================================== -->
+
+        <!-- get_user: Info de usuario -->
+        <record id="endpoint_get_user" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_user</field>
+            <field name="name">Informacion de Usuario</field>
+            <field name="description">Obtener informacion del usuario/cuenta de MercadoLibre conectada. Retorna nickname, email, reputacion y datos de la cuenta.</field>
+            <field name="ml_endpoint">/users/me</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="sequence">60</field>
+            <field name="response_example">{
+  "id": 123456789,
+  "nickname": "VENDEDOR_EJEMPLO",
+  "email": "vendedor@email.com",
+  "seller_reputation": {"level_id": "5_green", "transactions": {"completed": 500}}
+}</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: PAGOS -->
+        <!-- ================================================================== -->
+
+        <!-- get_payment: Detalle de pago -->
+        <record id="endpoint_get_payment" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">get_payment</field>
+            <field name="name">Detalle de Pago</field>
+            <field name="description">Obtener informacion detallada de un pago de MercadoLibre/MercadoPago. Incluye estado, monto, metodo de pago y fechas.</field>
+            <field name="ml_endpoint">/payments/{payment_id}</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="depends_on_id" ref="endpoint_get_order_detail"/>
+            <field name="depends_on_field">payments[].id</field>
+            <field name="dependency_type">required</field>
+            <field name="ai_hint">El payment_id se obtiene del array 'payments' en get_order_detail. Primero consulta la orden.</field>
+            <field name="sequence">70</field>
+            <field name="response_example">{
+  "id": 444555666,
+  "status": "approved",
+  "status_detail": "accredited",
+  "total_paid_amount": 1500.00,
+  "payment_method_id": "credit_card",
+  "date_approved": "2024-01-15T10:35:00.000Z"
+}</field>
+        </record>
+
+        <!-- Parametros de get_payment -->
+        <record id="param_payment_id" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_get_payment"/>
+            <field name="name">payment_id</field>
+            <field name="param_type">string</field>
+            <field name="required">True</field>
+            <field name="is_path_param">True</field>
+            <field name="description">ID del pago de MercadoLibre</field>
+            <field name="from_dependency">True</field>
+            <field name="dependency_path">payments[].id</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- ================================================================== -->
+        <!-- ENDPOINTS: BUSQUEDA -->
+        <!-- ================================================================== -->
+
+        <!-- search_items: Buscar productos -->
+        <record id="endpoint_search_items" model="ai.mcp.ml.endpoint">
+            <field name="server_id" ref="mcp_server_data_default"/>
+            <field name="code">search_items</field>
+            <field name="name">Buscar Productos</field>
+            <field name="description">Buscar productos en MercadoLibre por palabra clave. Retorna lista de productos con precio, titulo y vendedor.</field>
+            <field name="ml_endpoint">/sites/MLM/search</field>
+            <field name="method">GET</field>
+            <field name="requires_seller_id">False</field>
+            <field name="sequence">80</field>
+            <field name="response_example">{
+  "results": [
+    {
+      "id": "MLM123456",
+      "title": "Producto Encontrado",
+      "price": 999.00,
+      "seller": {"id": 123, "nickname": "VENDEDOR"},
+      "available_quantity": 5
+    }
+  ],
+  "paging": {"total": 100}
+}</field>
+        </record>
+
+        <!-- Parametros de search_items -->
+        <record id="param_search_q" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_search_items"/>
+            <field name="name">q</field>
+            <field name="param_type">string</field>
+            <field name="required">True</field>
+            <field name="description">Termino de busqueda</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="param_search_limit" model="ai.mcp.ml.endpoint.parameter">
+            <field name="endpoint_id" ref="endpoint_search_items"/>
+            <field name="name">limit</field>
+            <field name="param_type">integer</field>
+            <field name="required">False</field>
+            <field name="description">Cantidad maxima de resultados</field>
+            <field name="default_value">10</field>
+            <field name="sequence">20</field>
+        </record>
+
+    </data>
+</odoo>

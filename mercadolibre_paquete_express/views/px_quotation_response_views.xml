@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Heredar vista de px.quotation.response.service para agregar boton Crear Guia -->
+    <record id="view_px_quotation_response_service_form_ml" model="ir.ui.view">
+        <field name="name">px.quotation.response.service.form.ml</field>
+        <field name="model">px.quotation.response.service</field>
+        <field name="inherit_id" ref="impl_paquete_express.view_px_quotation_response_service_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//footer" position="inside">
+                <button name="action_create_shipment"
+                        string="Crear Guia"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-truck"/>
+                <button string="Cerrar" class="btn-secondary" special="cancel"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista tree de servicios para agregar boton inline -->
+    <record id="view_px_quotation_response_form_ml" model="ir.ui.view">
+        <field name="name">px.quotation.response.form.ml</field>
+        <field name="model">px.quotation.response</field>
+        <field name="inherit_id" ref="impl_paquete_express.view_px_quotation_response_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Agregar campo sale_order_id oculto para referencia -->
+            <xpath expr="//field[@name='client_id']" position="before">
+                <field name="sale_order_id" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

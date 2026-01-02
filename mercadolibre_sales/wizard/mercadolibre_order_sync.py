@@ -353,10 +353,14 @@ class MercadolibreOrderSync(models.TransientModel):
         }
         headers_log = {k: v if k != 'Authorization' else 'Bearer ***' for k, v in headers.items()}
 
-        # Primero intentar buscar por order_id directamente
+        orders_to_sync = []
+        found_by = None
+
+        # ============================================================
+        # PASO 1: Intentar buscar por order_id directamente
+        # ============================================================
         url = f'https://api.mercadolibre.com/orders/{search_id}'
         start_time = time.time()
-        order_data = None
 
         try:
             response = requests.get(url, headers=headers, timeout=60)
@@ -365,9 +369,9 @@ class MercadolibreOrderSync(models.TransientModel):
             response_body_log = response.text[:10000] if response.text else ''
             LogModel.create({
                 'log_type': 'api_request',
-                'level': 'success' if response.status_code == 200 else 'error',
+                'level': 'success' if response.status_code == 200 else 'info',
                 'account_id': self.account_id.id,
-                'message': f'Order Sync Specific: GET /orders/{search_id} - {response.status_code}',
+                'message': f'Order Sync: GET /orders/{search_id} - {response.status_code}',
                 'request_url': url,
                 'request_method': 'GET',
                 'request_headers': json.dumps(headers_log, indent=2),
@@ -379,18 +383,70 @@ class MercadolibreOrderSync(models.TransientModel):
 
             if response.status_code == 200:
                 order_data = response.json()
-                log_lines.append(f'  Encontrado por Order ID: {search_id}')
+                orders_to_sync.append(order_data)
+                found_by = 'Order ID'
+                log_lines.append(f'  ✓ Encontrado por Order ID: {search_id}')
+
+                # Si tiene pack_id, buscar las otras órdenes del pack
+                pack_id = order_data.get('pack_id')
+                if pack_id:
+                    log_lines.append(f'  → Es parte de un Pack: {pack_id}')
+                    log_lines.append(f'    Buscando otras órdenes del pack...')
+
+                    # Buscar todas las órdenes del pack
+                    pack_orders = self._search_orders_by_pack_id(
+                        pack_id, access_token, headers, headers_log, LogModel
+                    )
+                    for po in pack_orders:
+                        if po.get('id') != order_data.get('id'):
+                            orders_to_sync.append(po)
+                            log_lines.append(f'    + Orden adicional del pack: {po.get("id")}')
+
             elif response.status_code == 404:
-                # Si no se encuentra por order_id, intentar buscar por pack_id
-                log_lines.append(f'  No encontrado por Order ID, buscando por Pack ID...')
+                log_lines.append(f'  ✗ No encontrado por Order ID directo')
+            else:
+                log_lines.append(f'  ✗ Error API: {response.status_code}')
 
-                search_url = 'https://api.mercadolibre.com/orders/search'
-                params = {
-                    'seller': self.account_id.ml_user_id,
-                    'q': search_id,
-                }
+        except requests.exceptions.RequestException as e:
+            log_lines.append(f'  ✗ Error conexion: {str(e)}')
 
-                start_time = time.time()
+        # ============================================================
+        # PASO 2: Si no se encontró, buscar por pack_id
+        # ============================================================
+        if not orders_to_sync:
+            log_lines.append('')
+            log_lines.append('  Buscando por Pack ID...')
+
+            pack_orders = self._search_orders_by_pack_id(
+                search_id, access_token, headers, headers_log, LogModel
+            )
+
+            if pack_orders:
+                orders_to_sync = pack_orders
+                found_by = 'Pack ID'
+                log_lines.append(f'  ✓ Encontrado por Pack ID: {search_id}')
+                log_lines.append(f'    Órdenes en el pack: {len(pack_orders)}')
+                for po in pack_orders:
+                    log_lines.append(f'    - Order ID: {po.get("id")}')
+            else:
+                log_lines.append(f'  ✗ No encontrado por Pack ID')
+
+        # ============================================================
+        # PASO 3: Última opción - búsqueda general con 'q'
+        # ============================================================
+        if not orders_to_sync:
+            log_lines.append('')
+            log_lines.append('  Búsqueda general por texto...')
+
+            search_url = 'https://api.mercadolibre.com/orders/search'
+            params = {
+                'seller': self.account_id.ml_user_id,
+                'q': search_id,
+                'limit': 10,
+            }
+
+            start_time = time.time()
+            try:
                 search_response = requests.get(search_url, params=params, headers=headers, timeout=60)
                 duration = time.time() - start_time
 
@@ -399,7 +455,7 @@ class MercadolibreOrderSync(models.TransientModel):
                     'log_type': 'api_request',
                     'level': 'success' if search_response.status_code == 200 else 'error',
                     'account_id': self.account_id.id,
-                    'message': f'Order Sync Specific: GET /orders/search?q={search_id} - {search_response.status_code}',
+                    'message': f'Order Sync: GET /orders/search?q={search_id} - {search_response.status_code}',
                     'request_url': search_response.url,
                     'request_method': 'GET',
                     'request_headers': json.dumps(headers_log, indent=2),
@@ -414,117 +470,132 @@ class MercadolibreOrderSync(models.TransientModel):
                     search_data = search_response.json()
                     results = search_data.get('results', [])
 
-                    # Buscar en los resultados una orden que tenga este pack_id
+                    # Buscar coincidencia por order_id o pack_id en resultados
                     for result in results:
-                        if result.get('pack_id') == search_id:
-                            order_data = result
-                            log_lines.append(f'  Encontrado por Pack ID: {search_id}')
-                            log_lines.append(f'  Order ID: {result.get("id")}')
+                        if str(result.get('id')) == search_id or str(result.get('pack_id')) == search_id:
+                            orders_to_sync.append(result)
+                            found_by = 'Búsqueda General'
+                            log_lines.append(f'  ✓ Encontrado en búsqueda general')
+                            log_lines.append(f'    Order ID: {result.get("id")}')
+                            if result.get('pack_id'):
+                                log_lines.append(f'    Pack ID: {result.get("pack_id")}')
                             break
 
-                    if not order_data:
-                        log_lines.append(f'  ERROR: No se encontro ningun Order ID o Pack ID = {search_id}')
-                        self.write({
-                            'state': 'error',
-                            'sync_log': '\n'.join(log_lines),
-                        })
-                        raise ValidationError(_(f'No se encontro orden con ID o Pack ID: {search_id}'))
-                else:
-                    error_msg = f'Error en busqueda: {search_response.status_code}'
-                    log_lines.append(f'  ERROR: {error_msg}')
-                    self.write({
-                        'state': 'error',
-                        'sync_log': '\n'.join(log_lines),
-                    })
-                    raise ValidationError(error_msg)
-            else:
-                error_msg = f'Error API: {response.status_code}'
-                log_lines.append(f'  ERROR: {error_msg}')
-                self.write({
-                    'state': 'error',
-                    'sync_log': '\n'.join(log_lines),
-                })
-                raise ValidationError(error_msg)
+            except requests.exceptions.RequestException as e:
+                log_lines.append(f'  ✗ Error en búsqueda general: {str(e)}')
 
-        except requests.exceptions.RequestException as e:
-            log_lines.append(f'  ERROR conexion: {str(e)}')
+        # ============================================================
+        # VERIFICAR QUE SE ENCONTRARON ÓRDENES
+        # ============================================================
+        if not orders_to_sync:
+            log_lines.append('')
+            log_lines.append('=' * 50)
+            log_lines.append('  ERROR: NO SE ENCONTRÓ NINGUNA ORDEN')
+            log_lines.append('=' * 50)
+            log_lines.append('')
+            log_lines.append(f'  El ID "{search_id}" no corresponde a ningún')
+            log_lines.append('  Order ID ni Pack ID válido.')
+            log_lines.append('')
+            log_lines.append('  Sugerencias:')
+            log_lines.append('  - Verifique que el ID sea correcto')
+            log_lines.append('  - El Order ID tiene formato numérico (ej: 2000006789012345)')
+            log_lines.append('  - El Pack ID tiene formato numérico (ej: 2000006789012345)')
+            log_lines.append('=' * 50)
+
             self.write({
                 'state': 'error',
                 'sync_log': '\n'.join(log_lines),
             })
-            raise ValidationError(_(f'Error de conexion: {str(e)}'))
+            raise ValidationError(_(f'No se encontró orden con ID o Pack ID: {search_id}'))
 
-        if not order_data:
-            log_lines.append(f'  ERROR: No se pudo obtener datos de la orden')
-            self.write({
-                'state': 'error',
-                'sync_log': '\n'.join(log_lines),
-            })
-            raise ValidationError(_(f'No se pudo obtener datos de la orden {search_id}'))
-
-        log_lines.append('-' * 50)
-        log_lines.append('  ORDEN ENCONTRADA')
-        log_lines.append('-' * 50)
-        log_lines.append(f'  ID:         {order_data.get("id")}')
-        log_lines.append(f'  Estado:     {order_data.get("status")}')
-        log_lines.append(f'  Monto:      ${order_data.get("total_amount", 0):,.2f}')
-        log_lines.append(f'  Pack ID:    {order_data.get("pack_id", "N/A")}')
-        log_lines.append(f'  Fecha:      {order_data.get("date_created")}')
+        # ============================================================
+        # PROCESAR ÓRDENES ENCONTRADAS
+        # ============================================================
         log_lines.append('')
+        log_lines.append('-' * 50)
+        log_lines.append(f'  ÓRDENES ENCONTRADAS (por {found_by})')
+        log_lines.append('-' * 50)
 
         OrderModel = self.env['mercadolibre.order']
+        sync_count = 0
+        created_count = 0
+        updated_count = 0
+        error_count = 0
 
-        try:
-            order, is_new = OrderModel.create_from_ml_data(order_data, self.account_id)
-            action_label = 'NUEVA' if is_new else 'ACTUALIZADA'
+        for order_data in orders_to_sync:
+            ml_id = order_data.get('id')
+            status = order_data.get('status')
+            amount = order_data.get('total_amount', 0)
+            pack_id = order_data.get('pack_id', '')
 
-            # Sincronizar descuentos
-            if self.sync_discounts and order:
-                order._sync_discounts_from_api()
-                log_lines.append(f'  Descuentos sincronizados: {len(order.discount_ids)}')
+            log_lines.append('')
+            log_lines.append(f'  Order ID:   {ml_id}')
+            log_lines.append(f'  Estado:     {status}')
+            log_lines.append(f'  Monto:      ${amount:,.2f}')
+            if pack_id:
+                log_lines.append(f'  Pack ID:    {pack_id}')
+            log_lines.append(f'  Fecha:      {order_data.get("date_created")}')
 
-            # Sincronizar tipo logistico
-            if self.sync_logistic_type and order:
-                if not order.logistic_type and order.ml_shipment_id:
-                    try:
-                        logistic_type = order._fetch_logistic_type_from_shipment()
-                        if logistic_type:
-                            order.write({'logistic_type': logistic_type})
-                            log_lines.append(f'  Tipo logistico sincronizado: {logistic_type}')
-                    except Exception as e:
-                        log_lines.append(f'  Error sincronizando tipo logistico: {str(e)}')
-                elif order.logistic_type:
-                    log_lines.append(f'  Tipo logistico: {order.logistic_type}')
+            try:
+                order, is_new = OrderModel.create_from_ml_data(order_data, self.account_id)
+                sync_count += 1
 
-            log_lines.append('-' * 50)
-            log_lines.append('  RESULTADO')
-            log_lines.append('-' * 50)
-            log_lines.append(f'  Orden {action_label} exitosamente')
-            log_lines.append(f'  ID interno: {order.id}')
-            log_lines.append('=' * 50)
+                if is_new:
+                    created_count += 1
+                    action_label = 'NUEVA'
+                else:
+                    updated_count += 1
+                    action_label = 'ACTUALIZADA'
 
-            self.write({
-                'state': 'done',
-                'sync_count': 1,
-                'created_count': 1 if is_new else 0,
-                'updated_count': 0 if is_new else 1,
-                'error_count': 0,
-                'sync_log': '\n'.join(log_lines),
-            })
+                log_lines.append(f'  Resultado:  ✓ {action_label}')
+                log_lines.append(f'  ID interno: {order.id}')
 
-        except Exception as e:
-            log_lines.append('-' * 50)
-            log_lines.append('  ERROR AL SINCRONIZAR')
-            log_lines.append('-' * 50)
-            log_lines.append(f'  {str(e)}')
-            log_lines.append('=' * 50)
+                # Sincronizar descuentos
+                if self.sync_discounts and order:
+                    order._sync_discounts_from_api()
+                    if order.discount_ids:
+                        log_lines.append(f'  Descuentos: {len(order.discount_ids)}')
 
-            self.write({
-                'state': 'error',
-                'sync_count': 0,
-                'error_count': 1,
-                'sync_log': '\n'.join(log_lines),
-            })
+                # Sincronizar tipo logistico
+                if self.sync_logistic_type and order:
+                    if not order.logistic_type and order.ml_shipment_id:
+                        try:
+                            logistic_type = order._fetch_logistic_type_from_shipment()
+                            if logistic_type:
+                                order.write({'logistic_type': logistic_type})
+                                log_lines.append(f'  Tipo envío: {logistic_type}')
+                        except Exception as e:
+                            _logger.warning('Error obteniendo logistic_type: %s', str(e))
+                    elif order.logistic_type:
+                        log_lines.append(f'  Tipo envío: {order.logistic_type}')
+
+            except Exception as e:
+                error_count += 1
+                log_lines.append(f'  Resultado:  ✗ ERROR')
+                log_lines.append(f'  Detalle:    {str(e)}')
+                _logger.error('Error procesando orden %s: %s', ml_id, str(e))
+
+        # ============================================================
+        # RESUMEN
+        # ============================================================
+        log_lines.append('')
+        log_lines.append('=' * 50)
+        log_lines.append('  RESUMEN')
+        log_lines.append('=' * 50)
+        log_lines.append(f'  Total sincronizadas: {sync_count}')
+        log_lines.append(f'    - Nuevas:          {created_count}')
+        log_lines.append(f'    - Actualizadas:    {updated_count}')
+        log_lines.append(f'  Errores:             {error_count}')
+        log_lines.append('=' * 50)
+
+        self.write({
+            'state': 'done' if error_count == 0 else 'error',
+            'sync_count': sync_count,
+            'created_count': created_count,
+            'updated_count': updated_count,
+            'error_count': error_count,
+            'sync_log': '\n'.join(log_lines),
+        })
 
         return {
             'type': 'ir.actions.act_window',
@@ -534,6 +605,119 @@ class MercadolibreOrderSync(models.TransientModel):
             'view_mode': 'form',
             'target': 'new',
         }
+
+    def _search_orders_by_pack_id(self, pack_id, access_token, headers, headers_log, LogModel):
+        """
+        Busca órdenes por Pack ID usando múltiples métodos de la API.
+
+        Args:
+            pack_id: ID del pack a buscar
+            access_token: Token de acceso
+            headers: Headers para la petición
+            headers_log: Headers para log (sin token)
+            LogModel: Modelo de log
+
+        Returns:
+            list: Lista de datos de órdenes encontradas
+        """
+        import requests
+
+        orders = []
+
+        # ============================================================
+        # MÉTODO 1: Endpoint directo de Packs /packs/{pack_id}
+        # Este es el método más confiable para obtener órdenes de un pack
+        # ============================================================
+        pack_url = f'https://api.mercadolibre.com/packs/{pack_id}'
+        start_time = time.time()
+
+        try:
+            response = requests.get(pack_url, headers=headers, timeout=60)
+            duration = time.time() - start_time
+
+            response_body_log = response.text[:10000] if response.text else ''
+            LogModel.create({
+                'log_type': 'api_request',
+                'level': 'success' if response.status_code == 200 else 'info',
+                'account_id': self.account_id.id,
+                'message': f'Order Sync: GET /packs/{pack_id} - {response.status_code}',
+                'request_url': pack_url,
+                'request_method': 'GET',
+                'request_headers': json.dumps(headers_log, indent=2),
+                'response_code': response.status_code,
+                'response_headers': json.dumps(dict(response.headers), indent=2),
+                'response_body': response_body_log,
+                'duration': duration,
+            })
+
+            if response.status_code == 200:
+                pack_data = response.json()
+                pack_orders = pack_data.get('orders', [])
+
+                # Obtener cada orden del pack
+                for pack_order in pack_orders:
+                    order_id = pack_order.get('id')
+                    if order_id:
+                        order_url = f'https://api.mercadolibre.com/orders/{order_id}'
+                        order_response = requests.get(order_url, headers=headers, timeout=60)
+
+                        if order_response.status_code == 200:
+                            order_data = order_response.json()
+                            orders.append(order_data)
+                            _logger.info('Orden %s obtenida desde pack %s', order_id, pack_id)
+
+                if orders:
+                    return orders  # Si encontramos órdenes, retornar
+
+        except requests.exceptions.RequestException as e:
+            _logger.warning('Error consultando pack %s: %s', pack_id, str(e))
+
+        # ============================================================
+        # MÉTODO 2: Búsqueda en /orders/search con filtro pack_id
+        # Como respaldo si el endpoint de packs falla
+        # ============================================================
+        if not orders:
+            search_url = 'https://api.mercadolibre.com/orders/search'
+            params = {
+                'seller': self.account_id.ml_user_id,
+                'pack_id': pack_id,
+                'limit': 50,
+            }
+
+            start_time = time.time()
+            try:
+                response = requests.get(search_url, params=params, headers=headers, timeout=60)
+                duration = time.time() - start_time
+
+                response_body_log = response.text[:10000] if response.text else ''
+                LogModel.create({
+                    'log_type': 'api_request',
+                    'level': 'success' if response.status_code == 200 else 'info',
+                    'account_id': self.account_id.id,
+                    'message': f'Order Sync: GET /orders/search?pack_id={pack_id} - {response.status_code}',
+                    'request_url': response.url,
+                    'request_method': 'GET',
+                    'request_headers': json.dumps(headers_log, indent=2),
+                    'request_body': json.dumps(params, indent=2),
+                    'response_code': response.status_code,
+                    'response_headers': json.dumps(dict(response.headers), indent=2),
+                    'response_body': response_body_log,
+                    'duration': duration,
+                })
+
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get('results', [])
+
+                    # Filtrar por pack_id exacto
+                    for order_data in results:
+                        if str(order_data.get('pack_id')) == str(pack_id):
+                            orders.append(order_data)
+
+            except requests.exceptions.RequestException as e:
+                _logger.error('Error buscando por pack_id %s: %s', pack_id, str(e))
+
+        return orders
 
     def action_view_orders(self):
         """Ver ordenes sincronizadas"""

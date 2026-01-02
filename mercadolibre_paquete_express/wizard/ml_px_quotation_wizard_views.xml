@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_ml_px_quotation_wizard_form" model="ir.ui.view">
+        <field name="name">ml.px.quotation.wizard.form</field>
+        <field name="model">ml.px.quotation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cotizar Paquete Express">
+                <group>
+                    <field name="sale_order_id" invisible="1"/>
+                    <field name="ml_shipment_id" invisible="1"/>
+                </group>
+
+                <!-- Indicador de fuente de datos -->
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('address_source', '!=', 'ml_shipment')]}">
+                    <i class="fa fa-truck"/> <strong>Direccion obtenida del Envio MercadoLibre</strong>
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': [('address_source', '!=', 'partner')]}">
+                    <i class="fa fa-user"/> <strong>Direccion obtenida del Partner de Envio</strong>
+                    <br/><small>Puede modificar los datos si es necesario.</small>
+                </div>
+                <div class="alert alert-secondary" role="alert"
+                     attrs="{'invisible': [('address_source', '!=', 'manual')]}">
+                    <i class="fa fa-pencil"/> <strong>Ingrese los datos de destino manualmente</strong>
+                </div>
+                <field name="address_source" invisible="1"/>
+
+                <notebook>
+                    <page string="Direccion de Envio" name="address">
+                        <group>
+                            <group string="Origen (Empresa)">
+                                <field name="origin_zip"/>
+                                <field name="origin_address"/>
+                            </group>
+                            <group string="Receptor">
+                                <field name="dest_name"/>
+                                <field name="dest_phone"/>
+                            </group>
+                        </group>
+                        <group string="Direccion de Destino">
+                            <group>
+                                <field name="dest_street" placeholder="Calle y numero"/>
+                                <field name="dest_colony" placeholder="Colonia (opcional)"/>
+                                <field name="dest_city"/>
+                            </group>
+                            <group>
+                                <field name="dest_state"/>
+                                <field name="dest_zip"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="dest_comments" placeholder="Referencias, entre calles, color de casa, etc."/>
+                        </group>
+                    </page>
+
+                    <page string="Paquetes" name="packages">
+                        <field name="package_line_ids" nolabel="1">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="name"/>
+                                <field name="quantity"/>
+                                <field name="weight" sum="Total Peso"/>
+                                <field name="volume" sum="Total Volumen"/>
+                                <field name="unit_price"/>
+                                <field name="package_type_id"/>
+                                <field name="is_kit" widget="boolean_toggle" readonly="1"/>
+                            </tree>
+                        </field>
+                        <group class="oe_subtotal_footer">
+                            <field name="total_weight" class="oe_subtotal_footer_separator"/>
+                            <field name="total_volume"/>
+                            <field name="total_amount" string="Valor Declarado Total"/>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button name="action_get_quotation" type="object"
+                            string="Obtener Cotizacion" class="btn-primary"
+                            icon="fa-search"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Package Line Form (para edicion completa si se necesita) -->
+    <record id="view_ml_px_quotation_wizard_line_form" model="ir.ui.view">
+        <field name="name">ml.px.quotation.wizard.line.form</field>
+        <field name="model">ml.px.quotation.wizard.line</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de Paquete">
+                <group>
+                    <group>
+                        <field name="product_id"/>
+                        <field name="name"/>
+                        <field name="quantity"/>
+                    </group>
+                    <group>
+                        <field name="weight"/>
+                        <field name="volume"/>
+                        <field name="unit_price"/>
+                        <field name="package_type_id"/>
+                        <field name="is_kit" readonly="1"/>
+                    </group>
+                </group>
+            </form>
+        </field>
+    </record>
+</odoo>
