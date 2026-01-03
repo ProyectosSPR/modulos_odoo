@@ -653,6 +653,10 @@ class BillingPublicConfig(models.Model):
         Concilia pagos para una factura pública específica.
         - Permite que un pago se use para múltiples órdenes (1 pago → N órdenes)
         - Permite que una orden tenga múltiples pagos (N pagos → 1 orden)
+
+        PRIORIDAD DE CONCILIACIÓN:
+        1. Buscar pago con coincidencia EXACTA (monto igual al de la orden)
+        2. Si no hay coincidencia exacta, usar pagos parciales hasta cubrir
         """
         partner_id = self.public_partner_id.id
         reconciled_count = 0
@@ -682,32 +686,89 @@ class BillingPublicConfig(models.Model):
 
             _logger.info(f"Procesando orden {order.name}: Total=${order.amount_total}, Conciliado=${order_reconciled}, Pendiente=${order_remaining}")
 
-            # Buscar pagos usando los campos configurados
+            # ============================================================
+            # PASO 1: Buscar pago con COINCIDENCIA EXACTA
+            # ============================================================
+            exact_match_found = False
+
             for field_config in search_fields.sorted('sequence'):
+                if exact_match_found:
+                    break
+
                 search_value = getattr(order, field_config.field_name, None)
                 if not search_value:
                     continue
 
-                # Construir dominio de búsqueda
                 domain = field_config.get_search_domain(search_value, partner_id)
                 payments = self.env['account.payment'].search(domain)
 
                 for payment in payments:
-                    # Si la orden ya está completa, salir
-                    if order_remaining <= 0:
-                        break
-
-                    # Calcular saldo disponible del pago
                     payment_remaining = self._get_payment_remaining_balance(payment, payment_used_amounts)
 
                     if payment_remaining <= 0:
-                        _logger.debug(f"Pago {payment.id} sin saldo disponible, saltando...")
+                        continue
+
+                    # Verificar si es COINCIDENCIA EXACTA (dentro de tolerancia)
+                    if self._is_exact_match(order_remaining, payment_remaining):
+                        _logger.info(f"[EXACT MATCH] Orden {order.name} (${order_remaining}) ↔ Pago {payment.name} (${payment_remaining})")
+
+                        try:
+                            self.env['billing.public.reconciliation'].create_with_reconciliation({
+                                'public_invoice_id': public_invoice.id,
+                                'order_id': order.id,
+                                'order_amount': order.amount_total,
+                                'payment_id': payment.id,
+                                'matched_field': field_config.name,
+                                'matched_value': str(search_value),
+                                'amount': order_remaining,  # Usar el monto de la orden para match exacto
+                            })
+                            reconciled_count += 1
+                            reconciled_amount += order_remaining
+
+                            # Actualizar caches
+                            payment_used_amounts[payment.id] = payment_used_amounts.get(payment.id, 0) + order_remaining
+                            order_used_amounts[order.id] = order_used_amounts.get(order.id, 0) + order_remaining
+
+                            order_remaining = 0
+                            exact_match_found = True
+                            _logger.info(f"[EXACT MATCH] Conciliación EXACTA completada para orden {order.name}")
+                            break
+
+                        except Exception as e:
+                            _logger.warning(f"Error en match exacto orden {order.name} con pago {payment.id}: {e}")
+
+            # Si encontramos match exacto, pasar a la siguiente orden
+            if exact_match_found:
+                continue
+
+            # ============================================================
+            # PASO 2: Si no hay match exacto, usar pagos parciales
+            # ============================================================
+            _logger.info(f"[PARTIAL] No hay match exacto para orden {order.name}, buscando pagos parciales...")
+
+            for field_config in search_fields.sorted('sequence'):
+                if order_remaining <= 0:
+                    break
+
+                search_value = getattr(order, field_config.field_name, None)
+                if not search_value:
+                    continue
+
+                domain = field_config.get_search_domain(search_value, partner_id)
+                payments = self.env['account.payment'].search(domain)
+
+                for payment in payments:
+                    if order_remaining <= 0:
+                        break
+
+                    payment_remaining = self._get_payment_remaining_balance(payment, payment_used_amounts)
+
+                    if payment_remaining <= 0:
                         continue
 
                     # Calcular monto a conciliar: el mínimo entre lo pendiente de la orden y lo disponible del pago
                     amount_to_reconcile = min(order_remaining, payment_remaining)
 
-                    # Crear conciliación
                     try:
                         self.env['billing.public.reconciliation'].create_with_reconciliation({
                             'public_invoice_id': public_invoice.id,
@@ -722,31 +783,46 @@ class BillingPublicConfig(models.Model):
                         reconciled_amount += amount_to_reconcile
 
                         # Actualizar caches
-                        if payment.id not in payment_used_amounts:
-                            payment_used_amounts[payment.id] = 0
-                        payment_used_amounts[payment.id] += amount_to_reconcile
+                        payment_used_amounts[payment.id] = payment_used_amounts.get(payment.id, 0) + amount_to_reconcile
+                        order_used_amounts[order.id] = order_used_amounts.get(order.id, 0) + amount_to_reconcile
 
-                        if order.id not in order_used_amounts:
-                            order_used_amounts[order.id] = 0
-                        order_used_amounts[order.id] += amount_to_reconcile
-
-                        # Actualizar saldo pendiente de la orden
                         order_remaining -= amount_to_reconcile
-
-                        _logger.info(f"Conciliado: Orden {order.name} ↔ Pago {payment.id} = ${amount_to_reconcile} (Orden pendiente: ${order_remaining})")
+                        _logger.info(f"[PARTIAL] Conciliado: Orden {order.name} ↔ Pago {payment.name} = ${amount_to_reconcile} (Pendiente: ${order_remaining})")
 
                     except Exception as e:
                         _logger.warning(f"Error al conciliar orden {order.name} con pago {payment.id}: {e}")
 
-                # Si la orden ya está completa, no buscar en más campos
-                if order_remaining <= 0:
-                    _logger.info(f"Orden {order.name} completamente conciliada")
-                    break
+            if order_remaining <= 0:
+                _logger.info(f"Orden {order.name} completamente conciliada")
 
         # Actualizar estado de la factura pública
         public_invoice._update_state()
 
         return reconciled_count, reconciled_amount
+
+    def _is_exact_match(self, order_amount, payment_amount):
+        """
+        Verifica si el monto del pago coincide exactamente con el de la orden.
+        Usa la tolerancia configurada si está habilitada.
+        """
+        self.ensure_one()
+
+        # Tolerancia por defecto: 1 centavo (para evitar problemas de redondeo)
+        default_tolerance = 0.01
+
+        difference = abs(order_amount - payment_amount)
+
+        if self.tolerance_type == 'none':
+            return difference <= default_tolerance
+        elif self.tolerance_type == 'fixed':
+            return difference <= max(self.tolerance_amount, default_tolerance)
+        elif self.tolerance_type == 'percent':
+            if order_amount == 0:
+                return payment_amount == 0
+            percent_diff = (difference / order_amount) * 100
+            return percent_diff <= self.tolerance_percent
+
+        return difference <= default_tolerance
 
     def _get_payment_remaining_balance(self, payment, session_used_amounts):
         """

@@ -67,8 +67,8 @@ class BillingReconciliationField(models.Model):
     )
 
     _sql_constraints = [
-        ('field_name_unique', 'UNIQUE(field_name, company_id)',
-         'Ya existe una configuración para este campo en esta compañía.')
+        ('field_payment_unique', 'UNIQUE(field_name, payment_field, company_id)',
+         'Ya existe una configuración para esta combinación de campo orden/campo pago en esta compañía.')
     ]
 
     @api.model
