@@ -7,6 +7,14 @@
         <field name="model">billing.excluded.product</field>
         <field name="arch" type="xml">
             <tree string="Productos Excluidos">
+                <header>
+                    <button name="action_recalculate_all_orders"
+                            string="Recalcular Órdenes"
+                            type="object"
+                            class="btn-secondary"
+                            icon="fa-refresh"
+                            confirm="¿Recalcular has_excluded_products en todas las órdenes? Esto puede tomar unos segundos."/>
+                </header>
                 <field name="sequence" widget="handle"/>
                 <field name="product_id"/>
                 <field name="reason"/>

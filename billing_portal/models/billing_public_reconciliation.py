@@ -134,14 +134,21 @@ class BillingPublicReconciliation(models.Model):
     def _perform_accounting_reconciliation(self):
         """
         Realiza la conciliación contable real entre el pago y la factura.
-        Retorna True si fue exitosa, False si falló.
+
+        IMPORTANTE: Odoo reconcilia líneas completas, no montos parciales.
+        Si un pago ya fue conciliado con esta factura (a través de otro registro
+        billing.public.reconciliation), no necesitamos hacer otra conciliación
+        contable - el dinero ya fue aplicado.
+
+        Retorna True si fue exitosa o si ya estaba conciliado, False si falló.
         """
         self.ensure_one()
 
         _logger.info("=" * 60)
         _logger.info(f"[ACCOUNTING RECONCILIATION] Iniciando conciliación contable")
-        _logger.info(f"[ACCOUNTING RECONCILIATION] Pago: {self.payment_id.id}")
+        _logger.info(f"[ACCOUNTING RECONCILIATION] Pago: {self.payment_id.id} ({self.payment_id.name})")
         _logger.info(f"[ACCOUNTING RECONCILIATION] Factura Pública: {self.public_invoice_id.name}")
+        _logger.info(f"[ACCOUNTING RECONCILIATION] Monto a registrar: {self.amount}")
         _logger.info("=" * 60)
 
         try:
@@ -167,6 +174,25 @@ class BillingPublicReconciliation(models.Model):
             if payment.move_id.state != 'posted':
                 raise UserError(_('El pago debe estar publicado para poder conciliar.'))
 
+            # Verificar si este pago YA fue conciliado con esta factura contable
+            # (a través de conciliaciones previas en nuestro sistema)
+            payment_already_reconciled_with_invoice = self._check_payment_already_reconciled_with_invoice(
+                payment, invoice
+            )
+
+            if payment_already_reconciled_with_invoice:
+                _logger.info(
+                    f"[ACCOUNTING RECONCILIATION] El pago {payment.name} ya está conciliado "
+                    f"contablemente con la factura {invoice.name}. "
+                    f"Registrando match sin conciliación contable adicional."
+                )
+                self.write({
+                    'is_reconciled': True,  # Ya está conciliado por uso previo
+                    'reconciliation_error': False,
+                    'notes': (self.notes or '') + f'\nConciliación contable ya realizada en uso previo del pago.',
+                })
+                return True
+
             # Obtener las líneas de cuenta por cobrar de la factura
             invoice_receivable_lines = invoice.line_ids.filtered(
                 lambda l: l.account_id.account_type == 'asset_receivable'
@@ -191,7 +217,12 @@ class BillingPublicReconciliation(models.Model):
                 _logger.info(f"  - Línea {line.id}: Cuenta {line.account_id.code}, Débito: {line.debit}, Crédito: {line.credit}, Residual: {line.amount_residual}")
 
             if not payment_receivable_lines:
-                raise UserError(_('No hay líneas pendientes de conciliar en el pago.'))
+                # El pago no tiene líneas pendientes - verificar si ya fue aplicado a OTRA factura
+                # En este caso NO podemos usar este pago
+                raise UserError(_(
+                    'El pago %s no tiene líneas pendientes de conciliar. '
+                    'Es posible que ya haya sido conciliado con otra factura diferente.'
+                ) % payment.name)
 
             # Verificar que las cuentas coincidan
             invoice_account = invoice_receivable_lines[0].account_id
@@ -233,6 +264,65 @@ class BillingPublicReconciliation(models.Model):
                 'reconciliation_error': error_msg,
             })
             return False
+
+    def _check_payment_already_reconciled_with_invoice(self, payment, invoice):
+        """
+        Verifica si el pago ya fue conciliado contablemente con la factura.
+
+        Esto ocurre cuando:
+        1. Ya existe un registro billing.public.reconciliation con el mismo pago
+           y la misma factura pública (que tiene la misma factura contable)
+        2. Las líneas del pago ya están reconciliadas con las líneas de la factura
+
+        Returns:
+            bool: True si ya está conciliado, False si necesita conciliación
+        """
+        # Método 1: Verificar si hay conciliaciones previas en nuestro sistema
+        # con el mismo pago y la misma factura pública
+        existing_reconciliation = self.search([
+            ('payment_id', '=', payment.id),
+            ('public_invoice_id', '=', self.public_invoice_id.id),
+            ('is_reconciled', '=', True),
+            ('id', '!=', self.id),  # Excluir el registro actual
+        ], limit=1)
+
+        if existing_reconciliation:
+            _logger.info(
+                f"[ACCOUNTING RECONCILIATION] Encontrada conciliación previa: "
+                f"ID={existing_reconciliation.id}, Orden={existing_reconciliation.order_name}"
+            )
+            return True
+
+        # Método 2: Verificar a nivel contable si las líneas están reconciliadas entre sí
+        # Esto cubre el caso donde la conciliación se hizo manualmente
+        payment_lines = payment.move_id.line_ids.filtered(
+            lambda l: l.account_id.account_type == 'asset_receivable'
+        )
+
+        invoice_lines = invoice.line_ids.filtered(
+            lambda l: l.account_id.account_type == 'asset_receivable'
+        )
+
+        # Verificar si alguna línea del pago está reconciliada con alguna línea de la factura
+        for pline in payment_lines:
+            if pline.reconciled and pline.matched_debit_ids:
+                for partial in pline.matched_debit_ids:
+                    if partial.debit_move_id in invoice_lines:
+                        _logger.info(
+                            f"[ACCOUNTING RECONCILIATION] Línea de pago {pline.id} ya está "
+                            f"conciliada con línea de factura {partial.debit_move_id.id}"
+                        )
+                        return True
+            if pline.reconciled and pline.matched_credit_ids:
+                for partial in pline.matched_credit_ids:
+                    if partial.credit_move_id in invoice_lines:
+                        _logger.info(
+                            f"[ACCOUNTING RECONCILIATION] Línea de pago {pline.id} ya está "
+                            f"conciliada con línea de factura {partial.credit_move_id.id}"
+                        )
+                        return True
+
+        return False
 
     @api.model
     def create_with_reconciliation(self, vals):

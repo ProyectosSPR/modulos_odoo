@@ -651,22 +651,36 @@ class BillingPublicConfig(models.Model):
     def _reconcile_public_invoice(self, public_invoice, search_fields):
         """
         Concilia pagos para una factura pública específica.
+        - Permite que un pago se use para múltiples órdenes (1 pago → N órdenes)
+        - Permite que una orden tenga múltiples pagos (N pagos → 1 orden)
         """
         partner_id = self.public_partner_id.id
         reconciled_count = 0
         reconciled_amount = 0
 
-        # Obtener conciliaciones ya existentes
+        # Cache de saldos usados en esta sesión
+        payment_used_amounts = {}  # {payment_id: monto_usado}
+        order_used_amounts = {}    # {order_id: monto_conciliado}
+
+        # Cargar montos ya conciliados desde BD
         existing_reconciliations = self.env['billing.public.reconciliation'].search([
             ('public_invoice_id', '=', public_invoice.id)
         ])
-        already_reconciled_orders = existing_reconciliations.mapped('order_id').ids
-        already_reconciled_payments = existing_reconciliations.mapped('payment_id').ids
+        for rec in existing_reconciliations:
+            if rec.order_id.id not in order_used_amounts:
+                order_used_amounts[rec.order_id.id] = 0
+            order_used_amounts[rec.order_id.id] += rec.amount
 
         for order in public_invoice.order_ids:
-            # Saltar órdenes ya conciliadas
-            if order.id in already_reconciled_orders:
+            # Calcular saldo pendiente de la orden
+            order_reconciled = order_used_amounts.get(order.id, 0)
+            order_remaining = order.amount_total - order_reconciled
+
+            if order_remaining <= 0:
+                _logger.debug(f"Orden {order.name} ya está completamente conciliada")
                 continue
+
+            _logger.info(f"Procesando orden {order.name}: Total=${order.amount_total}, Conciliado=${order_reconciled}, Pendiente=${order_remaining}")
 
             # Buscar pagos usando los campos configurados
             for field_config in search_fields.sorted('sequence'):
@@ -676,13 +690,24 @@ class BillingPublicConfig(models.Model):
 
                 # Construir dominio de búsqueda
                 domain = field_config.get_search_domain(search_value, partner_id)
-                domain.append(('id', 'not in', already_reconciled_payments))
+                payments = self.env['account.payment'].search(domain)
 
-                payments = self.env['account.payment'].search(domain, limit=1)
+                for payment in payments:
+                    # Si la orden ya está completa, salir
+                    if order_remaining <= 0:
+                        break
 
-                if payments:
-                    payment = payments[0]
-                    # Crear conciliación con conciliación contable real
+                    # Calcular saldo disponible del pago
+                    payment_remaining = self._get_payment_remaining_balance(payment, payment_used_amounts)
+
+                    if payment_remaining <= 0:
+                        _logger.debug(f"Pago {payment.id} sin saldo disponible, saltando...")
+                        continue
+
+                    # Calcular monto a conciliar: el mínimo entre lo pendiente de la orden y lo disponible del pago
+                    amount_to_reconcile = min(order_remaining, payment_remaining)
+
+                    # Crear conciliación
                     try:
                         self.env['billing.public.reconciliation'].create_with_reconciliation({
                             'public_invoice_id': public_invoice.id,
@@ -691,20 +716,58 @@ class BillingPublicConfig(models.Model):
                             'payment_id': payment.id,
                             'matched_field': field_config.name,
                             'matched_value': str(search_value),
-                            'amount': min(order.amount_total, payment.amount),
+                            'amount': amount_to_reconcile,
                         })
                         reconciled_count += 1
-                        reconciled_amount += min(order.amount_total, payment.amount)
-                        already_reconciled_payments.append(payment.id)
-                        already_reconciled_orders.append(order.id)
+                        reconciled_amount += amount_to_reconcile
+
+                        # Actualizar caches
+                        if payment.id not in payment_used_amounts:
+                            payment_used_amounts[payment.id] = 0
+                        payment_used_amounts[payment.id] += amount_to_reconcile
+
+                        if order.id not in order_used_amounts:
+                            order_used_amounts[order.id] = 0
+                        order_used_amounts[order.id] += amount_to_reconcile
+
+                        # Actualizar saldo pendiente de la orden
+                        order_remaining -= amount_to_reconcile
+
+                        _logger.info(f"Conciliado: Orden {order.name} ↔ Pago {payment.id} = ${amount_to_reconcile} (Orden pendiente: ${order_remaining})")
+
                     except Exception as e:
-                        _logger.warning(f"Error al conciliar orden {order.name} con pago {payment.name}: {e}")
-                    break  # Encontró match, no buscar más campos
+                        _logger.warning(f"Error al conciliar orden {order.name} con pago {payment.id}: {e}")
+
+                # Si la orden ya está completa, no buscar en más campos
+                if order_remaining <= 0:
+                    _logger.info(f"Orden {order.name} completamente conciliada")
+                    break
 
         # Actualizar estado de la factura pública
-        public_invoice._compute_reconciliation_stats()
+        public_invoice._update_state()
 
         return reconciled_count, reconciled_amount
+
+    def _get_payment_remaining_balance(self, payment, session_used_amounts):
+        """
+        Calcula el saldo disponible de un pago.
+        Considera: monto original - conciliaciones existentes - usado en esta sesión.
+        """
+        # Obtener total ya conciliado en BD para este pago
+        existing_reconciliations = self.env['billing.public.reconciliation'].search([
+            ('payment_id', '=', payment.id)
+        ])
+        total_reconciled = sum(existing_reconciliations.mapped('amount'))
+
+        # Agregar lo usado en esta sesión (aún no guardado en BD)
+        session_used = session_used_amounts.get(payment.id, 0)
+
+        # Calcular saldo disponible
+        remaining = payment.amount - total_reconciled - session_used
+
+        _logger.debug(f"Pago {payment.id}: Total={payment.amount}, Conciliado={total_reconciled}, Sesión={session_used}, Disponible={remaining}")
+
+        return remaining
 
     def _send_execution_notification(self, execution):
         """

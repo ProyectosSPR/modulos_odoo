@@ -76,19 +76,25 @@
 
                 <notebook attrs="{'invisible': ['|', ('state', '!=', 'preview'), ('preview_type', '!=', 'reconciliation')]}">
                     <page string="Conciliaciones Potenciales" name="reconciliations">
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle"/> <strong>Nota:</strong> Una orden puede aparecer múltiples veces si se conciliará con varios pagos.
+                            Igualmente, un pago puede aparecer en múltiples líneas si cubre varias órdenes.
+                        </div>
                         <field name="reconciliation_line_ids" readonly="1">
                             <tree string="Conciliaciones" create="0" delete="0"
                                   decoration-success="match_status == 'matched'"
                                   decoration-warning="match_status == 'partial'"
                                   decoration-muted="match_status == 'no_match'">
-                                <field name="public_invoice_id"/>
-                                <field name="order_name"/>
-                                <field name="order_amount"/>
-                                <field name="payment_name"/>
-                                <field name="payment_amount"/>
-                                <field name="matched_field"/>
-                                <field name="matched_value"/>
-                                <field name="amount_to_reconcile" sum="Total"/>
+                                <field name="public_invoice_id" optional="hide"/>
+                                <field name="order_name" string="Orden"/>
+                                <field name="order_amount" string="Total Orden"/>
+                                <field name="order_pending" string="Pendiente"/>
+                                <field name="payment_name" string="Pago"/>
+                                <field name="payment_amount" string="Monto Pago"/>
+                                <field name="payment_available" string="Disponible"/>
+                                <field name="preview_amount" string="A Conciliar" sum="Total a Conciliar"/>
+                                <field name="matched_field" string="Campo"/>
+                                <field name="matched_value" string="Valor"/>
                                 <field name="match_status" widget="badge"
                                        decoration-success="match_status == 'matched'"
                                        decoration-warning="match_status == 'partial'"

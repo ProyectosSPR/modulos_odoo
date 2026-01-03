@@ -55,7 +55,7 @@ class BillingPortalPublic(http.Controller):
             # - name: Nombre de la orden (ej: DML00123)
             # - ml_order_id: ID de orden de MercadoLibre
             # - ml_pack_id: ID de pack de MercadoLibre
-            domain = [
+            search_domain = [
                 '|', '|', '|',
                 ('client_order_ref', 'ilike', order_ref),
                 ('name', 'ilike', order_ref),
@@ -63,13 +63,30 @@ class BillingPortalPublic(http.Controller):
                 ('ml_pack_id', '=', order_ref),
             ]
 
+            # Filtrar solo órdenes facturables (excluye productos excluidos)
+            domain = ['&', ('is_portal_billable', '=', True)] + search_domain
+
             # Buscar hasta 20 órdenes coincidentes
             orders = request.env['sale.order'].sudo().search(domain, limit=20, order='date_order desc')
 
             if orders:
                 _logger.info("Órdenes encontradas: %d", len(orders))
             else:
-                error = _('No se encontró ningún pedido con esa referencia: %s') % order_ref
+                # Si no hay órdenes facturables, verificar si existen pero no son facturables
+                all_orders = request.env['sale.order'].sudo().search(search_domain, limit=5)
+                if all_orders:
+                    # Hay órdenes pero no son facturables
+                    non_billable_reasons = []
+                    for order in all_orders:
+                        is_billable, reason = order.get_billing_eligibility()
+                        if not is_billable:
+                            non_billable_reasons.append(f"{order.name}: {reason}")
+                    if non_billable_reasons:
+                        error = _('Se encontraron pedidos pero no son facturables:\n%s') % '\n'.join(non_billable_reasons)
+                    else:
+                        error = _('Se encontraron pedidos pero no son facturables desde el portal.')
+                else:
+                    error = _('No se encontró ningún pedido con esa referencia: %s') % order_ref
                 _logger.info("Orden NO encontrada para: '%s'", order_ref)
 
         return request.render('billing_portal.portal_search', {

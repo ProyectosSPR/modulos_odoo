@@ -260,7 +260,11 @@ class BillingPreviewWizard(models.TransientModel):
         }
 
     def _generate_reconciliation_preview(self):
-        """Genera vista previa de conciliación."""
+        """Genera vista previa de conciliación.
+
+        Muestra múltiples pagos por orden si es necesario (N pagos → 1 orden)
+        y permite que un pago se use para múltiples órdenes (1 pago → N órdenes)
+        """
         self.ensure_one()
 
         if not self.config_id:
@@ -291,57 +295,91 @@ class BillingPreviewWizard(models.TransientModel):
             self.config_id.company_id.id
         )
 
+        # Cache global de saldos usados (para preview)
+        payment_used_amounts = {}  # {payment_id: monto_usado_en_preview}
+
         for public_invoice in public_invoices:
             # Obtener conciliaciones ya existentes
             existing_reconciliations = self.env['billing.public.reconciliation'].search([
                 ('public_invoice_id', '=', public_invoice.id)
             ])
-            already_reconciled_orders = existing_reconciliations.mapped('order_id').ids
-            already_reconciled_payments = existing_reconciliations.mapped('payment_id').ids
+
+            # Calcular montos ya conciliados por orden
+            order_reconciled_amounts = {}
+            for rec in existing_reconciliations:
+                if rec.order_id.id not in order_reconciled_amounts:
+                    order_reconciled_amounts[rec.order_id.id] = 0
+                order_reconciled_amounts[rec.order_id.id] += rec.amount
 
             for order in public_invoice.order_ids:
-                # Saltar órdenes ya conciliadas
-                if order.id in already_reconciled_orders:
-                    continue
+                # Calcular saldo pendiente de la orden
+                order_reconciled = order_reconciled_amounts.get(order.id, 0)
+                order_remaining = order.amount_total - order_reconciled
 
-                line_data = {
-                    'wizard_id': self.id,
-                    'public_invoice_id': public_invoice.id,
-                    'order_id': order.id,
-                    'order_amount': order.amount_total,
-                }
+                if order_remaining <= 0:
+                    continue  # Orden completamente conciliada
 
-                # Buscar pagos usando los campos configurados
-                matched_payment = None
-                matched_field = None
-                matched_value = None
-
+                # Buscar TODOS los pagos que coincidan
                 for field_config in search_fields.sorted('sequence'):
                     search_value = getattr(order, field_config.field_name, None)
                     if not search_value:
                         continue
 
-                    # Construir dominio de búsqueda
+                    # Construir dominio de búsqueda (NO excluir pagos usados)
                     domain = field_config.get_search_domain(search_value, partner_id)
-                    domain.append(('id', 'not in', already_reconciled_payments))
+                    payments = self.env['account.payment'].search(domain)
 
-                    payments = self.env['account.payment'].search(domain, limit=1)
+                    for payment in payments:
+                        if order_remaining <= 0:
+                            break  # Orden ya cubierta
 
-                    if payments:
-                        matched_payment = payments[0]
-                        matched_field = field_config.name
-                        matched_value = str(search_value)
-                        already_reconciled_payments.append(matched_payment.id)
+                        # Calcular saldo disponible del pago
+                        payment_total_used = self._get_payment_total_reconciled(payment)
+                        payment_preview_used = payment_used_amounts.get(payment.id, 0)
+                        payment_remaining = payment.amount - payment_total_used - payment_preview_used
+
+                        if payment_remaining <= 0:
+                            continue  # Pago sin saldo
+
+                        # Calcular monto a conciliar
+                        amount_to_reconcile = min(order_remaining, payment_remaining)
+
+                        # Crear línea de preview
+                        lines_to_create.append({
+                            'wizard_id': self.id,
+                            'public_invoice_id': public_invoice.id,
+                            'order_id': order.id,
+                            'order_amount': order.amount_total,
+                            'order_pending': order_remaining,
+                            'payment_id': payment.id,
+                            'payment_available': payment_remaining,
+                            'matched_field': field_config.name,
+                            'matched_value': str(search_value),
+                            'preview_amount': amount_to_reconcile,
+                        })
+
+                        # Actualizar caches
+                        if payment.id not in payment_used_amounts:
+                            payment_used_amounts[payment.id] = 0
+                        payment_used_amounts[payment.id] += amount_to_reconcile
+                        order_remaining -= amount_to_reconcile
+
+                    # Si orden cubierta, no buscar en más campos
+                    if order_remaining <= 0:
                         break
 
-                if matched_payment:
-                    line_data.update({
-                        'payment_id': matched_payment.id,
-                        'matched_field': matched_field,
-                        'matched_value': matched_value,
+                # Si no encontró pagos, crear línea sin pago (para mostrar que falta)
+                if order_remaining > 0 and not any(
+                    l['order_id'] == order.id for l in lines_to_create
+                    if l.get('public_invoice_id') == public_invoice.id
+                ):
+                    lines_to_create.append({
+                        'wizard_id': self.id,
+                        'public_invoice_id': public_invoice.id,
+                        'order_id': order.id,
+                        'order_amount': order.amount_total,
+                        'order_pending': order_remaining,
                     })
-
-                lines_to_create.append(line_data)
 
         if lines_to_create:
             self.env['billing.preview.wizard.reconciliation.line'].create(lines_to_create)
@@ -358,6 +396,13 @@ class BillingPreviewWizard(models.TransientModel):
             'view_mode': 'form',
             'target': 'new',
         }
+
+    def _get_payment_total_reconciled(self, payment):
+        """Obtiene el total ya conciliado de un pago."""
+        existing = self.env['billing.public.reconciliation'].search([
+            ('payment_id', '=', payment.id)
+        ])
+        return sum(existing.mapped('amount'))
 
     def action_execute(self):
         """Ejecuta la operación según la vista previa."""
@@ -530,6 +575,12 @@ class BillingPreviewWizardReconciliationLine(models.TransientModel):
         currency_field='currency_id'
     )
 
+    order_pending = fields.Monetary(
+        string='Pendiente Orden',
+        currency_field='currency_id',
+        help='Monto pendiente de conciliar de la orden'
+    )
+
     payment_id = fields.Many2one(
         'account.payment',
         string='Pago'
@@ -542,8 +593,14 @@ class BillingPreviewWizardReconciliationLine(models.TransientModel):
 
     payment_amount = fields.Monetary(
         related='payment_id.amount',
-        string='Monto Pago',
+        string='Monto Pago Total',
         currency_field='currency_id'
+    )
+
+    payment_available = fields.Monetary(
+        string='Disponible Pago',
+        currency_field='currency_id',
+        help='Monto disponible del pago para conciliar'
     )
 
     matched_field = fields.Char(
@@ -554,9 +611,15 @@ class BillingPreviewWizardReconciliationLine(models.TransientModel):
         string='Valor Match'
     )
 
+    preview_amount = fields.Monetary(
+        string='Monto a Conciliar',
+        currency_field='currency_id',
+        help='Monto que se conciliará (calculado en preview)'
+    )
+
     amount_to_reconcile = fields.Monetary(
         compute='_compute_amount_to_reconcile',
-        string='Monto a Conciliar',
+        string='Monto Conciliación',
         currency_field='currency_id'
     )
 
@@ -571,19 +634,28 @@ class BillingPreviewWizardReconciliationLine(models.TransientModel):
         ('no_match', 'Sin Pago'),
     ], compute='_compute_match_status', string='Estado')
 
-    @api.depends('order_amount', 'payment_amount')
+    @api.depends('preview_amount', 'order_amount', 'payment_amount')
     def _compute_amount_to_reconcile(self):
         for line in self:
-            line.amount_to_reconcile = min(
-                line.order_amount or 0,
-                line.payment_amount or 0
-            )
+            if line.preview_amount:
+                line.amount_to_reconcile = line.preview_amount
+            else:
+                line.amount_to_reconcile = min(
+                    line.order_amount or 0,
+                    line.payment_amount or 0
+                )
 
-    @api.depends('payment_id', 'order_amount', 'payment_amount')
+    @api.depends('payment_id', 'order_pending', 'preview_amount')
     def _compute_match_status(self):
         for line in self:
             if not line.payment_id:
                 line.match_status = 'no_match'
+            elif line.preview_amount and line.order_pending:
+                # Si el monto a conciliar cubre todo el pendiente
+                if abs(line.preview_amount - line.order_pending) < 0.01:
+                    line.match_status = 'matched'
+                else:
+                    line.match_status = 'partial'
             elif abs((line.payment_amount or 0) - (line.order_amount or 0)) < 0.01:
                 line.match_status = 'matched'
             else:
