@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'MercadoLibre Claims',
-    'version': '16.0.1.0.0',
+    'version': '16.0.2.0.0',
     'category': 'Sales',
-    'summary': 'Gestion de Reclamos y Mediaciones de MercadoLibre',
+    'summary': 'Gestion de Reclamos, Mediaciones y Devoluciones de MercadoLibre',
     'description': '''
-        Modulo para gestionar reclamos (claims) y mediaciones de MercadoLibre.
+        Modulo para gestionar reclamos (claims), mediaciones y devoluciones de MercadoLibre.
 
         Funcionalidades:
         - Sincronizacion de reclamos desde la API de MercadoLibre
@@ -15,6 +15,9 @@
         - Acciones automaticas sobre pagos en mediacion
         - Notificaciones y actividades
         - Historial de acciones
+        - Gestion automatica de devoluciones de inventario
+        - Soporte para Fulfillment (Full) con validacion automatica
+        - Integracion con stock.picking para cuadre de inventario
     ''',
     'author': 'DML',
     'website': '',
@@ -22,8 +25,11 @@
     'depends': [
         'mercadolibre_connector',
         'mercadolibre_payments',
+        'mercadolibre_sales',
         'mail',
         'account',
+        'stock',
+        'sale_stock',
     ],
     'data': [
         # Security
@@ -37,10 +43,13 @@
         'views/mercadolibre_claim_config_views.xml',
         'views/mercadolibre_payment_views.xml',
         'views/mercadolibre_payment_sync_config_views.xml',
+        'views/mercadolibre_return_views.xml',
+        'views/sale_order_views.xml',
         'views/menus.xml',
         # Wizards
         'wizard/mercadolibre_claim_sync_views.xml',
         'wizard/mercadolibre_claim_send_message_views.xml',
+        'wizard/mercadolibre_return_review_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

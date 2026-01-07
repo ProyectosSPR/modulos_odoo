@@ -86,6 +86,7 @@ class MercadolibreOrder(models.Model):
         ('self_service', 'Flex'),
         ('custom', 'Envio Propio'),
         ('not_specified', 'A Convenir'),
+        ('default', 'Por Defecto (Otros)'),
     ], string='Tipo Logistico', readonly=True, tracking=True,
        help='Tipo de logistica del envio')
 
@@ -516,7 +517,7 @@ class MercadolibreOrder(models.Model):
             'self_service': 'self_service',
             'custom': 'custom',
             'not_specified': 'not_specified',
-            'default': 'custom',  # me1 default = envio propio
+            'default': 'default',
         }
 
         # 0. Verificar si NO hay shipping (A Convenir)
@@ -753,7 +754,7 @@ class MercadolibreOrder(models.Model):
                     'self_service': 'self_service',
                     'custom': 'custom',
                     'not_specified': 'not_specified',
-                    'default': 'custom',
+                    'default': 'default',
                 }
 
                 # Log completo de datos recibidos para debug
@@ -2683,6 +2684,7 @@ class MercadolibreOrder(models.Model):
                     'self_service': 'self_service',
                     'custom': 'custom',
                     'not_specified': 'not_specified',
+                    'default': 'default',
                 }
 
                 # Intentar diferentes campos

@@ -37,6 +37,13 @@
               action="action_mercadolibre_payment_in_mediation"
               sequence="40"/>
 
+    <!-- Submenu - Devoluciones -->
+    <menuitem id="menu_mercadolibre_returns"
+              name="Devoluciones"
+              parent="menu_mercadolibre_claims_root"
+              action="action_mercadolibre_return"
+              sequence="45"/>
+
     <!-- Submenu - Mensajes -->
     <menuitem id="menu_mercadolibre_claim_messages"
               name="Mensajes"

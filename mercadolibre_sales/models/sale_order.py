@@ -41,6 +41,7 @@ class SaleOrder(models.Model):
         ('self_service', 'Flex'),
         ('custom', 'Envio Propio'),
         ('not_specified', 'A Convenir'),
+        ('default', 'Por Defecto (Otros)'),
     ], string='Tipo Logistico ML', readonly=True, copy=False)
 
     ml_channel = fields.Selection([

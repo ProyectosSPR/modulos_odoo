@@ -57,6 +57,10 @@
                             string="Permitir Devolucion" icon="fa-undo"
                             confirm="Esta seguro de permitir la devolucion?"
                             attrs="{'invisible': [('can_allow_return', '=', False)]}"/>
+                    <button name="action_create_return" type="object"
+                            string="Crear Devolucion Odoo" icon="fa-truck"
+                            class="btn-secondary"
+                            attrs="{'invisible': ['|', ('has_return', '=', False), ('ml_return_count', '>', 0)]}"/>
                     <field name="status" widget="statusbar" statusbar_visible="opened,closed"/>
                 </header>
                 <sheet>
@@ -64,6 +68,16 @@
                         <button name="action_view_messages" type="object"
                                 class="oe_stat_button" icon="fa-comments">
                             <field name="claim_message_count" widget="statinfo" string="Mensajes"/>
+                        </button>
+                        <button name="action_view_returns" type="object"
+                                class="oe_stat_button" icon="fa-undo"
+                                attrs="{'invisible': [('ml_return_count', '=', 0)]}">
+                            <field name="ml_return_count" widget="statinfo" string="Devoluciones"/>
+                        </button>
+                        <button name="action_view_sale_order" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <span class="o_stat_text">Orden Venta</span>
                         </button>
                         <button name="action_view_payment" type="object"
                                 class="oe_stat_button" icon="fa-credit-card"
@@ -75,6 +89,7 @@
                             <span class="o_stat_text">Datos JSON</span>
                         </button>
                     </div>
+                    <field name="sale_order_id" invisible="1"/>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>

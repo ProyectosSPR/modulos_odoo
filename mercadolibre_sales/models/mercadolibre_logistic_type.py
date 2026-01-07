@@ -21,8 +21,10 @@ class MercadolibreLogisticType(models.Model):
         ('self_service', 'Flex'),
         ('custom', 'Envio Propio'),
         ('not_specified', 'A Convenir'),
+        ('default', 'Por Defecto (Otros)'),
     ], string='Tipo Logistico ML', required=True,
-       help='Tipo logistico de MercadoLibre que esta configuracion maneja')
+       help='Tipo logistico de MercadoLibre que esta configuracion maneja. '
+            '"Por Defecto" captura tipos no configurados explicitamente.')
 
     sequence = fields.Integer(
         string='Secuencia',

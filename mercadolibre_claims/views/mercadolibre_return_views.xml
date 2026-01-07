@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- TREE VIEW -->
+    <!-- ============================================= -->
+    <record id="view_mercadolibre_return_tree" model="ir.ui.view">
+        <field name="name">mercadolibre.return.tree</field>
+        <field name="model">mercadolibre.return</field>
+        <field name="arch" type="xml">
+            <tree string="Devoluciones MercadoLibre" decoration-danger="odoo_state == 'error'" decoration-warning="odoo_state == 'pending'" decoration-success="odoo_state == 'completed'" decoration-info="odoo_state == 'received'">
+                <field name="name"/>
+                <field name="claim_id"/>
+                <field name="sale_order_id"/>
+                <field name="logistic_type" optional="show"/>
+                <field name="is_fulfillment"/>
+                <field name="ml_status" widget="badge" decoration-info="ml_status == 'opened'" decoration-warning="ml_status == 'shipped'" decoration-success="ml_status in ('delivered', 'closed')"/>
+                <field name="odoo_state" widget="badge"/>
+                <field name="review_status" optional="show"/>
+                <field name="return_picking_id" optional="show"/>
+                <field name="auto_validate" optional="hide"/>
+                <field name="require_review" optional="hide"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- FORM VIEW -->
+    <!-- ============================================= -->
+    <record id="view_mercadolibre_return_form" model="ir.ui.view">
+        <field name="name">mercadolibre.return.form</field>
+        <field name="model">mercadolibre.return</field>
+        <field name="arch" type="xml">
+            <form string="Devolucion MercadoLibre">
+                <header>
+                    <button name="action_create_return_picking" type="object" string="Crear Devolucion" class="btn-primary" attrs="{'invisible': ['|', ('return_picking_id', '!=', False), ('odoo_state', 'not in', ['pending'])]}"/>
+                    <button name="action_validate_return" type="object" string="Validar Recepcion" class="btn-primary" attrs="{'invisible': ['|', ('return_picking_id', '=', False), ('odoo_state', 'not in', ['return_created', 'waiting_arrival'])]}"/>
+                    <button name="action_complete_review" type="object" string="Revisar Producto" class="btn-secondary" attrs="{'invisible': [('odoo_state', 'not in', ['received'])]}"/>
+                    <button name="action_sync_from_ml" type="object" string="Sincronizar ML" class="btn-secondary"/>
+                    <button name="action_cancel" type="object" string="Cancelar" class="btn-secondary" attrs="{'invisible': [('odoo_state', 'in', ['completed', 'cancelled'])]}"/>
+                    <field name="odoo_state" widget="statusbar" statusbar_visible="pending,return_created,received,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_claim" type="object" class="oe_stat_button" icon="fa-exclamation-circle" attrs="{'invisible': [('claim_id', '=', False)]}">
+                            <field name="claim_id" widget="statinfo" string="Reclamo"/>
+                        </button>
+                        <button name="action_view_sale_order" type="object" class="oe_stat_button" icon="fa-shopping-cart" attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <field name="sale_order_id" widget="statinfo" string="Orden"/>
+                        </button>
+                        <button name="action_view_return_picking" type="object" class="oe_stat_button" icon="fa-truck" attrs="{'invisible': [('return_picking_id', '=', False)]}">
+                            <field name="return_picking_state" widget="statinfo" string="Picking"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Fulfillment" bg_color="bg-info" attrs="{'invisible': [('is_fulfillment', '=', False)]}"/>
+                    <widget name="web_ribbon" title="Error" bg_color="bg-danger" attrs="{'invisible': [('odoo_state', '!=', 'error')]}"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Informacion General">
+                            <field name="ml_return_id"/>
+                            <field name="account_id"/>
+                            <field name="return_type"/>
+                            <field name="is_fulfillment"/>
+                            <field name="ml_status"/>
+                        </group>
+                        <group string="Referencias Odoo">
+                            <field name="sale_order_id"/>
+                            <field name="ml_order_id"/>
+                            <field name="original_picking_id"/>
+                            <field name="return_picking_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Almacen y Configuracion">
+                            <field name="warehouse_id"/>
+                            <field name="location_dest_id"/>
+                            <field name="logistic_type"/>
+                            <field name="auto_validate"/>
+                            <field name="require_review"/>
+                        </group>
+                        <group string="Tracking">
+                            <field name="tracking_number"/>
+                            <field name="carrier"/>
+                            <field name="shipment_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Productos" name="products">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="ml_item_id"/>
+                                    <field name="title"/>
+                                    <field name="seller_sku"/>
+                                    <field name="quantity"/>
+                                    <field name="quantity_received"/>
+                                    <field name="condition"/>
+                                    <field name="notes"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Revision" name="review">
+                            <group>
+                                <group>
+                                    <field name="review_status"/>
+                                    <field name="review_date"/>
+                                    <field name="reviewed_by"/>
+                                </group>
+                                <group>
+                                    <field name="review_notes"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Fechas" name="dates">
+                            <group>
+                                <group>
+                                    <field name="date_created"/>
+                                    <field name="date_shipped"/>
+                                </group>
+                                <group>
+                                    <field name="date_delivered"/>
+                                    <field name="date_closed"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Errores" name="errors" attrs="{'invisible': [('odoo_error_message', '=', False)]}">
+                            <group>
+                                <field name="odoo_error_message" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Datos Crudos" name="raw">
+                            <field name="raw_data" readonly="1"/>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" placeholder="Notas adicionales..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- SEARCH VIEW -->
+    <!-- ============================================= -->
+    <record id="view_mercadolibre_return_search" model="ir.ui.view">
+        <field name="name">mercadolibre.return.search</field>
+        <field name="model">mercadolibre.return</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Devoluciones">
+                <field name="name"/>
+                <field name="ml_return_id"/>
+                <field name="claim_id"/>
+                <field name="sale_order_id"/>
+                <field name="tracking_number"/>
+                <separator/>
+                <filter name="filter_pending" string="Pendientes" domain="[('odoo_state', 'in', ['pending', 'return_created', 'waiting_arrival'])]"/>
+                <filter name="filter_received" string="Recibidas" domain="[('odoo_state', '=', 'received')]"/>
+                <filter name="filter_completed" string="Completadas" domain="[('odoo_state', '=', 'completed')]"/>
+                <filter name="filter_error" string="Con Error" domain="[('odoo_state', '=', 'error')]"/>
+                <separator/>
+                <filter name="filter_fulfillment" string="Fulfillment" domain="[('is_fulfillment', '=', True)]"/>
+                <filter name="filter_no_fulfillment" string="No Fulfillment" domain="[('is_fulfillment', '=', False)]"/>
+                <separator/>
+                <filter name="filter_review_pending" string="Revision Pendiente" domain="[('review_status', '=', 'pending'), ('odoo_state', '=', 'received')]"/>
+                <filter name="filter_require_review" string="Requiere Revision" domain="[('require_review', '=', True), ('odoo_state', '=', 'received')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_account" string="Cuenta ML" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_status" string="Estado ML" context="{'group_by': 'ml_status'}"/>
+                    <filter name="group_odoo_state" string="Estado Odoo" context="{'group_by': 'odoo_state'}"/>
+                    <filter name="group_review" string="Estado Revision" context="{'group_by': 'review_status'}"/>
+                    <filter name="group_fulfillment" string="Fulfillment" context="{'group_by': 'is_fulfillment'}"/>
+                    <filter name="group_logistic" string="Tipo Logistico" context="{'group_by': 'logistic_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- ACTION -->
+    <!-- ============================================= -->
+    <record id="action_mercadolibre_return" model="ir.actions.act_window">
+        <field name="name">Devoluciones</field>
+        <field name="res_model">mercadolibre.return</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mercadolibre_return_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay devoluciones registradas
+            </p>
+            <p>
+                Las devoluciones se crean automaticamente desde los reclamos de MercadoLibre.
+            </p>
+        </field>
+    </record>
+
+</odoo>

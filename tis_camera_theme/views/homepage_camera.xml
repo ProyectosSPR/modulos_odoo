@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <!-- === Homepage Page === -->
+    <record id="camera_homepage_view" model="ir.ui.view">
+        <field name="name">Home camera</field>
+        <field name="type">qweb</field>
+        <field name="key">website.camera_homepage_view</field>
+        <field name="arch" type="xml">
+            <t name="Homepage" t-name="website.homepage">
+                <t t-call="website.layout">
+                    <t t-set="pageName" t-value="'homepage'"/>
+                    <div id="wrap" class="oe_structure oe_empty">
+                        <section class="s_text_image o_colored_level bg-200 oe_img_bg o_bg_img_center pb96 pt80"
+                                 data-snippet="s_text_image" data-name="Text - Image"
+                                 style="background-image: url(&quot;/tis_camera_theme/static/src/images/banner.png&quot;);"
+                                 data-original-id="664" data-original-src="/tis_camera_theme/static/src/images/banner.png"
+                                 data-mimetype="image/png" data-resize-width="1920">
+                            <div class="container">
+                                <div class="row align-items-center" data-bs-original-title="" title=""
+                                     aria-describedby="tooltip342132">
+                                    <div class="pt16 pb16 o_colored_level col-lg-6">
+                                        <h1>
+                                            <strong><span style="font-size: 48px;">Sed ut perspiciatis unde omnis iste
+                                                natus</span>​
+                                            </strong>
+                                            <br/>
+                                        </h1>
+                                        <p>
+                                            <font class="text-800">Write one or two paragraphs describing your product
+                                                or services. To be successful your content needs to be useful to your
+                                                readers.
+                                            </font>
+                                        </p>
+                                        <p data-bs-original-title="" title="" aria-describedby="tooltip635374">
+                                            <a href="#" class="mb-2 btn btn-primary" data-bs-original-title="" title="">
+                                                Learn more
+                                            </a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="s_features o_colored_level pt0 pb32" data-snippet="s_features"
+                                 data-name="Features" style="background-image: none;">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="pt32 pb32 text-center o_colored_level bg-600 col-lg-3 border rounded"
+                                         style="border-width: 20px !important; border-color: rgb(255, 255, 255) !important; border-radius: 60px !important;">
+                                        <img src="/tis_camera_theme/static/src/images/pop_1.png" alt=""
+                                             class="m-3 rounded img img-fluid o_we_custom_image" data-original-id="670"
+                                             data-original-src="/tis_camera_theme/static/src/images/pop_1.png"
+                                             data-mimetype="image/png" data-resize-width="300" data-bs-original-title=""
+                                             title="" aria-describedby="tooltip44739" style="width: 25% !important;"/>
+                                        <h3>
+                                            <strong>
+                                                <span style="font-size: 18px;">InterChangable</span>
+                                            </strong>
+                                        </h3>
+                                    </div>
+                                    <div class="pt32 pb32 text-center o_colored_level bg-600 col-lg-3 border border-white rounded"
+                                         style="border-width: 20px !important; border-radius: 60px !important;">
+                                        <img src="/tis_camera_theme/static/src/images/pop_2.png" alt=""
+                                             class="m-3 rounded img img-fluid o_we_custom_image"
+                                             style="width: 25% !important;" data-original-id="671"
+                                             data-original-src="/tis_camera_theme/static/src/images/pop_2.png"
+                                             data-mimetype="image/png" data-resize-width="300"/>
+                                        <h3>
+                                            <strong>
+                                                <span style="font-size: 18px;">InterChangable</span>
+                                            </strong>
+                                        </h3>
+                                    </div>
+                                    <div class="pt32 pb32 text-center o_colored_level bg-600 col-lg-3 border border-white rounded"
+                                         style="border-width: 20px !important; border-radius: 60px !important;">
+                                        <img src="/tis_camera_theme/static/src/images/pop_3.png" alt=""
+                                             class="m-3 rounded img img-fluid o_we_custom_image"
+                                             style="width: 25% !important;" data-original-id="672"
+                                             data-original-src="/tis_camera_theme/static/src/images/pop_3.png"
+                                             data-mimetype="image/png" data-resize-width="300"/>
+                                        <h3>
+                                            <strong>
+                                                <span style="font-size: 18px;">InterChangable</span>
+                                            </strong>
+                                        </h3>
+                                    </div>
+                                    <div class="pt32 pb32 text-center o_colored_level bg-600 col-lg-3 border border-white rounded"
+                                         style="border-width: 20px !important; border-radius: 60px !important;">
+                                        <img src="/tis_camera_theme/static/src/images/pop_4.png" alt=""
+                                             class="m-3 rounded img img-fluid o_we_custom_image"
+                                             style="width: 25% !important;" data-original-id="673"
+                                             data-original-src="/tis_camera_theme/static/src/images/pop_4.png"
+                                             data-mimetype="image/png" data-resize-width="300"/>
+                                        <h3>
+                                            <strong>
+                                                <span style="font-size: 18px;">InterChangable</span>
+                                            </strong>
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="s_call_to_action pb24 o_colored_level pt24" data-snippet="s_call_to_action"
+                                 data-name="Call to Action" style="">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-lg-9 pb16 o_colored_level">
+                                        <h3>
+                                            <font class="text-black">
+                                                <strong>Popular Products</strong>
+                                            </font>
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <section data-snippet="s_dynamic_snippet_products"
+                                 class="s_dynamic_snippet_products s_dynamic pb32 o_colored_level s_product_product_borderless_1 pt0 o_dynamic_empty"
+                                 data-name="Products" style="background-image: none;" data-product-category-id="all"
+                                 data-number-of-records="16" data-filter-id="1"
+                                 data-template-key="website_sale.dynamic_filter_template_product_product_borderless_1"
+                                 data-carousel-interval="5000">
+                            <div class="container o_not_editable" contenteditable="false">
+                                <div class="css_non_editable_mode_hidden">
+                                    <div class="missing_option_warning alert alert-info rounded-0 fade show d-none d-print-none o_default_snippet_text">
+                                        Your Dynamic Snippet will be displayed here... This message is displayed because
+                                        you did not provided both a filter and a template to use.
+                                        <br/>
+                                    </div>
+                                </div>
+                                <div class="dynamic_snippet_template"/>
+                            </div>
+                        </section>
+                        <section class="s_call_to_action o_colored_level pb0 pt0" data-snippet="s_call_to_action"
+                                 data-name="Call to Action" style="background-image: none;">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-lg-9 pb16 o_colored_level">
+                                        <h3>
+                                            <font class="text-black">
+                                                <strong>Best Seller</strong>
+                                            </font>
+                                            <br/>
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <section data-snippet="s_dynamic_snippet_products"
+                                 class="s_dynamic_snippet_products s_dynamic pt32 pb32 o_colored_level s_product_product_borderless_1 o_dynamic_empty"
+                                 data-name="Products" style="background-image: none;" data-product-category-id="all"
+                                 data-number-of-records="16" data-filter-id="1"
+                                 data-template-key="website_sale.dynamic_filter_template_product_product_borderless_1"
+                                 data-carousel-interval="5000">
+                            <div class="container o_not_editable" contenteditable="false">
+                                <div class="css_non_editable_mode_hidden">
+                                    <div class="missing_option_warning alert alert-info rounded-0 fade show d-none d-print-none o_default_snippet_text">
+                                        Your Dynamic Snippet will be displayed here... This message is displayed because
+                                        you did not provided both a filter and a template to use.
+                                        <br/>
+                                    </div>
+                                </div>
+                                <div class="dynamic_snippet_template"/>
+                            </div>
+                        </section>
+                    </div>
+                </t>
+            </t>
+        </field>
+    </record>
+    <record id="camera_homepage" model="website.page">
+        <field name="url">/camera_homepage</field>
+        <field name="is_homepage" eval="True"></field>
+        <field name="website_published">True</field>
+        <field name="view_id" ref="camera_homepage_view"/>
+    </record>
+
+</odoo>

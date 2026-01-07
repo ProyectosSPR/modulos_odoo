@@ -120,6 +120,79 @@ class MercadolibreClaimConfig(models.Model):
     ], string='Resolucion a Favor Vendedor', default='notify',
        help='Accion cuando el claim se resuelve a favor del vendedor')
 
+    # === ACCIONES SOBRE ORDENES DE VENTA ===
+    resolution_buyer_order_action = fields.Selection([
+        ('none', 'No hacer nada'),
+        ('cancel', 'Cancelar Orden'),
+        ('notify', 'Solo Notificar'),
+    ], string='Orden - Favor Comprador', default='cancel',
+       help='Accion sobre la orden de venta cuando el reclamo se resuelve a favor del comprador')
+
+    resolution_seller_order_action = fields.Selection([
+        ('none', 'No hacer nada'),
+        ('confirm', 'Confirmar Orden'),
+        ('reprocess', 'Reprocesar Orden Completa'),
+        ('notify', 'Solo Notificar'),
+    ], string='Orden - Favor Vendedor', default='confirm',
+       help='Accion sobre la orden de venta cuando el reclamo se resuelve a favor del vendedor. '
+            '"Confirmar" reactiva la orden, "Reprocesar" tambien regenera picking/factura si es necesario.')
+
+    # =====================================================
+    # DEVOLUCIONES AUTOMATICAS
+    # =====================================================
+    auto_create_return = fields.Boolean(
+        string='Crear Devolucion Automaticamente',
+        default=True,
+        help='Crear registro de devolucion cuando se detecta un claim con devolucion'
+    )
+
+    auto_create_return_picking = fields.Boolean(
+        string='Crear Picking de Devolucion',
+        default=True,
+        help='Crear el picking de devolucion en Odoo automaticamente'
+    )
+
+    auto_validate_fulfillment = fields.Boolean(
+        string='Validar Full Automaticamente',
+        default=True,
+        help='Para ordenes Fulfillment, validar el picking automaticamente (ML ya gestiono la mercancia)'
+    )
+
+    auto_validate_on_delivered = fields.Boolean(
+        string='Validar al Recibir (ML Delivered)',
+        default=False,
+        help='Validar automaticamente cuando ML notifica que la devolucion fue entregada al vendedor'
+    )
+
+    # === ALMACENES Y UBICACIONES ===
+    return_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Almacen para Devoluciones',
+        domain="[('company_id', '=', company_id)]",
+        help='Almacen donde se reciben las devoluciones normales'
+    )
+
+    fulfillment_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Almacen Fulfillment',
+        domain="[('company_id', '=', company_id)]",
+        help='Almacen virtual que representa el stock en ML Full'
+    )
+
+    return_location_id = fields.Many2one(
+        'stock.location',
+        string='Ubicacion Devoluciones',
+        domain="[('usage', '=', 'internal')]",
+        help='Ubicacion especifica para productos devueltos (para revision)'
+    )
+
+    scrap_location_id = fields.Many2one(
+        'stock.location',
+        string='Ubicacion Merma/Scrap',
+        domain="[('scrap_location', '=', True)]",
+        help='Ubicacion para productos danados/defectuosos'
+    )
+
     # =====================================================
     # NOTIFICACIONES
     # =====================================================
@@ -535,6 +608,7 @@ class MercadolibreClaimConfig(models.Model):
         """Ejecuta accion cuando resolucion favorece al comprador"""
         self.ensure_one()
 
+        # === ACCIONES SOBRE PAGO ===
         if self.resolution_buyer_action == 'cancel_payment':
             if claim.ml_payment_id and claim.ml_payment_id.odoo_payment_id:
                 payment = claim.ml_payment_id.odoo_payment_id
@@ -555,10 +629,24 @@ class MercadolibreClaimConfig(models.Model):
                     note='Resolucion a favor del comprador. Revisar si se requiere cancelar/revertir pago.',
                 )
 
+        # === ACCIONES SOBRE ORDEN DE VENTA ===
+        sale_order = self._get_claim_sale_order(claim)
+        if sale_order and self.resolution_buyer_order_action == 'cancel':
+            self._cancel_sale_order(claim, sale_order)
+        elif sale_order and self.resolution_buyer_order_action == 'notify':
+            if self.create_activity and self.activity_user_id:
+                sale_order.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    user_id=self.activity_user_id.id,
+                    summary=f'Reclamo Resuelto - Comprador: {claim.name}',
+                    note='El reclamo se resolvio a favor del comprador. Revisar si se requiere cancelar la orden.',
+                )
+
     def _execute_resolution_seller_action(self, claim):
         """Ejecuta accion cuando resolucion favorece al vendedor"""
         self.ensure_one()
 
+        # === ACCIONES SOBRE PAGO ===
         if self.resolution_seller_action == 'confirm_payment':
             if claim.ml_payment_id and claim.ml_payment_id.odoo_payment_id:
                 payment = claim.ml_payment_id.odoo_payment_id
@@ -577,6 +665,21 @@ class MercadolibreClaimConfig(models.Model):
                     user_id=self.activity_user_id.id,
                     summary=f'Resolucion Favorable: {claim.name}',
                     note='Resolucion a favor del vendedor. El pago puede confirmarse.',
+                )
+
+        # === ACCIONES SOBRE ORDEN DE VENTA ===
+        sale_order = self._get_claim_sale_order(claim)
+        if sale_order and self.resolution_seller_order_action == 'confirm':
+            self._confirm_sale_order(claim, sale_order)
+        elif sale_order and self.resolution_seller_order_action == 'reprocess':
+            self._reprocess_sale_order(claim, sale_order)
+        elif sale_order and self.resolution_seller_order_action == 'notify':
+            if self.create_activity and self.activity_user_id:
+                sale_order.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    user_id=self.activity_user_id.id,
+                    summary=f'Reclamo Resuelto - Vendedor: {claim.name}',
+                    note='El reclamo se resolvio a favor del vendedor. La orden puede continuar su flujo normal.',
                 )
 
     # =====================================================
@@ -691,6 +794,173 @@ class MercadolibreClaimConfig(models.Model):
         payment.write({
             'mediation_action_taken': 'pending_review',
         })
+
+    # =====================================================
+    # ACCIONES SOBRE ORDENES DE VENTA
+    # =====================================================
+
+    def _get_claim_sale_order(self, claim):
+        """Obtiene la orden de venta asociada al claim"""
+        if claim.sale_order_id:
+            return claim.sale_order_id
+
+        # Buscar por ml_order_id
+        if claim.ml_order_id:
+            sale_order = self.env['sale.order'].search([
+                ('ml_order_id', '=', claim.ml_order_id)
+            ], limit=1)
+            if sale_order:
+                return sale_order
+
+        # Buscar via payment
+        if claim.ml_payment_id and claim.ml_payment_id.sale_order_id:
+            return claim.ml_payment_id.sale_order_id
+
+        return False
+
+    def _cancel_sale_order(self, claim, sale_order):
+        """Cancela la orden de venta por resolucion a favor del comprador"""
+        try:
+            if sale_order.state == 'cancel':
+                _logger.info('Orden %s ya esta cancelada', sale_order.name)
+                return True
+
+            # Cancelar pickings pendientes
+            for picking in sale_order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel')):
+                picking.action_cancel()
+
+            # Cancelar facturas en borrador
+            for invoice in sale_order.invoice_ids.filtered(lambda i: i.state == 'draft'):
+                invoice.button_cancel()
+
+            # Cancelar la orden
+            if sale_order.state not in ('done', 'cancel'):
+                sale_order.action_cancel()
+
+            claim._log_action('cancel_order_resolution',
+                             f'Orden {sale_order.name} cancelada por resolucion a favor del comprador')
+
+            sale_order.message_post(
+                body=f'Orden cancelada automaticamente por resolucion de reclamo {claim.name} a favor del comprador.',
+                message_type='notification'
+            )
+
+            _logger.info('Orden %s cancelada por resolucion claim %s', sale_order.name, claim.name)
+            return True
+
+        except Exception as e:
+            _logger.error('Error cancelando orden %s: %s', sale_order.name, str(e))
+            return False
+
+    def _confirm_sale_order(self, claim, sale_order):
+        """Confirma/reactiva la orden de venta por resolucion a favor del vendedor"""
+        try:
+            messages = []
+
+            # Si la orden esta en borrador, confirmarla
+            if sale_order.state == 'draft':
+                sale_order.action_confirm()
+                messages.append('Orden confirmada')
+
+            # Si la orden esta cancelada, intentar reactivarla (crear nueva cotizacion)
+            elif sale_order.state == 'cancel':
+                # En Odoo no se puede "descancelar" una orden facilmente
+                # Lo mejor es notificar para accion manual
+                if self.create_activity and self.activity_user_id:
+                    sale_order.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        user_id=self.activity_user_id.id,
+                        summary=f'Reactivar Orden: {sale_order.name}',
+                        note=f'La orden fue cancelada pero el reclamo {claim.name} se resolvio a favor del vendedor. '
+                             'Considere duplicar la orden para continuar el proceso.',
+                    )
+                messages.append('Orden cancelada - Se creo actividad para revision')
+
+            # Si ya esta confirmada, verificar pickings
+            elif sale_order.state == 'sale':
+                # Verificar si hay pickings pendientes de procesar
+                pending_pickings = sale_order.picking_ids.filtered(
+                    lambda p: p.state in ('draft', 'waiting', 'confirmed', 'assigned')
+                )
+                if pending_pickings:
+                    messages.append(f'{len(pending_pickings)} picking(s) pendientes de procesar')
+                else:
+                    messages.append('Orden ya confirmada, sin pickings pendientes')
+
+            if messages:
+                claim._log_action('confirm_order_resolution',
+                                 f'Orden {sale_order.name}: {", ".join(messages)}')
+
+                sale_order.message_post(
+                    body=f'Reclamo {claim.name} resuelto a favor del vendedor. {", ".join(messages)}',
+                    message_type='notification'
+                )
+
+            _logger.info('Orden %s procesada por resolucion claim %s: %s',
+                        sale_order.name, claim.name, ', '.join(messages))
+            return True
+
+        except Exception as e:
+            _logger.error('Error confirmando orden %s: %s', sale_order.name, str(e))
+            return False
+
+    def _reprocess_sale_order(self, claim, sale_order):
+        """Reprocesa la orden completa: confirma y genera picking/factura si es necesario"""
+        try:
+            messages = []
+
+            # Primero confirmar la orden
+            if sale_order.state == 'draft':
+                sale_order.action_confirm()
+                messages.append('Orden confirmada')
+
+            if sale_order.state == 'cancel':
+                # No se puede reprocesar una orden cancelada
+                if self.create_activity and self.activity_user_id:
+                    sale_order.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        user_id=self.activity_user_id.id,
+                        summary=f'Reprocesar Orden: {sale_order.name}',
+                        note=f'La orden esta cancelada. Reclamo {claim.name} resuelto a favor del vendedor. '
+                             'Duplicar la orden manualmente para continuar.',
+                    )
+                messages.append('Orden cancelada - Requiere duplicacion manual')
+
+            elif sale_order.state == 'sale':
+                # Verificar pickings
+                pending_pickings = sale_order.picking_ids.filtered(
+                    lambda p: p.state in ('confirmed', 'assigned')
+                )
+
+                # Si hay pickings listos para validar y es fulfillment, validar
+                for picking in pending_pickings:
+                    if picking.state == 'assigned':
+                        # Establecer cantidades
+                        for move in picking.move_ids:
+                            move.quantity_done = move.product_uom_qty
+                        # No validamos automaticamente - dejamos para revision
+                        messages.append(f'Picking {picking.name} listo para validar')
+
+                # Verificar si necesita factura
+                if sale_order.invoice_status == 'to invoice':
+                    messages.append('Orden pendiente de facturar')
+
+            if messages:
+                claim._log_action('reprocess_order_resolution',
+                                 f'Orden {sale_order.name} reprocesada: {", ".join(messages)}')
+
+                sale_order.message_post(
+                    body=f'Reclamo {claim.name} resuelto a favor del vendedor. Reprocesamiento: {", ".join(messages)}',
+                    message_type='notification'
+                )
+
+            _logger.info('Orden %s reprocesada por claim %s: %s',
+                        sale_order.name, claim.name, ', '.join(messages))
+            return True
+
+        except Exception as e:
+            _logger.error('Error reprocesando orden %s: %s', sale_order.name, str(e))
+            return False
 
     # =====================================================
     # LIFECYCLE

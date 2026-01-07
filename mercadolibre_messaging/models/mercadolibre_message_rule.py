@@ -63,13 +63,15 @@ class MercadolibreMessageRule(models.Model):
     ], string='Estado de Envío',
        help='Estado del envío que dispara el mensaje')
 
-    # Tipo logístico (opcional)
+    # Tipo logístico (opcional) - Debe coincidir con mercadolibre_sales/shipments
     logistic_type = fields.Selection([
-        ('cross_docking', 'Cross Docking (Mercado Envíos Full)'),
-        ('drop_off', 'Drop Off (Dejar en punto)'),
-        ('xd_drop_off', 'XD Drop Off'),
-        ('custom', 'Custom (Envío propio)'),
-        ('not_specified', 'No Especificado'),
+        ('fulfillment', 'Full (Mercado Libre)'),
+        ('xd_drop_off', 'Agencia/Places'),
+        ('cross_docking', 'Colectas'),
+        ('drop_off', 'Drop Off'),
+        ('self_service', 'Flex'),
+        ('custom', 'Envío Propio'),
+        ('not_specified', 'A Convenir'),
     ], string='Tipo Logístico',
        help='Filtrar por tipo de logística. Vacío = Todos')
 

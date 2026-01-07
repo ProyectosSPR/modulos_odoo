@@ -291,8 +291,27 @@ class MercadolibreClaim(models.Model):
         readonly=True
     )
     return_id = fields.Char(
-        string='Return ID',
+        string='Return ID ML',
         readonly=True
+    )
+
+    # === RELACION CON DEVOLUCIONES ODOO ===
+    ml_return_ids = fields.One2many(
+        'mercadolibre.return',
+        'claim_id',
+        string='Devoluciones Odoo'
+    )
+    ml_return_count = fields.Integer(
+        string='Num. Devoluciones',
+        compute='_compute_ml_return_count'
+    )
+
+    # === RELACION CON SALE ORDER ===
+    sale_order_id = fields.Many2one(
+        'sale.order',
+        string='Orden de Venta',
+        compute='_compute_sale_order_id',
+        store=True
     )
 
     # === PROCESAMIENTO EN ODOO ===
@@ -425,6 +444,23 @@ class MercadolibreClaim(models.Model):
     def _compute_item_count(self):
         for record in self:
             record.item_count = len(record.item_ids)
+
+    @api.depends('ml_return_ids')
+    def _compute_ml_return_count(self):
+        for record in self:
+            record.ml_return_count = len(record.ml_return_ids)
+
+    @api.depends('ml_order_id')
+    def _compute_sale_order_id(self):
+        SaleOrder = self.env['sale.order']
+        for record in self:
+            if record.ml_order_id:
+                sale_order = SaleOrder.search([
+                    ('ml_order_id', '=', record.ml_order_id)
+                ], limit=1)
+                record.sale_order_id = sale_order.id if sale_order else False
+            else:
+                record.sale_order_id = False
 
     # =====================================================
     # METODOS DE CREACION/ACTUALIZACION
@@ -577,7 +613,56 @@ class MercadolibreClaim(models.Model):
         # Vincular con pago si existe
         claim._link_to_payment()
 
+        # Crear devolucion automaticamente si aplica
+        if is_new and has_return:
+            claim._auto_create_return()
+
         return claim, is_new
+
+    def _auto_create_return(self):
+        """Crea automaticamente una devolucion si esta configurado"""
+        self.ensure_one()
+
+        # Verificar configuracion
+        config = self.env['mercadolibre.claim.config'].search([
+            ('account_id', '=', self.account_id.id),
+            ('state', '=', 'active'),
+        ], limit=1)
+
+        if not config or not config.auto_create_return:
+            _logger.info('Devolucion automatica no configurada para claim %s', self.ml_claim_id)
+            return False
+
+        # Verificar que no exista ya una devolucion
+        if self.ml_return_ids:
+            _logger.info('Ya existe devolucion para claim %s', self.ml_claim_id)
+            return False
+
+        try:
+            # Crear la devolucion
+            ReturnModel = self.env['mercadolibre.return']
+            ml_return = ReturnModel.create_from_claim(self)
+
+            if ml_return:
+                _logger.info('Devolucion %s creada automaticamente para claim %s',
+                            ml_return.name, self.ml_claim_id)
+
+                # Crear picking si esta configurado
+                if config.auto_create_return_picking and ml_return.sale_order_id:
+                    try:
+                        ml_return.action_create_return_picking()
+                        _logger.info('Picking de devolucion creado automaticamente para %s', ml_return.name)
+                    except Exception as e:
+                        _logger.warning('No se pudo crear picking automatico: %s', str(e))
+                        # No lanzar error, solo log
+
+                return ml_return
+
+        except Exception as e:
+            _logger.error('Error creando devolucion automatica para claim %s: %s',
+                         self.ml_claim_id, str(e))
+
+        return False
 
     def _link_to_payment(self):
         """Intenta vincular el claim con un pago existente"""
@@ -1183,6 +1268,67 @@ class MercadolibreClaim(models.Model):
             'view_mode': 'form',
             'view_id': self.env.ref('mercadolibre_claims.view_mercadolibre_claim_raw_form').id,
             'target': 'new',
+        }
+
+    def action_view_returns(self):
+        """Abre las devoluciones asociadas"""
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('Devoluciones'),
+            'res_model': 'mercadolibre.return',
+            'view_mode': 'tree,form',
+            'domain': [('claim_id', '=', self.id)],
+            'context': {'default_claim_id': self.id},
+        }
+
+        if len(self.ml_return_ids) == 1:
+            action['view_mode'] = 'form'
+            action['res_id'] = self.ml_return_ids[0].id
+
+        return action
+
+    def action_view_sale_order(self):
+        """Abre la orden de venta asociada"""
+        self.ensure_one()
+        if not self.sale_order_id:
+            raise UserError(_('Este reclamo no tiene una orden de venta asociada'))
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Orden de Venta'),
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_create_return(self):
+        """Crea una devolucion manualmente"""
+        self.ensure_one()
+
+        if self.ml_return_ids:
+            raise UserError(_('Ya existe una devolucion para este reclamo'))
+
+        ReturnModel = self.env['mercadolibre.return']
+        ml_return = ReturnModel.create_from_claim(self)
+
+        if ml_return:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Devolucion Creada'),
+                'res_model': 'mercadolibre.return',
+                'res_id': ml_return.id,
+                'view_mode': 'form',
+            }
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': _('No se pudo crear la devolucion'),
+                'type': 'warning',
+                'sticky': False,
+            }
         }
 
     # =====================================================

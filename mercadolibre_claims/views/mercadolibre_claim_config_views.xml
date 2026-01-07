@@ -95,15 +95,75 @@
                                 <field name="mediation_action"
                                        attrs="{'invisible': [('auto_process_mediation', '=', False)]}"/>
                             </group>
-                            <group string="Acciones por Resolucion">
-                                <field name="resolution_buyer_action"/>
-                                <field name="resolution_seller_action"/>
+                            <group string="Acciones por Resolucion - Pagos">
+                                <group>
+                                    <field name="resolution_buyer_action"/>
+                                    <field name="resolution_seller_action"/>
+                                </group>
                             </group>
+                            <group string="Acciones por Resolucion - Ordenes de Venta">
+                                <group>
+                                    <field name="resolution_buyer_order_action"/>
+                                </group>
+                                <group>
+                                    <field name="resolution_seller_order_action"/>
+                                </group>
+                            </group>
+                            <separator string="Ayuda"/>
+                            <div class="alert alert-info" role="alert">
+                                <strong>Resolucion a Favor del Comprador:</strong> El vendedor pierde el reclamo.
+                                Se puede cancelar la orden y/o el pago automaticamente.
+                                <br/><br/>
+                                <strong>Resolucion a Favor del Vendedor:</strong> El vendedor gana el reclamo.
+                                La orden puede continuar su flujo normal. "Confirmar Orden" reactiva ordenes en borrador.
+                                "Reprocesar" ademas prepara los pickings para validacion.
+                            </div>
                             <group string="Diarios Contables"
                                    attrs="{'invisible': [('mediation_action', 'not in', ['reverse_payment', 'create_cancelled'])]}">
                                 <field name="reversal_journal_id"/>
                                 <field name="default_customer_id"/>
                             </group>
+                        </page>
+
+                        <page string="Devoluciones" name="returns">
+                            <group string="Automatizacion General">
+                                <group>
+                                    <field name="auto_create_return"/>
+                                    <field name="auto_validate_on_delivered"
+                                           attrs="{'invisible': [('auto_create_return', '=', False)]}"
+                                           help="Validar automaticamente cuando ML notifica que la devolucion fue entregada"/>
+                                </group>
+                            </group>
+
+                            <separator string="Configuracion por Tipo Logistico"/>
+                            <div class="alert alert-info mb-3" role="alert">
+                                <strong>Configuracion Multi-Almacen:</strong> Defina almacenes y ubicaciones diferentes
+                                segun el tipo logistico de MercadoLibre. Cada tipo puede tener su propia configuracion
+                                de automatizacion y revision.
+                                <br/><br/>
+                                <strong>Tip:</strong> Use "Por Defecto (Otros)" para capturar tipos logisticos no configurados explicitamente.
+                            </div>
+
+                            <field name="warehouse_config_ids" nolabel="1">
+                                <tree string="Configuracion por Tipo Logistico" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="logistic_type"/>
+                                    <field name="warehouse_id"/>
+                                    <field name="location_id" domain="[('usage', '=', 'internal')]"/>
+                                    <field name="scrap_location_id" domain="[('scrap_location', '=', True)]" optional="show"/>
+                                    <field name="auto_create_picking"/>
+                                    <field name="auto_validate"/>
+                                    <field name="require_review"/>
+                                    <field name="active" optional="hide"/>
+                                </tree>
+                            </field>
+
+                            <button name="action_create_default_warehouse_configs"
+                                    type="object"
+                                    string="Crear Configuraciones por Defecto"
+                                    class="btn-secondary mt-3"
+                                    icon="fa-magic"
+                                    help="Crea configuraciones basicas para los tipos logisticos mas comunes"/>
                         </page>
 
                         <page string="Notificaciones" name="notifications">

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================= -->
+    <!-- SALE ORDER FORM - INHERIT -->
+    <!-- ============================================= -->
+    <record id="view_sale_order_form_claims_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.claims.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar botones en button_box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_ml_claims" type="object" class="oe_stat_button" icon="fa-exclamation-triangle" attrs="{'invisible': [('ml_claim_count', '=', 0)]}">
+                    <field name="ml_claim_count" widget="statinfo" string="Reclamos"/>
+                </button>
+                <button name="action_view_ml_returns" type="object" class="oe_stat_button" icon="fa-undo" attrs="{'invisible': [('ml_return_count', '=', 0)]}">
+                    <field name="ml_return_count" widget="statinfo" string="Devoluciones"/>
+                </button>
+            </xpath>
+
+            <!-- Agregar ribbon si tiene reclamo activo -->
+            <xpath expr="//div[hasclass('oe_title')]" position="before">
+                <widget name="web_ribbon" title="Reclamo Activo" bg_color="bg-danger" attrs="{'invisible': [('has_active_claim', '=', False)]}"/>
+            </xpath>
+
+            <!-- Agregar campos ocultos para los computes -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="has_active_claim" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- SALE ORDER TREE - INHERIT -->
+    <!-- ============================================= -->
+    <record id="view_sale_order_tree_claims_inherit" model="ir.ui.view">
+        <field name="name">sale.order.tree.claims.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="ml_return_status" optional="hide" widget="badge" decoration-warning="ml_return_status == 'pending'" decoration-info="ml_return_status == 'in_transit'" decoration-success="ml_return_status == 'completed'"/>
+                <field name="has_active_claim" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- SALE ORDER SEARCH - INHERIT -->
+    <!-- ============================================= -->
+    <!-- Nota: Los campos computados sin store=True no pueden usarse en filtros de busqueda -->
+    <!-- Los filtros de reclamos se manejan desde el menu de Reclamos -->
+    <record id="view_sale_order_search_claims_inherit" model="ir.ui.view">
+        <field name="name">sale.order.search.claims.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <separator/>
+                <filter name="filter_has_return" string="Con Devolucion" domain="[('ml_return_ids', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

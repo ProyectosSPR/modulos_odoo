@@ -386,7 +386,7 @@ class MercadolibreOrderSyncConfig(models.Model):
                     'self_service': 'self_service',
                     'custom': 'custom',
                     'not_specified': 'not_specified',
-                    'default': 'custom',
+                    'default': 'default',
                 }
 
                 _logger.info(
